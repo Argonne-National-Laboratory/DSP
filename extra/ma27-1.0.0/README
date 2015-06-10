@@ -1,0 +1,54 @@
+Legal Notice
+============
+ALL USAGE OF HSL IS SUBJECT TO LICENCE. PLEASE REFER TO THE FILE 'LICENCE'
+DISTRIBUTED WITH THIS SOFTWARE. THIS LICENCE APPLIES TO ALL FILES UNLESS
+OTHERWISE INDICATED. IF YOU OBTAINED A COPY OF THIS SOFTWARE WITHOUT THIS FILE,
+PLEASE CONTACT HSL@STFC.AC.UK TO OBTAIN ONE.
+
+In particular:
+1) You are obliged to cite HSL in any publication or report as:
+   "HSL, a collection of Fortran codes for large-scale scientific computation.
+    See http://www.hsl.rl.ac.uk/"
+2) You may not make available to others the software in any form, either as
+   source or as a precompiled object.
+
+Introduction
+============
+Thanks for downloading HSL software. You can find out more information about
+HSL by visiting our website: http://www.hsl.rl.ac.uk/
+
+We are trialling a new installation system, please send any feedback to
+hsl@stfc.ac.uk
+
+Installation
+============
+
+Compilation follows the standard process:
+   ./configure
+   make
+
+To install the library, module and any header files into /usr/local you may
+use the following command (this may require root permissions):
+   make install
+
+For further options, including installation in locations other than
+/usr/local and specifying the use of particular Fortran compilers and
+compile flags please run
+   ./configure --help
+
+External Libraries
+==================
+
+This package requires the following external libraries:
+
+
+Example Programs
+================
+
+The example/ subdirectory contains example programs. These may be compiled
+through the following command.
+   make check
+
+To successfully perform this check you will require the external libraries
+detailed in the previous section. The configure script will attempt to find
+these libraries, but you may need to explicitly specify their location.

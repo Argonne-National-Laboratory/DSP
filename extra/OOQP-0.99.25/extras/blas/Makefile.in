@@ -1,0 +1,36 @@
+F77   = @F77@
+FC    = $(F77)
+FFLAGS = @FFLAGS@
+
+SRC = 	dasum.f   dger.f    dsdot.f  dsyr2.f   dtrmv.f   izamax.f \
+	daxpy.f   dnrm2.f   dspmv.f  dsyr2k.f  dtrsm.f   lsame.f \
+	dcabs1.f  drot.f    dspr.f   dsyrk.f   dtrsv.f   xerbla.f \
+	dcopy.f   drotg.f   dspr2.f  dtbmv.f   dzasum.f \
+	ddot.f    drotm.f   dswap.f  dtbsv.f   dznrm2.f \
+	dgbmv.f   drotmg.f  dsymm.f  dtpmv.f   icamax.f \
+	dgemm.f   dsbmv.f   dsymv.f  dtpsv.f   idamax.f \
+	dgemv.f   dscal.f   dsyr.f   dtrmm.f   isamax.f
+
+OBJ = 	dasum.o   dger.o    dsdot.o  dsyr2.o   dtrmv.o   izamax.o \
+	daxpy.o   dnrm2.o   dspmv.o  dsyr2k.o  dtrsm.o   lsame.o \
+	dcabs1.o  drot.o    dspr.o   dsyrk.o   dtrsv.o   xerbla.o \
+	dcopy.o   drotg.o   dspr2.o  dtbmv.o   dzasum.o \
+	ddot.o    drotm.o   dswap.o  dtbsv.o   dznrm2.o \
+	dgbmv.o   drotmg.o  dsymm.o  dtpmv.o   icamax.o \
+	dgemm.o   dsbmv.o   dsymv.o  dtpsv.o   idamax.o \
+	dgemv.o   dscal.o   dsyr.o   dtrmm.o   isamax.o
+
+all: warning libblas.a
+
+libblas.a: $(OBJ)
+	ar ru libblas.a $(OBJ)
+
+warning:
+	@echo you are compiling version of the BLAS from the reference
+	@echo Fortran implementation. This is not as good a solution as
+	@echo using a machine-optimized BLAS. At the very least, consider
+	@echo your compiler flags carefully!
+
+
+
+

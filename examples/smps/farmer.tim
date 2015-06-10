@@ -1,0 +1,6 @@
+*23456789 123456789 123456789 123456789 123456789 123456789
+TIME          FARMER
+PERIODS       IMPLICIT
+    x0        OBJROW                   PERIOD1
+    x3        cons1                    PERIOD2	
+ENDATA

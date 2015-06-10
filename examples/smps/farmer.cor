@@ -1,0 +1,30 @@
+*23456789 123456789 123456789 123456789 123456789 123456789
+NAME          FARMER   
+ROWS
+ N  OBJROW
+ L  cons0
+ G  cons1
+ G  cons2
+ L  cons3
+COLUMNS
+    x0        OBJROW     150            cons0      1          
+    x0        cons1      3                     
+    x1        OBJROW     230            cons0      1
+    x1        cons2      3.6 
+    x2        OBJROW     260            cons0      1
+    x2        cons3     -24
+    x3        OBJROW     238            cons1      1     
+    x4        OBJROW     210            cons2      1           
+    x5        OBJROW    -170            cons1     -1        
+    x6        OBJROW    -150            cons2     -1        
+    x7        OBJROW    -36             cons3      1          
+    x8        OBJROW    -10             cons3      1          
+RHS
+    RHS1      cons0      500.5          cons1      200       
+    RHS1      cons2      240       
+BOUNDS
+ UI BOUND     x0         1e+30
+ UI BOUND     x1         1e+30
+ UI BOUND     x2         1e+30
+ UP BOUND     x7         6000       
+ENDATA

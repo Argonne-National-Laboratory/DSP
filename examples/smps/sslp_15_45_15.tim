@@ -1,0 +1,5 @@
+TIME   SSLP_15_45_15       
+PERIODS	 LP
+     x_1   c1  STAGE-1
+     y_1_1 c2  STAGE-2
+ENDATA

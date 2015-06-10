@@ -1,0 +1,27 @@
+# Number of buses
+118
+# Number of generators
+54
+# Number of wind farms
+3
+# Number of loads
+91
+# Number of branches
+186
+# Number of phase shifter
+0
+# 1
+##### Do not use phase shifter for now!
+##### Branch 127: the type has changed from 4 to 1.
+# Number of hours
+2
+# Number of segments
+4
+# Spinning reserve requirement
+0.04
+# Operating reserve requirement
+0.075
+# Spinning notice
+10
+# Base MVA rating
+100

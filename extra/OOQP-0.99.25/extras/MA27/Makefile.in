@@ -1,0 +1,11 @@
+F77      = @F77@
+FC       = $(F77)
+FFLAGS   = @FFLAGS@
+
+OBJS = fd05.o  id05.o  ma27.o za02.o
+
+libMA27.a:  $(OBJS) Makefile
+	ar ru $@ $(OBJS)
+
+$(OBJS) : Makefile
+
