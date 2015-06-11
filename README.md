@@ -13,7 +13,7 @@ The problem structures allow decomposition approaches for solving the problem in
 
 Getting started
 ---------------
-The file INSTALL, included in this directory, is the installation guide for the DSP package.
+The file INSTALL.md, included in this directory, is the installation guide for the DSP package.
 
 Julia interface
 ---------------
