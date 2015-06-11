@@ -13,7 +13,23 @@ The problem structures allow decomposition approaches for solving the problem in
 
 Getting started
 ---------------
-The file INSTALL.md, included in this directory, is the installation guide for the DSP package.
+If you have all the prerequisite packages installed on your system (see the [INSTALL.md](./INSTALL.md)), then you need to go to the root directory of DSP and type
+```cmake
+cmake .
+```
+to configure OOQP. If you wish to install the package in a more permanent location, you may then type
+```
+make install
+```
+External packages (MA27, OOQP, SCIP Optimization Suite, Smi) used in DSP are built automatically. A shared object is installed in ./lib directory. Once the installation has been successfully done, you need to set an environment variable DSP_INC and (DY)LD_LIBRARY_PATH.
+For Linux,
+```
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<DSP source path>/lib
+```
+For Mac,
+```
+export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:<DSP source path>/lib
+```
 
 Julia interface
 ---------------
