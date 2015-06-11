@@ -1,32 +1,17 @@
 # Julia script for DSP (Deterministic Equivalent Form)
 # Kibaek Kim - ANL MCS 2014
 
-# DSP solver
-include("../julia/Dsp.jl")
+using DSP
 
-# create DSP environment
-dsp = DSP()
-
-# read problem from SMPS
-readSmps(dsp, "./smps/dcap233_200")
-
-# set print level
-setLogLevel(dsp, 1)
-
-# set wallclock limit (sec)
-setWallLimit(dsp, 10)
-
-# set node limit
-#setNodeLimit(dsp, 10)
-
-# solve deterministic equivalent formulation
-solveDe(dsp)
+DSP.readSmps("./smps/dcap233_200"); # read SMPS files
+DSP.setLogLevel(1);                 # set print level
+DSP.solve(DSP_SOLVER_DE);           # solver with DE
 
 # print results
-println("Solution Time   : ", getSolutionTime(dsp))
-println("Solution Status : ", getSolutionStatus(dsp))
-println("Primal Bound    : ", getPrimalBound(dsp))
-println("Dual Bound      : ", getDualBound(dsp))
-println("Iterations      : ", getNumIterations(dsp))
-println("Number of Nodes : ", getNumNodes(dsp))
+println("Solution Time   : ", DSP.getSolutionTime());
+println("Solution Status : ", DSP.getSolutionStatus());
+println("Primal Bound    : ", DSP.getPrimalBound());
+println("Dual Bound      : ", DSP.getDualBound());
+println("Iterations      : ", DSP.getNumIterations());
+println("Number of Nodes : ", DSP.getNumNodes());
 

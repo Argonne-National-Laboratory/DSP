@@ -2,54 +2,34 @@
 # Kibaek Kim - ANL MCS 2014
 # Farmer example from Birge and Louveaux book.
 
-# read include path from environment variable
-DSP_INC = ENV["DSP_INC"];
-
-# modeling language, StochJuMP
-include("$DSP_INC/StochJuMP.jl")
-
-# solver, DSP
-include("$DSP_INC/Dsp-MPI.jl")
+using MPI, StochJuMP, DSP
 
 if ARGS[1] == "DD"
 	MPI.Init();
 end
 
-# data file
-include("farmer_data.jl")
+include("farmer_data.jl");  # data file
+include("farmer_model.jl"); # model file
 
-# model file
-include("farmer_model.jl")
+DSP.loadProblem(m); # load problem to model object
+DSP.setLogLevel(1); # set print level
 
-# create DSP environment
-dsp = DSP();
-
-# load problem to model object
-loadProblem(dsp, m);
-
-# set print level
-setLogLevel(dsp, 1);
 
 # solve problem
 if ARGS[1] == "DE"
-	solveDe(dsp);
+	DSP.solve(DSP_SOLVER_DE);
 elseif ARGS[1] == "BD"
-	setNumCores(dsp, 3);
-	solveBd(dsp, 1);
+	DSP.solve(DSP_SOLVER_BD);
 elseif ARGS[1] == "DD"
-	setDdMasterSolver(dsp, 2);
-	setDdMasterNumCutsPerIter(dsp, 1);
-	setDdAddFeasCuts(dsp,1);
-	setDdAddOptCuts(dsp,1);
-	setDdEvalUb(dsp,1);
-	solveDd(dsp, MPI.COMM_WORLD);
+	DSP.solve(DSP_SOLVER_DD);
 end
 
 if MPI.Initialized() == false || MPI.Comm_rank(MPI.COMM_WORLD) == 0
-	# print some results
-	println("Solution Status: ", getSolutionStatus(dsp))
-	println("Primal Bound   : ", getPrimalBound(dsp))
-	println("Dual Bound     : ", getDualBound(dsp))
+	println("Solution Time   : ", DSP.getSolutionTime());
+	println("Solution status : ", DSP.getSolutionStatus());
+	println("Primal Bound    : ", DSP.getPrimalBound());
+	println("Dual Bound      : ", DSP.getDualBound());
+	println("Iterations      : ", DSP.getNumIterations());
 end
 
 if ARGS[1] == "DD"
