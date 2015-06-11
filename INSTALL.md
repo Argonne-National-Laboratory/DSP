@@ -43,7 +43,7 @@ The following packages need to be installed on your system and located on ./extr
 
 JULIA
 -----
-Julia is a high level dynamic programming language for technical computing, with syntax that is familiar to users of other technical computing environments such as MATLAB and Python. This is an optional package for DSP. However, DSP provides an interface to an algebraic modeling package StochJuMP based on Julia. The interface package can be installed by the Julia command
+Julia is a high level dynamic programming language for technical computing, with syntax that is familiar to users of other technical computing environments such as MATLAB and Python. DSP provides an interface to an algebraic modeling package StochJuMP based on Julia. The interface package can be installed by the Julia command
 ```julia
 Pkg.clone("https://github.com/kibaekkim/DSP.jl.git");
 ```
@@ -51,4 +51,4 @@ and the examples are located at
 ```
 ./examples/julia
 ```
-We storongly encourage DSP users to try this. Julia can be downloaded from http://julialang.org/downloads/
+Julia can be downloaded from http://julialang.org/downloads/
