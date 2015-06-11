@@ -11,11 +11,11 @@ where x and y_s are decision variable vectors with dimensions n_1 and n_2, respe
 
 The problem structures allow decomposition approaches for solving the problem in parallel computing system. DSP provides parallel implementations for decomposition methods (Benders decomposition and dual decomposition). The methods can be run on cluster as well as desktop computers.
 
-GETTING STARTED
+Getting started
 ---------------
 The file INSTALL, included in this directory, is the installation guide for the DSP package.
 
-USE WITH JULIA
+Use with Julia
 --------------
 DSP provides an interface to Julia environment. Installation instructions, in addition to the general instructions found in INSTALL. Once the Julia interface has been properly installed, users can model problems by using StochJuMP, a algebraic modeling package in Julia for stochastic programming, which can be installed by the following Julia command:
 ```julia
