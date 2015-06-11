@@ -17,7 +17,15 @@ The file INSTALL.md, included in this directory, is the installation guide for t
 
 Julia interface
 ---------------
-DSP provides an interface to Julia environment. Installation instructions, in addition to the general instructions found in INSTALL. Once the Julia interface has been properly installed, users can model problems by using StochJuMP, a algebraic modeling package in Julia for stochastic programming, which can be installed by the following Julia command:
+DSP provides an interface to an algebraic modeling package StochJuMP based on Julia. The interface package can be installed by the Julia command
+```julia
+Pkg.clone("https://github.com/kibaekkim/DSP.jl.git");
+```
+and the examples are located at
+```
+./examples/julia
+```
+Once the Julia interface has been properly installed, users can model problems by using StochJuMP, a algebraic modeling package in Julia for stochastic programming, which can be installed by the following Julia command:
 ```julia
 Pkg.clone("https://github.com/kibaekkim/StochJuMP.jl.git");
 ```
