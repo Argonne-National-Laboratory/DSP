@@ -19,7 +19,7 @@ For Mac,
 export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:<DSP source path>/lib
 ```
 
-BUILD ESSENTIALS
+Build Essentials
 ----------------
 The following packages are essential to build DSP and the required external software packages. If you do not have any of the following packages, and if you do not know how to get it, please see the "HOW TO GET BUILD ESSENTIALS" section below.
 * CMake
@@ -31,7 +31,7 @@ The following packages are essential to build DSP and the required external soft
 * LAPACK
 * SVN
 
-PREREQUISITES
+Prerequisites
 -------------
 The following packages need to be installed on your system and located on ./extra directory before DSP may be built.
 
@@ -41,7 +41,7 @@ The following packages need to be installed on your system and located on ./extr
 
 * SCIP Optimization Suite (./extra/scipoptsuite-3.1.1) -- SCIP is non-commercial solvers for mixed integer programming (MIP) and mixed-integer nonlinear programming (MINLP). It is freely available from the website: http://scip.zib.de/download.php?fname=scipoptsuite-3.1.1.tgz
 
-JULIA
+Julia
 -----
 Julia is a high level dynamic programming language for technical computing, with syntax that is familiar to users of other technical computing environments such as MATLAB and Python. DSP provides an interface to an algebraic modeling package StochJuMP based on Julia. The interface package can be installed by the Julia command
 ```julia
