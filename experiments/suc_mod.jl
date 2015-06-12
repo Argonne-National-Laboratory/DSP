@@ -1,13 +1,6 @@
 # Julia script for unit commitment problem
 # Kibaek Kim - 2015 ANL MCS
 
-
-# NOTE:
-#   - Construct model in a local scope and feed it to DSP solver.
-#   - This allows garbage collection to free memory.
-
-let
-
 # ---------------
 # Read data files
 # ---------------
@@ -116,7 +109,7 @@ end
 # Wind power scenarios
 wind_scen = zeros(nWinds, nPeriods, nScenarios);
 for i in 1:nWinds
-        winddat = readdlm(string("winddata/wp64-", i, ".txt"));
+        winddat = readdlm(string("IEEE118/wp64-", i, ".txt"));
         wind_scen[i,:,:] = winddat[:,1:nScenarios];
 end
 total_wind_scen = reshape(sum(wind_scen,1), nPeriods, nScenarios);
@@ -174,36 +167,15 @@ m = StochasticModel(nScenarios);
 @addConstraint(m, MIN_UP_S2[i=SLOWGENS, t=PERIODS],
         Use[i,t] >= sum{Up[i,s], s=max(1,t-uptime[i]+1):t})
 
-# create scenario indices to read
-if isdefined(:MPI)
-        comm_size = MPI.Comm_size(MPI.COMM_WORLD);
-        comm_rank = MPI.Comm_rank(MPI.COMM_WORLD);
-else
-        comm_size = 1;
-        comm_rank = 0;
-end
-scenariosToRead = Int[];
-for s in (comm_rank+1):comm_size:nScenarios
-        push!(scenariosToRead, s);
-end
-
 # -----------------
 # For each scenario
 # -----------------
-for s in 1:nScenarios
+@second_stage m s begin
 
         # ----------------
         # Stochastic block
         # ----------------
         sb = StochasticBlock(m, prob[s])
-
-        # ------------------------------------------------
-        # Skip scenarios not used in the current processor
-        # ------------------------------------------------
-        if in(s,scenariosToRead) == false
-                sb.ext[:Skip] = true;
-                continue
-        end
 
         # ----------------------
         # Second-stage Variables
@@ -314,9 +286,4 @@ for s in 1:nScenarios
                 - sum{load_shift_factor[n,l] * wind_scen[wn,t,s], n=BUSES, wn=WINDS; wind_bus_id[wn] == n}
                 + flow_max[l])
 end
-
-# Load data to DSP
-loadProblem(dsp, m)
-
-end # End of let
 

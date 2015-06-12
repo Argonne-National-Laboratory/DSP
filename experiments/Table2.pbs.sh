@@ -1,11 +1,6 @@
 #!/bin/bash
 
-if [ -z "$DSP_INC" ]; then
-	echo "Need to set DSP_INC; please read INSTALL file"
-	exit 1
-fi
-
-SIPLIB_DIR="${DSP_INC}/../examples/smps"
+SIPLIB_DIR="./smps"
 
 problems=(
 	"dcap233_200"
