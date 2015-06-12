@@ -33,7 +33,7 @@ fprintf(fileID, '\\begin{document}\n');
 fprintf(fileID, '\\begin{table}[htpb]\n');
 fprintf(fileID, '\\caption{Computational results for SIPLIB instances using different dual decomposition methods.}\n');
 fprintf(fileID, '\\label{tab:siplib:recovery}\n');
-fprintf(fileID, '\\centering\n');
+fprintf(fileID, '\\centering\\footnotesize\n');
 fprintf(fileID, '\\begin{tabular}{lrlrrrrr}\n');
 fprintf(fileID, '  \\hline\n');
 fprintf(fileID, '           &           &        &            & Upper & Lower  & Gap  & Wall time \\\\\n');
@@ -53,14 +53,18 @@ for p = probs
             split_idx = find(p{1} == '_', 1, 'last');
             instance_name = p{1}(1:(split_idx-1));
             num_scenarios = p{1}((split_idx+1):length(p{1}));
-            fprintf(fileID, '  {\\tt %s} & %s', strrep(instance_name, '_', '\_'), num_scenarios);
+            if i == 1
+                fprintf(fileID, '  {\\tt %s} & %s', strrep(instance_name, '_', '\_'), num_scenarios);
+            else
+                fprintf(fileID, '            & ');
+            end
             
             if i == 1
-                fprintf(fileID, ' & Subgradient');
+                fprintf(fileID, ' & DDSub');
             elseif i == 2
-                fprintf(fileID, ' & CPM');
+                fprintf(fileID, ' & DDCP');
             else
-                fprintf(fileID, ' & IPM');
+                fprintf(fileID, ' & DSP');
             end
             
             gap = abs(d(3) - d(4)) / abs(d(3)) * 100;
@@ -74,6 +78,7 @@ for p = probs
             fprintf(fileID, ' \\\\\n');
         end
     end
+    fprintf(fileID, ' \\hline');
 end
 fprintf(fileID, '  \\hline\n');
 fprintf(fileID, '\\end{tabular}\n');

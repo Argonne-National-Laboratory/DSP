@@ -1,4 +1,4 @@
-%% Figure 1
+%% Figure 4
 
 subobj1 = csvread('output/sslp_15_45_15_s0_sub_objvals.csv');
 subobj2 = csvread('output/sslp_15_45_15_s2_sub_objvals.csv');
@@ -56,4 +56,4 @@ set(h2,'yticklabel',[]);
 hold off;
 
 % save
-hgexport(gcf, 'Figure1.eps');
+hgexport(gcf, 'Figure4.eps');

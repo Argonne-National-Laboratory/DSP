@@ -1,4 +1,4 @@
-%% Figure 2
+%% Figure 5
 
 gra = csvread('output/sslp_15_45_15_s3_dualvars.csv');
 spx = csvread('output/sslp_15_45_15_s0_dualvars.csv');
@@ -17,4 +17,4 @@ xlim([1 100]);
 hold off;
 
 % save
-hgexport(gcf, 'Figure2.eps');
+hgexport(gcf, 'Figure5.eps');

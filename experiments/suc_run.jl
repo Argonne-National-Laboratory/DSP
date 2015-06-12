@@ -15,6 +15,9 @@ prefix      = ARGS[4];
 # Unit commitment model
 include("suc_mod.jl")
 
+# Load data to DSP
+DSP.loadProblem(m);
+
 # DSP options
 DSP.setLogLevel(1)
 DSP.setWallLimit(21600);

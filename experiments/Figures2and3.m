@@ -1,4 +1,4 @@
-%% Basic results
+%% Figures 2 and 3
 clc
 probs={...
     'dcap233_200',...
@@ -57,22 +57,22 @@ Xlabs = strrep(probs, '_', '\_');
 xticklabel_rotate(1:size(gap,1), 90, Xlabs);
 legend('DDSub', 'DDCP', 'DSP');
 
-rel_time = time ./ repmat(time(:,1), 1, 3);
-figure();
-axes('position', [0.08 0.05 0.92 0.9]);
-bar(rel_time(:,2:3));
-%ylim([0 1]);
-%ylabel('Solution Time Relative to Subgradient Method');
-Xlabs = strrep(probs, '_', '\_');
-xticklabel_rotate(1:size(time,1), 90, Xlabs);
-legend('DDCP', 'DSP');
+% save
+hgexport(gcf, 'Figure2.eps');
 
-rel_iter = iter ./ repmat(iter(:,1), 1, 3);
+rel_time = time ./ repmat(time(:,3), 1, 3);
+rel_iter = iter ./ repmat(iter(:,3), 1, 3);
+
 figure();
-axes('position', [0.08 0.05 0.92 0.9]);
-bar(rel_iter(:,2:3));
-ylim([0 1]);
-%ylabel('Number of Iterations Relative to Subgradient Method');
+axes('position', [0.06 0.05 0.92 0.9]);
+rel = [rel_time(:,1:2) rel_iter(:,1:2)];
+bar(rel(:,[1,3,2,4]));
+set(gca,'YScale','log')
 Xlabs = strrep(probs, '_', '\_');
 xticklabel_rotate(1:size(gap,1), 90, Xlabs);
-legend('DDCP', 'DSP');
+legend('DDSub (Solution Time)', 'DDSub (# of Iterations)', ...
+    'DDCP (Solution Time)', 'DDCP (# of Iterations)', ...
+    'location', 'southeast');
+
+% save
+hgexport(gcf, 'Figure3.eps');
