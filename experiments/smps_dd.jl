@@ -11,24 +11,24 @@ iterlim     = int(ARGS[6]); # iteration limit
 wtime       = int(ARGS[7]); # wall time limit
 prefix      = ARGS[8];      # output prefix
 
-using MPI, DSP
+using MPI, DSPsolver
 
 # initialize MPI
 MPI.Init()
 
 # read problem from SMPS
-DSP.readSmps(smps_file);
+DSPsolver.readSmps(smps_file);
 
 # Parameter setting
-DSP.setLogLevel(1);                   # set print level
-DSP.setDdEvalUb(1);                   # evaluate upper bounds
-DSP.setDdMasterNumCutsPerIter(10000); # set number of cuts per iteration (for the master problem)
-DSP.setIterLimit(iterlim);            # set iteration limit
-DSP.setWallLimit(wtime);              # set wallclock limit (sec)
-DSP.setDdMasterSolver(solver_type);   # set solver type
-DSP.setDdAddFeasCuts(fcut);           # enable feasibility cuts
-DSP.setDdAddOptCuts(ocut);            # enable optimality cuts
-DSP.setDdDualVarsLog(ddlog);          # enable logging dual variable values
+DSPsolver.setLogLevel(1);                   # set print level
+DSPsolver.setDdEvalUb(1);                   # evaluate upper bounds
+DSPsolver.setDdMasterNumCutsPerIter(10000); # set number of cuts per iteration (for the master problem)
+DSPsolver.setIterLimit(iterlim);            # set iteration limit
+DSPsolver.setWallLimit(wtime);              # set wallclock limit (sec)
+DSPsolver.setDdMasterSolver(solver_type);   # set solver type
+DSPsolver.setDdAddFeasCuts(fcut);           # enable feasibility cuts
+DSPsolver.setDdAddOptCuts(ocut);            # enable optimality cuts
+DSPsolver.setDdDualVarsLog(ddlog);          # enable logging dual variable values
 
 # solve problem using Dual Decomposition
 solve(DSP_SOLVER_DD)
@@ -38,25 +38,25 @@ if MPI.Comm_rank(MPI.COMM_WORLD) == 0
 
 	# Write results
 	f = open("output/$prefix.csv", "w");
-	primal = DSP.getPrimalBound();
-	dual = DSP.getDualBound();
-	println(f, solver_type, ",", DSP.getNumIterations(), ",", primal, ",", dual, ",", DSP.getSolutionTime());
+	primal = DSPsolver.getPrimalBound();
+	dual = DSPsolver.getDualBound();
+	println(f, solver_type, ",", DSPsolver.getNumIterations(), ",", primal, ",", dual, ",", DSPsolver.getSolutionTime());
 	close(f);
 
 	if contains(smps_file, "sslp_15_45_15")
-		writecsv("output/$prefix\_sub_objvals.csv", DSP.getDdSubproblemObjValues());
-		writecsv("output/$prefix\_duals.csv", DSP.getDdDualBounds());
+		writecsv("output/$prefix\_sub_objvals.csv", DSPsolver.getDdSubproblemObjValues());
+		writecsv("output/$prefix\_duals.csv", DSPsolver.getDdDualBounds());
 	end
 
 	if ddlog == 1
-		writecsv("output/$prefix\_dualvars.csv", DSP.getDdChangesOfMultiplier());
+		writecsv("output/$prefix\_dualvars.csv", DSPsolver.getDdChangesOfMultiplier());
 	end
 
 	# Print out simple results
-	println("Solution status : ", DSP.getSolutionStatus());
-	println("Primal Bound    : ", DSP.getPrimalBound())
-	println("Dual Bound      : ", DSP.getDualBound());
-	println("CPU time (sec)  : ", DSP.getDdCpuTime());
+	println("Solution status : ", DSPsolver.getSolutionStatus());
+	println("Primal Bound    : ", DSPsolver.getPrimalBound())
+	println("Dual Bound      : ", DSPsolver.getDualBound());
+	println("CPU time (sec)  : ", DSPsolver.getDdCpuTime());
 
 end
 
