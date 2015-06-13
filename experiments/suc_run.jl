@@ -1,7 +1,7 @@
 # Julia script of reproducing results for Table 4 and Figure 5 in MPC paper.
 # Kibaek Kim - ANL MCS 2015
 
-using StochJuMP, MPI, DSP
+using StochJuMP, MPI, DSPsolver.olver
 
 # Initialize MPI
 MPI.Init()
@@ -16,41 +16,41 @@ prefix      = ARGS[4];
 include("suc_mod.jl")
 
 # Load data to DSP
-DSP.loadProblem(m);
+DSPsolver.loadProblem(m);
 
-# DSP options
-DSP.setLogLevel(1)
-DSP.setWallLimit(21600);
-DSP.setScipLimitsTime(300);
+# DSPsolver.options
+DSPsolver.setLogLevel(1)
+DSPsolver.setWallLimit(21600);
+DSPsolver.setScipLimitsTime(300);
 
 # DD specific options
-DSP.setDdStoppingTolerance(1.0e-4);
-DSP.setDdMasterSolver(solver_type);
-DSP.setDdMasterNumCutsPerIter(1);
-DSP.setDdAddFeasCuts(cuts);
-DSP.setDdAddOptCuts(cuts);
-DSP.setDdEvalUb(1);
+DSPsolver.setDdStoppingTolerance(1.0e-4);
+DSPsolver.setDdMasterSolver(solver_type);
+DSPsolver.setDdMasterNumCutsPerIter(1);
+DSPsolver.setDdAddFeasCuts(cuts);
+DSPsolver.setDdAddOptCuts(cuts);
+DSPsolver.setDdEvalUb(1);
 
 # SOLVE
-DSP.solve(DSP_SOLVER_DSP);
+DSPsolver.solve(DSP_SOLVER_DD);
 
 if MPI.Comm_rank(MPI.COMM_WORLD) == 0
 
 	# Write results
 	f = open("output/$prefix.csv", "w");
-	primal = DSP.getPrimalBound();
-	dual = DSP.getDualBound();
-	println(f, DSP.getNumIterations(), ",", primal, ",", dual, ",", DSP.getSolutionTime());
+	primal = DSPsolver.getPrimalBound();
+	dual = DSPsolver.getDualBound();
+	println(f, DSPsolver.getNumIterations(), ",", primal, ",", dual, ",", DSPsolver.getSolutionTime());
 	close(f);
 
 	if nScenarios == 8
-	        writecsv("output/$prefix\_primals.csv", DSP.getDdPrimalBounds());
-        	writecsv("output/$prefix\_duals.csv", DSP.getDdDualBounds());
+	        writecsv("output/$prefix\_primals.csv", DSPsolver.getDdPrimalBounds());
+        	writecsv("output/$prefix\_duals.csv", DSPsolver.getDdDualBounds());
 	end
 
-        println("Solution status: ", DSP.getSolutionStatus());
-        println("Primal Bound   : ", DSP.getPrimalBound());
-        println("Dual Bound     : ", DSP.getDualBound());
+        println("Solution status: ", DSPsolver.getSolutionStatus());
+        println("Primal Bound   : ", DSPsolver.getPrimalBound());
+        println("Dual Bound     : ", DSPsolver.getDualBound());
 end
 MPI.Finalize()
 
