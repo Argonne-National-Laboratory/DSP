@@ -286,4 +286,3 @@ m = StochasticModel(nScenarios);
                 - sum{load_shift_factor[n,l] * wind_scen[wn,t,s], n=BUSES, wn=WINDS; wind_bus_id[wn] == n}
                 + flow_max[l])
 end
-

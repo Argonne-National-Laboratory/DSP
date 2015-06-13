@@ -1,7 +1,7 @@
 # Julia script of reproducing results for Table 4 and Figure 5 in MPC paper.
 # Kibaek Kim - ANL MCS 2015
 
-using StochJuMP, MPI, DSPsolver.olver
+using StochJuMP, MPI, DSPsolver
 
 # Initialize MPI
 MPI.Init()
@@ -18,7 +18,7 @@ include("suc_mod.jl")
 # Load data to DSP
 DSPsolver.loadProblem(m);
 
-# DSPsolver.options
+# DSP options
 DSPsolver.setLogLevel(1)
 DSPsolver.setWallLimit(21600);
 DSPsolver.setScipLimitsTime(300);
@@ -32,7 +32,7 @@ DSPsolver.setDdAddOptCuts(cuts);
 DSPsolver.setDdEvalUb(1);
 
 # SOLVE
-DSPsolver.solve(DSP_SOLVER_DD);
+DSPsolver.solve(DSP_SOLVER_DSP);
 
 if MPI.Comm_rank(MPI.COMM_WORLD) == 0
 
