@@ -166,21 +166,16 @@ STO_RTN_CODE TssDdMpi::solve()
 STO_RTN_CODE TssDdMpi::createSubproblem()
 {
 	int * displs = NULL;
-	vector<int> scenarioSpecs, scenariosForCut;
+	vector<int> scenariosForCut;
 
 	/** retrieve model info */
 	int nscen = model_->getNumScenarios();
 	const double * probability = model_->getProbability();
 
 	/** scenarios taken care of by the current processor */
-#if USE_ROOT_PROCESSOR == 0
-	for (int s = comm_rank_ - 1; s < nscen; s += (comm_size_ - 1))
-#else
-	for (int s = comm_rank_; s < nscen; s += comm_size_)
-#endif
+	for (int s = 0; s < par_->TssDdNumProcIdx_; ++s)
 	{
-		scenarioSpecs.push_back(s);
-		scenariosForCut.push_back(s);
+		scenariosForCut.push_back(par_->TssDdProcIdxSet_[s]);
 	}
 
 #if USE_ROOT_PROCESSOR == 0
@@ -196,7 +191,6 @@ STO_RTN_CODE TssDdMpi::createSubproblem()
 		{
 			/** create Benders subproblem */
 			bdsub_ = new TssBdSub * [par_->numCores_];
-//#pragma omp parallel for schedule(dynamic)
 			for (int s = 0; s < par_->numCores_; ++s)
 			{
 				bdsub_[s] = new TssBdSub(par_);
@@ -205,20 +199,15 @@ STO_RTN_CODE TssDdMpi::createSubproblem()
 			}
 		}
 
-//#pragma omp parallel for schedule(dynamic) ordered
-#if USE_ROOT_PROCESSOR == 0
-		for (int s = comm_rank_ - 1; s < nscen; s += (comm_size_ - 1))
-#else
-		for (int s = comm_rank_; s < nscen; s += comm_size_)
-#endif
+		for (int s = 0; s < par_->TssDdNumProcIdx_; ++s)
 		{
+			int scen = par_->TssDdProcIdxSet_[s];
 			/** create subproblem instance */
-			TssDdSub * subprob = new TssDdSub(s, par_);
-//#pragma omp ordered
+			TssDdSub * subprob = new TssDdSub(scen, par_);
 			subprobs_.push_back(subprob);
 
 			/** create subproblem */
-			subprob->createProblem(probability[s], model_);
+			subprob->createProblem(probability[scen], model_);
 			SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(subprob->si_);
 			if (si)
 				subprob->si_->setPrintLevel(CoinMin(CoinMax(0, par_->logLevel_ - 3), 5));
@@ -256,7 +245,7 @@ STO_RTN_CODE TssDdMpi::createSubproblem()
 	}
 
 	/** Let the root know which scenarios each process take care of. */
-	MPI_Gatherv(&scenarioSpecs[0], nsubprobs, MPI::INT,
+	MPI_Gatherv(par_->TssDdProcIdxSet_, nsubprobs, MPI::INT,
 			scenarioSpecs_, nsubprobs_, displs, MPI::INT, 0, comm_);
 
 	/** free memory */

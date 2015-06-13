@@ -295,6 +295,16 @@ void setBendersAggressive(StoApiEnv * env, int aggressive)
 	env->par_->TssBdBendersPriority_ = aggressive;
 }
 
+/** set a set of scenarios for the current process */
+void setDdProcIdxSet(StoApiEnv * env, int size, int * scenarios)
+{
+	STO_API_CHECK_ENV();
+	env->par_->TssDdNumProcIdx_ = size;
+	env->par_->TssDdProcIdxSet_ = new int [size];
+	for (int i = 0; i < size; ++i)
+		env->par_->TssDdProcIdxSet_[i] = scenarios[i];
+}
+
 /** set parameter for adding feasibility cuts */
 void setDdAddFeasCuts(StoApiEnv * env, int freq)
 {

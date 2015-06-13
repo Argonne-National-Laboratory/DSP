@@ -133,6 +133,9 @@ void setBdAugScenarios(StoApiEnv * env, int size, int * scenarios);
 /** set Benders aggressiveness */
 void setBendersAggressive(StoApiEnv * env, int aggressive);
 
+/** set a set of scenarios for the current process */
+void setDdProcIdxSet(StoApiEnv * env, int size, int * scenarios);
+
 /** set parameter for adding feasibility cuts */
 void setDdAddFeasCuts(StoApiEnv * env, int freq);
 
