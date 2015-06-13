@@ -39,7 +39,7 @@ Pkg.clone("https://github.com/kibaekkim/StochJuMP.jl.git");
 ```
 DSP provides an interface to StochJuMP. The DSP interface package can be installed by the Julia command
 ```julia
-Pkg.clone("https://github.com/kibaekkim/DSP.jl.git");
+Pkg.clone("https://github.com/kibaekkim/DSPsolver.jl.git");
 ```
 and the examples are located at
 ```
