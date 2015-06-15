@@ -21,7 +21,6 @@ DSPsolver.readSmps(smps_file);
 
 # Parameter setting
 DSPsolver.setLogLevel(1);                   # set print level
-DSPsolver.setDdEvalUb(1);                   # evaluate upper bounds
 DSPsolver.setDdMasterNumCutsPerIter(10000); # set number of cuts per iteration (for the master problem)
 DSPsolver.setIterLimit(iterlim);            # set iteration limit
 DSPsolver.setWallLimit(wtime);              # set wallclock limit (sec)
@@ -31,7 +30,7 @@ DSPsolver.setDdAddOptCuts(ocut);            # enable optimality cuts
 DSPsolver.setDdDualVarsLog(ddlog);          # enable logging dual variable values
 
 # solve problem using Dual Decomposition
-DSPsolver.solve(DSP_.SOLVER_DD)
+DSPsolver.solve(DSP_SOLVER_DD)
 
 # collect and print some results
 if MPI.Comm_rank(MPI.COMM_WORLD) == 0

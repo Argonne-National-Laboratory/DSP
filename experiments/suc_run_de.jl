@@ -10,6 +10,8 @@ prefix     = ARGS[2];
 # Unit commitment model
 @time include("suc_mod.jl")
 
+DSPsolver.loadProblem(m);
+
 # DSP options
 DSPsolver.setLogLevel(3)
 DSPsolver.setWallLimit(21600)

@@ -32,7 +32,7 @@ DSPsolver.setDdAddOptCuts(cuts);
 DSPsolver.setDdEvalUb(1);
 
 # SOLVE
-DSPsolver.solve(DSP_SOLVER_DSP);
+DSPsolver.solve(DSP_SOLVER_DD);
 
 if MPI.Comm_rank(MPI.COMM_WORLD) == 0
 

@@ -8,7 +8,7 @@ cuts=(-1 -1)
 # mpirun setting
 nmpinodes=8
 
-for i in {0..2}
+for i in {0..1}
 do
 	# executing script
 	exec_prefix="suc${nscenarios}-${solver[i]}${cuts[i]}"
