@@ -43,21 +43,21 @@ make install
 ```
 External packages (MA27, OOQP, SCIP Optimization Suite, Smi) used in DSP are built automatically. A shared object is installed in ./lib directory. Once the installation has been successfully done, you need to set environment variable (DY)LD_LIBRARY_PATH.
 For Linux,
-```
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<DSP source path>/lib
+```bash
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<DSP_SRC_PATH>/lib
 ```
 For Mac,
-```
-export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:<DSP source path>/lib
+```bash
+export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:<DSP_SRC_PATH>/lib
 ```
 
 Julia interface (Required)
 --------------------------
-DSP uses Julia as a modeling interface for the computatioanl experiments. Julia is a high level dynamic programming language for technical computing, with syntax that is familiar to users of other technical computing environments such as MATLAB and Python. Julia can be downloaded from http://julialang.org/downloads/
-To run DSP in the Julia environment, we need to install four Julia packages. The packages are installed in the Julia command-line prompt. You can start the Julia command-line prompt by typing
-```
+DSP uses Julia as a modeling interface for the computatioanl experiments. Julia is a high level dynamic programming language for technical computing, with syntax that is familiar to users of other technical computing environments such as MATLAB and Python. Julia can be downloaded from http://julialang.org/downloads/ If Julia is successfully installed on your machine, then you can start the Julia command-line tool by typing
+```bash
 julia
 ```
+Now we need to install four Julia packages required to run DSP in the Julia environment. The packages should be installed in the Julia command-line tool.
 * MPI.jl is an MPI interface package, which can be installed by the following Julia command. MPICH is required for this package.
 ```julia
 Pkg.add("MPI");
