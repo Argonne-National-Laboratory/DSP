@@ -26,7 +26,7 @@ primal = DSPsolver.getPrimalBound();
 dual = DSPsolver.getDualBound();
 iter = DSPsolver.getNumIterations();
 nodes = DSPsolver.getNumNodes();
-println(f, primal, ",", dual, ",", DSPsolver.getSolutionTime(), iter, nodes);
+println(f, primal, ",", dual, ",", DSPsolver.getSolutionTime(), ",", iter, ",", nodes);
 close(f);
 
 println("Solution status: ", DSPsolver.getSolutionStatus());
