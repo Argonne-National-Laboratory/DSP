@@ -11,17 +11,37 @@ where x and y_s are decision variable vectors with dimensions n_1 and n_2, respe
 
 The problem structures allow decomposition approaches for solving the problem in parallel computing system. DSP provides parallel implementations for decomposition methods (Benders decomposition and dual decomposition). The methods can be run on cluster as well as desktop computers.
 
-Getting started
----------------
-If you have all the prerequisite packages installed on your system (see the [INSTALL.md](./INSTALL.md)), then you need to go to the root directory of DSP and type
+Prerequisites
+-------------
+The following packages are essential to build DSP and the required external software packages.
+* CMake
+* GNU Autoconf
+* GNU Automake
+* GNU Make
+* MPICH
+* BLAS
+* LAPACK
+* SVN
+
+The following packages need to be installed on your system and located on ./extra directory before DSP may be built.
+
+* MA27 (./extra/ma27-1.0.0) -- MA27 is a library for solving sparse symmetric indefinite linear systems. To build OOQP solver, you must have this installed. This is part of HSL (formerly the Harwell Subroutine Library), a collection of ISO Fortran codes for large scale scientific computation. You can download the source files and obtain the free personal license from http://hsl.rl.ac.uk/archive/hslarchive.html. Move the downloaded directory to ./extras/ma27-1.0.0/
+
+* OOQP (./extra/OOQP-0.99.25) -- OOQP is an object-oriented C++ package, based on a primal-dual interior-point method, for solving convex quadratic programming problems. You can get the source code per request to the developer: http://pages.cs.wisc.edu/~swright/ooqp/
+
+* SCIP Optimization Suite (./extra/scipoptsuite-3.1.1) -- SCIP is non-commercial solvers for mixed integer programming (MIP) and mixed-integer nonlinear programming (MINLP). It is freely available from the website: http://scip.zib.de/download.php?fname=scipoptsuite-3.1.1.tgz
+
+Installation
+------------
+If you have all the prerequisite packages installed on your system, then you need to go to the root directory of DSP and type
 ```cmake
 cmake .
 ```
 to configure OOQP. If you wish to install the package in a more permanent location, you may then type
-```
+```cmake
 make install
 ```
-External packages (MA27, OOQP, SCIP Optimization Suite, Smi) used in DSP are built automatically. A shared object is installed in ./lib directory. Once the installation has been successfully done, you need to set an environment variable DSP_INC and (DY)LD_LIBRARY_PATH.
+External packages (MA27, OOQP, SCIP Optimization Suite, Smi) used in DSP are built automatically. A shared object is installed in ./lib directory. Once the installation has been successfully done, you need to set environment variable (DY)LD_LIBRARY_PATH.
 For Linux,
 ```
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<DSP source path>/lib
@@ -31,35 +51,39 @@ For Mac,
 export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:<DSP source path>/lib
 ```
 
-Julia interface
----------------
-If Julia is available on your machine, you can model problems by using StochJuMP, a algebraic modeling package in Julia for stochastic programming, which can be installed by the following Julia command:
+Julia interface (Required)
+--------------------------
+DSP uses Julia as a modeling interface for the computatioanl experiments. Julia is a high level dynamic programming language for technical computing, with syntax that is familiar to users of other technical computing environments such as MATLAB and Python. Julia can be downloaded from http://julialang.org/downloads/
+To run DSP in the Julia environment, we need to install four Julia packages. The packages are installed in the Julia command-line prompt. You can start the Julia command-line prompt by typing
+```
+julia
+```
+* MPI.jl is an MPI interface package, which can be installed by the following Julia command. MPICH is required for this package.
+```julia
+Pkg.add("MPI");
+```
+* JuMP.jl is a algebraic modeling package in Julia for mathematical programming, which can be installed by the following Julia command:
+```julia
+Pkg.add("JuMP");
+```
+* StochJuMP.jl is a algebraic modeling package in Julia for stochastic programming, which can be installed by the following Julia command:
 ```julia
 Pkg.clone("https://github.com/kibaekkim/StochJuMP.jl.git");
 ```
-DSP provides an interface to StochJuMP. The DSP interface package can be installed by the Julia command
+* The DSPsolver.jl package provides an interface to StochJuMP. DSPsolver.jl can be installed by the Julia command
 ```julia
 Pkg.clone("https://github.com/kibaekkim/DSPsolver.jl.git");
 ```
-and the examples are located at
-```
-./examples/julia
-```
-Then, users can call a decomposition solver for the solution. This also can be run on cluster by using MPI.
-
-Examples
---------
-The examples/ directory contains examples to demonstrate the use of DSP. 
 
 Contents of the distribution
 ----------------------------
 The DSP distribution contains the following top-level subdirectories:
-* examples/ -- Example problems and programs.
+* experiments/ -- All the scripts to reproduce computational results including tables and figures in the manuscript.
 * extra/ -- External packages required and used for DSP. These include MA27, OOQP, SCIP and SMI.
 * src/ -- Source files for the DSP distribution.
 
 Credits
 -------
-DSP is maintained by:
+DSP has been developed and is maintained by:
 * Kibaek Kim, Mathematics and Computer Science Division, Argonne National Laboratory.
 * Victor M. Zavala, Mathematics and Computer Science Division, Argonne National Laboratory.
