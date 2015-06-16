@@ -30,7 +30,7 @@ for p = probs
     ddname = sprintf('output/%s_s2.csv', p{1});
     if exist(ddname, 'file')
         d = importdata(ddname);
-        ddgap(i) = (d(3) - d(4)) / abs(d(3) + 1.0e-10) * 100;
+        ddgap(i) = abs(d(3) - d(4)) / abs(d(3) + 1.0e-10) * 100;
     end
     bdname = sprintf('output/%s_bd.csv', p{1});
     if exist(bdname, 'file')
@@ -42,10 +42,10 @@ end
 
 figure();
 axes('position', [0.08 0.05 0.92 0.9]);
-bar(bdgap-ddgap);
-Xlabs = strrep(d.textdata, '_', '\_');
+bar(max(0,bdgap-ddgap));
+Xlabs = strrep(probs, '_', '\_');
 ylabel('Optimality Gap Improved (%)');
-xticklabel_rotate(1:size(DDgap,1), 90, Xlabs);
+xticklabel_rotate(1:size(ddgap,1), 90, Xlabs);
 
 % save
 hgexport(gcf, 'Figure6.eps');
