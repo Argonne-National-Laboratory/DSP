@@ -34,11 +34,11 @@ The following packages need to be installed on your system and located on ./extr
 Installation
 ------------
 If you have all the prerequisite packages installed on your system, then you need to go to the root directory of DSP and type
-```cmake
+```bash
 cmake .
 ```
 to configure OOQP. If you wish to install the package in a more permanent location, you may then type
-```cmake
+```bash
 make install
 ```
 External packages (MA27, OOQP, SCIP Optimization Suite, Smi) used in DSP are built automatically. A shared object is installed in ./lib directory. Once the installation has been successfully done, you need to set environment variable (DY)LD_LIBRARY_PATH.
