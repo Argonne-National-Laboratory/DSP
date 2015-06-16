@@ -11,5 +11,5 @@ do
 
 	cp pbs/template.pbs pbs/${exec_prefix}.pbs
 	echo "mpirun -n 1 ${exec_script}" >> pbs/${exec_prefix}.pbs
-	qsub -N ${exec_prefix} -l nodes=1:ppn=1,walltime=6:30:00 pbs/${exec_prefix}.pbs
+	qsub -N ${exec_prefix} -l nodes=1:ppn=1,walltime=7:30:00 pbs/${exec_prefix}.pbs
 done
