@@ -21,7 +21,7 @@ for s = scenarios
     fname = sprintf('output/suc%d-de.csv',s);
     if exist(fname, 'file')
         d = importdata(fname);
-        fprintf(fileID, '  %d & %d', s, d(5)+1);
+        fprintf(fileID, '  %d & %d', s, d(5));
         if d(1) > 1.0e+20
             fprintf(fileID, ' & $\\infty$');
         else

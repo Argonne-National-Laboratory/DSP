@@ -556,11 +556,6 @@ void TssBdSub::solveRecourse(
 			{
 				si = new DSP_SI(par_, cglp_[s]);
 			}
-#if 0
-			char filename[128];
-			sprintf(filename, "ub%d.mps", s);
-			si->writeMps(filename);
-#endif
 			si->setPrintLevel(cglp_[s]->messageHandler()->logLevel());
 		}
 
@@ -582,8 +577,14 @@ void TssBdSub::solveRecourse(
 				si->setRowLower(i, rlbd[i] - Tx[tid][i]);
 			if (rubd[i] < COIN_DBL_MAX)
 				si->setRowUpper(i, rubd[i] - Tx[tid][i]);
+			//printf("row %d: rlbd %f rubd %f Tx %f\n", i, rlbd[i], rubd[i], Tx[tid][i]);
 		}
 
+#if 0
+		char filename[128];
+		sprintf(filename, "ub%d.mps", s);
+		si->writeMps(filename);
+#endif
 		/** solve */
 		si->solve();
 
