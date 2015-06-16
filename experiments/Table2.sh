@@ -22,9 +22,6 @@ problems=(
 	"sslp_15_45_15"
 	"sslp_10_50_50"
 	"sslp_10_50_100"
-	"sslp_10_50_500"
-	"sslp_10_50_1000"
-	"sslp_10_50_2000"
 )
 
 # algorithmic parameters
