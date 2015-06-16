@@ -75,6 +75,15 @@ Pkg.clone("https://github.com/kibaekkim/StochJuMP.jl.git");
 Pkg.clone("https://github.com/kibaekkim/DSPsolver.jl.git");
 ```
 
+Reproducing the Computational Results
+-------------------------------------
+We provide scripts to reproduce the computational results reported in the manuscript. The scripts are available in subdirectory ./experiments/ that contains the bash-shell scripts for running DSP and the MATLAB scripts for reproducing tables and figures.
+* Table2.pbs.sh
+* Figure5.pbs.sh
+* Table4.pbs.sh
+* Figure8.pbs.sh
+* Table5.pbs.sh
+
 Contents of the distribution
 ----------------------------
 The DSP distribution contains the following top-level subdirectories:
