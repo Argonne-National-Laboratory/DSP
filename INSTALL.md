@@ -21,7 +21,7 @@ export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:<DSP source path>/lib
 
 Build Essentials
 ----------------
-The following packages are essential to build DSP and the required external software packages. If you do not have any of the following packages, and if you do not know how to get it, please see the "HOW TO GET BUILD ESSENTIALS" section below.
+The following packages are essential to build DSP and the required external software packages.
 * CMake
 * GNU Autoconf
 * GNU Automake
