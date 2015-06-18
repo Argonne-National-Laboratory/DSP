@@ -24,9 +24,13 @@ or download the zip file from [this link](https://github.com/kibaekkim/DSP/archi
 
 ## Prerequisites
 
-We recommend to install and run DSP on a linux-type cluster with MPI library. If a cluster is not available for you, then the following packages are required to build DSP. Please have the packages available on your machine.
+We recommend to install and run DSP on a **Linux** machine with **MPI** library. The software packages necessary to build the source code of DSP are listed below.
+
+*NOTE: We have also tested installing and running DSP on MacOSX (10.9 or later). It requires to install the required packages using Macport. We will prepare the documentation for that soon. For now, please email and consult us for how to install and run DSP on MacOSX.*
 
 ### Build essentials
+
+You can install the build essential packages by using the shell script get.essentials in the DSP project repository or by manually installing the packages.
 
 #### Using ./get.essentials script to install the build essential packages
 
