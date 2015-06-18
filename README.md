@@ -14,6 +14,14 @@ DSP provides **parallel** implementations for decomposition methods:
 
 The methods can be run on cluster as well as desktop computers.
 
+## Download
+
+You can clone this repository in your preferred directory by typing
+```bash
+git clone https://github.com/kibaekkim/DSP.git
+```
+or download the zip file from https://github.com/kibaekkim/DSP.git
+
 ## Prerequisites
 
 We recommend to install and run DSP on a linux-type cluster with MPI library. If a cluster is not available for you, then the following packages are required to build DSP. Please have the packages available on your machine.
@@ -72,12 +80,7 @@ The following packages are also **required** to build and run DSP and need to be
 
 * SCIP Optimization Suite (./extra/scipoptsuite-3.1.1) -- SCIP is non-commercial solvers for mixed integer programming (MIP) and mixed-integer nonlinear programming (MINLP). It is freely available from the website: http://scip.zib.de/download.php?fname=scipoptsuite-3.1.1.tgz
 
-## Download and Installation
-
-You can clone this repository in your preferred directory by typing
-```bash
-git clone https://github.com/kibaekkim/DSP.git
-```
+## Installation
 
 If you have all the prerequisite packages installed on your system, then you need to go to the root directory of DSP and type
 ```bash
