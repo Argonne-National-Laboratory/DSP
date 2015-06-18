@@ -14,6 +14,11 @@ The problem structures allow decomposition approaches for solving the problem in
 Prerequisites
 -------------
 We recommend to install and run DSP on a linux-type cluster with MPI library. If a cluster is not available for you, then the following packages are required to build DSP. Please have the packages available on your machine.
+
+When using apt-get, please update the package list by typing
+```bash
+sudo apt-get update
+```
 * MPICH -- A version of MPICH is **required** to build and run DSP. It is required to install a version of MPICH, which is available from http://www.mpich.org/downloads/. On Linux, you can also do
 ```bash
     sudo apt-get install libmpich-dev
