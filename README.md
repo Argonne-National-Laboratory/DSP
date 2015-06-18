@@ -98,3 +98,7 @@ Credits
 DSP has been developed and is maintained by:
 * Kibaek Kim, Mathematics and Computer Science Division, Argonne National Laboratory.
 * Victor M. Zavala, Mathematics and Computer Science Division, Argonne National Laboratory.
+
+Acknowledgements
+----------------
+We thank E. Michael Gertz and Stephen Wright for providing OOQP software package.
