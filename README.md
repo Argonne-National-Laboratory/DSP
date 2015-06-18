@@ -20,13 +20,16 @@ We recommend to install and run DSP on a linux-type cluster with MPI library. If
 
 ### Build essentials
 
-Note that you can run the apt-get commands to install the packages required for DSP by
+#### Using ./get.essentials script to install the build essential packages
+
+You can run the apt-get commands to install the packages required for DSP by
 ```bash
 ./get.essentials
 ```
-If you have already done ./get.essentials, then you can ignore this section and directly go to [External software packages](#External).
 
-Before using apt-get, please update the package list by typing
+#### Manual installation of the build essential packages
+
+If you have used ./get.essentials, then you can ignore this section and directly go to [External software packages](#External). Before using apt-get, please update the package list by typing
 ```bash
 sudo apt-get update
 ```
