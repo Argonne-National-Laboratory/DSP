@@ -116,19 +116,19 @@ Now we need to install four Julia packages required to run DSP in the Julia envi
 ```julia
 Pkg.update();
 ```
-* MPI.jl is an MPI interface package, which can be installed by the following Julia command. MPICH is required for this package.
+* [MPI.jl](https://github.com/JuliaParallel/MPI.jl) is an MPI interface package, which can be installed by the following Julia command. MPICH is required for this package.
 ```julia
 Pkg.add("MPI");
 ```
-* JuMP.jl is a algebraic modeling package in Julia for mathematical programming, which can be installed by the following Julia command:
+* [JuMP.jl](https://github.com/JuliaOpt/JuMP.jl) is a algebraic modeling package in Julia for mathematical programming, which can be installed by the following Julia command:
 ```julia
 Pkg.add("JuMP");
 ```
-* StochJuMP.jl is a algebraic modeling package in Julia for stochastic programming, which can be installed by the following Julia command:
+* [StochJuMP.jl](https://github.com/kibaekkim/StochJuMP.jl.git) is a algebraic modeling package in Julia for stochastic programming, which can be installed by the following Julia command:
 ```julia
 Pkg.clone("https://github.com/kibaekkim/StochJuMP.jl.git");
 ```
-* The DSPsolver.jl package provides an interface to StochJuMP. DSPsolver.jl can be installed by the Julia command
+* The [DSPsolver.jl](https://github.com/kibaekkim/DSPsolver.jl.git) package provides an interface to StochJuMP. DSPsolver.jl can be installed by the Julia command
 ```julia
 Pkg.clone("https://github.com/kibaekkim/DSPsolver.jl.git");
 ```
