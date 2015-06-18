@@ -93,6 +93,15 @@ Pkg.clone("https://github.com/kibaekkim/StochJuMP.jl.git");
 Pkg.clone("https://github.com/kibaekkim/DSPsolver.jl.git");
 ```
 
+Example (farmer)
+----------------
+An example is provided in subdirectory examples/farmer. You can run the farmer example with three different methods by typing
+```bash
+julia examples/farmer/farmer_run.jl BD
+julia examples/farmer/farmer_run.jl DE
+mpirun -n 1 julia examples/farmer/farmer_run.jl DD
+```
+
 Reproducing the Computational Results
 -------------------------------------
 We provide scripts to reproduce the computational results reported in the manuscript. The scripts are available in subdirectory ./experiments/ that contains the bash-shell scripts for running DSP and the MATLAB scripts for reproducing tables and figures.
@@ -111,7 +120,7 @@ Contents of the distribution
 The DSP distribution contains the following top-level subdirectories:
 * experiments/ -- All the scripts to reproduce computational results including tables and figures in the manuscript.
 * extra/ -- External packages required and used for DSP. These include MA27, OOQP, SCIP and SMI.
-* farmer/ -- This contains an example for using DSP with Julia.
+* examples/farmer/ -- This contains an example for using DSP with Julia.
 * lib/ -- This contains DSP shared object precompiled on a 64-bit linux machine.
 * src/ -- Source files for the DSP distribution.
 
