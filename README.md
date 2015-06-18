@@ -81,7 +81,10 @@ DSP uses Julia as a modeling interface for the computatioanl experiments. Julia 
 ```bash
 julia
 ```
-Now we need to install four Julia packages required to run DSP in the Julia environment. The packages should be installed in the Julia command-line tool.
+Now we need to install four Julia packages required to run DSP in the Julia environment. The packages should be installed in the Julia command-line tool. Please update the package list of Julia by typing
+```julia
+Pkg.update();
+```
 * MPI.jl is an MPI interface package, which can be installed by the following Julia command. MPICH is required for this package.
 ```julia
 Pkg.add("MPI");
