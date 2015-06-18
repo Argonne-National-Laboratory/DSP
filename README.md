@@ -14,14 +14,29 @@ The problem structures allow decomposition approaches for solving the problem in
 Prerequisites
 -------------
 We recommend to install and run DSP on a linux-type cluster with MPI library. If a cluster is not available for you, then the following packages are required to build DSP. Please have the packages available on your machine.
-* MPICH -- DSP uses MPI functions to parallelize dual decomposition methods. It is required to install a version of MPICH, which is available in http://www.mpich.org/downloads/.
-* CMake -- http://www.cmake.org/download/
-* BLAS -- http://www.netlib.org/blas/blas.tgz
-* LAPACK -- http://www.netlib.org/lapack/lapack-3.5.0.tgz
-* svn -- A subversion software package is required to download an external package Coin-SMI used in DSP.
-* GNU Autoconf
-* GNU Automake
-* GNU Make
+* MPICH -- DSP uses MPI functions to parallelize dual decomposition methods. It is required to install a version of MPICH, which is available from http://www.mpich.org/downloads/. On Linux, you can also do
+```bash
+    sudo apt-get install libmpich-dev
+```
+* CMake -- This package is required to build DSP and all the other external software packages. It is available from http://www.cmake.org/download/. On Linux, you can also do
+```bash
+    sudo apt-get install cmake
+```
+* BLAS/LAPACK -- These linear algebra libraries may already be available on your machine. If not, the source codes are available from http://www.netlib.org/blas/blas.tgz and http://www.netlib.org/lapack/lapack-3.5.0.tgz. Or on linux you can install them by typing
+```bash
+    sudo apt-get install libblas-dev
+    sudo apt-get install liblapack-dev
+```
+* svn -- A subversion software package is required to download an external package Coin-SMI used in DSP. You can install it by
+```bash
+    sudo apt-get install subversion
+```
+* GNU Make/Autoconf/Automake -- These are likely available on any machine. If not, you can get them as follows.
+```bash
+    sudo apt-get install build-essential
+    sudo apt-get install autoconf
+    sudo apt-get install automake
+```
 
 The following packages need to be installed on your system and located on ./extra directory before DSP may be built.
 
@@ -91,6 +106,8 @@ Contents of the distribution
 The DSP distribution contains the following top-level subdirectories:
 * experiments/ -- All the scripts to reproduce computational results including tables and figures in the manuscript.
 * extra/ -- External packages required and used for DSP. These include MA27, OOQP, SCIP and SMI.
+* farmer/ -- This contains an example for using DSP with Julia.
+* lib/ -- This contains DSP shared object precompiled on a 64-bit linux machine.
 * src/ -- Source files for the DSP distribution.
 
 Credits
