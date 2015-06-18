@@ -24,6 +24,7 @@ DSPsolver.setLogLevel(1);
 if ARGS[1] == "DE"
 	DSPsolver.solve(DSP_SOLVER_DE);
 elseif ARGS[1] == "BD"
+	DSPsolver.setNumCores(1); # set number of cores
 	DSPsolver.solve(DSP_SOLVER_BD);
 elseif ARGS[1] == "DD"
 	DSPsolver.setDdAddFeasCuts(1);
