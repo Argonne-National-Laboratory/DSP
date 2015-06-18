@@ -14,7 +14,7 @@ The problem structures allow decomposition approaches for solving the problem in
 Prerequisites
 -------------
 We recommend to install and run DSP on a linux-type cluster with MPI library. If a cluster is not available for you, then the following packages are required to build DSP. Please have the packages available on your machine.
-* MPICH -- This is **required** to build and run DSP. It is required to install a version of MPICH, which is available from http://www.mpich.org/downloads/. On Linux, you can also do
+* MPICH -- A version of MPICH is **required** to build and run DSP. It is required to install a version of MPICH, which is available from http://www.mpich.org/downloads/. On Linux, you can also do
 ```bash
     sudo apt-get install libmpich-dev
 ```
@@ -36,6 +36,11 @@ We recommend to install and run DSP on a linux-type cluster with MPI library. If
     sudo apt-get install build-essential
     sudo apt-get install autoconf
     sudo apt-get install automake
+```
+* bzip2/zlib -- These data compression libraries are **required** to build one of the external software packages used in DSP.
+```bash
+    sudo apt-get install libbz2-dev
+    sudo apt-get install zlib1g-dev
 ```
 
 The following packages are also **required** to build and run DSP and need to be located on ./extra directory before DSP may be built. **DSP will automatically configure and build the external packages once they are located in the right place.**
