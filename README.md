@@ -1,5 +1,5 @@
 # DSP
-DSP is an open-source optimization solver that implements decomposition methods for stochastic mixed-integer programming (SMIP) problems. These are structured optimization problems considering uncertain scenario realization s with probability p_s in the following form:
+DSP is an open-source optimization solver that implements decomposition methods for **stochastic mixed-integer programming (SMIP)** problems. These are structured optimization problems considering uncertain scenario realization s with probability p_s in the following form:
 
         minimize   c^T x + \sum_{s=1}^S p_s q_s^T y_s
         subject to   A x                              = b
