@@ -42,10 +42,11 @@ sudo apt-get update
     sudo apt-get install autoconf
     sudo apt-get install automake
 ```
-* bzip2/zlib -- These data compression libraries are **required** to build one of the external software packages used in DSP.
+* bzip2/zlib/xtuils-dev -- These packages are **required** to build one of the external software packages used in DSP.
 ```bash
     sudo apt-get install libbz2-dev
     sudo apt-get install zlib1g-dev
+    sudo apt-get install xutils-dev
 ```
 
 The following packages are also **required** to build and run DSP and need to be located on ./extra directory before DSP may be built. **DSP will automatically configure and build the external packages once they are located in the right place.**
