@@ -66,7 +66,7 @@ to configure OOQP. If you wish to install the package in a more permanent locati
 make install
 ```
 External packages (MA27, OOQP, SCIP Optimization Suite, Smi) used in DSP are built automatically. A shared object is installed in ./lib directory. Once the installation has been successfully done, you need to set environment variable (DY)LD_LIBRARY_PATH.
-For Linux,
+For Linux, please add the following line in ~/.bash_profile (or ~/.bash_aliases).
 ```bash
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<DSP_SRC_PATH>/lib
 ```
