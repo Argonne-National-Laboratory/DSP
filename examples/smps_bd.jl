@@ -1,17 +1,35 @@
-# Julia script for DSP (Benders Decomposition)
-# Kibaek Kim - ANL MCS 2014
-# Note: Integrality restrictions in the second stage will be relaxed.
+# Julia script of reproducing results for Table 2, Figures 1 and 2 in MPC paper.
+# Kibaek Kim - ANL MCS 2015
 
-using DSP
+smps_file = "./smps/sslp_5_25_500";
+prefix    = "sslp_5_25_50";
 
-DSP.readSmps("./smps/dcap233_200"); # read SMPS files
-DSP.setLogLevel(1);                 # set print level
-DSP.solve(DSP_SOLVER_BD);           # solve with BD
+# Arguments from command line
+if length(ARGS) == 2
+	smps_file = ARGS[1]; # SMPS file name
+	prefix    = ARGS[2]; # output prefix
+end
 
-# print some results
-println("Solution Time   : ", DSP.getSolutionTime());
-println("Solution Status : ", DSP.getSolutionStatus());
-println("Primal Bound    : ", DSP.getPrimalBound());
-println("Dual Bound      : ", DSP.getDualBound());
-println("Iterations      : ", DSP.getNumIterations());
+using DSPsolver
+
+# read problem from SMPS
+DSPsolver.readSmps(smps_file);
+
+# solve problem using Dual Decomposition
+DSPsolver.solve(DSP_SOLVER_BD);
+
+# solution results
+primal = DSPsolver.getPrimalBound();
+dual   = DSPsolver.getDualBound();
+gap    = (primal - dual) / abs(primal + 1.0e-10);
+
+# Print out simple results
+@printf("Primal Bound : %+e\n", primal);
+@printf("Dual Bound   : %+e\n", dual);
+@printf("Gap          : %.2f %%\n", gap * 100);
+
+# Write results
+f = open("$prefix.csv", "w");
+println(f, primal, ",", dual, ",", gap);
+close(f);
 

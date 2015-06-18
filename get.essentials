@@ -1,0 +1,16 @@
+#!/bin/bash
+
+apt-get update
+apt-get install libmpich-dev
+apt-get install cmake
+apt-get install libblas-dev
+apt-get install liblapack-dev
+apt-get install subversion
+apt-get install build-essential
+apt-get install autoconf
+apt-get install automake
+apt-get install libbz2-dev
+apt-get install zlib1g-dev
+apt-get install xutils-dev
+
+echo "DONE\n"

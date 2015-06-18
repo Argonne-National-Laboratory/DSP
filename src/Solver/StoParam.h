@@ -28,6 +28,8 @@ public:
 		TssBdNumAugScenarios_(0),
 		TssBdAugScenarios_(NULL),
 		TssBdBendersPriority_(-2000000),
+		TssDdNumProcIdx_(0),
+		TssDdProcIdxSet_(NULL),
 		TssDdMasterSolver_(2),
 		TssDdMasterNumCutsPerIter_(1),
 		TssDdEnableTrustRegion_(1),
@@ -51,6 +53,7 @@ public:
 	virtual ~StoParam()
 	{
 		FREE_ARRAY_PTR(TssBdAugScenarios_);
+		FREE_ARRAY_PTR(TssDdProcIdxSet_);
 	}
 
 public:
@@ -101,6 +104,10 @@ public:
 	/**
 	 * Dual decomposition
 	 * */
+
+	/** set of scenarios for the current process */
+	int TssDdNumProcIdx_;
+	int * TssDdProcIdxSet_;
 
 	/** Lagrangian master problem solver (see TssDdMasterSolver)*/
 	int TssDdMasterSolver_;

@@ -126,7 +126,7 @@ STO_RTN_CODE TssDe::solve()
 
 	/** solution status */
 	status_ = si_->getStatus();
-
+printf("status %d\n", status_);
 	/** get solutions */
 	if (status_ == STO_STAT_OPTIMAL ||
 		status_ == STO_STAT_STOPPED_TIME ||
@@ -139,7 +139,8 @@ STO_RTN_CODE TssDe::solve()
 
 		/** solution */
 		assert(solution_);
-		CoinCopyN(si_->getSolution(), si_->getNumCols(), solution_);
+		if (si_->getSolution())
+			CoinCopyN(si_->getSolution(), si_->getNumCols(), solution_);
 
 		/** statistics */
 		numIterations_ = si_->getIterationCount();

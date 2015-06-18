@@ -143,7 +143,18 @@ STO_RTN_CODE TssBd::solve()
 					if (tssbdsub->excludedScenarios_[s]) continue;
 					CoinCopyN(solution_reco[s], model_->getNumCols(1),
 							solution_ + model_->getNumCols(0) + model_->getNumCols(1) * s);
+
 				}
+
+				/** compute primal bound */
+				primalBound_ = 0.0;
+				for (int j = 0; j < model_->getNumCols(0); ++j)
+					primalBound_ += model_->getObjCore(0)[j] * solution_[j];
+				for (int s = 0; s < model_->getNumScenarios(); ++s)
+				{
+					primalBound_ += objval_reco[s] * model_->getProbability()[s];
+				}
+				//printf("primalBound %e\n", primalBound_);
 
 				/** free memory */
 				FREE_ARRAY_PTR(objval_reco);
