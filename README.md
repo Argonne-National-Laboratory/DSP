@@ -38,7 +38,7 @@ We recommend to install and run DSP on a linux-type cluster with MPI library. If
     sudo apt-get install automake
 ```
 
-The following packages are also **required** to build and run DSP and need to be located on ./extra directory before DSP may be built.
+The following packages are also **required** to build and run DSP and need to be located on ./extra directory before DSP may be built. **DSP will automatically configure and build the external packages once they are located in the right place.**
 
 * MA27 (./extra/ma27-1.0.0) -- MA27 is a library for solving sparse symmetric indefinite linear systems. To build OOQP solver, you must have this installed. This is part of HSL (formerly the Harwell Subroutine Library), a collection of ISO Fortran codes for large scale scientific computation. You can download the source files and obtain a free personal license from http://www.hsl.rl.ac.uk/download/MA27/1.0.0/a/. Move the downloaded directory to ./extras/ma27-1.0.0/
 
