@@ -104,11 +104,14 @@ Pkg.clone("https://github.com/kibaekkim/DSPsolver.jl.git");
 
 Example (farmer)
 ----------------
-An example is provided in subdirectory examples/farmer. You can run the farmer example with three different methods by typing
+An example is provided in subdirectory examples/farmer. You can run the farmer example with dual decomposition method by typing the command line
+```bash
+mpirun -n 1 julia examples/farmer/farmer_run.jl DD # dual decomposition
+```
+You can also solve the problem by using the Benders decomposition and the extensive form solution implemented in DSP:
 ```bash
 julia examples/farmer/farmer_run.jl BD # Benders decomposition
 julia examples/farmer/farmer_run.jl DE # Extensive form solution
-mpirun -n 1 julia examples/farmer/farmer_run.jl DD # dual decomposition
 ```
 
 Reproducing the Computational Results
