@@ -97,9 +97,9 @@ Example (farmer)
 ----------------
 An example is provided in subdirectory examples/farmer. You can run the farmer example with three different methods by typing
 ```bash
-julia examples/farmer/farmer_run.jl BD
-julia examples/farmer/farmer_run.jl DE
-mpirun -n 1 julia examples/farmer/farmer_run.jl DD
+julia examples/farmer/farmer_run.jl BD # Benders decomposition
+julia examples/farmer/farmer_run.jl DE # Extensive form solution
+mpirun -n 1 julia examples/farmer/farmer_run.jl DD # dual decomposition
 ```
 
 Reproducing the Computational Results
