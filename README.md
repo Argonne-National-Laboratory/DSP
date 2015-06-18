@@ -20,7 +20,7 @@ You can clone this repository in your preferred directory by typing
 ```bash
 git clone https://github.com/kibaekkim/DSP.git
 ```
-or download the zip file from https://github.com/kibaekkim/DSP.git
+or download the zip file from [this link](https://github.com/kibaekkim/DSP/archive/MPC.zip).
 
 ## Prerequisites
 
