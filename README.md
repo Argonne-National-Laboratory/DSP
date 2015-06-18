@@ -24,7 +24,7 @@ Note that you can run the apt-get commands to install the packages required for 
 ```bash
 ./get.essentials
 ```
-If you have already done ./get.essentials, then you can ignore this section and directly go to [External software packages](#external).
+If you have already done ./get.essentials, then you can ignore this section and directly go to [External software packages](External software packages).
 
 Before using apt-get, please update the package list by typing
 ```bash
@@ -60,7 +60,6 @@ sudo apt-get update
     sudo apt-get install xutils-dev
 ```
 
-<a name="external"></a>
 ### External software packages
 
 The following packages are also **required** to build and run DSP and need to be located on ./extra directory before DSP may be built. **DSP will automatically configure and build the external packages once they are located in the right place.**
