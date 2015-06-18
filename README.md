@@ -14,31 +14,31 @@ The problem structures allow decomposition approaches for solving the problem in
 Prerequisites
 -------------
 We recommend to install and run DSP on a linux-type cluster with MPI library. If a cluster is not available for you, then the following packages are required to build DSP. Please have the packages available on your machine.
-* MPICH -- DSP uses MPI functions to parallelize dual decomposition methods. It is required to install a version of MPICH, which is available from http://www.mpich.org/downloads/. On Linux, you can also do
+* MPICH -- This is **required** to build and run DSP. It is required to install a version of MPICH, which is available from http://www.mpich.org/downloads/. On Linux, you can also do
 ```bash
     sudo apt-get install libmpich-dev
 ```
-* CMake -- This package is required to build DSP and all the other external software packages. It is available from http://www.cmake.org/download/. On Linux, you can also do
+* CMake -- This package is **required** to build DSP and all the other external software packages. It is available from http://www.cmake.org/download/. On Linux, you can also do
 ```bash
     sudo apt-get install cmake
 ```
-* BLAS/LAPACK -- These linear algebra libraries may already be available on your machine. If not, the source codes are available from http://www.netlib.org/blas/blas.tgz and http://www.netlib.org/lapack/lapack-3.5.0.tgz. Or on linux you can install them by typing
+* BLAS/LAPACK -- These linear algebra libraries are **required** and may already be available on your machine. If not, the source codes are available from http://www.netlib.org/blas/blas.tgz and http://www.netlib.org/lapack/lapack-3.5.0.tgz. Or on linux you can install them by typing
 ```bash
     sudo apt-get install libblas-dev
     sudo apt-get install liblapack-dev
 ```
-* svn -- A subversion software package is required to download an external package Coin-SMI used in DSP. You can install it by
+* svn -- A subversion software package is **required** to download an external package Coin-SMI used in DSP. You can install it by
 ```bash
     sudo apt-get install subversion
 ```
-* GNU Make/Autoconf/Automake -- These are likely available on any machine. If not, you can get them as follows.
+* GNU Make/Autoconf/Automake -- These are **required** and likely available on any machine. If not, you can get them as follows.
 ```bash
     sudo apt-get install build-essential
     sudo apt-get install autoconf
     sudo apt-get install automake
 ```
 
-The following packages need to be installed on your system and located on ./extra directory before DSP may be built.
+The following packages are also **required** to build and run DSP and need to be located on ./extra directory before DSP may be built.
 
 * MA27 (./extra/ma27-1.0.0) -- MA27 is a library for solving sparse symmetric indefinite linear systems. To build OOQP solver, you must have this installed. This is part of HSL (formerly the Harwell Subroutine Library), a collection of ISO Fortran codes for large scale scientific computation. You can download the source files and obtain a free personal license from http://www.hsl.rl.ac.uk/download/MA27/1.0.0/a/. Move the downloaded directory to ./extras/ma27-1.0.0/
 
