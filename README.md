@@ -13,15 +13,15 @@ The problem structures allow decomposition approaches for solving the problem in
 
 Prerequisites
 -------------
-The following packages are essential to build DSP and the required external software packages.
-* CMake
+We recommend to install and run DSP on a linux-type cluster with MPI library. If a cluster is not available for you, then the following packages are required to build DSP. Please have the packages available on your machine.
+* MPICH -- DSP uses MPI functions to parallelize dual decomposition methods. It is required to install a version of MPICH, which is available in http://www.mpich.org/downloads/.
+* CMake -- http://www.cmake.org/download/
+* BLAS -- http://www.netlib.org/blas/blas.tgz
+* LAPACK -- http://www.netlib.org/lapack/lapack-3.5.0.tgz
+* svn -- A subversion software package is required to download an external package Coin-SMI used in DSP.
 * GNU Autoconf
 * GNU Automake
 * GNU Make
-* MPICH
-* BLAS
-* LAPACK
-* SVN
 
 The following packages need to be installed on your system and located on ./extra directory before DSP may be built.
 
