@@ -36,7 +36,7 @@ You can install the build essential packages by using the shell script get.essen
 
 You can run the apt-get commands to install the packages required for DSP by
 ```bash
-./get.essentials
+sudo ./get.essentials
 ```
 
 #### Manual installation of the build essential packages
