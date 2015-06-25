@@ -1,5 +1,5 @@
 # DSP
-DSP is an open-source optimization solver that implements decomposition methods for **stochastic mixed-integer programming (SMIP)** problems. These are structured optimization problems considering uncertain scenario realization s with probability p_s in the following form:
+DSP is an open-source package that implements decomposition methods for **stochastic mixed-integer programming (SMIP)** problems. These are structured optimization problems considering uncertain scenario realizations s with probabilities p_s in the following form:
 
         minimize   c^T x + \sum_{s=1}^S p_s q_s^T y_s
         subject to   A x                              = b
@@ -12,7 +12,7 @@ DSP provides **parallel** implementations for decomposition methods:
 * Dual decomposition
 * Benders decomposition
 
-The methods can be run on cluster as well as desktop computers.
+The methods can be run on computing clusters and multi-core processors.
 
 ## Download
 
@@ -24,9 +24,9 @@ or download the zip file from [this link](https://github.com/kibaekkim/DSP/archi
 
 ## Prerequisites
 
-We recommend to install and run DSP on a **Linux** machine with **MPI** library. The software packages necessary to build the source code of DSP are listed below.
+We recommend to install and run DSP on a **Linux** machine with an appropriate **MPI** library. The software packages necessary to build the source code of DSP are listed below.
 
-*NOTE: We have also tested installing and running DSP on MacOSX (10.9 or later). It requires to install the required packages using Macport. We will prepare the documentation for that soon. For now, please email and consult us for how to install and run DSP on MacOSX.*
+*NOTE: We have also tested installing and running DSP on MacOSX (10.9 or later). This requires the user to install the required packages using Macport. We will prepare the documentation for that soon. For now, please email and consult us for how to install and run DSP on MacOSX.*
 
 ### Build essentials
 
@@ -53,7 +53,7 @@ sudo apt-get update
 ```bash
     sudo apt-get install cmake
 ```
-* BLAS/LAPACK -- These linear algebra libraries are **required** and may already be available on your machine. If not, the source codes are available from http://www.netlib.org/blas/blas.tgz and http://www.netlib.org/lapack/lapack-3.5.0.tgz. Or on linux you can install them by typing
+* BLAS/LAPACK -- These linear algebra libraries are **required** and may already be available on your machine. If not available, the source codes are available from http://www.netlib.org/blas/blas.tgz and http://www.netlib.org/lapack/lapack-3.5.0.tgz. Or on linux you can install them by typing
 ```bash
     sudo apt-get install libblas-dev
     sudo apt-get install liblapack-dev
@@ -62,7 +62,7 @@ sudo apt-get update
 ```bash
     sudo apt-get install subversion
 ```
-* GNU Make/Autoconf/Automake -- These are **required** and likely available on any machine. If not, you can get them as follows.
+* GNU Make/Autoconf/Automake -- These are **required** and likely available on any machine. If not available, you can get them as follows.
 ```bash
     sudo apt-get install build-essential
     sudo apt-get install autoconf
@@ -85,7 +85,7 @@ The following packages are also **required** to build and run DSP and need to be
   2. Unpack the downloaded file.
   3. Move and rename the downloaded directory to ./extras/ma27-1.0.0/
 
-* SCIP Optimization Suite (./extra/scipoptsuite-3.1.1) -- SCIP is non-commercial solvers for mixed integer programming (MIP) and mixed-integer nonlinear programming (MINLP).
+* SCIP Optimization Suite (./extra/scipoptsuite-3.1.1) -- SCIP contains non-commercial solvers for mixed integer programming (MIP) and mixed-integer nonlinear programming (MINLP).
   1. Download: http://scip.zib.de/download.php?fname=scipoptsuite-3.1.1.tgz
   2. Unpack the downloaded file.
   3. Move and rename the downloaded directory to ./extras/scipoptsuite-3.1.1
@@ -112,7 +112,7 @@ export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:<DSP_SRC_PATH>/lib
 
 ## Julia Interface (Required)
 
-DSP uses Julia as a modeling interface for the computatioanl experiments. Julia is a high level dynamic programming language for technical computing, with syntax that is familiar to users of other technical computing environments such as MATLAB and Python. Julia can be downloaded from http://julialang.org/downloads/ If Julia is successfully installed on your machine, then you can start the Julia command-line tool by typing
+DSP uses Julia as a modeling interface for the computational experiments. Julia is a high level dynamic programming language for technical computing, with syntax that is familiar to users of other technical computing environments such as MATLAB and Python. Julia can be downloaded from http://julialang.org/downloads/ If Julia is successfully installed on your machine, then you can start the Julia command-line tool by typing
 ```bash
 julia
 ```
@@ -139,7 +139,7 @@ Pkg.update();
 
 ##Example (farmer)
 
-An example is provided in subdirectory examples/farmer. You can run the farmer example with dual decomposition method by typing the command line
+An example is provided in subdirectory examples/farmer. You can run the farmer example with the dual decomposition method by typing the command line
 ```bash
 mpirun -n 1 julia examples/farmer/farmer_run.jl DD # dual decomposition
 ```
