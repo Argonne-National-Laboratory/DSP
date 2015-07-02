@@ -33,7 +33,7 @@ public:
 		TssDdMasterSolver_(2),
 		TssDdMasterNumCutsPerIter_(1),
 		TssDdEnableTrustRegion_(1),
-		TssDdTrustRegionSize_(1.),
+		TssDdTrustRegionSize_(100.),
 		TssDdCacheRecourse_(0),
 		TssDdAddFeasCuts_(-1),
 		TssDdAddOptCuts_(-1),

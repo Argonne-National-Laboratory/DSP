@@ -19,6 +19,7 @@ DSPsolver.loadProblem(m);
 
 # set print level
 DSPsolver.setLogLevel(1);
+#DSPsolver.setIterLimit(2);
 
 # solve problem
 if ARGS[1] == "DE"

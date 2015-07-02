@@ -1,16 +1,16 @@
 include_directories(Model Solver Utility)
 
 set(DSP_SRC_FILES
-	Solver/OoqpEps.cpp
-	Solver/OoqpStatus.cpp
-	Solver/SCIPconshdlrBenders.cpp
-	Solver/SCIPconshdlrBendersDd.cpp
-	Solver/SCIPbranchruleLB.cpp
-	Solver/SolverInterfaceOsi.cpp
-	Solver/SolverInterfaceClp.cpp
-	Solver/SolverInterfaceSpx.cpp
-	Solver/SolverInterfaceScip.cpp
-	Solver/SolverInterfaceOoqp.cpp
+	SolverInterface/OoqpEps.cpp
+	SolverInterface/OoqpStatus.cpp
+	SolverInterface/SCIPconshdlrBenders.cpp
+	SolverInterface/SCIPconshdlrBendersDd.cpp
+	SolverInterface/SCIPbranchruleLB.cpp
+	SolverInterface/SolverInterfaceOsi.cpp
+	SolverInterface/SolverInterfaceClp.cpp
+	SolverInterface/SolverInterfaceSpx.cpp
+	SolverInterface/SolverInterfaceScip.cpp
+	SolverInterface/SolverInterfaceOoqp.cpp
 	Solver/TssSolver.cpp
 	Solver/TssDe.cpp
 	Solver/TssBd.cpp
