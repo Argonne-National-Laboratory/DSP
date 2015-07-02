@@ -8,9 +8,9 @@
 //#define DSP_DEBUG
 
 /** DSP */
-#include "Solver/SolverInterfaceScip.h"
-#include "Solver/SCIPconshdlrBenders.h"
-#include "Solver/SCIPconshdlrBendersDd.h"
+#include "SolverInterface/SolverInterfaceScip.h"
+#include "SolverInterface/SCIPconshdlrBenders.h"
+#include "SolverInterface/SCIPconshdlrBendersDd.h"
 #include "Utility/StoMacros.h"
 #include "Utility/StoMessage.h"
 

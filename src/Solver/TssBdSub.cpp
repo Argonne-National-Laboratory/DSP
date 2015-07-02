@@ -9,9 +9,9 @@
 
 #include "Utility/StoMessage.h"
 #include "Solver/TssBdSub.h"
-#include "Solver/SolverInterfaceSpx.h"
-#include "Solver/SolverInterfaceClp.h"
-#include "Solver/SolverInterfaceScip.h"
+#include "SolverInterface/SolverInterfaceSpx.h"
+#include "SolverInterface/SolverInterfaceClp.h"
+#include "SolverInterface/SolverInterfaceScip.h"
 
 /** Coin */
 #include "OsiSpxSolverInterface.hpp"

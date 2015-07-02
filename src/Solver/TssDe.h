@@ -10,7 +10,7 @@
 
 /** DSP */
 #include "Solver/TssSolver.h"
-#include "Solver/SolverInterface.h"
+#include "SolverInterface/SolverInterface.h"
 
 class TssDe : public TssSolver {
 public:

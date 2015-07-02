@@ -8,7 +8,7 @@
 #ifndef SRC_SOLVER_SOLVERINTERFACESPX_H_
 #define SRC_SOLVER_SOLVERINTERFACESPX_H_
 
-#include "Solver/SolverInterfaceOsi.h"
+#include "SolverInterface/SolverInterfaceOsi.h"
 
 class SolverInterfaceSpx: public SolverInterfaceOsi
 {

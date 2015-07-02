@@ -8,7 +8,7 @@
 #ifndef SRC_SOLVER_SOLVERINTERFACEOSI_H_
 #define SRC_SOLVER_SOLVERINTERFACEOSI_H_
 
-#include "Solver/SolverInterface.h"
+#include "SolverInterface/SolverInterface.h"
 
 /** Coin-OR */
 #include "OsiSolverInterface.hpp"

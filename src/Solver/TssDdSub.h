@@ -9,7 +9,7 @@
 #define SRC_SOLVER_TSSDDSUB_H_
 
 /** DSP */
-#include "Solver/SolverInterface.h"
+#include "SolverInterface/SolverInterface.h"
 #include "Solver/TssBdSub.h"
 #include "Model/TssModel.h"
 

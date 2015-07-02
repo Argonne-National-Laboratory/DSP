@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-#include <Solver/SCIPbranchruleLB.h>
+#include "SolverInterface/SCIPbranchruleLB.h"
 
 
 /** branching execution method for fractional LP solutions

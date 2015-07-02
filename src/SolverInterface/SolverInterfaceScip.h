@@ -11,7 +11,7 @@
 #include <vector>
 
 /** DSP */
-#include "Solver/SolverInterface.h"
+#include "SolverInterface/SolverInterface.h"
 
 /** COIN */
 #include "OsiCuts.hpp"

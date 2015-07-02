@@ -38,6 +38,9 @@ public:
 
 private:
 
+	/** initialize solver */
+	STO_RTN_CODE initialize();
+
 	/** create subproblem */
 	virtual STO_RTN_CODE createSubproblem();
 
@@ -65,14 +68,12 @@ private:
 	/** get upper bound */
 	double getUpperBound(
 			TssDdSub * ddsub, /**< subproblem to evaluate */
-			bool & feasible,  /**< indicating feasibility */
-			int tid = 0       /**< thread id */);
+			bool & feasible   /**< indicating feasibility */);
 
 	/** get upper bound */
 	double getUpperBound(
 			const double * solution, /**< solution to evaluate */
-			bool & feasible,         /**< indicating feasibility */
-			int tid = 0              /**< thread id */);
+			bool & feasible          /**< indicating feasibility */);
 
 	/** check solution status and determine whether to continue or stop. */
 	bool checkStatus(TssDdSub * ddsub);
@@ -121,6 +122,17 @@ private:
 	int comm_rank_;
 	int comm_size_;
 
+	/** Number of communication groups:
+	 *    If comm_size_ < (number of scenarios), then this is always one.
+	 *    If comm_size_ >= (number of scenarios)
+	 *       AND comm_size_ % (number of scenarios) == comm_rank_ % (number of scenarios),
+	 *    then this is ceil(comm_size_ / (number of scenarios)) + 1. */
+	int num_comm_groups_;
+
+	/** Group index for cut generations and upper bounds:
+	 *    The subproblem solutions are distributed to different communication groups. */
+	int comm_group_;
+
 	/** solution pool */
 	Solutions solutions_; /**< solutions collected from solver */
 
@@ -129,7 +141,7 @@ private:
 	int numSyncedCuts_; /**< number of cuts that were already synced */
 
 	/** Upper bounding procedure */
-	TssBdSub ** bdsub_;
+	TssBdSub * bdsub_;
 	vector<TssDdSub*> subprobs_; /**< set of subproblems (no element in root) */
 	Solutions ubSolutions_;      /**< saved solutions that were evaluated for upper bounds */
 	int numSyncedUbSolutions_;   /**< number of solutions that were already synced */

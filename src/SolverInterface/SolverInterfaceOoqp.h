@@ -11,7 +11,7 @@
 //#define DSP_HAS_MA57
 
 /** DSP */
-#include "Solver/SolverInterface.h"
+#include "SolverInterface/SolverInterface.h"
 #include "Utility/StoMessage.h"
 
 /** OOQP */

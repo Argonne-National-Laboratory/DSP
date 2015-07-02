@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-#include "Solver/SolverInterfaceClp.h"
+#include "SolverInterface/SolverInterfaceClp.h"
 #include "Utility/StoMacros.h"
 
 /** Coin-OR */

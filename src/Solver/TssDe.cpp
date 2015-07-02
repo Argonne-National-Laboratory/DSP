@@ -11,8 +11,8 @@
 /** DSP */
 #include "Utility/StoMessage.h"
 #include "Solver/TssDe.h"
-#include "Solver/SolverInterfaceClp.h"
-#include "Solver/SolverInterfaceScip.h"
+#include "SolverInterface/SolverInterfaceClp.h"
+#include "SolverInterface/SolverInterfaceScip.h"
 
 TssDe::TssDe():
 TssSolver(),

@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-#include "Solver/SolverInterfaceSpx.h"
+#include "SolverInterface/SolverInterfaceSpx.h"
 #include "Utility/StoMacros.h"
 
 /** Coin-OR */

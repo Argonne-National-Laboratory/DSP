@@ -19,7 +19,7 @@
 
 /** DSP */
 #include "Utility/StoMessage.h"
-#include "Solver/OoqpStatus.h"
+#include "SolverInterface/OoqpStatus.h"
 
 OoqpStatus::~OoqpStatus()
 {

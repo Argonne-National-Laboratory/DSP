@@ -7,7 +7,7 @@
 
 //#define DSP_DEBUG
 
-#include "Solver/SCIPconshdlrBendersDd.h"
+#include "SolverInterface/SCIPconshdlrBendersDd.h"
 #include "Utility/StoMessage.h"
 
 #define DSP_COLLECT_CUTS 1

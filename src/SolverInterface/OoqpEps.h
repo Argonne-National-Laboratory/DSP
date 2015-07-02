@@ -9,8 +9,8 @@
 #define SRC_SOLVER_OOQPEPS_H_
 
 /** DSP */
-#include "Solver/OoqpStatus.h"
-#include "Solver/SolverInterfaceOoqp.h"
+#include "SolverInterface/OoqpStatus.h"
+#include "SolverInterface/SolverInterfaceOoqp.h"
 
 class OoqpEps: public SolverInterfaceOoqp
 {

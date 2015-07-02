@@ -8,7 +8,7 @@
 //#define DSP_DEBUG
 
 /** DSP */
-#include "Solver/SCIPconshdlrBenders.h"
+#include "SolverInterface/SCIPconshdlrBenders.h"
 #include "Utility/StoMessage.h"
 
 /** constraint data for Benders cuts */

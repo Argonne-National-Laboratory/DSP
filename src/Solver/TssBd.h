@@ -9,7 +9,7 @@
 #define TSSBD_H_
 
 /** DSP */
-#include "Solver/SolverInterface.h"
+#include "SolverInterface/SolverInterface.h"
 #include "Solver/TssBdSub.h"
 #include "Solver/TssSolver.h"
 

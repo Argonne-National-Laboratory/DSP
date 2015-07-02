@@ -6,8 +6,8 @@
  */
 
 /** DSP */
-#include "Solver/OoqpEps.h"
-#include "Solver/OoqpStatus.h"
+#include "SolverInterface/OoqpEps.h"
+#include "SolverInterface/OoqpStatus.h"
 #include "Utility/StoMacros.h"
 
 /** set my OOQP status */

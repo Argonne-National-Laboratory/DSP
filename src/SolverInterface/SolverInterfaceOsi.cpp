@@ -8,7 +8,7 @@
 #include <assert.h>
 #include "Utility/StoMacros.h"
 #include "Utility/StoMessage.h"
-#include "Solver/SolverInterfaceOsi.h"
+#include "SolverInterface/SolverInterfaceOsi.h"
 
 #include "CoinWarmStartBasis.hpp"
 

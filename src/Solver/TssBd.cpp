@@ -9,10 +9,10 @@
 
 /** DSP */
 #include "Solver/TssBd.h"
-#include "Solver/SCIPconshdlrBenders.h"
-#include "Solver/SolverInterfaceSpx.h"
-#include "Solver/SolverInterfaceClp.h"
-#include "Solver/SolverInterfaceScip.h"
+#include "SolverInterface/SCIPconshdlrBenders.h"
+#include "SolverInterface/SolverInterfaceSpx.h"
+#include "SolverInterface/SolverInterfaceClp.h"
+#include "SolverInterface/SolverInterfaceScip.h"
 #include "Utility/StoMessage.h"
 
 TssBd::TssBd() :

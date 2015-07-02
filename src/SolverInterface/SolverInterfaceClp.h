@@ -8,7 +8,7 @@
 #ifndef SOLVERINTERFACECLP_H_
 #define SOLVERINTERFACECLP_H_
 
-#include "Solver/SolverInterfaceOsi.h"
+#include "SolverInterface/SolverInterfaceOsi.h"
 
 class SolverInterfaceClp: public SolverInterfaceOsi
 {

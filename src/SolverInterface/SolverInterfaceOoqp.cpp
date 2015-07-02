@@ -6,7 +6,7 @@
  */
 
 /** DSP */
-#include "Solver/SolverInterfaceOoqp.h"
+#include "SolverInterface/SolverInterfaceOoqp.h"
 #include "Utility/StoMacros.h"
 #include "Utility/StoUtility.h"
 
