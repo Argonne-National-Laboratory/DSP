@@ -254,7 +254,9 @@ STO_RTN_CODE TssDdMpi::createSubproblem()
 	/** cut pool */
 	cuts_ = new OsiCuts;
 
-	/** Let the root know how many scenarios each process use. */
+	/** Let the root know how many scenarios each process use.
+	 *  We do not count the number of subproblems for comm_group > 0,
+	 *  in which case the subproblem data is used to generate cuts and to evaluate upper bounds. */
 	int nsubprobs = comm_group_ > 0 ? 0 : subprobs_.size();
 	MPI_Gather(&nsubprobs, 1, MPI::INT, nsubprobs_, 1, MPI::INT, 0, comm_);
 
@@ -427,10 +429,8 @@ STO_RTN_CODE TssDdMpi::solveSubproblem()
 			bool violated = false;
 			addFeasCuts(solutions);
 #ifdef DO_SERIALIZE
-			for (int r = 0; r < comm_size_; ++r)
-			{
-				if (r == comm_rank_)
-				{
+			for (int r = 0; r < comm_size_; ++r) {
+				if (r == comm_rank_) {
 #endif
 					if (doSolveSubprob)
 					{
