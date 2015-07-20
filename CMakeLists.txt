@@ -102,6 +102,7 @@ include_directories(
 	src/Model
 	src/Solver
 	src/Utility
+	src/SolverInterface
 	${OOQP_DIR}/include
 	${SCIP_DIR}/src
 	${SCIP_DIR}/src/scip

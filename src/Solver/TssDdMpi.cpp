@@ -8,6 +8,7 @@
 //#define DSP_DEBUG
 #define DSP_EXPERIMENT
 #define USE_ROOT_PROCESSOR 1
+//#define DO_SERIALIZE
 
 #include <vector>
 
@@ -18,8 +19,8 @@
 #include "Solver/TssDdPrimalMaster.h"
 #include "Solver/TssDdMasterSubgrad.h"
 #include "Solver/TssDdSub.h"
-#include "Solver/SolverInterfaceScip.h"
-#include "Solver/OoqpEps.h"
+#include "SolverInterface/SolverInterfaceScip.h"
+#include "SolverInterface/OoqpEps.h"
 #include "Solver/TssDdMpi.h"
 
 /** COIN */
@@ -33,12 +34,13 @@ TssDdMpi::TssDdMpi(
 		string logfile_prefix) :
 	TssSolver(),
 	comm_(comm),
+	num_comm_groups_(-1),
+	comm_group_(-1),
 	cuts_(NULL),
 	numSyncedCuts_(0),
 	bdsub_(NULL),
 	numSyncedUbSolutions_(0),
 	master_(NULL),
-	nsubprobs_(NULL),
 	scenarioSpecs_(NULL),
 	multipliers_(NULL),
 	tic_(MPI::Wtime()),
@@ -50,11 +52,12 @@ TssDdMpi::TssDdMpi(
 {
 	MPI_Comm_rank(comm, &comm_rank_);
 	MPI_Comm_size(comm, &comm_size_);
+	nsubprobs_ = new int [comm_size_];
 }
 
 TssDdMpi::~TssDdMpi()
 {
-	FREE_2D_PTR(par_->numCores_, bdsub_);
+	FREE_PTR(bdsub_);
 	FREE_PTR(master_);
 	FREE_ARRAY_PTR(nsubprobs_);
 	FREE_ARRAY_PTR(scenarioSpecs_);
@@ -76,6 +79,39 @@ TssDdMpi::~TssDdMpi()
 	}
 }
 
+/** initialize solver */
+STO_RTN_CODE TssDdMpi::initialize()
+{
+	BGN_TRY_CATCH
+
+	int nscen = model_->getNumScenarios();
+
+	/** calculate communication groups */
+	num_comm_groups_ = (comm_size_ - 1) / nscen + 1;
+	if (comm_size_ > nscen
+			&& comm_size_ % nscen > 0
+			&& comm_size_ % nscen < comm_rank_ % nscen + 1)
+		num_comm_groups_ -= 1;
+	comm_group_ = comm_rank_ / nscen;
+	DSPdebugMessage("-> comm_size %d comm_rank %d num_comm_groups %d comm_group %d\n",
+			comm_size_, comm_rank_, num_comm_groups_, comm_group_);
+
+	/** Sanity check:
+	 *    The number of master cuts per iteration should not exceed the number of scenarios;
+	 *    should not be less than 1. */
+	if (par_->TssDdMasterNumCutsPerIter_ > nscen ||
+			par_->TssDdMasterNumCutsPerIter_ < 1)
+		par_->TssDdMasterNumCutsPerIter_ = nscen;
+
+	/** Root process can print out. */
+	if (comm_rank_ > 0)
+		par_->logLevel_ = -100;
+
+	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+
+	return STO_RTN_OK;
+}
+
 /** solve */
 STO_RTN_CODE TssDdMpi::solve()
 {
@@ -90,13 +126,8 @@ STO_RTN_CODE TssDdMpi::solve()
 	}
 #endif
 
-	/**
-	 * Sanity check:
-	 *   The number of master cuts per iteration should not exceed the number of scenarios;
-	 *   should not be less than 1. */
-	if (par_->TssDdMasterNumCutsPerIter_ > model_->getNumScenarios() ||
-			par_->TssDdMasterNumCutsPerIter_ < 1)
-		par_->TssDdMasterNumCutsPerIter_ = model_->getNumScenarios();
+	/** initialize solver */
+	initialize();
 
 	/** tic */
 	ctime_start_ = CoinCpuTime();
@@ -109,7 +140,7 @@ STO_RTN_CODE TssDdMpi::solve()
 	createSubproblem();
 
 	/** print time elapsed for creating problems */
-	if (comm_rank_ == 0 && par_->logLevel_ > 0)
+	if (par_->logLevel_ > 0)
 		printf("Time elapsed for creating master and subproblems: %.2f seconds\n",
 			MPI_Wtime() - wtime_start_);
 
@@ -156,7 +187,7 @@ STO_RTN_CODE TssDdMpi::solve()
 
 	/** collect results */
 	collectResults();
-
+	
 	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
 
 	return STO_RTN_OK;
@@ -169,10 +200,10 @@ STO_RTN_CODE TssDdMpi::createSubproblem()
 	vector<int> scenariosForCut;
 
 	/** retrieve model info */
-	int nscen = model_->getNumScenarios();
 	const double * probability = model_->getProbability();
 
-	/** scenarios taken care of by the current processor */
+	/** SCENARIO DISTRIBUTION:
+	 *    scenarios taken care of by the current processor */
 	for (int s = 0; s < par_->TssDdNumProcIdx_; ++s)
 	{
 		scenariosForCut.push_back(par_->TssDdProcIdxSet_[s]);
@@ -182,21 +213,14 @@ STO_RTN_CODE TssDdMpi::createSubproblem()
 	if (comm_rank_ != 0)
 #endif
 	{
-#ifdef USE_OMP
-		/** set number of cores to use */
-		omp_set_num_threads(par_->numCores_);
-#endif
-
 		if (par_->TssDdAddFeasCuts_ >= 0 || par_->TssDdAddOptCuts_ >= 0 || par_->TssDdEvalUb_ >= 0)
 		{
-			/** create Benders subproblem */
-			bdsub_ = new TssBdSub * [par_->numCores_];
-			for (int s = 0; s < par_->numCores_; ++s)
-			{
-				bdsub_[s] = new TssBdSub(par_);
-				bdsub_[s]->scenarios_ = scenariosForCut;
-				bdsub_[s]->loadProblem(model_);
-			}
+			/** create Benders subproblem:
+			 *   This is used in generating feasibility/optimality cuts
+			 *   and evaluating upper bounds. */
+			bdsub_ = new TssBdSub(par_);
+			bdsub_->scenarios_ = scenariosForCut;
+			bdsub_->loadProblem(model_);
 		}
 
 		for (int s = 0; s < par_->TssDdNumProcIdx_; ++s)
@@ -218,9 +242,8 @@ STO_RTN_CODE TssDdMpi::createSubproblem()
 			if (par_->TssDdAddFeasCuts_ >= 0 || par_->TssDdAddOptCuts_ >= 0)
 			{
 				/** Should change later */
-				subprob->addCutGenerator(bdsub_[0]);
+				subprob->addCutGenerator(bdsub_);
 			}
-
 #if 0
 			/** add branch rule for known LB */
 			subprob->addBranchrule();
@@ -231,8 +254,10 @@ STO_RTN_CODE TssDdMpi::createSubproblem()
 	/** cut pool */
 	cuts_ = new OsiCuts;
 
-	/** Let the root know how many scenarios each process use. */
-	int nsubprobs = subprobs_.size();
+	/** Let the root know how many scenarios each process use.
+	 *  We do not count the number of subproblems for comm_group > 0,
+	 *  in which case the subproblem data is used to generate cuts and to evaluate upper bounds. */
+	int nsubprobs = comm_group_ > 0 ? 0 : subprobs_.size();
 	MPI_Gather(&nsubprobs, 1, MPI::INT, nsubprobs_, 1, MPI::INT, 0, comm_);
 
 	if (comm_rank_ == 0)
@@ -262,10 +287,11 @@ STO_RTN_CODE TssDdMpi::solveSubproblem()
 	double stime = MPI::Wtime();
 
 	/** indicators */
-	bool doAddFeasCuts = false;
-	bool doAddOptCuts  = false;
-	bool doEvalUb      = false;
-	bool doCollectSols = false;
+	bool doAddFeasCuts  = false;
+	bool doAddOptCuts   = false;
+	bool doEvalUb       = false;
+	bool doCollectSols  = false;
+	bool doSolveSubprob = false;
 	if (iterCnt_ == 0)
 	{
 		if (par_->TssDdAddFeasCuts_ >= 0) doAddFeasCuts = true;
@@ -280,6 +306,8 @@ STO_RTN_CODE TssDdMpi::solveSubproblem()
 	}
 	if (doAddFeasCuts || doAddOptCuts || doEvalUb)
 		doCollectSols = true;
+	if (comm_group_ == 0)
+		doSolveSubprob = true;
 
 	/**
 	 * Solution of subproblem:
@@ -296,7 +324,7 @@ STO_RTN_CODE TssDdMpi::solveSubproblem()
 		int doContinueLocal = 1; /**< local flag */
 
 		/** clear solution pool */
-		for (int i = 0; i < solutions.size(); ++i)
+		for (unsigned int i = 0; i < solutions.size(); ++i)
 			FREE_PTR(solutions[i]);
 		solutions.clear();
 
@@ -307,66 +335,69 @@ STO_RTN_CODE TssDdMpi::solveSubproblem()
 			if (r == comm_rank_)
 			{
 #endif
-				/** 1. solve each subproblem */
-				for (unsigned s = 0; s < subprobs_.size(); ++s)
+				if (doSolveSubprob)
 				{
-					if (doContinueLocal == 0) continue;
-
-					if (par_->TssDdAddFeasCuts_ >= 0 || par_->TssDdAddOptCuts_ >= 0)
+					/** 1. solve each subproblem */
+					for (unsigned s = 0; s < subprobs_.size(); ++s)
 					{
-						/** disable cut generator */
-						subprobs_[s]->chgCutGenerator(NULL);
-
-						/** update subproblem */
-						if (par_->TssDdAddOptCuts_ >= 0 && primalBound_ < COIN_DBL_MAX)
-							subprobs_[s]->updateProblem(NULL, primalBound_);
-
-						/** push cuts */
-						subprobs_[s]->pushCuts(cuts_);
-						DSPdebugMessage("Rank %d: pushed %d cuts\n", comm_rank_, cuts_->sizeCuts());
-					}
-
-					/** update wall clock */
-					ticToc();
-
-					/** solution status */
-					if (time_remains_ < 0)
-					{
-						doContinueLocal = 0;
-						continue;
-					}
-
-					/** set time limit */
-					subprobs_[s]->setTimeLimit(CoinMin(time_remains_, par_->ScipLimitsTime_));
-
-					/** solve subproblem */
-					subprobs_[s]->solve();
-
-					DSPdebugMessage("Rank %d: solved scenario %d status %d objective %e (%.2f seconds)\n",
-							comm_rank_, subprobs_[s]->sind_, subprobs_[s]->si_->getStatus(), subprobs_[s]->si_->getPrimalBound(), MPI::Wtime() - tic_);
-
-					/** update wall clock */
-					ticToc();
-
-					/** solution status */
-					if (checkStatus(subprobs_[s]) == false || time_remains_ < 0)
-					{
-						doContinueLocal = 0;
-						continue;
-					}
-
-					if (doCollectSols)
-					{
-						/** check duplicate solution */
-						CoinPackedVector * x = duplicateSolution(
-								model_->getNumCols(0),
-								subprobs_[s]->si_->getSolution(),
-								ubSolutions_);
-						if (x != NULL)
+						if (doContinueLocal == 0) continue;
+	
+						if (par_->TssDdAddFeasCuts_ >= 0 || par_->TssDdAddOptCuts_ >= 0)
 						{
-							/** store solution */
-							//ubSolutions_.push_back(x);
-							solutions.push_back(x);
+							/** disable cut generator */
+							subprobs_[s]->chgCutGenerator(NULL);
+	
+							/** update subproblem */
+							if (par_->TssDdAddOptCuts_ >= 0 && primalBound_ < COIN_DBL_MAX)
+								subprobs_[s]->updateProblem(NULL, primalBound_);
+	
+							/** push cuts */
+							subprobs_[s]->pushCuts(cuts_);
+							DSPdebugMessage("Rank %d: pushed %d cuts\n", comm_rank_, cuts_->sizeCuts());
+						}
+	
+						/** update wall clock */
+						ticToc();
+	
+						/** solution status */
+						if (time_remains_ < 0)
+						{
+							doContinueLocal = 0;
+							continue;
+						}
+	
+						/** set time limit */
+						subprobs_[s]->setTimeLimit(CoinMin(time_remains_, par_->ScipLimitsTime_));
+	
+						/** solve subproblem */
+						subprobs_[s]->solve();
+	
+						DSPdebugMessage("Rank %d: solved scenario %d status %d objective %e (%.2f seconds)\n",
+								comm_rank_, subprobs_[s]->sind_, subprobs_[s]->si_->getStatus(), subprobs_[s]->si_->getPrimalBound(), MPI::Wtime() - tic_);
+	
+						/** update wall clock */
+						ticToc();
+	
+						/** solution status */
+						if (checkStatus(subprobs_[s]) == false || time_remains_ < 0)
+						{
+							doContinueLocal = 0;
+							continue;
+						}
+	
+						if (doCollectSols)
+						{
+							/** check duplicate solution */
+							CoinPackedVector * x = duplicateSolution(
+									model_->getNumCols(0),
+									subprobs_[s]->si_->getSolution(),
+									ubSolutions_);
+							if (x != NULL)
+							{
+								/** store solution */
+								//ubSolutions_.push_back(x);
+								solutions.push_back(x);
+							}
 						}
 					}
 				}
@@ -389,21 +420,20 @@ STO_RTN_CODE TssDdMpi::solveSubproblem()
 			syncSolutions(solutions, nsync);
 
 		/** 3. add cover inequalities if the first stage has "binary variables only" */
-		int nCoverCuts = 0;
+		//int nCoverCuts = 0;
 
 		/** 4. generate feasibility cuts; synchronize cuts; go to 1 if violated. */
 		if (doAddFeasCuts)
 		{
 			int ncuts = cuts_->sizeCuts();
-			int violated = addFeasCuts(solutions);
-			if (violated)
-			{
+			bool violated = false;
+			addFeasCuts(solutions);
 #ifdef DO_SERIALIZE
-				for (int r = 0; r < comm_size_; ++r)
-				{
-					if (r == comm_rank_)
-					{
+			for (int r = 0; r < comm_size_; ++r) {
+				if (r == comm_rank_) {
 #endif
+					if (doSolveSubprob)
+					{
 						/** free transform if the current solution is violated. */
 						for (unsigned s = 0; s < subprobs_.size(); ++s)
 						{
@@ -414,22 +444,24 @@ STO_RTN_CODE TssDdMpi::solveSubproblem()
 								if (viol > 1.0e-6)
 								{
 //									DSPdebugMessage("Rank %d: free transform %d\n", comm_rank_, subprobs_[s]->sind_);
+									violated = true;
 									subprobs_[s]->freeTransform();
 									break;
 								}
 							}
 						}
-#ifdef DO_SERIALIZE
 					}
-					MPI_Barrier(comm_);
+#ifdef DO_SERIALIZE
 				}
-#endif
-				continue;
+				MPI_Barrier(comm_);
 			}
+#endif
+			if (violated)
+				continue;
 		}
 
 		/** store feasible solutions */
-		for (int i = 0; i < solutions.size(); ++i)
+		for (unsigned int i = 0; i < solutions.size(); ++i)
 		{
 			ubSolutions_.push_back(solutions[i]);
 			solutions[i] = NULL;
@@ -463,7 +495,7 @@ STO_RTN_CODE TssDdMpi::solveSubproblem()
 	}
 
 	/** clear solution pool */
-	for (int i = 0; i < solutions.size(); ++i)
+	for (unsigned int i = 0; i < solutions.size(); ++i)
 		FREE_PTR(solutions[i]);
 	solutions.clear();
 
@@ -525,6 +557,7 @@ STO_RTN_CODE TssDdMpi::syncSubproblem()
 #if USE_ROOT_PROCESSOR == 0
 	else
 #endif
+	if (comm_group_ == 0)
 	{
 		rcount = model_->getNumCols(0) * subprobs_.size();
 		recvbuf = new double [rcount];
@@ -537,44 +570,22 @@ STO_RTN_CODE TssDdMpi::syncSubproblem()
 
 	stime = MPI::Wtime();
 #if USE_ROOT_PROCESSOR == 0
-	if (comm_rank_ != 0)
+	if (comm_rank_ != 0 && comm_group_ == 0)
+#else
+	if (comm_group_ == 0)
 #endif
 	{
-#if 1
 		int numSubprobs = subprobs_.size();
-
-#ifdef USE_OMP
-		/** set number of cores */
-		omp_set_num_threads(par_->numCores_);
-
-		/** OpenMP directive */
-#pragma omp parallel for
-#endif
 		for (int i = 0; i < numSubprobs; ++i)
 		{
-#ifdef USE_OMP
-			int tid = omp_get_thread_num();
-#else
-			int tid = 0;
-#endif
-
 			/** change cut generator */
 			if (par_->TssDdAddFeasCuts_ >= 0 || par_->TssDdAddOptCuts_ >= 0)
-				subprobs_[i]->chgCutGenerator(bdsub_[tid]);
+				subprobs_[i]->chgCutGenerator(bdsub_);
 
 			/** update problem */
 			double * lambda = recvbuf + i * model_->getNumCols(0);
 			subprobs_[i]->updateProblem(lambda, primalBound_);
 		}
-#else
-		int scnt = 0;
-		for (vector<TssDdSub*>::iterator it = subprobs_.begin(); it != subprobs_.end(); it++)
-		{
-			double * lambda = recvbuf + scnt * model_->getNumCols(0);
-			(*it)->updateProblem(lambda, primalBound_);
-			scnt++;
-		}
-#endif
 	}
 	DSPdebugMessage("Update subproblems %.2f seconds\n", MPI::Wtime() - stime);
 
@@ -598,7 +609,6 @@ STO_RTN_CODE TssDdMpi::createMaster()
 	master_->createProblem(model_);
 
 	/** allocate memory */
-	nsubprobs_ = new int [comm_size_];
 	if (par_->TssDdDualVarsLog_)
 	{
 		multipliers_ = new double [model_->getNumCols(0) * model_->getNumScenarios()];
@@ -681,6 +691,7 @@ STO_RTN_CODE TssDdMpi::syncMaster()
 #if USE_ROOT_PROCESSOR == 0
 	else
 #endif
+	if (comm_group_ == 0)
 	{
 		/** send buffer length per process */
 		slenPerProcess = slenPerScenario * subprobs_.size();
@@ -768,27 +779,29 @@ bool TssDdMpi::doTerminate()
 		/** print iteration information */
 		if (par_->logLevel_ > 0)
 		{
-			if (par_->TssDdMasterSolver_ == Subgradient)
-				printf("Iteration %d dual bound %e", iterCnt_, dualBound_);
-			else
-			{
-				printf("Iteration %d master %e, dual bound %e ",
-						iterCnt_, master_->getObjValue(), dualBound_);
-				if (gapMaster > 1.e+4 || gapMaster < 1.e-4)
-					printf("(gap %.2e %%)", gapMaster * 100);
-				else
-					printf("(gap %.2f %%)", gapMaster * 100);
-			}
+			printf("Iteration %3d: Dual Bound %e", iterCnt_, dualBound_);
 			if (par_->TssDdEvalUb_ >= 0)
 			{
-				printf(", primal bound %e ", primalBound_);
+				printf(", Primal Bound %e ", primalBound_);
 				if (gapPrimal > 1.e+4 || gapPrimal < 1.e-4)
-					printf("(gap %.2e %%)", gapPrimal * 100);
+					printf("(Optimality Gap %.2e %%)", gapPrimal * 100);
 				else
-					printf("(gap %.2f %%)", gapPrimal * 100);
+					printf("(Optimality Gap %.2f %%)", gapPrimal * 100);
 			}
-			printf(", time elapsed %.2f sec. (master %.2f)\n",
-					MPI::Wtime() - wtime_start_, wtime_master_[wtime_master_.size() - 1]);
+			printf(", Time Elapsed %.2f sec.", MPI::Wtime() - wtime_start_);
+			if (par_->TssDdMasterSolver_ != Subgradient && par_->logLevel_ > 1)
+			{
+				printf("\n  Master: Obj %e", master_->getObjValue());
+				if (par_->logLevel_ > 2)
+				{
+					if (gapMaster > 1.e+4 || gapMaster < 1.e-4)
+						printf(" (Gap %.2e %%)", gapMaster * 100);
+					else
+						printf(" (Gap %.2f %%)", gapMaster * 100);
+				}
+				printf(", Solution Time %.2f sec.", wtime_master_[wtime_master_.size() - 1]);
+			}
+			printf("\n");
 		}
 
 		/** If master is not optimal, terminate. */
@@ -902,6 +915,7 @@ STO_RTN_CODE TssDdMpi::collectResults()
 #if USE_ROOT_PROCESSOR == 0
 	else
 #endif
+	if (comm_group_ == 0)
 	{
 		int nsubprobs = subprobs_.size();
 		if (nsubprobs > 0)
@@ -937,23 +951,20 @@ STO_RTN_CODE TssDdMpi::collectResults()
 /** get upper bound */
 double TssDdMpi::getUpperBound(
 		TssDdSub * ddsub, /**< subproblem to evaluate */
-		bool & feasible,  /**< indicating feasibility */
-		int tid           /**< thread id */)
+		bool & feasible   /**< indicating feasibility */)
 {
 	assert(bdsub_);
-	assert(bdsub_[tid]);
 
 	/** get solution */
 	const double * solution = ddsub->si_->getSolution();
 
-	return getUpperBound(solution, feasible, tid);
+	return getUpperBound(solution, feasible);
 }
 
 /** get upper bound */
 double TssDdMpi::getUpperBound(
 		const double * solution, /**< solution to evaluate */
-		bool & feasible,         /**< indicating feasibility */
-		int tid                  /**< thread id */)
+		bool & feasible          /**< indicating feasibility */)
 {
 	assert(solution);
 
@@ -971,10 +982,10 @@ double TssDdMpi::getUpperBound(
 	for (int s = 0; s < nsubprobs; ++s)
 	{
 		/** solve recourse problem */
-		bdsub_[tid]->solveSingleRecourse(subprobs_[s]->sind_, solution, objval_reco, NULL);
+		bdsub_->solveSingleRecourse(subprobs_[s]->sind_, solution, objval_reco, NULL);
 
 		/** infeasible ?*/
-		if (bdsub_[tid]->status_[subprobs_[s]->sind_] == STO_STAT_PRIM_INFEASIBLE)
+		if (bdsub_->status_[subprobs_[s]->sind_] == STO_STAT_PRIM_INFEASIBLE)
 		{
 			feasible = false;
 			break;
@@ -987,14 +998,14 @@ double TssDdMpi::getUpperBound(
 #else
 	/** get recourse value */
 	double * objval_reco = new double [model_->getNumScenarios()];
-	bdsub_[tid]->solveRecourse(solution, objval_reco, NULL);
+	bdsub_->solveRecourse(solution, objval_reco, NULL);
 
 	/** collect objective values */
 	feasible = true;
 	for (int s = 0; s < model_->getNumScenarios(); ++s)
 	{
 		objval += objval_reco[s] * model_->getProbability()[s];
-		if (bdsub_[tid]->status_[s] == STO_STAT_PRIM_INFEASIBLE)
+		if (bdsub_->status_[s] == STO_STAT_PRIM_INFEASIBLE)
 		{
 			feasible = false;
 			break;
@@ -1134,13 +1145,15 @@ void TssDdMpi::obtainUpperBounds(
 	int timeExceededLocal = 0;
 	bool feasible = true;
 	double * ub = new double [num];
+	CoinZeroN(ub, num);
+
 #ifdef DO_SERIALIZE
 	for (int r = 0; r < comm_size_; r++)
 	{
 		if (r == comm_rank_)
 		{
 #endif
-			for (int i = 0; i < num; ++i)
+			for (int i = comm_group_; i < num; i += num_comm_groups_)
 			{
 				double * sol = ubSolutions_[numSyncedUbSolutions_ + i]->denseVector(model_->getNumCols(0));
 				ub[i] = getUpperBound(sol, feasible);
@@ -1185,8 +1198,16 @@ void TssDdMpi::obtainUpperBounds(
 	numSyncedUbSolutions_ += num;
 
 	/** 4. print */
-	if (ubUpdated && comm_rank_ == 0 && par_->logLevel_ > 0)
-		printf("-> BEST primal bound %e\n", primalBound_);
+	if (par_->logLevel_ > 2)
+	{
+		if (ubUpdated)
+			printf(" -> BEST Primal Bound %e\n", primalBound_);
+	}
+	else if (par_->logLevel_ == 1)
+	{
+		if (ubUpdated) printf(" * ");
+		else printf("   ");
+	}
 }
 
 /** collect objective values;
@@ -1211,7 +1232,6 @@ void TssDdMpi::collectObjValues(
 int TssDdMpi::addFeasCuts(
 		Solutions solutions /**< solutions to check */)
 {
-	int violated = 0;
 	int ncols_first = model_->getNumCols(0); /**< number of first-stage variables */
 	int nsols = solutions.size();            /**< number of solutions stored */
 	double ** sol = new double * [nsols];    /**< array of dense vector of solutions */
@@ -1219,10 +1239,24 @@ int TssDdMpi::addFeasCuts(
 
 	/** loop over solutions */
 	for (int i = 0; i < nsols; ++i)
+		sol[i] = NULL;
+#ifdef DO_SERIALIZE
+	for (int r = 0; r < comm_size_; ++r)
 	{
-		sol[i] = solutions[i]->denseVector(ncols_first);
-		bdsub_[0]->generateCuts(ncols_first, sol[i], cuts, TssBdSub::TssDd, TssBdSub::FeasCut);
+		if (r == comm_rank_)
+		{
+			DSPdebugMessage("Rank %d generating feasibility cuts\n", comm_rank_);
+#endif
+			for (int i = comm_group_; i < nsols; i += num_comm_groups_)
+			{
+				sol[i] = solutions[i]->denseVector(ncols_first);
+				bdsub_->generateCuts(ncols_first, sol[i], cuts, TssBdSub::TssDd, TssBdSub::FeasCut);
+			}
+#ifdef DO_SERIALIZE
+		}
+		MPI_Barrier(comm_);
 	}
+#endif
 
 #if 0
 	/** print cuts */
@@ -1239,24 +1273,6 @@ int TssDdMpi::addFeasCuts(
 	/** synchronize cuts */
 	syncCuts(0, cuts);
 
-	/** check the violation */
-	for (int i = 0; i < nsols; ++i)
-	{
-//		DSPdebugMessage("Rank %d: sol[%d] minind %d maxind %d nzcnt %d sum %e 1-norm %e 2-norm %e inf-norm %e\n",
-//				comm_rank_, i, solutions[i]->getMinIndex(), solutions[i]->getMaxIndex(), solutions[i]->getNumElements(), solutions[i]->sum(), solutions[i]->oneNorm(), solutions[i]->twoNorm(), solutions[i]->infNorm());
-		for (int j = 0; j < cuts->sizeCuts(); ++j)
-		{
-			double eff = cuts->rowCutPtr(j)->violated(sol[i]);
-//			DSPdebugMessage("Rank %d: solution[%d] cut[%d] efficacy %e\n", comm_rank_, i, j, eff);
-			if (eff > 1.0e-6)
-			{
-				violated = 1;
-				break;
-			}
-		}
-		if (violated) break;
-	}
-
 	/** add generated cuts to pool */
 	for (int i = 0; i < cuts->sizeCuts(); ++i)
 		cuts_->insertIfNotDuplicate(cuts->rowCut(i));
@@ -1268,7 +1284,7 @@ int TssDdMpi::addFeasCuts(
 	FREE_PTR(cuts);
 	FREE_2D_ARRAY_PTR(nsols, sol);
 
-	return violated;
+	return 1;
 }
 
 /** add optimality cuts */
@@ -1276,34 +1292,69 @@ int TssDdMpi::addOptCuts(
 		int num /**< number of solutions to check */)
 {
 	int violated = 0;
-	int ncols_first = model_->getNumCols(0); /**< number of first-stage variables */
-	int nSolutions = ubSolutions_.size();    /**< number of solutions stored */
-	double ** sol = new double * [num];      /**< array of dense vector of solutions */
-	OsiCuts * cuts = new OsiCuts;            /**< cuts generated */
+	int ncols_first = model_->getNumCols(0);    /**< number of first-stage variables */
+	int nSolutions = ubSolutions_.size();       /**< number of solutions stored */
+	vector<int> isol;                           /**< solution indices considered in process */
+	int * numsols   = new int [comm_size_];     /**< number of solutions considered in each process */
+	int * displs    = new int [comm_size_];
+	int * cutgroup  = NULL;
+	double ** sol   = new double * [num];       /**< array of dense vector of solutions */
+	OsiCuts * cuts  = new OsiCuts;              /**< cuts generated */
 	double * aggrow = new double [ncols_first]; /**< aggregated optimality cut row */
 	double aggrhs = 0.0;                        /**< aggregated optimality cut rhs */
 
 	/** loop over solutions */
 	for (int i = 0; i < num; ++i)
+		sol[i] = NULL;
+#ifdef DO_SERIALIZE
+	for (int r = 0; r < comm_size_; ++r)
 	{
-		sol[i] = ubSolutions_[nSolutions - num + i]->denseVector(ncols_first);
-		bdsub_[0]->generateCuts(ncols_first + 1, sol[i], cuts, TssBdSub::TssDd, TssBdSub::OptCut);
+		if (r == comm_rank_)
+		{
+			DSPdebugMessage("Rank %d generating optimality cuts\n", comm_rank_);
+#endif
+			for (int i = comm_group_; i < num; i += num_comm_groups_)
+			{
+				isol.push_back(i);
+				sol[i] = ubSolutions_[nSolutions - num + i]->denseVector(ncols_first);
+				bdsub_->generateCuts(ncols_first + 1, sol[i], cuts, TssBdSub::TssDd, TssBdSub::OptCut);
+			}
+#ifdef DO_SERIALIZE
+		}
+		MPI_Barrier(comm_);
 	}
+#endif
 
-#if 0
+#if 1
 	/** print cuts */
-	DSPdebugMessage("Rank %d: found %d optimality cuts\n", comm_rank_, cuts->sizeCuts());
-	for (int i = 0; i < cuts->sizeCuts(); ++i)
+	for (int r = 0; r < comm_size_; ++r)
 	{
-		OsiRowCut * rc = cuts->rowCutPtr(i);
-		CoinPackedVector rcrow = rc->row();
-		DSPdebugMessage("Rank %d: cut[%d] rhs %e minind %d maxind %d nzcnt %d sum %e 1-norm %e 2-norm %e inf-norm %e\n",
-				comm_rank_, i, rc->lb(), rcrow.getMinIndex(), rcrow.getMaxIndex(), rcrow.getNumElements(), rcrow.sum(), rcrow.oneNorm(), rcrow.twoNorm(), rcrow.infNorm());
+		if (r == comm_rank_)
+		{
+			DSPdebugMessage("Rank %d: found %d optimality cuts\n", comm_rank_, cuts->sizeCuts());
+			for (int i = 0; i < cuts->sizeCuts(); ++i)
+			{
+				OsiRowCut * rc = cuts->rowCutPtr(i);
+				CoinPackedVector rcrow = rc->row();
+				DSPdebugMessage("Rank %d: cut[%d] rhs %e minind %d maxind %d nzcnt %d sum %e 1-norm %e 2-norm %e inf-norm %e\n",
+						comm_rank_, i, rc->lb(), rcrow.getMinIndex(), rcrow.getMaxIndex(), rcrow.getNumElements(), rcrow.sum(), rcrow.oneNorm(), rcrow.twoNorm(), rcrow.infNorm());
+			}
+		}
+		MPI_Barrier(comm_);
 	}
 #endif
 
 	/** synchronize cuts */
 	syncCuts(0, cuts);
+
+	/** synchronize solution indices */
+	int isol_size[1] = {(int) isol.size()};
+	MPI_Allgather(isol_size, 1, MPI::INT, numsols, 1, MPI::INT, comm_);
+
+	for (int i = 0; i < comm_size_; ++i)
+		displs[i] = i == 0 ? 0 : displs[i-1] + numsols[i-1];
+	cutgroup = new int [cuts->sizeCuts()];
+	MPI_Allgatherv(&isol[0], (int) isol.size(), MPI::INT, cutgroup, numsols, displs, MPI::INT, comm_);
 
 	/** construct cuts */
 	for (int k = 0; k < num; ++k)
@@ -1314,8 +1365,10 @@ int TssDdMpi::addOptCuts(
 		aggrhs = 0.0;
 
 		/** aggregating */
-		for (int i = k; i < cuts->sizeCuts(); i += num)
+		for (int i = 0; i < cuts->sizeCuts(); ++i)
 		{
+			if (cutgroup[i] != k) continue;
+
 			OsiRowCut * rc = cuts->rowCutPtr(i);
 			if (rc == NULL) continue;
 
@@ -1377,6 +1430,9 @@ int TssDdMpi::addOptCuts(
 
 	/** free memory */
 	FREE_PTR(cuts);
+	FREE_PTR(numsols);
+	FREE_PTR(displs);
+	FREE_PTR(cutgroup);
 	FREE_2D_ARRAY_PTR(num, sol);
 	FREE_ARRAY_PTR(aggrow);
 

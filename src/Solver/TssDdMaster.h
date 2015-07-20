@@ -16,7 +16,7 @@
 #include "OsiCuts.hpp"
 
 /** DSP */
-#include "Solver/SolverInterface.h"
+#include "SolverInterface/SolverInterface.h"
 #include "Solver/StoParam.h"
 #include "Model/TssModel.h"
 

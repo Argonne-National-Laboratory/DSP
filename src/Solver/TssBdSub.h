@@ -26,7 +26,7 @@
 #include "Utility/StoMacros.h"
 #include "Utility/StoRtnCodes.h"
 #include "Utility/StoUtility.h"
-#include "Solver/SolverInterface.h"
+#include "SolverInterface/SolverInterface.h"
 #include "Solver/StoParam.h"
 
 #define DSP_SOLVER_INTERFACE
