@@ -245,11 +245,6 @@ m = StochasticModel(nScenarios);
                 sum{Spin_Resv[i,t], i=GENERATORS}
                 >= spin_resv_rate * (total_demand[t] - total_wind_scen[t,s]))
 
-        # Spinning reserve requirement for system
-        @addConstraint(sb, SPIN_RESV_REQ[t=PERIODS],
-                sum{Spin_Resv[i,t], i=GENERATORS}
-                >= spin_resv_rate * (total_demand[t] - total_wind_scen[t,s]))
-
         # Spinning reserve capacity for individual unit
         @addConstraint(sb, SPIN_RESV_MAX_SLOW[i=SLOWGENS, t=PERIODS],
                 Spin_Resv[i,t] <= spin_notice / 60. * ramp_rate[i] * Use[i,t])
