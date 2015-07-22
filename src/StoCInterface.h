@@ -32,8 +32,14 @@ void freeTssModel(StoApiEnv * env);
 /** free solver */
 void freeTssSolver(StoApiEnv * env);
 
+/** If current model is stochastic, return the model as a TssModel object. If no model exists, create one. */
+TssModel * getTssModel(StoApiEnv * env);
+
+/** prepare decomposition model to be solved; returns false if there is an error */
+bool prepareDecModel(StoApiEnv * env);
+
 /** get model pointer */
-TssModel * getModelPtr(StoApiEnv * env);
+DecModel * getModelPtr(StoApiEnv * env);
 
 /** set number of scenarios */
 void setNumberOfScenarios(
@@ -179,8 +185,14 @@ int getNumRows(StoApiEnv * env, int stage);
 /** get number of columns */
 int getNumCols(StoApiEnv * env, int stage);
 
+/** get number of columns */
+int getTotalNumCols(StoApiEnv * env);
+
 /** get number of scenarios */
 int getNumScenarios(StoApiEnv * env);
+
+/** get number of subproblems */
+int getNumSubproblems(StoApiEnv * env);
 
 /** get solution time */
 double getSolutionTime(StoApiEnv * env);

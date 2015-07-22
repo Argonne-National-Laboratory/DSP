@@ -9,9 +9,13 @@
 
 #include "Utility/StoMacros.h"
 #include "Solver/TssEval.h"
-#include "Solver/TssDe.h"
 #include "Solver/TssBd.h"
-#include "Solver/TssDdMpi.h"
+#include "Solver/DecDdMpi.h"
+#include "Solver/DecDe.h"
+#include "Solver/DecTssSolver.h"
+#include "Model/DecTssModel.h"
+#include "Model/DecDetModel.h"
+
 
 /* using __cplusplus */
 #ifdef __cplusplus
@@ -25,7 +29,7 @@ extern "C" {
 	}
 #define STO_API_CHECK_MODEL(RTN)                \
 	STO_API_CHECK_ENV(RTN)                      \
-	if (env->tss_ == NULL) {                    \
+	if (env->model_ == NULL) {                    \
 		printf("Error: Null model pointer.\n"); \
 		return RTN;                             \
 	}
@@ -49,24 +53,97 @@ void freeEnv(StoApiEnv * env)
 }
 
 /** free new model */
-void freeTssModel(StoApiEnv * env)
+void freeModel(StoApiEnv * env)
 {
 	STO_API_CHECK_ENV();
-	FREE_PTR(env->tss_);
+	FREE_PTR(env->model_);
 }
 
 /** free solver */
-void freeTssSolver(StoApiEnv * env)
+void freeSolver(StoApiEnv * env)
 {
 	STO_API_CHECK_ENV();
 	FREE_PTR(env->solver_);
 }
 
+/** If current model is stochastic, return the model as a TssModel object. If no model exists, create one. */
+TssModel * getTssModel(StoApiEnv * env)
+{
+	if (env->model_ == NULL)
+		env->model_ = new DecTssModel;
+	/** TODO: Should fail gracefully */
+	if (env->model_->isStochastic())
+	{
+		TssModel * tss;
+		try
+		{
+			tss = dynamic_cast<TssModel *>(env->model_);
+		}
+		catch (const std::bad_cast& e)
+		{
+			printf("Error: Model claims to be stochastic when it is not");
+			return NULL;
+		}
+		return tss;
+	}
+	else
+	{
+		printf("Error: Attempted to access feature only supported by stochastic models with a general decomposition model\n");
+		return NULL;
+	}
+}
+
+/** prepare decomposition model to be solved; returns false if there is an error */
+bool prepareDecModel(StoApiEnv * env)
+{
+	if (!env->model_->isStochastic() && env->decdata_ == NULL)
+	{
+		printf("Error: General decomposition models must be accompanied by coupling constraints\n");
+		return false;
+	}
+
+	if (env->decdata_ != NULL)
+	{
+		if (env->model_->isStochastic())
+		{
+			printf("Decomposition data for a stochastic model supplied: converting model to extensive form\n");
+			DetModel * det;
+			STO_RTN_CHECK_THROW(getTssModel(env)->copyDeterministicEquivalent(det),
+					"copyDeterministicEquivalent", "TssModel");
+			env->model_ = new DecDetModel(det, env->decdata_);
+			/** let default settings for subproblems take place */
+			env->par_->TssDdNumProcIdx_ = 0;
+			env->par_->TssDdProcIdxSet_ = NULL;
+		}
+		else
+		{
+			/** deterministic case with decdata: update model with decdata */
+			DecDetModel * decDet;
+			try
+			{
+				decDet = dynamic_cast<DecDetModel *>(env->model_);
+			}
+			catch (const std::bad_cast& e)
+			{
+				printf("Error: Deterministic model not of proper type");
+				return false;
+			}
+			decDet->setDecData(env->decdata_);
+		}
+
+		if (env->par_->relaxIntegrality_[0] || env->par_->relaxIntegrality_[1])
+		{
+			printf("Warning: Relaxing stage integrality only supported in stochastic model; feature disabled\n");
+		}
+	}
+	return true;
+}
+
 /** get model pointer */
-TssModel * getModelPtr(StoApiEnv * env)
+DecModel * getModelPtr(StoApiEnv * env)
 {
 	STO_API_CHECK_ENV(NULL);
-	return env->tss_;
+	return env->model_;
 }
 
 /** set number of scenarios */
@@ -74,9 +151,7 @@ void setNumberOfScenarios(
 		StoApiEnv * env,  /**< pointer to API object */
 		int         nscen /**< number of scenarios */)
 {
-	if (env->tss_ == NULL)
-		env->tss_ = new TssModel;
-	env->tss_->setNumberOfScenarios(nscen);
+	getTssModel(env)->setNumberOfScenarios(nscen);
 }
 
 /** set dimensions */
@@ -87,17 +162,13 @@ void setDimensions(
 		const int   ncols2, /**< number of second-stage columns */
 		const int   nrows2  /**< number of second-stage rows */)
 {
-	if (env->tss_ == NULL)
-		env->tss_ = new TssModel;
-	env->tss_->setDimensions(ncols1, nrows1, ncols2, nrows2);
+	getTssModel(env)->setDimensions(ncols1, nrows1, ncols2, nrows2);
 }
 
 /** read smps files */
 void readSmps(StoApiEnv * env, const char * smps)
 {
-	if (env->tss_ == NULL)
-		env->tss_ = new TssModel;
-	env->tss_->readSmps(smps);
+	getTssModel(env)->readSmps(smps);
 }
 
 /** load first-stage problem */
@@ -113,9 +184,7 @@ void loadFirstStage(
 		const double *       rlbd,  /**< row lower bounds */
 		const double *       rubd   /**< row upper bounds */)
 {
-	if (env->tss_ == NULL)
-		env->tss_ = new TssModel;
-	env->tss_->loadFirstStage(start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
+	getTssModel(env)->loadFirstStage(start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
 }
 
 /** load second-stage problem */
@@ -133,9 +202,50 @@ void loadSecondStage(
 		const double *       rlbd,  /**< row lower bounds */
 		const double *       rubd   /**< row upper bounds */)
 {
-	if (env->tss_ == NULL)
-		env->tss_ = new TssModel;
-	env->tss_->loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
+	getTssModel(env)->loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
+}
+
+/** load deterministic problem */
+void loadDeterministic(
+		StoApiEnv *          env,    /**< pointer to API object */
+		const CoinBigIndex * start,  /**< start index for each row */
+		const int *          index,  /**< column indices */
+		const double *       value,  /**< constraint elements */
+		const int            numels, /**< number of elements in index and value */
+		const int            ncols,  /**< number of columns */
+		const int            nrows,  /**< number of rows */
+		const double *       clbd,   /**< column lower bounds */
+		const double *       cubd,   /**< column upper bounds */
+		const char *         ctype,  /**< column types */
+		const double *       obj,    /**< objective coefficients */
+		const double *       rlbd,   /**< row lower bounds */
+		const double *       rubd    /**< row upper bounds */)
+{
+	if (env->model_ != NULL)
+		printf("Warning: Replacing an already loaded model\n");
+	DetModel * det = new DetModel(start, index, value, numels, ncols, nrows, clbd, cubd, ctype, obj, rlbd, rubd);
+	env->model_ = new DecDetModel(det, NULL);
+}
+
+/** load parameters for a custom decomposition of the problem */
+void loadDecomposition(
+		StoApiEnv * env,            /**< pointer to API object */
+		int         nsubprobs,      /**< number of subproblems */
+		int         ncols,          /**< number of columns */
+		int         ncoupling,      /**< number of coupling constraints */
+		int *       varPartition,   /**< partition of columns into subproblems */
+		int *       couplingStarts, /**< indices in cols at which each coupling constraint starts */
+		int *       couplingCols,   /**< variables of each coupling constraint left-hand side */
+		double *    couplingCoeffs  /**< coefficients of each coupling constraint left-hand side */)
+{
+	if (env->model_ == NULL)
+	{
+		printf("Error: Model needs to be loaded before specifying decomposition parameters.\n");
+		return;
+	}
+
+	env->decdata_ = new DecData(nsubprobs, ncols, ncoupling, varPartition, couplingStarts,
+		couplingCols, couplingCoeffs);
 }
 
 
@@ -144,9 +254,7 @@ void branchPriorities(
 		StoApiEnv * env,       /**< pointer to API object */
 		int *       priorities /**< A smaller number has more priority. */)
 {
-	if (env->tss_ == NULL)
-		env->tss_ = new TssModel;
-	env->tss_->setPriorities(priorities);
+	getTssModel(env)->setPriorities(priorities);
 }
 
 #if 0
@@ -158,9 +266,7 @@ void addBranchingObject(
 		double *    values,  /**< hyper-plane coefficients */
 		int         priority /**< branching priority */)
 {
-	if (env->tss_ == NULL)
-		env->tss_ = new TssModel;
-	env->tss_->addBranchingHyperplane(nzcnt, indices, values, priority);
+	getTssModel(env)->addBranchingHyperplane(nzcnt, indices, values, priority);
 }
 #endif
 
@@ -168,9 +274,16 @@ void addBranchingObject(
 void evaluateSolution(StoApiEnv * env, double * solution)
 {
 	STO_API_CHECK_MODEL();
-	freeTssSolver(env);
-	env->solver_ = new TssEval;
-	env->solver_->loadModel(env->par_, env->tss_);
+	freeSolver(env);
+
+	if (!env->model_->isStochastic())
+	{
+		printf("Error: Solution evaluation is currently only supported by stochastic models\n");
+		return;
+	}
+
+	env->solver_ = new DecTssSolver(new TssEval);
+	env->solver_->loadModel(env->par_, new DecTssModel(*getTssModel(env)));
 	TssEval * solver = dynamic_cast<TssEval*>(env->solver_);
 	solver->setSolution(solution);
 	env->solver_->solve();
@@ -180,9 +293,13 @@ void evaluateSolution(StoApiEnv * env, double * solution)
 void solveDe(StoApiEnv * env)
 {
 	STO_API_CHECK_MODEL();
-	freeTssSolver(env);
-	env->solver_ = new TssDe;
-	env->solver_->loadModel(env->par_, env->tss_);
+	freeSolver(env);
+
+	if (!prepareDecModel(env))
+		return;
+
+	env->solver_ = new DecDe;
+	env->solver_->loadModel(env->par_, env->model_);
 	env->solver_->solve();
 }
 
@@ -190,9 +307,13 @@ void solveDe(StoApiEnv * env)
 void solveDd(StoApiEnv * env, MPI_Comm comm)
 {
 	STO_API_CHECK_MODEL();
-	freeTssSolver(env);
-	env->solver_ = new TssDdMpi(comm, "");
-	env->solver_->loadModel(env->par_, env->tss_);
+	freeSolver(env);
+
+	if (!prepareDecModel(env))
+		return;
+
+	env->solver_ = new DecDdMpi(comm, "");
+	env->solver_->loadModel(env->par_, env->model_);
 	env->solver_->solve();
 }
 
@@ -202,17 +323,19 @@ void solveBd(
 		int         nauxvars /**< number of auxiliary variables (scenario clusters) */)
 {
 	STO_API_CHECK_MODEL();
-	freeTssSolver(env);
-	env->solver_ = new TssBd;
-	env->solver_->loadModel(env->par_, env->tss_);
+	freeSolver(env);
 
-	/** set auxiliary variables */
-	TssBd * tssbd = dynamic_cast<TssBd*>(env->solver_);
-	if (tssbd == NULL)
+	if (!env->model_->isStochastic())
 	{
-		printf("Error: TssSolver could not be converted to TssBd\n");
+		printf("Error: Benders decomposition is currently only supported by stochastic models\n");
 		return;
 	}
+
+	TssBd * tssbd = new TssBd;
+	env->solver_ = new DecTssSolver(tssbd);
+	env->solver_->loadModel(env->par_, new DecTssModel(*getTssModel(env)));
+
+	/** set auxiliary variables */
 	double * obj_aux = new double [nauxvars];
 	double * clbd_aux = new double [nauxvars];
 	double * cubd_aux = new double [nauxvars];
@@ -350,8 +473,8 @@ void setDdMasterSolver(StoApiEnv * env, int type)
 /** set DD stopping tolerance */
 void setDdStoppingTolerance(StoApiEnv * env, double tol)
 {
-        STO_API_CHECK_ENV();
-        env->par_->TssDdStoppingTol_ = tol;
+	STO_API_CHECK_ENV();
+	env->par_->TssDdStoppingTol_ = tol;
 }
 
 /** set number of cuts per iteration added to master */
@@ -390,21 +513,35 @@ void setScipLimitsTime(StoApiEnv * env, double time)
 int getNumRows(StoApiEnv * env, int stage)
 {
 	STO_API_CHECK_MODEL(-1);
-	return env->tss_->getNumRows(stage);
+	return getTssModel(env)->getNumRows(stage);
 }
 
 /** get number of columns */
 int getNumCols(StoApiEnv * env, int stage)
 {
 	STO_API_CHECK_MODEL(-1);
-	return env->tss_->getNumCols(stage);
+	return getTssModel(env)->getNumCols(stage);
+}
+
+/** get number of columns */
+int getTotalNumCols(StoApiEnv * env)
+{
+	STO_API_CHECK_MODEL(-1);
+	return env->model_->getFullModelNumCols();
 }
 
 /** get number of scenarios */
 int getNumScenarios(StoApiEnv * env)
 {
 	STO_API_CHECK_MODEL(-1);
-	return env->tss_->getNumScenarios();
+	return getTssModel(env)->getNumScenarios();
+}
+
+/** get number of subproblems */
+int getNumSubproblems(StoApiEnv * env)
+{
+	STO_API_CHECK_MODEL(-1);
+	return env->model_->getNumSubproblems();
 }
 
 /** get solution time */
@@ -416,17 +553,8 @@ double getSolutionTime(StoApiEnv * env)
 
 void getObjCoef(StoApiEnv * env, double * obj)
 {
-	CoinCopyN(env->tss_->getObjCore(0), env->tss_->getNumCols(0), obj);
-	for (int s = 0; s < env->tss_->getNumScenarios(); ++s)
-	{
-		CoinCopyN(env->tss_->getObjCore(1), env->tss_->getNumCols(1), obj + env->tss_->getNumCols(0) + s * env->tss_->getNumCols(1));
-		for (int j = 0; j < env->tss_->getObjScenario(s)->getNumElements(); ++j)
-		{
-			obj[s * env->tss_->getNumCols(1) + env->tss_->getObjScenario(s)->getIndices()[j]] = env->tss_->getObjScenario(s)->getElements()[j];
-		}
-		for (int j = 0; j < env->tss_->getNumCols(1); ++j)
-			obj[env->tss_->getNumCols(0) + s * env->tss_->getNumCols(1) + j] *= env->tss_->getProbability()[s];
-	}
+	STO_API_CHECK_SOLVER();
+	return env->model_->getObjCoef(obj);
 }
 
 /** get solution status */
@@ -483,7 +611,7 @@ int getDdNumInfeasSolutions(StoApiEnv * env)
 {
 	int num = 0;
 	STO_API_CHECK_SOLVER(num);
-	TssDdMpi * dd = dynamic_cast<TssDdMpi*>(env->solver_);
+	DecDdMpi * dd = dynamic_cast<DecDdMpi*>(env->solver_);
 	if (dd)
 		num = dd->nInfeasible_;
 	return num;
@@ -494,7 +622,7 @@ int getDdIterTimeSize(StoApiEnv * env)
 {
 	int num = 0;
 	STO_API_CHECK_SOLVER(num);
-	TssDdMpi * dd = dynamic_cast<TssDdMpi*>(env->solver_);
+	DecDdMpi * dd = dynamic_cast<DecDdMpi*>(env->solver_);
 	if (dd)
 		num = dd->wtime_elapsed_.size();
 	return num;
@@ -504,7 +632,7 @@ int getDdIterTimeSize(StoApiEnv * env)
 void getDdIterTime(StoApiEnv * env, double * time)
 {
 	STO_API_CHECK_SOLVER();
-	TssDdMpi * dd = dynamic_cast<TssDdMpi*>(env->solver_);
+	DecDdMpi * dd = dynamic_cast<DecDdMpi*>(env->solver_);
 	if (dd)
 	{
 		for (unsigned int i = 0; i < dd->wtime_elapsed_.size(); ++i)
@@ -517,7 +645,7 @@ int getDdMasterTimeSize(StoApiEnv * env)
 {
 	int num = 0;
 	STO_API_CHECK_SOLVER(num);
-	TssDdMpi * dd = dynamic_cast<TssDdMpi*>(env->solver_);
+	DecDdMpi * dd = dynamic_cast<DecDdMpi*>(env->solver_);
 	if (dd)
 		num = dd->wtime_master_.size();
 	return num;
@@ -527,7 +655,7 @@ int getDdMasterTimeSize(StoApiEnv * env)
 void getDdMasterTime(StoApiEnv * env, double * time)
 {
 	STO_API_CHECK_SOLVER();
-	TssDdMpi * dd = dynamic_cast<TssDdMpi*>(env->solver_);
+	DecDdMpi * dd = dynamic_cast<DecDdMpi*>(env->solver_);
 	if (dd)
 	{
 		for (unsigned int i = 0; i < dd->wtime_master_.size(); ++i)
@@ -540,7 +668,7 @@ int getDdSubprobTimeSize(StoApiEnv * env)
 {
 	int num = 0;
 	STO_API_CHECK_SOLVER(num);
-	TssDdMpi * dd = dynamic_cast<TssDdMpi*>(env->solver_);
+	DecDdMpi * dd = dynamic_cast<DecDdMpi*>(env->solver_);
 	if (dd)
 		num = dd->wtime_subprob_.size();
 	return num;
@@ -550,7 +678,7 @@ int getDdSubprobTimeSize(StoApiEnv * env)
 void getDdSubprobTime(StoApiEnv * env, double * time)
 {
 	STO_API_CHECK_SOLVER();
-	TssDdMpi * dd = dynamic_cast<TssDdMpi*>(env->solver_);
+	DecDdMpi * dd = dynamic_cast<DecDdMpi*>(env->solver_);
 	if (dd)
 	{
 		for (unsigned int i = 0; i < dd->wtime_subprob_.size(); ++i)
@@ -562,7 +690,7 @@ void getDdSubprobTime(StoApiEnv * env, double * time)
 int getDdNumMasterObjValues(StoApiEnv * env)
 {
 	STO_API_CHECK_SOLVER(0);
-	TssDdMpi * dd = dynamic_cast<TssDdMpi*>(env->solver_);
+	DecDdMpi * dd = dynamic_cast<DecDdMpi*>(env->solver_);
 	if (dd)
 	{
 		return dd->objval_master_.size();
@@ -574,7 +702,7 @@ int getDdNumMasterObjValues(StoApiEnv * env)
 int getDdNumSubproblemObjValues(StoApiEnv * env)
 {
 	STO_API_CHECK_SOLVER(0);
-	TssDdMpi * dd = dynamic_cast<TssDdMpi*>(env->solver_);
+	DecDdMpi * dd = dynamic_cast<DecDdMpi*>(env->solver_);
 	if (dd)
 	{
 		return dd->objval_subprob_.size();
@@ -586,7 +714,7 @@ int getDdNumSubproblemObjValues(StoApiEnv * env)
 int getDdNumPrimalBounds(StoApiEnv * env)
 {
 	STO_API_CHECK_SOLVER(0);
-	TssDdMpi * dd = dynamic_cast<TssDdMpi*>(env->solver_);
+	DecDdMpi * dd = dynamic_cast<DecDdMpi*>(env->solver_);
 	if (dd)
 	{
 		return dd->primalBounds_.size();
@@ -598,7 +726,7 @@ int getDdNumPrimalBounds(StoApiEnv * env)
 int getDdNumDualBounds(StoApiEnv * env)
 {
 	STO_API_CHECK_SOLVER(0);
-	TssDdMpi * dd = dynamic_cast<TssDdMpi*>(env->solver_);
+	DecDdMpi * dd = dynamic_cast<DecDdMpi*>(env->solver_);
 	if (dd)
 	{
 		return dd->dualBounds_.size();
@@ -610,7 +738,7 @@ int getDdNumDualBounds(StoApiEnv * env)
 void getDdMasterObjValues(StoApiEnv * env, double * vals)
 {
 	STO_API_CHECK_SOLVER();
-	TssDdMpi * dd = dynamic_cast<TssDdMpi*>(env->solver_);
+	DecDdMpi * dd = dynamic_cast<DecDdMpi*>(env->solver_);
 	if (dd)
 	{
 		for (unsigned int i = 0; i < dd->objval_master_.size(); ++i)
@@ -622,7 +750,7 @@ void getDdMasterObjValues(StoApiEnv * env, double * vals)
 void getDdSubproblemObjValues(StoApiEnv * env, double * vals)
 {
 	STO_API_CHECK_SOLVER();
-	TssDdMpi * dd = dynamic_cast<TssDdMpi*>(env->solver_);
+	DecDdMpi * dd = dynamic_cast<DecDdMpi*>(env->solver_);
 	if (dd)
 	{
 		for (unsigned int i = 0; i < dd->objval_subprob_.size(); ++i)
@@ -634,7 +762,7 @@ void getDdSubproblemObjValues(StoApiEnv * env, double * vals)
 void getDdPrimalBounds(StoApiEnv * env, double * vals)
 {
 	STO_API_CHECK_SOLVER();
-	TssDdMpi * dd = dynamic_cast<TssDdMpi*>(env->solver_);
+	DecDdMpi * dd = dynamic_cast<DecDdMpi*>(env->solver_);
 	if (dd)
 	{
 		for (unsigned int i = 0; i < dd->primalBounds_.size(); ++i)
@@ -646,7 +774,7 @@ void getDdPrimalBounds(StoApiEnv * env, double * vals)
 void getDdDualBounds(StoApiEnv * env, double * vals)
 {
 	STO_API_CHECK_SOLVER();
-	TssDdMpi * dd = dynamic_cast<TssDdMpi*>(env->solver_);
+	DecDdMpi * dd = dynamic_cast<DecDdMpi*>(env->solver_);
 	if (dd)
 	{
 		for (unsigned int i = 0; i < dd->dualBounds_.size(); ++i)
@@ -658,7 +786,7 @@ void getDdDualBounds(StoApiEnv * env, double * vals)
 double getDdCpuTime(StoApiEnv * env)
 {
 	STO_API_CHECK_SOLVER(0.);
-	TssDdMpi * dd = dynamic_cast<TssDdMpi*>(env->solver_);
+	DecDdMpi * dd = dynamic_cast<DecDdMpi*>(env->solver_);
 	if (dd)
 	{
 		return dd->ctime_start_;
@@ -669,7 +797,7 @@ double getDdCpuTime(StoApiEnv * env)
 int getDdNumChangesOfMultiplier(StoApiEnv * env)
 {
 	STO_API_CHECK_SOLVER(0);
-	TssDdMpi * dd = dynamic_cast<TssDdMpi*>(env->solver_);
+	DecDdMpi * dd = dynamic_cast<DecDdMpi*>(env->solver_);
 	if (dd)
 	{
 		return dd->changesOfMultiplier_.size();
@@ -681,7 +809,7 @@ int getDdNumChangesOfMultiplier(StoApiEnv * env)
 void getDdChangesOfMultiplier(StoApiEnv * env, double * changes)
 {
 	STO_API_CHECK_SOLVER();
-	TssDdMpi * dd = dynamic_cast<TssDdMpi*>(env->solver_);
+	DecDdMpi * dd = dynamic_cast<DecDdMpi*>(env->solver_);
 	if (dd)
 	{
 		for (unsigned int i = 0; i < dd->changesOfMultiplier_.size(); ++i)
@@ -697,7 +825,7 @@ void getDdChangesOfMultiplier(StoApiEnv * env, double * changes)
 void printModel(StoApiEnv * env)
 {
 	STO_API_CHECK_MODEL();
-	env->tss_->__printData();
+	env->model_->__printData();
 }
 
 #undef STO_API_CHECK_MODEL

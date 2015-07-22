@@ -9,8 +9,9 @@
 #define STOAPIENV_H_
 
 #include "Model/TssModel.h"
+#include "Model/DecData.h"
 #include "Solver/StoParam.h"
-#include "Solver/TssSolver.h"
+#include "Solver/DecSolver.h"
 #include "Utility/StoMacros.h"
 
 class StoApiEnv
@@ -21,8 +22,10 @@ public:
 
 public:
 	StoParam * par_;
-	TssModel * tss_;
-	TssSolver * solver_;
+	DecModel * model_;
+	DecSolver * solver_;
+	DecData * decdata_;  /**< decomposition data: only used when a general decomposable model is supplied */
+
 };
 
 #endif /* STOAPIENV_H_ */

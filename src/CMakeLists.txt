@@ -20,8 +20,18 @@ set(DSP_SRC_FILES
 	Solver/TssDdMasterSubgrad.cpp
 	Solver/TssDdSub.cpp
 	Solver/TssEval.cpp
+	Solver/DecSolver.cpp
+	Solver/DecDdMpi.cpp
+	Solver/DecDdPrimalMaster.cpp
+	Solver/DecDdMasterSubgrad.cpp
+	Solver/DecDdSub.cpp
+	Solver/DecDe.cpp
 	Model/StoModel.cpp
 	Model/TssModel.cpp
+	Model/DecData.cpp
+	Model/DecTssModel.cpp
+	Model/DecDetModel.cpp
+	Model/DetModel.cpp
 	Utility/StoMessage.cpp
 	Utility/StoUtility.cpp)
 
@@ -73,7 +83,7 @@ else()
 endif()
 install(CODE "message(\"\")")
 install(CODE "message(\"** Please install Julia from http://julialang.org/downloads/\")")
-install(CODE "message(\"   and add four Julia pakcages by typing the folloing in the Julia command-line tool.\")")
+install(CODE "message(\"   and add four Julia packages by typing the following in the Julia command-line tool.\")")
 install(CODE "message(\"    Pkg.add(\\\"MPI\\\");\")")
 install(CODE "message(\"    Pkg.add(\\\"JuMP\\\");\")")
 install(CODE "message(\"    Pkg.clone(\\\"https://github.com/kibaekkim/StochJuMP.jl.git\\\");\")")

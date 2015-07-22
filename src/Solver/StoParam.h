@@ -49,6 +49,7 @@ public:
 		wtimeLimit_ = std::numeric_limits<double>::max();
 		relaxIntegrality_[0] = false;
 		relaxIntegrality_[1] = false;
+		relaxIntegralityAll_ = false;
 	}
 	virtual ~StoParam()
 	{
@@ -88,6 +89,8 @@ public:
 	double wtimeLimit_;
 
 	bool relaxIntegrality_[2];
+
+	bool relaxIntegralityAll_; /* TODO: Not implemented in TssBd */
 
 	/**
 	 * Benders decomposition
