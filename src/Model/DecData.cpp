@@ -147,7 +147,9 @@ DecData::DecData(
 		for (int j = 0; j < rows_coupling_->getVector(i).getNumElements(); j++)
 		{
 			int s = cols_subprob_[inds[j]];
-			if (NONZERO(elems[j]))
+			if (NONZERO(elems[j])
+				&& (nrows_subprob_coupling_[s] == 0
+					|| rows_subprob_[s][nrows_subprob_coupling_[s]-1] != i)) /** avoid double-counting rows */
 			{
 				rows_subprob_[s][nrows_subprob_coupling_[s]] = i;
 				nrows_subprob_coupling_[s]++;
@@ -337,7 +339,7 @@ void DecData::reduceMatrixToSubproblems(
 	}
 	else
 	{
-		/** row ordered */
+		/** row ordered (default) */
 		for (int i = 0; i < mat->getNumRows(); i++)
 		{
 			const double * rowElems = mat->getVector(i).getElements();
