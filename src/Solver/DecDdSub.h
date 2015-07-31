@@ -11,7 +11,7 @@
 #include <typeinfo>
 
 /** DSP */
-#include "Solver/SolverInterface.h"
+#include "SolverInterface/SolverInterface.h"
 #include "Solver/TssBdSub.h"
 #include "Model/DecModel.h"
 

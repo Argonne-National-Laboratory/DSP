@@ -10,10 +10,10 @@
 #include "Solver/DecDdSub.h"
 #include "Utility/StoMacros.h"
 #include "Utility/StoMessage.h"
-#include "Solver/SolverInterfaceClp.h"
-#include "Solver/SolverInterfaceScip.h"
-#include "Solver/SCIPconshdlrBendersDd.h"
-#include "Solver/SCIPbranchruleLB.h"
+#include "SolverInterface/SolverInterfaceClp.h"
+#include "SolverInterface/SolverInterfaceScip.h"
+#include "SolverInterface/SCIPconshdlrBendersDd.h"
+#include "SolverInterface/SCIPbranchruleLB.h"
 
 DecDdSub::~DecDdSub()
 {

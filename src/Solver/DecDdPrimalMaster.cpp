@@ -9,9 +9,9 @@
 #include "Utility/StoMessage.h"
 #include "Utility/StoUtility.h"
 #include "Solver/DecDdPrimalMaster.h"
-#include "Solver/SolverInterfaceSpx.h"
-#include "Solver/SolverInterfaceClp.h"
-#include "Solver/OoqpEps.h"
+#include "SolverInterface/SolverInterfaceSpx.h"
+#include "SolverInterface/SolverInterfaceClp.h"
+#include "SolverInterface/OoqpEps.h"
 
 #include "CoinWarmStartBasis.hpp"
 

@@ -12,7 +12,7 @@
 
 /** DSP */
 #include "Solver/DecSolver.h"
-#include "Solver/SolverInterface.h"
+#include "SolverInterface/SolverInterface.h"
 
 class DecDe : public DecSolver {
 public:
