@@ -41,14 +41,29 @@ The following packages need to be installed on your system and located on ./extr
 
 * SCIP Optimization Suite (./extra/scipoptsuite-3.1.1) -- SCIP is non-commercial solvers for mixed integer programming (MIP) and mixed-integer nonlinear programming (MINLP). It is freely available from the website: http://scip.zib.de/download.php?fname=scipoptsuite-3.1.1.tgz
 
-Julia
------
-Julia is a high level dynamic programming language for technical computing, with syntax that is familiar to users of other technical computing environments such as MATLAB and Python. DSP provides an interface to an algebraic modeling package StochJuMP based on Julia. The interface package can be installed by the Julia command
+## Julia Interface (Required)
+
+DSP uses Julia as a modeling interface for the computational experiments. Julia is a high level dynamic programming language for technical computing, with syntax that is familiar to users of other technical computing environments such as MATLAB and Python. Julia can be downloaded from http://julialang.org/downloads/ If Julia is successfully installed on your machine, then you can start the Julia command-line tool by typing
+```bash
+julia
+```
+Now we need to install four Julia packages required to run DSP in the Julia environment. The packages should be installed in the Julia command-line tool. Please update the package list of Julia by typing
 ```julia
-Pkg.clone("https://github.com/kibaekkim/DSP.jl.git");
+Pkg.update();
 ```
-and the examples are located at
+* [MPI.jl](https://github.com/JuliaParallel/MPI.jl) is an MPI interface package, which can be installed by the following Julia command. MPICH is required for this package.
+```julia
+    Pkg.add("MPI");
 ```
-./examples/julia
+* [JuMP.jl](https://github.com/JuliaOpt/JuMP.jl) is a algebraic modeling package in Julia for mathematical programming, which can be installed by the following Julia command:
+```julia
+    Pkg.add("JuMP");
 ```
-Julia can be downloaded from http://julialang.org/downloads/
+* [StochJuMP.jl](https://github.com/kibaekkim/StochJuMP.jl.git) is a algebraic modeling package in Julia for stochastic programming, which can be installed by the following Julia command:
+```julia
+    Pkg.clone("https://github.com/kibaekkim/StochJuMP.jl.git");
+```
+* The [DSPsolver.jl](https://github.com/kibaekkim/DSPsolver.jl.git) package provides an interface to StochJuMP. DSPsolver.jl can be installed by the Julia command
+```julia
+    Pkg.clone("https://github.com/kibaekkim/DSPsolver.jl.git");
+```
