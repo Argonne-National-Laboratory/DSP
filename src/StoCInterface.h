@@ -166,6 +166,12 @@ void setDdStoppingTolerance(StoApiEnv * env, double tol);
 /** set number of cuts per iteration added to master */
 void setDdMasterNumCutsPerIter(StoApiEnv* env, int num);
 
+/** set trust region size */
+void setDdTrustRegionSize(StoApiEnv* env, int num);
+
+/** set whether trust region decrease should be disabled */
+void setDdDisableTrustRegionDecrease(StoApiEnv* env, bool yesNo);
+
 /** set SCIP/display/freq */
 void setScipDisplayFreq(StoApiEnv * env, int freq);
 

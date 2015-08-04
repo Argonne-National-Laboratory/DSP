@@ -486,6 +486,20 @@ void setDdMasterNumCutsPerIter(StoApiEnv* env, int num)
 	env->par_->TssDdMasterNumCutsPerIter_ = num;
 }
 
+/** set trust region size */
+void setDdTrustRegionSize(StoApiEnv* env, int num)
+{
+	STO_API_CHECK_ENV();
+	env->par_->TssDdTrustRegionSize_ = num;
+}
+
+/** set whether trust region decrease should be disabled */
+void setDdDisableTrustRegionDecrease(StoApiEnv* env, bool yesNo)
+{
+	STO_API_CHECK_ENV();
+	env->par_->TssDdDisableTrustRegionDecrease_ = yesNo;
+}
+
 /** set SCIP/display/freq */
 void setScipDisplayFreq(StoApiEnv * env, int freq)
 {

@@ -381,7 +381,7 @@ STO_RTN_CODE DecDdPrimalMaster::updateProblem(
 				/** set trust region */
 				setTrustRegion(rho_, prox_);
 			}
-			else
+			else if (!par_->TssDdDisableTrustRegionDecrease_)
 			{
 				/** The following rule is from Linderoth and Wright (2003) */
 				double rho = CoinMin(1.0, rho_) * (dual_bound - newobj) / (primalBound - dual_bound);
