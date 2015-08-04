@@ -38,12 +38,16 @@ DecData::DecData(const DecData & rhs) :
 	cols_incoupling_ = new bool [ncols_];
 	rows_subprob_ = new int * [nsubprobs_];
 	orig_coupling_col_ = new int * [nsubprobs_];
+	senses_ = new char [nrows_coupling_];
+	rhs_coupling_ = new double [nrows_coupling_];
 
-	CoinCopyN(rhs.cols_subprob_,           ncols_,     cols_subprob_);
-	CoinCopyN(rhs.ncols_subprob_,          nsubprobs_, ncols_subprob_);
-	CoinCopyN(rhs.ncols_subprob_coupling_, nsubprobs_, ncols_subprob_coupling_);
-	CoinCopyN(rhs.nrows_subprob_coupling_, nsubprobs_, nrows_subprob_coupling_);
-	CoinCopyN(rhs.cols_incoupling_,        ncols_,     cols_incoupling_);
+	CoinCopyN(rhs.cols_subprob_,           ncols_,          cols_subprob_);
+	CoinCopyN(rhs.ncols_subprob_,          nsubprobs_,      ncols_subprob_);
+	CoinCopyN(rhs.ncols_subprob_coupling_, nsubprobs_,      ncols_subprob_coupling_);
+	CoinCopyN(rhs.nrows_subprob_coupling_, nsubprobs_,      nrows_subprob_coupling_);
+	CoinCopyN(rhs.cols_incoupling_,        ncols_,          cols_incoupling_);
+	CoinCopyN(rhs.senses_,                 nrows_coupling_, senses_);
+	CoinCopyN(rhs.rhs_coupling_,           nrows_coupling_, rhs_coupling_);
 
 	for (int s = 0; s < nsubprobs_; s++)
 	{
@@ -63,6 +67,8 @@ DecData::~DecData()
 	FREE_ARRAY_PTR(ncols_subprob_);
 	FREE_ARRAY_PTR(cols_subprob_);
 	FREE_ARRAY_PTR(cols_incoupling_);
+	FREE_ARRAY_PTR(senses_);
+	FREE_ARRAY_PTR(rhs_coupling_);
 	FREE_2D_ARRAY_PTR(nsubprobs_, rows_subprob_);
 	FREE_2D_ARRAY_PTR(nsubprobs_, orig_coupling_col_);
 	FREE_PTR(rows_coupling_);
@@ -75,7 +81,9 @@ DecData::DecData(
 		int *    varPartition,   /**< partition of columns into subproblems */
 		int *    couplingStarts, /**< indices in cols at which each coupling constraint starts */
 		int *    couplingCols,   /**< variables of each coupling constraint left-hand side */
-		double * couplingCoeffs  /**< coefficients of each coupling constraint left-hand side */)
+		double * couplingCoeffs, /**< coefficients of each coupling constraint left-hand side */
+		char *   couplingSenses, /**< senses of each coupling constraint */
+		double * couplingRhs     /**< right-hand sides of each coupling constraint */)
 {
 	ncols_ = ncols;
 	nsubprobs_ = nsubprobs;
@@ -115,6 +123,14 @@ DecData::DecData(
 			k++;
 		}
 		rows_coupling_->appendRow(size, inds, elems);
+	}
+
+	senses_ = new char [nrows_coupling_];
+	rhs_coupling_ = new double [nrows_coupling_];
+	for (int i = 0; i < nrows_coupling_; i++)
+	{
+		senses_[i] = couplingSenses[i];
+		rhs_coupling_[i] = couplingRhs[i];
 	}
 
 	/** identify and count columns corresponding to subproblems */

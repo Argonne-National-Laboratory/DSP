@@ -27,7 +27,9 @@ public:
 		int *    varPartition,   /**< partition of columns into subproblems */
 		int *    couplingStarts, /**< indices in cols at which each coupling constraint starts */
 		int *    couplingCols,   /**< variables of each coupling constraint left-hand side */
-		double * couplingCoeffs  /**< coefficients of each coupling constraint left-hand side */);
+		double * couplingCoeffs, /**< coefficients of each coupling constraint left-hand side */
+		char *   couplingSenses, /**< senses of each coupling constraint */
+		double * couplingRhs     /**< right-hand sides of each coupling constraint */);
 
 	/** copy constructor */
 	DecData(const DecData & rhs);
@@ -60,6 +62,12 @@ public:
 
 	/** Evaluate the left-hand side of a row w.r.t. solution of one of the subproblems */
 	double evalLhsRowSubprob(int row, int subprob, double * subprobSolution);
+
+	/** Return the sense of a row */
+	char getSenseRow(int row) {return senses_[row];}
+
+	/** Return the right-hand side of a row */
+	double getRhsRow(int row) {return rhs_coupling_[row];}
 
 	/**
 	 * Helper function to decompose a problem given in the form of a matrix.
@@ -125,6 +133,9 @@ protected:
 	                             *  subproblem s to the variable index in the original space */
 
 	CoinPackedMatrix * rows_coupling_; /**< coupling constraints (on original space of variables) */
+	char * senses_;            /** row senses for coupling constraints ([L]ess than or equal, [E]qual, or [G]reater than or equal) */
+	double * rhs_coupling_;    /** right-hand side of coupling constraints (on the original space of variables) */
+
 
 };
 

@@ -236,7 +236,9 @@ void loadDecomposition(
 		int *       varPartition,   /**< partition of columns into subproblems */
 		int *       couplingStarts, /**< indices in cols at which each coupling constraint starts */
 		int *       couplingCols,   /**< variables of each coupling constraint left-hand side */
-		double *    couplingCoeffs  /**< coefficients of each coupling constraint left-hand side */)
+		double *    couplingCoeffs, /**< coefficients of each coupling constraint left-hand side */
+		char *      couplingSenses, /**< senses of each coupling constraint */
+		double *    couplingRhs     /**< right-hand sides of each coupling constraint */)
 {
 	if (env->model_ == NULL)
 	{
@@ -245,7 +247,7 @@ void loadDecomposition(
 	}
 
 	env->decdata_ = new DecData(nsubprobs, ncols, ncoupling, varPartition, couplingStarts,
-		couplingCols, couplingCoeffs);
+		couplingCols, couplingCoeffs, couplingSenses, couplingRhs);
 }
 
 

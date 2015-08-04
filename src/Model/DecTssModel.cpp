@@ -79,15 +79,15 @@ const int * DecTssModel::getSubproblemCouplingRowIndices(int s)
 	return rowIndices;
 }
 
-double DecTssModel::evalLhsRow(int row, double ** solutions)
+double DecTssModel::evalLhsCouplingRow(int row, double ** solutions)
 {
 	double val = 0;
 	for (int s = 0; s < getNumSubproblems(); s++)
-		val += evalLhsRowSubprob(row, s, solutions[s]);
+		val += evalLhsCouplingRowSubprob(row, s, solutions[s]);
 	return val;
 }
 
-double DecTssModel::evalLhsRowSubprob(int row, int s, double * subprobSolution)
+double DecTssModel::evalLhsCouplingRowSubprob(int row, int s, double * subprobSolution)
 {
 	/** recall solution is in the space of the coupling vars. of subproblem,
 	 *  while row is from the master problem coupling matrix */
@@ -99,7 +99,7 @@ double DecTssModel::evalLhsRowSubprob(int row, int s, double * subprobSolution)
 	return sol;
 }
 
-double DecTssModel::evalLhsRowAlternative(int row, double ** solutions)
+double DecTssModel::evalLhsCouplingRowAlternative(int row, double ** solutions)
 {
 	double val = 0;
 	for (int s = 0; s < getNumSubproblems(); s++)

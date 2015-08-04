@@ -64,9 +64,13 @@ public:
 
 	int getNumIntegers() {return getNumCoreIntegers();}
 
-	double evalLhsRow(int row, double ** solutions);
+	double evalLhsCouplingRow(int row, double ** solutions);
 
-	double evalLhsRowSubprob(int row, int subprob, double * subprobSolution);
+	double evalLhsCouplingRowSubprob(int row, int subprob, double * subprobSolution);
+
+	char getSenseCouplingRow(int row) {return 'E';}
+
+	double getRhsCouplingRow(int row) {return 0;}
 
 	bool nonanticipativity() {return true;}
 
@@ -114,7 +118,7 @@ public:
 	/** Methods on alternative representation used in subgradient algorithm */
 
 	/** Evaluates row with nonanticipativity represented as x_i = x_{i+1} */
-	double evalLhsRowAlternative(int row, double ** solutions);
+	double evalLhsCouplingRowAlternative(int row, double ** solutions);
 
 	/** Converts Lagrangian multipliers back from the alternative representation x_i = x_{i+1} (to x = x_i) */
 	double convertLagrangianFromAlternative(double * multipliers, double *& newMultipliers);

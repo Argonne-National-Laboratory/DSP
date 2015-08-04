@@ -119,7 +119,8 @@ private:
 
 	CoinPackedMatrix * cpl_mat_; /**< coupling constraint matrix */
 	int * cpl_cols_;             /**< coupling columns */
-
+	double * cpl_rhs_;           /**< right-hand sides of coupling rows */
+	double obj_offset_;          /**< constant offset in subproblem objective */
 
 public:
 

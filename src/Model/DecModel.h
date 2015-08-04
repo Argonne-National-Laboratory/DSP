@@ -85,17 +85,27 @@ public:
 	virtual void getObjCoef(double * obj) = 0;
 
 	/**
-	 * Evaluate the left-hand side of a row w.r.t. solutions in the subproblem space.
+	 * Evaluate the left-hand side of a coupling row w.r.t. solutions in the subproblem space.
 	 */
-	virtual double evalLhsRow(int row, double ** solutions) = 0;
+	virtual double evalLhsCouplingRow(int row, double ** solutions) = 0;
 
 	/**
-	 * Evaluate the left-hand side of a row w.r.t. solution of one of the subproblems.
+	 * Evaluate the left-hand side of a coupling row w.r.t. solution of one of the subproblems.
 	 * Solution is in the space of the coupling variables of the subproblem, so this
 	 * function is responsible for mapping the columns from the space of the subproblem
 	 * to the space of the master problem.
 	 */
-	virtual double evalLhsRowSubprob(int row, int subprob, double * subprobSolution) = 0;
+	virtual double evalLhsCouplingRowSubprob(int row, int subprob, double * subprobSolution) = 0;
+
+	/**
+	 * Return the sense of a coupling row.
+	 */
+	virtual char getSenseCouplingRow(int row) = 0;
+
+	/**
+	 * Return the right-hand side of a coupling row.
+	 */
+	virtual double getRhsCouplingRow(int row) = 0;
 
 	/**
 	 * Indicates whether the coupling constraints are nonanticipativity constraints

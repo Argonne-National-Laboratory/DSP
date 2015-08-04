@@ -108,9 +108,25 @@ STO_RTN_CODE DecDetModel::getFullModel(
 	CoinCopyN(det_->getRowLower(), nrows, rlbd);
 	CoinCopyN(det_->getRowUpper(), nrows, rubd);
 
-	/** TODO: Only equality to zero is supported for now */
-	CoinZeroN(rlbd + nrows, nrows_coupling);
-	CoinZeroN(rubd + nrows, nrows_coupling);
+	/** right-hand side */
+	for (int i = 0; i < nrows_coupling; i++)
+	{
+		if (decData_->getSenseRow(i) == 'L')
+		{
+			rlbd[nrows+i] = -COIN_DBL_MAX;
+			rubd[nrows+i] = decData_->getRhsRow(i);
+		}
+		else if (decData_->getSenseRow(i) == 'G')
+		{
+			rlbd[nrows+i] = decData_->getRhsRow(i);
+			rubd[nrows+i] = -COIN_DBL_MAX;
+		}
+		else /** decData_->getSenseRow(i) == 'E' */
+		{
+			rlbd[nrows+i] = decData_->getRhsRow(i);
+			rubd[nrows+i] = decData_->getRhsRow(i);
+		}
+	}
 
 	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
 

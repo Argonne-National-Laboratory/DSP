@@ -53,12 +53,12 @@ STO_RTN_CODE DecDdMasterSubgrad::updateProblem(
 	{
 		/** nonanticipativity constraints must be converted to a different representation */
 		for (int i = 0; i < ncoupling_; i++)
-			gradient_[i] = decTssModel->evalLhsRowAlternative(i, solution);
+			gradient_[i] = decTssModel->evalLhsCouplingRowAlternative(i, solution);
 	}
 	else
 	{
 		for (int i = 0; i < ncoupling_; i++)
-			gradient_[i] = model_->evalLhsRow(i, solution);
+			gradient_[i] = model_->evalLhsCouplingRow(i, solution) - model_->getRhsCouplingRow(i);
 	}
 
 	/** Lagrangian value */
@@ -104,7 +104,13 @@ STO_RTN_CODE DecDdMasterSubgrad::solve()
 {
 	/** get new Lagrangian multipliers */
 	for (int j = 0; j < ncoupling_; ++j)
+	{
 		multipliers_[j] += stepsize_ * gradient_[j];
+		if (model_->getSenseCouplingRow(j) == 'L') /** <= : nonnegative multipliers */
+			multipliers_[j] = CoinMax((double) 0.0, multipliers_[j]);
+		else if (model_->getSenseCouplingRow(j) == 'G') /** >= : nonpositive multipliers */
+			multipliers_[j] = CoinMin((double) 0.0, multipliers_[j]);
+	}
 
 	/** store final multipliers */
 	DecTssModel * decTssModel = dynamic_cast<DecTssModel*>(model_);

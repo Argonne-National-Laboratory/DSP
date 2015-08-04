@@ -74,7 +74,15 @@ public:
 		if (prox == NULL)
 			prox = prox_;
 		for (int j = nCutsPerIter_; j < ncols_; ++j)
-			si_->setColBounds(j, prox[j - nCutsPerIter_] - rho, prox[j - nCutsPerIter_] + rho);
+		{
+			double clbd = prox[j - nCutsPerIter_] - rho;
+			double cubd = prox[j - nCutsPerIter_] + rho;
+			if (model_->getSenseCouplingRow(j - nCutsPerIter_) == 'L')
+				clbd = CoinMax((double) 0.0, clbd); /* lambda >= 0 */
+			else if (model_->getSenseCouplingRow(j - nCutsPerIter_) == 'G')
+				cubd = CoinMin((double) 0.0, cubd); /* lambda <= 0 */
+			si_->setColBounds(j, clbd, cubd);
+		}
 	}
 
 	/** set print level */

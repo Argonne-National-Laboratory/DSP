@@ -20,8 +20,10 @@ DecDdSub::~DecDdSub()
 	FREE_PTR(si_);
 	FREE_PTR(obj_);
 	FREE_ARRAY_PTR(lambda_);
+	FREE_ARRAY_PTR(cpl_rhs_);
 	FREE_2D_ARRAY_PTR(nsols_, solutions_);
 	nsols_ = 0;
+	obj_offset_ = 0;
 }
 
 /** create problem */
@@ -77,6 +79,12 @@ STO_RTN_CODE DecDdSub::createProblem(DecModel * model)
 	/** storage for lambda */
 	lambda_ = new double [nrows_coupling_];
 	CoinZeroN(lambda_, nrows_coupling_);
+
+	/** copy right-hand side of coupling rows */
+	cpl_rhs_ = new double [nrows_coupling_];
+	for (int i = 0; i < nrows_coupling_; i++)
+		cpl_rhs_[i] = model->getRhsCouplingRow(i);
+	obj_offset_ = 0;
 
 	/** number of integer variables */
 	int nIntegers = model->getNumIntegers();
@@ -240,6 +248,7 @@ STO_RTN_CODE DecDdSub::updateProblem(
 
 		/** allocate memory */
 		newobj = new double [ncols];
+		obj_offset_ = 0;
 
 		/** update objective coefficients */
 		assert(obj_);
@@ -253,10 +262,10 @@ STO_RTN_CODE DecDdSub::updateProblem(
 			const int * inds = cpl_mat_->getVector(i).getIndices();
 			const double * elems = cpl_mat_->getVector(i).getElements();
 			for (int j = 0; j < size; j++)
-			{
-				/** TODO: This assumes right-hand side of zero and equality */
 				newobj[inds[j]] += lambda[i] * elems[j];
-			}
+
+			/* if rhs is not zero, then the objective has a constant offset, which is added when passing to the master */
+			obj_offset_ += lambda[i] * (-cpl_rhs_[i]);
 		}
 
 		si_->setObjCoef(newobj);
@@ -399,7 +408,7 @@ STO_RTN_CODE DecDdSub::MPImsgbuf(double * msgbuf)
 	msgbuf[0] = static_cast<double>(sind_);
 
 	/** The second element should be objective value. */
-	msgbuf[1] = si_->getPrimalBound();
+	msgbuf[1] = si_->getPrimalBound() + obj_offset_;
 
 	/** The following elements are for the coupling solution. */
 	const double * solution = si_->getSolution();

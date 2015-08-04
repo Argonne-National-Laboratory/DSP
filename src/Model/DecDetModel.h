@@ -61,9 +61,13 @@ public:
 
 	int getNumIntegers() {return det_->getNumIntegers();}
 
-	double evalLhsRow(int row, double ** solutions) {return decData_->evalLhsRow(row, solutions);}
+	double evalLhsCouplingRow(int row, double ** solutions) {return decData_->evalLhsRow(row, solutions);}
 
-	double evalLhsRowSubprob(int row, int subprob, double * subprobSolution) {return decData_->evalLhsRowSubprob(row, subprob, subprobSolution);}
+	double evalLhsCouplingRowSubprob(int row, int subprob, double * subprobSolution) {return decData_->evalLhsRowSubprob(row, subprob, subprobSolution);}
+
+	char getSenseCouplingRow(int row) {return decData_->getSenseRow(row);}
+
+	double getRhsCouplingRow(int row) {return decData_->getRhsRow(row);}
 
 	bool nonanticipativity() {return false;}
 

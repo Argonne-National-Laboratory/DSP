@@ -128,6 +128,15 @@ STO_RTN_CODE DecDdPrimalMaster::createProblem(DecModel * model)
 	CoinFillN(clbd + nCutsPerIter_, ncoupling_, -rho_);
 	CoinFillN(cubd + nCutsPerIter_, ncoupling_, rho_);
 
+	/** nonnegative or nonpositive multipliers according to sense */
+	for (i = 0; i < ncoupling_; i++)
+	{
+		if (model->getSenseCouplingRow(i) == 'L')
+			clbd[nCutsPerIter_ + i] = 0;
+		else if (model->getSenseCouplingRow(i) == 'G')
+			cubd[nCutsPerIter_ + i] = 0;
+	}
+
 #if ENABLE_UPPER_BOUNDING == 1
 	if (par_->TssDdFeasRecoveryInt_ >= 0)
 	{
@@ -610,11 +619,11 @@ int DecDdPrimalMaster::addCuts(
  		aggrhs[cutidx] += objvals[s];
 		for (int i = 0; i < ncoupling_; i++)
 		{
-			/** evaluate solution on coupling constraints (if they are Hx = 0, this is (Hx)_i) */
-			double hx = model_->evalLhsRowSubprob(i, s, solution[s]);
-			aggvec[cutidx][nCutsPerIter_ + i] -= hx; /** coefficients for lambda */
+			/** evaluate solution on coupling constraints (if they are Hx = d, this is (Hx - d)_i) */
+			double hx_d = model_->evalLhsCouplingRowSubprob(i, s, solution[s]) - model_->getRhsCouplingRow(i);
+			aggvec[cutidx][nCutsPerIter_ + i] -= hx_d; /** coefficients for lambda */
 			if (isSolved_)
-				aggrhs[cutidx] -= hx * solution_[nCutsPerIter_ + i];
+				aggrhs[cutidx] -= hx_d * solution_[nCutsPerIter_ + i];
 		}
 	}
 
@@ -719,18 +728,18 @@ int DecDdPrimalMaster::addCuts(
 #endif
 		for (int i = 0; i < ncoupling_; i++)
 		{
-			double hx = model_->evalLhsRowSubprob(i, s, solution[s]);
-			cutvec.insert(nsubprobs_ + i, -hx);
+			double hx_d = model_->evalLhsCouplingRowSubprob(i, s, solution[s]) - model_->getRhsCouplingRow(i);
+			cutvec.insert(nsubprobs_ + i, -hx_d);
 #if ENABLE_UPPER_BOUNDING == 2
 			if (par_->TssDdFeasRecoveryInt_ >= 0)
-				cutvec2.insert(nsubprobs_ + i, -hx);
+				cutvec2.insert(nsubprobs_ + i, -hx_d);
 #endif
 			if (isSolved_)
 			{
-				cutrhs -= solution_[nsubprobs_ + i] * hx;
+				cutrhs -= solution_[nsubprobs_ + i] * hx_d;
 #if ENABLE_UPPER_BOUNDING == 2
 				if (par_->TssDdFeasRecoveryInt_ >= 0)
-					cutrhs2 -= solution_[nsubprobs_ + i] * hx;
+					cutrhs2 -= solution_[nsubprobs_ + i] * hx_d;
 #endif
 			}
 		}
