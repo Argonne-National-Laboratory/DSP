@@ -12,13 +12,8 @@ set(DSP_SRC_FILES
 	SolverInterface/SolverInterfaceScip.cpp
 	SolverInterface/SolverInterfaceOoqp.cpp
 	Solver/TssSolver.cpp
-	Solver/TssDe.cpp
 	Solver/TssBd.cpp
 	Solver/TssBdSub.cpp
-	Solver/TssDdMpi.cpp
-	Solver/TssDdPrimalMaster.cpp
-	Solver/TssDdMasterSubgrad.cpp
-	Solver/TssDdSub.cpp
 	Solver/TssEval.cpp
 	Solver/DecSolver.cpp
 	Solver/DecDdMpi.cpp
