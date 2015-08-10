@@ -170,8 +170,6 @@ total_wind_scen = reshape(sum(wind_scen,1), nPeriods, nScenarios);
 # ----------------
 m = StochasticModel(nScenarios);
 
-cc = DSPsolver.CouplingConstraints();
-
 # ---------------------
 # First-stage Variables
 # ---------------------
@@ -179,7 +177,7 @@ cc = DSPsolver.CouplingConstraints();
 # @defVar(m, 0 <= Up[i=SLOWGENS, t=PERIODS] <= 1)   # Start up indicator
 # @defVar(m, 0 <= Down[i=SLOWGENS, t=PERIODS] <= 1) # Shut down indicator
 
-nIntervals = nPeriods / 6
+nIntervals = convert(Int, nPeriods / 6)
 assert(nPeriods % nIntervals == 0)
 RANGES = {((i-1)*nPeriods/nIntervals+1):i*nPeriods/nIntervals for i in 1:nIntervals}
 RANGES1 = vcat({2:nPeriods/nIntervals}, {((i-1)*nPeriods/nIntervals+1):i*nPeriods/nIntervals for i in 2:nIntervals})
@@ -223,25 +221,25 @@ for j in 2:nIntervals
 
 
     for i in SLOWGENS
-        DSPsolver.addCouplingConstraint(cc, @JuMP.LinearConstraint(
+        DSPsolver.addCouplingConstraint(m, @JuMP.LinearConstraint(
             Use[i,j-1,st-1] == Use[i,j,st-1]));
 
         for t in max(1,st-uptime[i]+1):(st-1)
-            DSPsolver.addCouplingConstraint(cc, @JuMP.LinearConstraint(
+            DSPsolver.addCouplingConstraint(m, @JuMP.LinearConstraint(
                 Up[i,j-1,t] == Up[i,j,t]));
         end
         for t in max(1,st-downtime[i]+1):(st-1)
-            DSPsolver.addCouplingConstraint(cc, @JuMP.LinearConstraint(
+            DSPsolver.addCouplingConstraint(m, @JuMP.LinearConstraint(
                 Down[i,j-1,t] == Down[i,j,t]));
         end
 
         # TODO: Assuming uptime = downtime
         # for t in max(1,st-uptime[i]+1):(st-1)
-        #     DSPsolver.addCouplingConstraint(cc, @JuMP.LinearConstraint(
+        #     DSPsolver.addCouplingConstraint(m, @JuMP.LinearConstraint(
         #         (Up[i,j-1,t] + Down[i,j-1,t]) == (Up[i,j,t] + Down[i,j,t])));
         # end
 
-        # DSPsolver.addCouplingConstraint(cc, @JuMP.LinearConstraint(
+        # DSPsolver.addCouplingConstraint(m, @JuMP.LinearConstraint(
         #        sum{ (st - tt) * (Up[i,j-1,tt] + Down[i,j-1,tt]), tt=max(1,st-uptime[i]+1):(st-1)} 
         #     == sum{ (st - tt) * (Up[i,j,tt] + Down[i,j,tt]),     tt=max(1,st-uptime[i]+1):(st-1)}));
 
@@ -378,31 +376,31 @@ end
             #     Gen[i,j-1,st-1] == Gen[i,j,st-1])
 
             for i in FASTGENS
-                DSPsolver.addCouplingConstraint(cc, @JuMP.LinearConstraint(
+                DSPsolver.addCouplingConstraint(sb, @JuMP.LinearConstraint(
                     UseF[i,j-1,st-1] == UseF[i,j,st-1]));
 
                 for t in max(1,st-uptime[i]+1):(st-1)
-                    DSPsolver.addCouplingConstraint(cc, @JuMP.LinearConstraint(
+                    DSPsolver.addCouplingConstraint(sb, @JuMP.LinearConstraint(
                         UpF[i,j-1,t] == UpF[i,j,t]));
                 end
                 for t in max(1,st-downtime[i]+1):(st-1)
-                    DSPsolver.addCouplingConstraint(cc, @JuMP.LinearConstraint(
+                    DSPsolver.addCouplingConstraint(sb, @JuMP.LinearConstraint(
                         DownF[i,j-1,t] == DownF[i,j,t]));
                 end
 
                 # TODO: Assuming uptime = downtime
                 # for t in max(1,st-uptime[i]+1):(st-1)
-                #     DSPsolver.addCouplingConstraint(cc, @JuMP.LinearConstraint(
+                #     DSPsolver.addCouplingConstraint(sb, @JuMP.LinearConstraint(
                 #         (UpF[i,j-1,t] + DownF[i,j-1,t]) == (UpF[i,j,t] + DownF[i,j,t])));
                 # end
 
-                # DSPsolver.addCouplingConstraint(cc, @JuMP.LinearConstraint(
+                # DSPsolver.addCouplingConstraint(sb, @JuMP.LinearConstraint(
                 #        sum{ (st - tt) * (UpF[i,j-1,tt] + DownF[i,j-1,tt]), tt=max(1,st-uptime[i]+1):(st-1)} 
                 #     == sum{ (st - tt) * (UpF[i,j,tt] + DownF[i,j,tt]),     tt=max(1,st-uptime[i]+1):(st-1)}));
             end
 
             # for i in GENERATORS
-            #     DSPsolver.addCouplingConstraint(cc, @JuMP.LinearConstraint(
+            #     DSPsolver.addCouplingConstraint(sb, @JuMP.LinearConstraint(
             #         Gen[i,j-1,st-1] == Gen[i,j,st-1]));
             # end
         end
@@ -498,14 +496,14 @@ end
                 gen_0[i] - Gen[i,1] <= ramp_rate[i])
         for i in GENERATORS
             for t in 2:nPeriods
-                DSPsolver.addCouplingConstraint(cc, @JuMP.LinearConstraint(Gen[i,t-1] - Gen[i,t] <= ramp_rate[i]))
+                DSPsolver.addCouplingConstraint(sb, @JuMP.LinearConstraint(Gen[i,t-1] - Gen[i,t] <= ramp_rate[i]))
             end
         end
         @addConstraint(sb, RAMP_UP0[i=GENERATORS],
                 Gen[i,1] - gen_0[i] + Spin_Resv[i,1] <= ramp_rate[i])
         for i in GENERATORS
             for t in 2:nPeriods
-                DSPsolver.addCouplingConstraint(cc, @JuMP.LinearConstraint(Gen[i,t] - Gen[i,t-1] + Spin_Resv[i,t] <= ramp_rate[i]))
+                DSPsolver.addCouplingConstraint(sb, @JuMP.LinearConstraint(Gen[i,t] - Gen[i,t-1] + Spin_Resv[i,t] <= ramp_rate[i]))
             end
         end
 
@@ -580,18 +578,14 @@ end
                 + flow_max[l])
 end
 
-DSPsolver.loadProblem(m);
-
-varBlocks = (Variable => Int)[];
-
 for i in SLOWGENS, j in INTERVALS, t in (RANGES[j][1]-1):RANGES[j][end]
-        varBlocks[Use[i,j,t]] = j;
+        DSPsolver.setVarSubproblem(m, Use[i,j,t], j)
 end
 for i in SLOWGENS, j in INTERVALS, t in max(1, RANGES[j][1]-uptime[i]+1):RANGES[j][end]
-        varBlocks[Up[i,j,t]] = j;
+        DSPsolver.setVarSubproblem(m, Up[i,j,t], j)
 end
 for i in SLOWGENS, j in INTERVALS, t in max(1, RANGES[j][1]-downtime[i]+1):RANGES[j][end]
-        varBlocks[Down[i,j,t]] = j;
+        DSPsolver.setVarSubproblem(m, Down[i,j,t], j)
 end
 for sb in getchildren(m)
         UseF = JuMP.getVar(sb, :UseF);
@@ -602,29 +596,27 @@ for sb in getchildren(m)
         Spin_Resv = JuMP.getVar(sb, :Spin_Resv);
 
         for i in FASTGENS, j in INTERVALS, t in (RANGES[j][1]-1):RANGES[j][end]
-                varBlocks[UseF[i,j,t]] = j
+                DSPsolver.setVarSubproblem(sb, UseF[i,j,t], j)
         end
         for i in FASTGENS, j in INTERVALS, t in max(1, RANGES[j][1]-uptime[i]+1):RANGES[j][end]
-                varBlocks[UpF[i,j,t]] = j
+                DSPsolver.setVarSubproblem(sb, UpF[i,j,t], j)
         end
         for i in FASTGENS, j in INTERVALS, t in max(1, RANGES[j][1]-downtime[i]+1):RANGES[j][end]
-                varBlocks[DownF[i,j,t]] = j
+                DSPsolver.setVarSubproblem(sb, DownF[i,j,t], j)
         end
 
         # for i in GENERATORS, j in INTERVALS, t in (RANGES[j][1]-1):RANGES[j][end]
-        #         varBlocks[Gen[i,j,t]] = j;
+        #         DSPsolver.setVarSubproblem(sb, Gen[i,j,t], j)
         # end
         for i in GENERATORS, j in INTERVALS, t in RANGES[j]
-                varBlocks[Gen[i,t]] = j;
+                DSPsolver.setVarSubproblem(sb, Gen[i,t], j)
         end
         for i in GENERATORS, j in INTERVALS, t in RANGES[j]
-                varBlocks[Spin_Resv[i,t]] = j
+                DSPsolver.setVarSubproblem(sb, Spin_Resv[i,t], j)
         end
         for i in GENERATORS, k in SEGMENTS, j in INTERVALS, t in RANGES[j]
-                varBlocks[Gen_Sgmt[i,k,t]] = j
+                DSPsolver.setVarSubproblem(sb, Gen_Sgmt[i,k,t], j)
         end
 end
 
-DSPsolver.addVarBlocks(cc, varBlocks);
-
-DSPsolver.loadDecomposition(m, cc);
+DSPsolver.loadProblem(m);

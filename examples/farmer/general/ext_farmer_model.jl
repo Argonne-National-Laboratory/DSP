@@ -1,4 +1,4 @@
-# ctjandra - ANL MCS 2014
+# ctjandra - ANL MCS 2015
 # Farmer example from Birge and Louveaux book.
 
 # This is an extensive form of the model from examples/julia/farmer with nonanticipativity
@@ -11,7 +11,6 @@ SCENARIOS = 1:NS
 # CREATE MODEL
 
 m = Model();
-cc = DSPsolver.CouplingConstraints();
 
 # MODEL IN EXTENSIVE FORM WITH NONANTICIPATIVITY CONSTRAINTS
 
@@ -35,30 +34,25 @@ cc = DSPsolver.CouplingConstraints();
 
 # objective
 @setObjective(m, Min,
-  sum{Cost[i] * x[1,i], i=CROPS}
-  + sum{probability[s]
-    * (sum{Purchase[s,j] * y[s,j], j=PURCH} - sum{Sell[s,k] * w[s,k], k=SELL}),
+  sum{probability[s]
+    * (sum{Cost[i] * x[s,i], i=CROPS}
+      + sum{Purchase[s,j] * y[s,j], j=PURCH}
+      - sum{Sell[s,k] * w[s,k], k=SELL}),
     s=SCENARIOS})
 
 # nonanticipativity constraints (coupling constraints)
-for s in 1:NS-1
-  for i in CROPS
-    DSPsolver.addCouplingConstraint(cc, @JuMP.LinearConstraint(x[s,i] == x[s+1,i]))
-  end
+for s in 1:NS-1, i in CROPS
+  DSPsolver.addCouplingConstraint(m, @LinearConstraint(x[s,i] == x[s+1,i]))
 end
 
 # variable partition
-varBlocks = (Variable => Int)[]
-for s in SCENARIOS
-  for i in CROPS
-    varBlocks[x[s,i]] = s
-  end
-  for j in PURCH
-    varBlocks[y[s,j]] = s
-  end
-  for k in SELL
-    varBlocks[w[s,k]] = s
-  end
+for s in SCENARIOS, i in CROPS
+  DSPsolver.setVarSubproblem(m, x[s,i], s)
 end
-DSPsolver.addVarBlocks(cc, varBlocks);
+for s in SCENARIOS, j in PURCH
+  DSPsolver.setVarSubproblem(m, y[s,j], s)
+end
+for s in SCENARIOS, k in SELL
+  DSPsolver.setVarSubproblem(m, w[s,k], s)
+end
 

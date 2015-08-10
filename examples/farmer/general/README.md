@@ -6,10 +6,6 @@ This contains Farmer example modeled in extensive form for illustration purposes
 ```bash
     mpirun -n 1 julia ext_farmer_run.jl DD
 ```
-  * Benders decomposition
-```bash
-    julia ext_farmer_run.jl BD
-```
   * Extensive form solution
 ```bash
     julia ext_farmer_run.jl DE

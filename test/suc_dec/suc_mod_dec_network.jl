@@ -314,10 +314,6 @@ tmpdat8 = 0;
 # ----------------
 m = StochasticModel(nScenarios);
 
-if decomposition
-	cc = DSPsolver.CouplingConstraints();
-end
-
 # ------------------------------------------------------
 # The following parameters need to be defined with data.
 # ------------------------------------------------------
@@ -545,9 +541,9 @@ end
 	if decomposition
 		for l in CUTEDGES
 			for t in PERIODS
-				DSPsolver.addCouplingConstraint(cc, @JuMP.LinearConstraint(
+				DSPsolver.addCouplingConstraint(sb, @JuMP.LinearConstraint(
 					Phase[get_dummy_nodes(l)[1],t] == Phase[edgelist[cut_edge_indices[l]][2],t]));
-				DSPsolver.addCouplingConstraint(cc, @JuMP.LinearConstraint(
+				DSPsolver.addCouplingConstraint(sb, @JuMP.LinearConstraint(
 					Phase[get_dummy_nodes(l)[2],t] == Phase[edgelist[cut_edge_indices[l]][1],t]));
 			end
 		end
@@ -555,16 +551,11 @@ end
 
 end
 
-# Load data to DSP
-DSPsolver.loadProblem(m);
-
 if decomposition
-	varBlocks = (Variable => Int)[];
-
 	for i in SLOWGENS, t in PERIODS
-		varBlocks[Use[i,t]] = partition[gen_bus_id[i]];
-		varBlocks[Up[i,t]] = partition[gen_bus_id[i]];
-		varBlocks[Down[i,t]] = partition[gen_bus_id[i]];
+		DSPsolver.setVarSubproblem(m, Use[i,t], partition[gen_bus_id[i]]);
+		DSPsolver.setVarSubproblem(m, Up[i,t], partition[gen_bus_id[i]]);
+		DSPsolver.setVarSubproblem(m, Down[i,t], partition[gen_bus_id[i]]);
 	end
 	for sb in getchildren(m)
 		UseF = JuMP.getVar(sb, :UseF);
@@ -577,33 +568,32 @@ if decomposition
 		Phase = JuMP.getVar(sb, :Phase);
 
 		for i in FASTGENS, t in PERIODS
-			varBlocks[UseF[i,t]] = partition[gen_bus_id[i]];
-			varBlocks[UpF[i,t]] = partition[gen_bus_id[i]];
-			varBlocks[DownF[i,t]] = partition[gen_bus_id[i]];
+			DSPsolver.setVarSubproblem(sb, UseF[i,t], partition[gen_bus_id[i]]);
+			DSPsolver.setVarSubproblem(sb, UpF[i,t], partition[gen_bus_id[i]]);
+			DSPsolver.setVarSubproblem(sb, DownF[i,t], partition[gen_bus_id[i]]);
 		end
 		for i in GENERATORS, t in PERIODS
-			varBlocks[Gen[i,t]] = partition[gen_bus_id[i]];
-			varBlocks[Spin_Resv[i,t]] = partition[gen_bus_id[i]];
+			DSPsolver.setVarSubproblem(sb, Gen[i,t], partition[gen_bus_id[i]]);
+			DSPsolver.setVarSubproblem(sb, Spin_Resv[i,t], partition[gen_bus_id[i]]);
 		end
 		for i in GENERATORS, k in SEGMENTS, t in PERIODS
-			varBlocks[Gen_Sgmt[i,k,t]] = partition[gen_bus_id[i]];
+			DSPsolver.setVarSubproblem(sb, Gen_Sgmt[i,k,t], partition[gen_bus_id[i]]);
 		end
 		for l in BRANCHES, t in PERIODS
 			if partition[flowout_bus_id[l]] != partition[flowin_bus_id[l]]
 				println("Error: Network not decomposed");
 				exit();
 			end
-			varBlocks[Flow[l,t]] = partition[flowout_bus_id[l]];
+			DSPsolver.setVarSubproblem(sb, Flow[l,t], partition[flowout_bus_id[l]]);
 		end
 		for n in BUSES, t in PERIODS
-			varBlocks[Phase[n,t]] = partition[n];
+			DSPsolver.setVarSubproblem(sb, Phase[n,t], partition[n]);
 		end
 	end
-
-	DSPsolver.addVarBlocks(cc, varBlocks);
-
-	DSPsolver.loadDecomposition(m, cc);
 end
+
+# Load data to DSP
+DSPsolver.loadProblem(m);
 
 println("Done constructing model");
 
