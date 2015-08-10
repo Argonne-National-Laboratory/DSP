@@ -19,7 +19,7 @@ This section provides an introduction to DSP: Decompositions for Structured Prog
    \vdots \\
    h_S \end{matrix}\right]
 
-The block-angular structure leads to different decomposition methods that enable large-scale optimization problems (e.g., stochastic programming problmes) to be efficiently solved or approximated particularly on high-performance computing systems. DPS exploits the block-angular structure of SMIP and provides the following **methods**:
+The block-angular structure leads to different decomposition methods that enable large-scale optimization problems (e.g., stochastic programming problmes) to be efficiently solved or approximated particularly on high-performance computing systems. DSP exploits the block-angular structure of SMIP and provides the following **methods**:
 
 * Parallel dual decomposition methods
 
@@ -57,10 +57,12 @@ The block-angular structure leads to different decomposition methods that enable
   * Any external solvers can be used in DSP through the SolverInterface class
   * Current support: SCIP, SOPLEX, CLP, OOQP
 
+* Parallel dual decomposition with general coupling constraints
+
 Decomposition of SMIP
 ^^^^^^^^^^^^^^^^^^^^^
 
-Stochastic mixed-integer programming (SMIP) is an optimization modeling framework for problems that involve mixed-integer decision variables and uncertain parameters. We considers the following two-stage SMIP problem:
+Stochastic mixed-integer programming (SMIP) is an optimization modeling framework for problems that involve mixed-integer decision variables and uncertain parameters. We consider the following two-stage SMIP problem:
 
 .. math::
 
@@ -97,7 +99,7 @@ where the scenario feasibility set is defined as
 
   G_s := \{(x_s, y_s) \;:\; A x_s = b, \; T_s x_s + W_s y_s = h_s, \; x_s \in X, \; y_s \in Y\},
 
-the *nonanticipativity* constraints represents the equations :math:`x_1 = x_S` and :math:`x_s = x_{s-1}` for :math:`s=2,\dots,S`, and :math:`H_s` is a suitable :math:`S\cdot n_1 \times n_1` matrix. 
+the *nonanticipativity* constraints represent the equations :math:`x_1 = x_S` and :math:`x_s = x_{s-1}` for :math:`s=2,\dots,S`, and :math:`H_s` is a suitable :math:`S\cdot n_1 \times n_1` matrix. 
 
 .. note:: SMIP may not have relatively complete recourse. Without this property, there can exist :math:`(\hat x,\hat y)` such that :math:`(\hat x,\hat y) \in G_s` and :math:`(\hat x,\hat y) \notin G_{s'}` for :math:`s\neq s'`. 
 
@@ -188,6 +190,65 @@ Parallelization
 ***************
 
 The proposed dual decomposition method can be run on distributed memory and on shared memory computing systems with multiple cores. The implementation protocol is MPI.  In a distributed memory environment, the scenario data and corresponding Lagrangian subproblems are distributed to multiple processors based on scenario indices. The root processor updates the Lagrangian multipliers and solves a subset of the subproblems. When solving the subproblems in distributed computing nodes, subproblem solutions and the dual variables must be communicated with the root processor. In addition, each computing node communicates the primal first-stage solutions and the valid inequalities generated for a subproblem with the rest of the nodes.
+
+
+General Dual Decomposition
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The dual decomposition method for SMIP is a special case of Lagrangian decomposition. DSP implements general Lagrangian decomposition with parallelization of the subproblems. More precisely, DSP is able to decompose problems of the form
+
+.. math::
+   :label: DD
+
+   \min \quad & c_1^T x_1 &+\;& c_2^T x_2 &+\;& \ldots &+\;& c_k^T x_k &\\
+   \text{s.t.} \quad
+   & A_1x_1 &   &        &   &        &   &        & = b_1, \\
+   &        &   & A_2x_2 &   &        &   &        & = b_2, \\
+   &        &   &        &   & \ddots &   &        & \;\;\vdots \\
+   &        &   &        &   &        &   & A_kx_k & = b_k, \\
+   & H_1x_1 &+\;& H_2x_2 &+\;& \ldots &+\;& H_kx_k & = d,   \\
+   & x \in X &&&&&&&
+
+where :math:`x \in X` represents integrality constraints. Here, :math:`H_1x_1 + \ldots + H_kx_k = d` are the constraints we are interested in relaxing with Lagrangian relaxation, called *coupling constraints*. For instance, in the SMIP case, the coupling constraints are the nonanticipativity constraints. The coupling constraints may include inequalities. Note that when :math:`k=1`, this framework is reduced to standard Lagrangian relaxation.
+
+As with dual decomposition for SMIP, in this general context DSP applies Lagrangian relaxation to the coupling constraints to obtain the Lagrangian dual function
+
+.. math::
+
+   D(\lambda) := \min_{x_s} \left\{ \sum_{s=1}^k L_s(x_s,\lambda) - \lambda^T d : A_sx_s = b_s,\; \forall s = 1, \ldots, k \right\},
+
+where 
+
+.. math::
+
+   L_s(x_s,\lambda) := c_s^T x_s + \lambda^T (H_s x_s). 
+
+Therefore, the Lagrangian dual function can be decomposed for fixed :math:`\lambda` as
+
+.. math::
+
+   D(\lambda) = \left(\displaystyle\sum_{s=1}^k D_s(\lambda)\right) - \lambda^T d,
+
+where
+
+.. math::
+
+   D_s(\lambda) := \min_{x_s} \left\{ L_s(x_s,y_s,\lambda) : A_sx_s = b_s \right\}.
+
+We seek to obtain a dual bound for :eq:`DD` by solving the maximization problem (the Lagrangian dual problem):
+
+.. math::
+
+  z_\text{LD} := \max_{\lambda} \left(\sum_{s=1}^k D_s(\lambda) - \lambda^T d\right).
+
+If the coupling constraints include inequalities, additional nonnegativity or nonpositivity constraints are imposed on :math:`\lambda`.
+
+The implementation of dual decomposition in DSP treats the SMIP case as a special case of Lagrangian decomposition. Thus, the same code is used both for SMIP and this general setting. In the parallelization, only the necessary parts of :math:`\lambda` are communicated to each subproblem (i.e. :math:`\lambda_i`'s with nonzero objective coefficients in the subproblem).
+
+For instructions on how to model general dual decomposition with DSP, see the Quick Start Guide.
+
+.. note:: The generation of valid inequalities for scenarios and the primal bound heuristic described in :cite:`kim2015algorithmic` are specific to SMIPs. Therefore, they are not supported in this general framework. Benders decomposition is also not supported in a general framework.
+
 
 .. bibliography:: overview.bib
 

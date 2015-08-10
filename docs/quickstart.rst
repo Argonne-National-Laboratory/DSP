@@ -96,7 +96,7 @@ The following file ``farmer_run.jl`` reads the farmer model and runs the dual de
    DSPsolver.solve();
    MPI.Finalize();
 
-Line 1 includes the required packages. The MPI library is initialized and fianlized in lines 2 and 7, respectively. The StochJuMP model is given in lines 3 and 4. Note that only two lines of code (5 and 6) are required to invoke the parallel decomposition method. The following command is an example of running ``farmer_run.jl`` with MPI library::
+Line 1 includes the required packages. The MPI library is initialized and finalized in lines 2 and 7, respectively. The StochJuMP model is given in lines 3 and 4. Note that only two lines of code (5 and 6) are required to invoke the parallel decomposition method. The following command is an example of running ``farmer_run.jl`` with MPI library::
 
    mpiexec -np 3 julia farmer_run.jl
 
@@ -107,7 +107,7 @@ Alternatively, users can use Benders decomposition by replacing line 6 of ``farm
 
    DSPsolver.solve(DSP_SOLVER_BD);
 
-The ``MPI.jl`` pakcage is no longer required for Benders decomposition.
+The ``MPI.jl`` package is no longer required for Benders decomposition.
 
 Extensive form solution
 ***********************
@@ -116,7 +116,7 @@ Users can also solve the extensive form of the problem by replacing line 6 of ``
 
   DSPsolver.solve(DSP_SOLVER_DE);
 
-The ``MPI.jl`` pakcage is no longer required for solving the extensive form.
+The ``MPI.jl`` package is no longer required for solving the extensive form.
 
 Reading model in SMPS format
 ****************************
@@ -124,5 +124,52 @@ Reading model in SMPS format
 DSP can also read a model provided in SMPS files :cite:`birge1987standard`. In this format, a model is defined by three files: core, time, and stochastic with file extensions of ``.cor``, ``.tim``, and ``.sto``, respectively. The core file defines the deterministic version of the model with a single reference scenario, the time file indicates a row and a column that split the deterministic data and stochastic data in the constraint matrix, and the stochastic file defines random data. DSP can read model in SMPS format (e.g., ``farmer.cor``, ``farmer.tim`` and ``farmer.sto``) as follows::
 
    DSPsolver.readSmps("farmer");
+
+Modeling General Decomposition
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+As described in the DSP Overview section, DSP allows a user to run the same algorithms for scenario dual decomposition for SMIP with other forms of dual decomposition. 
+
+To illustrate modeling general dual decomposition in DSP, we replicate the above farmer example except that we explicitly indicate to the solver the nonanticipativity constraints that need to be relaxed. This model can be found on ``examples/farmer/general``. Note that this example is **for illustration purposes only and SMIPs should not be modeled in this form**: DSP has features that speed up stochastic problems that will not be applied in this setting.
+
+In ``examples/farmer/general/ext_farmer_model.jl``, we explicitly write the extensive form of the model itself: first, we define a copy of the first-stage variables for each scenario (i.e. ``x[s=SCENARIOS, i=CROPS]`` instead of ``x[i=CROPS]``). The constraints and objective are then adapted as in the file. Note that we do not need StochJuMP in this context (only JuMP) since the extensive form can be viewed as deterministic.
+
+Once the extensive form has been modeled, we need to specify to DSP how the decomposition should be performed. We need to indicate:
+
+   - which are the coupling constraints, and
+   - to which subproblem each variable belongs to.
+
+We add the nonanticipativity constraints as coupling constraints as follows:
+
+.. code-block:: julia
+   :linenos:
+   :caption: Model file: ext_farmer_model.jl
+
+   for s in 1:NS-1, i in CROPS
+     DSPsolver.addCouplingConstraint(m, @LinearConstraint(x[s,i] == x[s+1,i]))
+   end
+
+In addition, the following code associates variables to subproblems:
+
+.. code-block:: julia
+   :linenos:
+   :caption: Model file: ext_farmer_model.jl
+
+   for s in SCENARIOS, i in CROPS
+     DSPsolver.setVarSubproblem(m, x[s,i], s)
+   end
+   for s in SCENARIOS, j in PURCH
+     DSPsolver.setVarSubproblem(m, y[s,j], s)
+   end
+   for s in SCENARIOS, k in SELL
+     DSPsolver.setVarSubproblem(m, w[s,k], s)
+   end
+
+DSP expects a general decomposition model (rather than a SMIP) whenever either ``addCouplingConstraint`` or ``setVarSubproblem`` is called. All variables must be associated to a subproblem and the mapping must be decomposable: no constraint except coupling constraints may involve variables of different subproblems. DSP will return an error if it detects that the mapping is not decomposable.
+
+Loading and solving the problems works as in the SMIP case: the ``loadProblem`` and ``solve`` functions must be called after modeling the problem.
+
+.. note:: If the supplied model is a stochastic model (modeled using StochJuMP), then the model will automatically be converted to its extensive form before decomposition. This may be useful to test other ways to decompose a stochastic problem without rewriting it explicitly in extensive form. DSP does not currently support general decomposition to scenario subproblems, but this is a feature that might be implemented in the future.
+
 
 .. bibliography:: dsp-manual.bib

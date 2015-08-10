@@ -97,7 +97,7 @@ Common functions
 
    Get the best primal bound of the objective function value.
 
-.. function:: getDualBoud()
+.. function:: getDualBound()
 
    Get the best dual bound of the objective function value.
 
@@ -221,11 +221,15 @@ Dual decomposition functions
 
 .. function:: setDdStoppingTolerance(tol::Number)
 
-   Set stopping tolerance for the relative gap between the best upper bound and the best lower bound. Default vlue of ``tol`` is ``1.0e-5``.
+   Set stopping tolerance for the relative gap between the best upper bound and the best lower bound. Default value of ``tol`` is ``1.0e-5``.
 
 .. function:: setDdDualVarsLog(yesNo)
 
    Indicate if the dual variable values are stored for every iteration. Possible values of ``yesNo`` are ``DSP_YES`` and ``DSP_NO``.
+
+.. function:: setDdTrustRegionSize(num::Integer)
+
+   Set the initial trust region size for the master problem.
 
 Benders decomposition functions
 *******************************
@@ -249,3 +253,15 @@ SCIP functions
 
    Set maxima time in seconds to run. Default value of ``time`` is ``1e+20``.
 
+General Decomposition Functions
++++++++++++++++++++++++++++++++
+
+.. note:: Calling any function in this section signals to DSP to apply general decomposition to the problem. These functions must be called before calling ``loadProblem``.
+
+.. function:: addCouplingConstraint(m::JuMP.Model, constr::JuMP.LinearConstraint)
+
+   Add a coupling constraint for general decomposition.
+
+.. function:: setVarSubproblem(m::JuMP.Model, var::JuMP.Variable, subproblem::Int)
+
+   Indicate to which subproblem a variable should belong in general decomposition.
