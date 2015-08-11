@@ -34,6 +34,7 @@ public:
 		TssDdMasterNumCutsPerIter_(1),
 		TssDdEnableTrustRegion_(1),
 		TssDdTrustRegionSize_(100.),
+		TssDdDisableTrustRegionDecrease_(false),
 		TssDdCacheRecourse_(0),
 		TssDdAddFeasCuts_(-1),
 		TssDdAddOptCuts_(-1),
@@ -49,6 +50,7 @@ public:
 		wtimeLimit_ = std::numeric_limits<double>::max();
 		relaxIntegrality_[0] = false;
 		relaxIntegrality_[1] = false;
+		relaxIntegralityAll_ = false;
 	}
 	virtual ~StoParam()
 	{
@@ -89,6 +91,8 @@ public:
 
 	bool relaxIntegrality_[2];
 
+	bool relaxIntegralityAll_; /* TODO: Not implemented in TssBd */
+
 	/**
 	 * Benders decomposition
 	 * */
@@ -115,11 +119,14 @@ public:
 	/** number of cuts per iteration */
 	int TssDdMasterNumCutsPerIter_;
 
-	/** Dual decomposition enables trust region if 1; 0 otherwise (default) */
+	/** Dual decomposition enables trust region if 1 (default); 0 otherwise */
 	int TssDdEnableTrustRegion_;
 
 	/** Initial trust region size */
 	double TssDdTrustRegionSize_;
+
+	/** Disable decrease in trust region size */
+	bool TssDdDisableTrustRegionDecrease_;
 
 	/** cache recourse problems to get upper bounds if 1; 1 otherwise (default) */
 	int TssDdCacheRecourse_;

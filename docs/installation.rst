@@ -115,11 +115,11 @@ The following packages should be installed.
 
    julia> Pkg.add("MPI");
 
-* `JuMP.jl <https://github.com/JuliaOpt/JuMP.jl>`_ is a algebraic modeling package in Julia for mathematical programming, which can be installed by the following Julia command::
+* `JuMP.jl <https://github.com/JuliaOpt/JuMP.jl>`_ is an algebraic modeling package in Julia for mathematical programming, which can be installed by the following Julia command::
 
    julia> Pkg.add("JuMP");
 
-* `StochJuMP.jl <https://github.com/kibaekkim/StochJuMP.jl.git>`_ is a algebraic modeling package in Julia for stochastic programming, which can be installed by the following Julia command::
+* `StochJuMP.jl <https://github.com/kibaekkim/StochJuMP.jl.git>`_ is an algebraic modeling package in Julia for stochastic programming, which can be installed by the following Julia command::
 
    julia> Pkg.clone("https://github.com/kibaekkim/StochJuMP.jl.git");
 

@@ -1,33 +1,34 @@
 /*
- * TssDdMasterSubgrad.h
+ * DecDdMasterSubgrad.h
  *
  *  Created on: Mar 3, 2015
- *      Author: kibaekkim
+ *      Author: kibaekkim, ctjandra
  */
 
-#ifndef SRC_SOLVER_TSSDDMASTERSUBGRAD_H_
-#define SRC_SOLVER_TSSDDMASTERSUBGRAD_H_
+#ifndef SRC_SOLVER_DECDDMASTERSUBGRAD_H_
+#define SRC_SOLVER_DECDDMASTERSUBGRAD_H_
 
-#include "Solver/TssDdMaster.h"
+#include "Solver/DecDdMaster.h"
 
-class TssDdMasterSubgrad: public TssDdMaster
+class DecDdMasterSubgrad: public DecDdMaster
 {
 public:
-	TssDdMasterSubgrad(StoParam * par) :
-		TssDdMaster(par),
-		ncols_(0),
-		ncols_first_(0),
-		nscenarios_(0),
+	DecDdMasterSubgrad(StoParam * par) :
+		DecDdMaster(par),
+		ncoupling_(0),
+		nsubprobs_(0),
 		nstalls_(0),
 		stepscal_(2.),
 		stepsize_(0.),
 		gradient_(NULL),
-		multipliers_(NULL) {}
+		multipliers_(NULL),
+		nonanticipativity_(false),
+		model_(NULL) {}
 
-	virtual ~TssDdMasterSubgrad();
+	virtual ~DecDdMasterSubgrad();
 
 	/** create problem */
-	virtual STO_RTN_CODE createProblem(const TssModel * model);
+	virtual STO_RTN_CODE createProblem(DecModel * model);
 
 	/** update problem: may update dual bound */
 	virtual STO_RTN_CODE updateProblem(
@@ -49,14 +50,15 @@ public:
 
 private:
 
-	int ncols_;            /**< dimension of the subgradient */
-	int ncols_first_;      /**< number of first-stage columns */
-	int nscenarios_;       /**< number of scenarios */
+	DecModel * model_;     /**< model */
+	int ncoupling_;        /**< number of coupling constraints (i.e., dimension of Lagrange multipliers and subgradient) */
+	int nsubprobs_;        /**< number of subproblems */
 	int nstalls_;          /**< number of iterations UB were not improved */
 	double stepscal_;      /**< another scalar between 0 and 2 */
 	double stepsize_;      /**< stepsize */
 	double * gradient_;    /**< subgradient */
 	double * multipliers_; /**< Lagrangian multipliers */
+	bool nonanticipativity_; /**< whether the constraints are nonanticipativity constraints */
 };
 
-#endif /* SRC_SOLVER_TSSDDMASTERSUBGRAD_H_ */
+#endif /* SRC_SOLVER_DECDDMASTERSUBGRAD_H_ */

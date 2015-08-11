@@ -11,6 +11,7 @@
 //#define TSSMODEL_DEBUG
 
 #include "StoModel.h"
+#include "DetModel.h"
 
 class TssModel: public StoModel {
 public:
@@ -57,6 +58,12 @@ public:
 			double *& obj,           /**< [out] objective coefficients */
 			double *& rlbd,          /**< [out] row lower bounds */
 			double *& rubd           /**< [out] row upper bounds */);
+
+	/**
+	 * Create a DetModel representing the deterministic equivalent of this model.
+	 */
+	STO_RTN_CODE copyDeterministicEquivalent(
+			DetModel *& det /**< [out] deterministic equivalent model */);
 
 	/**
 	 * This creates recourse problem structure for a given scenario index.

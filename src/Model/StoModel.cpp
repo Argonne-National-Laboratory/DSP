@@ -124,8 +124,12 @@ StoModel::StoModel(const StoModel & rhs) :
 		else
 			rubd_scen_[i] = new CoinPackedVector;
 	}
-	priorities_ = new int [nints_core_];
-	CoinCopyN(rhs.priorities_, nints_core_, priorities_);
+	priorities_ = NULL;
+	if (rhs.priorities_ != NULL)
+	{
+		priorities_ = new int [nints_core_];
+		CoinCopyN(rhs.priorities_, nints_core_, priorities_);
+	}
 }
 
 StoModel::~StoModel()

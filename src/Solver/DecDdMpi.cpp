@@ -1,14 +1,13 @@
 /*
- * TssDdMpi.cpp
+ * DecDdMpi.cpp
  *
  *  Created on: Dec 10, 2014
- *      Author: kibaekkim
+ *      Author: kibaekkim, ctjandra
  */
 
-//#define DSP_DEBUG
+// #define DSP_DEBUG
 #define DSP_EXPERIMENT
 #define USE_ROOT_PROCESSOR 1
-//#define DO_SERIALIZE
 
 #include <vector>
 
@@ -16,12 +15,12 @@
 #include "Utility/StoMessage.h"
 #include "Utility/StoUtility.h"
 #include "Solver/TssBdSub.h"
-#include "Solver/TssDdPrimalMaster.h"
-#include "Solver/TssDdMasterSubgrad.h"
-#include "Solver/TssDdSub.h"
+#include "Solver/DecDdPrimalMaster.h"
+#include "Solver/DecDdMasterSubgrad.h"
+#include "Solver/DecDdSub.h"
 #include "SolverInterface/SolverInterfaceScip.h"
 #include "SolverInterface/OoqpEps.h"
-#include "Solver/TssDdMpi.h"
+#include "Solver/DecDdMpi.h"
 
 /** COIN */
 #include "CoinTime.hpp"
@@ -29,10 +28,10 @@
 using namespace std;
 
 /** default constructor */
-TssDdMpi::TssDdMpi(
+DecDdMpi::DecDdMpi(
 		MPI_Comm comm,
 		string logfile_prefix) :
-	TssSolver(),
+	DecSolver(),
 	comm_(comm),
 	num_comm_groups_(-1),
 	comm_group_(-1),
@@ -41,7 +40,7 @@ TssDdMpi::TssDdMpi(
 	bdsub_(NULL),
 	numSyncedUbSolutions_(0),
 	master_(NULL),
-	scenarioSpecs_(NULL),
+	subproblemSpecs_(NULL),
 	multipliers_(NULL),
 	tic_(MPI::Wtime()),
 	iterCnt_(0),
@@ -52,15 +51,15 @@ TssDdMpi::TssDdMpi(
 {
 	MPI_Comm_rank(comm, &comm_rank_);
 	MPI_Comm_size(comm, &comm_size_);
-	nsubprobs_ = new int [comm_size_];
+	nsubprobsAtRank_ = new int [comm_size_];
 }
 
-TssDdMpi::~TssDdMpi()
+DecDdMpi::~DecDdMpi()
 {
 	FREE_PTR(bdsub_);
 	FREE_PTR(master_);
-	FREE_ARRAY_PTR(nsubprobs_);
-	FREE_ARRAY_PTR(scenarioSpecs_);
+	FREE_ARRAY_PTR(nsubprobsAtRank_);
+	FREE_ARRAY_PTR(subproblemSpecs_);
 	FREE_ARRAY_PTR(multipliers_);
 	for (unsigned int i = 0; i < subprobs_.size(); ++i)
 		FREE_PTR(subprobs_[i]);
@@ -80,28 +79,28 @@ TssDdMpi::~TssDdMpi()
 }
 
 /** initialize solver */
-STO_RTN_CODE TssDdMpi::initialize()
+STO_RTN_CODE DecDdMpi::initialize()
 {
 	BGN_TRY_CATCH
 
-	int nscen = model_->getNumScenarios();
+	int nsubprobs = model_->getNumSubproblems();
 
 	/** calculate communication groups */
-	num_comm_groups_ = (comm_size_ - 1) / nscen + 1;
-	if (comm_size_ > nscen
-			&& comm_size_ % nscen > 0
-			&& comm_size_ % nscen < comm_rank_ % nscen + 1)
+	num_comm_groups_ = (comm_size_ - 1) / nsubprobs + 1;
+	if (comm_size_ > nsubprobs
+			&& comm_size_ % nsubprobs > 0
+			&& comm_size_ % nsubprobs < comm_rank_ % nsubprobs + 1)
 		num_comm_groups_ -= 1;
-	comm_group_ = comm_rank_ / nscen;
+	comm_group_ = comm_rank_ / nsubprobs;
 	DSPdebugMessage("-> comm_size %d comm_rank %d num_comm_groups %d comm_group %d\n",
 			comm_size_, comm_rank_, num_comm_groups_, comm_group_);
 
 	/** Sanity check:
-	 *    The number of master cuts per iteration should not exceed the number of scenarios;
+	 *    The number of master cuts per iteration should not exceed the number of subproblems;
 	 *    should not be less than 1. */
-	if (par_->TssDdMasterNumCutsPerIter_ > nscen ||
+	if (par_->TssDdMasterNumCutsPerIter_ > nsubprobs ||
 			par_->TssDdMasterNumCutsPerIter_ < 1)
-		par_->TssDdMasterNumCutsPerIter_ = nscen;
+		par_->TssDdMasterNumCutsPerIter_ = nsubprobs;
 
 	/** Root process can print out. */
 	if (comm_rank_ > 0)
@@ -113,7 +112,7 @@ STO_RTN_CODE TssDdMpi::initialize()
 }
 
 /** solve */
-STO_RTN_CODE TssDdMpi::solve()
+STO_RTN_CODE DecDdMpi::solve()
 {
 	BGN_TRY_CATCH
 
@@ -126,6 +125,46 @@ STO_RTN_CODE TssDdMpi::solve()
 	}
 #endif
 
+	/** cuts and upper bound only supported with nonanticipativity constraints */
+	if (!model_->nonanticipativity() || !model_->isStochastic())
+	{
+		if (par_->TssDdAddFeasCuts_ >= 0 || par_->TssDdAddOptCuts_ >= 0)
+		{
+			printf("Warning: Feasibility and optimality cuts are not supported in a general decomposition model\n");
+		}
+		if (par_->TssDdEvalUb_ >= 0)
+		{
+			printf("Warning: Primal heuristic is not supported in a general decomposition model\n");
+		}
+		par_->TssDdAddFeasCuts_ = -1;
+		par_->TssDdAddOptCuts_ = -1;
+		par_->TssDdEvalUb_ = -1;
+	}
+
+	/** if TssDdProcIdxSet_ not set, initialize subproblems per process in a default manner */
+#if USE_ROOT_PROCESSOR == 0
+	int effective_comm_rank = comm_rank_ - 1;
+	int effective_comm_size = comm_size_ - 1;
+#else
+	int effective_comm_rank = comm_rank_;
+	int effective_comm_size = comm_size_;
+#endif
+	if (par_->TssDdProcIdxSet_ == NULL)
+	{
+		effective_comm_size = CoinMin(effective_comm_size, model_->getNumSubproblems());
+		if (effective_comm_rank < effective_comm_size)
+		{
+			/** round-robin */
+			int size = (int) ((model_->getNumSubproblems() - 1) - effective_comm_rank) / effective_comm_size + 1;
+			assert(size > 0);
+			par_->TssDdNumProcIdx_ = size;
+			par_->TssDdProcIdxSet_ = new int [size];
+			int i = 0;
+			for (int s = effective_comm_rank; s < model_->getNumSubproblems(); s += effective_comm_size)
+				par_->TssDdProcIdxSet_[i++] = s;
+		}
+	}
+
 	/** initialize solver */
 	initialize();
 
@@ -133,7 +172,7 @@ STO_RTN_CODE TssDdMpi::solve()
 	ctime_start_ = CoinCpuTime();
 	wtime_start_ = MPI_Wtime();
 
-	/** create master pboblem */
+	/** create master problem */
 	createMaster();
 
 	/** create subproblems */
@@ -187,26 +226,23 @@ STO_RTN_CODE TssDdMpi::solve()
 
 	/** collect results */
 	collectResults();
-	
+
 	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
 
 	return STO_RTN_OK;
 }
 
 /** create subproblem */
-STO_RTN_CODE TssDdMpi::createSubproblem()
+STO_RTN_CODE DecDdMpi::createSubproblem()
 {
 	int * displs = NULL;
-	vector<int> scenariosForCut;
-
-	/** retrieve model info */
-	const double * probability = model_->getProbability();
+	vector<int> subproblemsForCut;
 
 	/** SCENARIO DISTRIBUTION:
 	 *    scenarios taken care of by the current processor */
 	for (int s = 0; s < par_->TssDdNumProcIdx_; ++s)
 	{
-		scenariosForCut.push_back(par_->TssDdProcIdxSet_[s]);
+		subproblemsForCut.push_back(par_->TssDdProcIdxSet_[s]);
 	}
 
 #if USE_ROOT_PROCESSOR == 0
@@ -215,28 +251,43 @@ STO_RTN_CODE TssDdMpi::createSubproblem()
 	{
 		if (par_->TssDdAddFeasCuts_ >= 0 || par_->TssDdAddOptCuts_ >= 0 || par_->TssDdEvalUb_ >= 0)
 		{
+
+			/** these settings are only supported for stochastic models */
+			TssModel * tssModel;
+			try
+			{
+				tssModel = dynamic_cast<TssModel *>(model_);
+			}
+			catch (const std::bad_cast& e)
+			{
+				printf("Error: Cuts and primal heuristic are not supported in a general decomposition model\n");
+				return STO_RTN_ERR;
+			}
+
 			/** create Benders subproblem:
 			 *   This is used in generating feasibility/optimality cuts
 			 *   and evaluating upper bounds. */
 			bdsub_ = new TssBdSub(par_);
-			bdsub_->scenarios_ = scenariosForCut;
-			bdsub_->loadProblem(model_);
+			bdsub_->scenarios_ = subproblemsForCut;
+			bdsub_->loadProblem(tssModel);
 		}
 
 		for (int s = 0; s < par_->TssDdNumProcIdx_; ++s)
 		{
-			int scen = par_->TssDdProcIdxSet_[s];
+			int sub = par_->TssDdProcIdxSet_[s];
 			/** create subproblem instance */
-			TssDdSub * subprob = new TssDdSub(scen, par_);
+			DecDdSub * subprob = new DecDdSub(sub, par_);
 			subprobs_.push_back(subprob);
 
 			/** create subproblem */
-			subprob->createProblem(probability[scen], model_);
+			subprob->createProblem(model_);
+			assert(subprob->si_);
+
 			SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(subprob->si_);
-			if (si)
-				subprob->si_->setPrintLevel(CoinMin(CoinMax(0, par_->logLevel_ - 3), 5));
-			else
-				subprob->si_->setPrintLevel(CoinMax(0,par_->logLevel_ - 3));
+			// if (si)
+			// 	subprob->si_->setPrintLevel(CoinMin(CoinMax(0, par_->logLevel_ - 3), 5));
+			// else
+			// 	subprob->si_->setPrintLevel(CoinMax(0,par_->logLevel_ - 3));
 
 			/** add cut generator */
 			if (par_->TssDdAddFeasCuts_ >= 0 || par_->TssDdAddOptCuts_ >= 0)
@@ -257,21 +308,21 @@ STO_RTN_CODE TssDdMpi::createSubproblem()
 	/** Let the root know how many scenarios each process use.
 	 *  We do not count the number of subproblems for comm_group > 0,
 	 *  in which case the subproblem data is used to generate cuts and to evaluate upper bounds. */
-	int nsubprobs = comm_group_ > 0 ? 0 : subprobs_.size();
-	MPI_Gather(&nsubprobs, 1, MPI::INT, nsubprobs_, 1, MPI::INT, 0, comm_);
+	int nsubprobs_proc = comm_group_ > 0 ? 0 : subprobs_.size();
+	MPI_Gather(&nsubprobs_proc, 1, MPI::INT, nsubprobsAtRank_, 1, MPI::INT, 0, comm_);
 
 	if (comm_rank_ == 0)
 	{
-		scenarioSpecs_ = new int [model_->getNumScenarios()];
+		subproblemSpecs_ = new int [model_->getNumSubproblems()];
 		displs = new int [comm_size_];
 		displs[0] = 0;
 		for (int i = 1; i < comm_size_; ++i)
-			displs[i] = displs[i-1] + nsubprobs_[i-1];
+			displs[i] = displs[i-1] + nsubprobsAtRank_[i-1];
 	}
 
-	/** Let the root know which scenarios each process take care of. */
-	MPI_Gatherv(par_->TssDdProcIdxSet_, nsubprobs, MPI::INT,
-			scenarioSpecs_, nsubprobs_, displs, MPI::INT, 0, comm_);
+	/** Let the root know which subproblems each process take care of. */
+	MPI_Gatherv(par_->TssDdProcIdxSet_, nsubprobs_proc, MPI::INT,
+			subproblemSpecs_, nsubprobsAtRank_, displs, MPI::INT, 0, comm_);
 
 	/** free memory */
 	FREE_ARRAY_PTR(displs);
@@ -280,7 +331,7 @@ STO_RTN_CODE TssDdMpi::createSubproblem()
 }
 
 /** solve subproblem */
-STO_RTN_CODE TssDdMpi::solveSubproblem()
+STO_RTN_CODE DecDdMpi::solveSubproblem()
 {
 	int doContinue = 1;
 	Solutions solutions;
@@ -340,56 +391,57 @@ STO_RTN_CODE TssDdMpi::solveSubproblem()
 					/** 1. solve each subproblem */
 					for (unsigned s = 0; s < subprobs_.size(); ++s)
 					{
+
 						if (doContinueLocal == 0) continue;
-	
+
 						if (par_->TssDdAddFeasCuts_ >= 0 || par_->TssDdAddOptCuts_ >= 0)
 						{
 							/** disable cut generator */
 							subprobs_[s]->chgCutGenerator(NULL);
-	
+
 							/** update subproblem */
 							if (par_->TssDdAddOptCuts_ >= 0 && primalBound_ < COIN_DBL_MAX)
 								subprobs_[s]->updateProblem(NULL, primalBound_);
-	
+
 							/** push cuts */
 							subprobs_[s]->pushCuts(cuts_);
 							DSPdebugMessage("Rank %d: pushed %d cuts\n", comm_rank_, cuts_->sizeCuts());
 						}
-	
+
 						/** update wall clock */
 						ticToc();
-	
+
 						/** solution status */
 						if (time_remains_ < 0)
 						{
 							doContinueLocal = 0;
 							continue;
 						}
-	
+
 						/** set time limit */
 						subprobs_[s]->setTimeLimit(CoinMin(time_remains_, par_->ScipLimitsTime_));
-	
+
 						/** solve subproblem */
 						subprobs_[s]->solve();
-	
-						DSPdebugMessage("Rank %d: solved scenario %d status %d objective %e (%.2f seconds)\n",
+
+						DSPdebugMessage("Rank %d: solved subproblem %d status %d objective %e (%.2f seconds)\n",
 								comm_rank_, subprobs_[s]->sind_, subprobs_[s]->si_->getStatus(), subprobs_[s]->si_->getPrimalBound(), MPI::Wtime() - tic_);
-	
+
 						/** update wall clock */
 						ticToc();
-	
+
 						/** solution status */
 						if (checkStatus(subprobs_[s]) == false || time_remains_ < 0)
 						{
 							doContinueLocal = 0;
 							continue;
 						}
-	
+
 						if (doCollectSols)
 						{
 							/** check duplicate solution */
 							CoinPackedVector * x = duplicateSolution(
-									model_->getNumCols(0),
+									model_->getNumSubproblemCouplingCols(s),
 									subprobs_[s]->si_->getSolution(),
 									ubSolutions_);
 							if (x != NULL)
@@ -429,8 +481,10 @@ STO_RTN_CODE TssDdMpi::solveSubproblem()
 			bool violated = false;
 			addFeasCuts(solutions);
 #ifdef DO_SERIALIZE
-			for (int r = 0; r < comm_size_; ++r) {
-				if (r == comm_rank_) {
+			for (int r = 0; r < comm_size_; ++r)
+			{
+				if (r == comm_rank_)
+				{
 #endif
 					if (doSolveSubprob)
 					{
@@ -440,7 +494,7 @@ STO_RTN_CODE TssDdMpi::solveSubproblem()
 							for (int j = ncuts; j < cuts_->sizeCuts(); ++j)
 							{
 								double viol = cuts_->rowCutPtr(j)->violated(subprobs_[s]->si_->getSolution());
-//								DSPdebugMessage("Rank %d: scenario %d violation %e\n", comm_rank_, subprobs_[s]->sind_, viol);
+//								DSPdebugMessage("Rank %d: subproblem %d violation %e\n", comm_rank_, subprobs_[s]->sind_, viol);
 								if (viol > 1.0e-6)
 								{
 //									DSPdebugMessage("Rank %d: free transform %d\n", comm_rank_, subprobs_[s]->sind_);
@@ -510,7 +564,7 @@ STO_RTN_CODE TssDdMpi::solveSubproblem()
 }
 
 /** synchronize subproblem: send Lagrangian multipliers to subproblems */
-STO_RTN_CODE TssDdMpi::syncSubproblem()
+STO_RTN_CODE DecDdMpi::syncSubproblem()
 {
 #define FREE_MEMORY \
 	FREE_ARRAY_PTR(sendbuf); \
@@ -526,8 +580,11 @@ STO_RTN_CODE TssDdMpi::syncSubproblem()
 
 	if (comm_rank_ == 0)
 	{
-		int msglen = model_->getNumCols(0);              /**< buffer length per process */
-		int slen   = model_->getNumScenarios() * msglen; /**< send buffer length */
+		int slen = 0; /**< send buffer length */
+		for (int s = 0; s < model_->getNumSubproblems(); s++)
+			slen += model_->getNumSubproblemCouplingRows(s);
+
+		int curMsglen = 0;
 
 		/** allocate memory */
 		sendbuf = new double [slen];
@@ -540,16 +597,43 @@ STO_RTN_CODE TssDdMpi::syncSubproblem()
 		/** construct buffer */
 		for (int i = 0, scnt = 0; i < comm_size_; ++i)
 		{
-			for (int j = 0; j < nsubprobs_[i]; ++j)
+			scounts[i] = 0;
+			for (int j = 0; j < nsubprobsAtRank_[i]; ++j)
 			{
-				int sind = scenarioSpecs_[scnt];
+				int sind = subproblemSpecs_[scnt];
 				//printf("scnt %d sind %d\n", scnt, sind);
-				const double * msg = lambda + msglen * sind;
-				CoinCopyN(msg, msglen, sendbuf + scnt * msglen);
+
+				/** split up Lagrangian multipliers for each subproblem */
+				const double * msg;
+				int msglen = model_->getNumSubproblemCouplingRows(sind); /**< buffer length */
+				if (model_->nonanticipativity())
+				{
+					/** merely to avoid allocating more memory; reconstructing lambda as below should also work */
+					msg = lambda + msglen * sind;
+				}
+				else
+				{
+					/** construct only the part of lambda that is relevant to the model */
+					const int * relevantRows = model_->getSubproblemCouplingRowIndices(sind);
+					double * msg_aux = new double [msglen];
+					for (int k = 0; k < msglen; k++)
+						msg_aux[k] = lambda[relevantRows[k]];
+					msg = msg_aux;
+				}
+
+#ifdef DSP_DEBUG
+				DSPdebugMessage("Sending lambda to rank %d, subproblem %d:  ", i, sind);
+				for (int k = 0; k < msglen; k++)
+					DSPdebugMessage("%.4f ", msg[k]);
+				DSPdebugMessage("\n");
+#endif
+
+				CoinCopyN(msg, msglen, sendbuf + curMsglen);
+				curMsglen += msglen;
+				scounts[i] += msglen;
 				msg = NULL;
 				scnt++;
 			}
-			scounts[i] = nsubprobs_[i] * msglen;
 			displs[i] = i == 0 ? 0 : displs[i-1] + scounts[i-1];
 		}
 		lambda = NULL;
@@ -557,9 +641,12 @@ STO_RTN_CODE TssDdMpi::syncSubproblem()
 #if USE_ROOT_PROCESSOR == 0
 	else
 #endif
-	if (comm_group_ == 0)
 	{
-		rcount = model_->getNumCols(0) * subprobs_.size();
+		rcount = 0;
+		for (vector<DecDdSub*>::iterator it = subprobs_.begin(); it != subprobs_.end(); ++it)
+		{
+			rcount += model_->getNumSubproblemCouplingRows((*it)->sind_);
+		}
 		recvbuf = new double [rcount];
 	}
 
@@ -575,15 +662,17 @@ STO_RTN_CODE TssDdMpi::syncSubproblem()
 	if (comm_group_ == 0)
 #endif
 	{
+		int offset = 0;
 		int numSubprobs = subprobs_.size();
+
 		for (int i = 0; i < numSubprobs; ++i)
 		{
 			/** change cut generator */
 			if (par_->TssDdAddFeasCuts_ >= 0 || par_->TssDdAddOptCuts_ >= 0)
 				subprobs_[i]->chgCutGenerator(bdsub_);
 
-			/** update problem */
-			double * lambda = recvbuf + i * model_->getNumCols(0);
+			double * lambda = recvbuf + offset;
+			offset += model_->getNumSubproblemCouplingRows(subprobs_[i]->sind_);
 			subprobs_[i]->updateProblem(lambda, primalBound_);
 		}
 	}
@@ -596,30 +685,30 @@ STO_RTN_CODE TssDdMpi::syncSubproblem()
 }
 
 /** create master problem */
-STO_RTN_CODE TssDdMpi::createMaster()
+STO_RTN_CODE DecDdMpi::createMaster()
 {
 	if (comm_rank_ != 0)
 		return STO_RTN_OK;
 
 	/** create master problem */
 	if (par_->TssDdMasterSolver_ == Subgradient)
-		master_ = new TssDdMasterSubgrad(par_);
+		master_ = new DecDdMasterSubgrad(par_);
 	else
-		master_ = new TssDdPrimalMaster(par_);
+		master_ = new DecDdPrimalMaster(par_);
 	master_->createProblem(model_);
 
 	/** allocate memory */
 	if (par_->TssDdDualVarsLog_)
 	{
-		multipliers_ = new double [model_->getNumCols(0) * model_->getNumScenarios()];
-		CoinZeroN(multipliers_, model_->getNumCols(0) * model_->getNumScenarios());
+		multipliers_ = new double [model_->getNumCouplingRows()];
+		CoinZeroN(multipliers_, model_->getNumCouplingRows());
 	}
 
 	return STO_RTN_OK;
 }
 
 /** solve master problem */
-STO_RTN_CODE TssDdMpi::solveMaster()
+STO_RTN_CODE DecDdMpi::solveMaster()
 {
 	if (comm_rank_ != 0)
 		return STO_RTN_OK;
@@ -633,7 +722,7 @@ STO_RTN_CODE TssDdMpi::solveMaster()
 	if (par_->TssDdDualVarsLog_)
 	{
 		/** calculate change of the Lagrangian multiplier */
-		int nmult = model_->getNumCols(0) * model_->getNumScenarios();
+		int nmult = model_->getNumCouplingRows();
 		double dist = 0.0;
 		for (int i = 0; i < nmult; ++i)
 		{
@@ -652,7 +741,7 @@ STO_RTN_CODE TssDdMpi::solveMaster()
 }
 
 /** synchronize master problem: send subproblem solutions to master and may update dual bound */
-STO_RTN_CODE TssDdMpi::syncMaster()
+STO_RTN_CODE DecDdMpi::syncMaster()
 {
 #define FREE_MEMORY \
 	FREE_ARRAY_PTR(sendbuf); \
@@ -665,12 +754,16 @@ STO_RTN_CODE TssDdMpi::syncMaster()
 	int *    rcounts = NULL; /**< receive buffer length for each process */
 	int *    displs  = NULL; /**< displacement of receive buffer */
 
-	/** send buffer length */
-	int slenPerScenario = model_->getNumCols(0) + 2; /**< send buffer length per scenario */
-	int slenPerProcess = 0;                          /**< send buffer length per process */
-
-	/** total length of message buffers from all processes */
-	int rbuflen = model_->getNumScenarios() * slenPerScenario;
+	int slenPerProcess = 0;                            /**< send buffer length per process */
+	int rbuflen = 0;                                   /**< total length of message buffers from all processes */
+	int nsubprobs = model_->getNumSubproblems();
+	int * slenPerSubproblem = new int [nsubprobs];
+	/** send buffer length per subproblem */
+	for (int s = 0; s < nsubprobs; s++)
+	{
+		slenPerSubproblem[s] = model_->getNumSubproblemCouplingCols(s) + 2;
+		rbuflen += slenPerSubproblem[s];
+	}
 
 	if (comm_rank_ == 0)
 	{
@@ -681,11 +774,17 @@ STO_RTN_CODE TssDdMpi::syncMaster()
 
 		/** set displacement */
 		displs[0] = 0;
-		rcounts[0] = slenPerScenario * nsubprobs_[0];
-		for (int s = 1; s < comm_size_; ++s)
+		for (int r = 0, scnt = 0; r < comm_size_; ++r)
 		{
-			rcounts[s] = slenPerScenario * nsubprobs_[s];
-			displs[s] = displs[s-1] + rcounts[s-1];
+			rcounts[r] = 0;
+			/** obtain subproblems in each rank */
+			for (int j = 0; j < nsubprobsAtRank_[r]; ++j)
+			{
+				rcounts[r] += slenPerSubproblem[subproblemSpecs_[scnt]];
+				scnt++;
+			}
+			if (r > 0)
+				displs[r] = displs[r-1] + rcounts[r-1];
 		}
 	}
 #if USE_ROOT_PROCESSOR == 0
@@ -694,21 +793,21 @@ STO_RTN_CODE TssDdMpi::syncMaster()
 	if (comm_group_ == 0)
 	{
 		/** send buffer length per process */
-		slenPerProcess = slenPerScenario * subprobs_.size();
+		slenPerProcess = 0;
+		for (vector<DecDdSub*>::iterator it = subprobs_.begin(); it != subprobs_.end(); ++it)
+			slenPerProcess += slenPerSubproblem[(*it)->sind_];
 
 		/** allocate send buffer memory */
 		sendbuf = new double [slenPerProcess];
 
 		/** get message buffer */
-		int msgcnt = 0;
-		for (vector<TssDdSub*>::iterator it = subprobs_.begin(); it != subprobs_.end(); ++it)
+		int msgoffset = 0;
+		for (vector<DecDdSub*>::iterator it = subprobs_.begin(); it != subprobs_.end(); ++it)
 		{
-			int msgoffset = msgcnt * slenPerScenario;
 			double * sendbufPtr = sendbuf + msgoffset;
 			(*it)->MPImsgbuf(sendbufPtr);
-			msgcnt++;
+			msgoffset += slenPerSubproblem[(*it)->sind_];
 		}
-		assert(msgcnt * slenPerScenario == slenPerProcess);
 	}
 
 	/** gather subproblem solutions from all processes */
@@ -718,38 +817,60 @@ STO_RTN_CODE TssDdMpi::syncMaster()
 	if (comm_rank_ == 0)
 	{
 		/** allocate memory */
-		double *  objval_sub   = new double [model_->getNumScenarios()];
-		double ** solution_sub = new double * [model_->getNumScenarios()];
-		for (int s = 0; s < model_->getNumScenarios(); ++s)
-			solution_sub[s] = new double [model_->getNumCols(0)];
+		double * objval_sub   = new double [model_->getNumSubproblems()];
+		double ** solution_sub = new double * [model_->getNumSubproblems()];
+		for (int s = 0; s < model_->getNumSubproblems(); ++s)
+			solution_sub[s] = new double [model_->getNumSubproblemCouplingCols(s)];
 
 		/** parse receive buffer */
 		for (int i = 0; i < comm_size_; ++i)
 		{
-			for (int j = 0; j < nsubprobs_[i]; ++j)
+			int offset = 0;
+			for (int j = 0; j < nsubprobsAtRank_[i]; ++j)
 			{
 				/** chop */
-				double * msgpiece = recvbuf + displs[i] + j * slenPerScenario;
+				double * msgpiece = recvbuf + displs[i] + offset;
 
 				/** store message */
 				int sind = static_cast<int>(msgpiece[0]);
 				objval_sub[sind] = msgpiece[1];
-				CoinCopyN(msgpiece + 2, model_->getNumCols(0), solution_sub[sind]);
+				CoinCopyN(msgpiece + 2, model_->getNumSubproblemCouplingCols(sind),	solution_sub[sind]);
+
+				offset += slenPerSubproblem[sind];
 			}
 		}
+
+#ifdef DSP_DEBUG
+		DSPdebugMessage("Sending to master:\n");
+		for (int i = 0; i < comm_size_; ++i)
+		{
+			int offset = 0;
+			for (int j = 0; j < nsubprobsAtRank_[i]; ++j)
+			{
+				double * msgpiece = recvbuf + displs[i] + offset;
+				int sind = static_cast<int>(msgpiece[0]);
+				DSPdebugMessage("s=%d: obj=%f, ", sind, objval_sub[sind]);
+				for (int k = 0; k < model_->getNumSubproblemCouplingCols(sind); k++)
+					DSPdebugMessage("%f ", solution_sub[sind][k]);
+				DSPdebugMessage("\n");
+
+				offset += slenPerSubproblem[sind];
+			}
+		}
+#endif
 
 		/** update master: may update dual bound */
 		master_->updateProblem(primalBound_, dualBound_, objval_sub, solution_sub);
 
 		/** store subproblem objective values */
 		double objval_subprob = 0.;
-		for (int s = 0; s < model_->getNumScenarios(); ++s)
+		for (int s = 0; s < model_->getNumSubproblems(); ++s)
 			objval_subprob += objval_sub[s];
 		objval_subprob_.push_back(objval_subprob);
 
 		/** free memory */
 		FREE_ARRAY_PTR(objval_sub);
-		FREE_2D_ARRAY_PTR(model_->getNumScenarios(), solution_sub);
+		FREE_2D_ARRAY_PTR(model_->getNumSubproblems(), solution_sub);
 	}
 
 	FREE_MEMORY;
@@ -759,7 +880,7 @@ STO_RTN_CODE TssDdMpi::syncMaster()
 }
 
 /** check whether to terminate or not */
-bool TssDdMpi::doTerminate()
+bool DecDdMpi::doTerminate()
 {
 	bool terminate = false;
 
@@ -820,7 +941,7 @@ bool TssDdMpi::doTerminate()
 		{
 			/** Is the master solution suboptimal? */
 			terminate = true;
-			TssDdMasterSubgrad * master = dynamic_cast<TssDdMasterSubgrad*>(master_);
+			DecDdMasterSubgrad * master = dynamic_cast<DecDdMasterSubgrad*>(master_);
 			if (master)
 			{
 				if (master->getConstScalar() > 1.0e-6)
@@ -832,7 +953,7 @@ bool TssDdMpi::doTerminate()
 		{
 			/** Is the master solution suboptimal? */
 			terminate = true;
-			TssDdPrimalMaster * master = dynamic_cast<TssDdPrimalMaster*>(master_);
+			DecDdPrimalMaster * master = dynamic_cast<DecDdPrimalMaster*>(master_);
 			if (master)
 			{
 				if (master->isSolutionBoundary())
@@ -861,7 +982,7 @@ bool TssDdMpi::doTerminate()
 }
 
 /** collect results */
-STO_RTN_CODE TssDdMpi::collectResults()
+STO_RTN_CODE DecDdMpi::collectResults()
 {
 	/** number of iterations */
 	numIterations_ = iterCnt_;
@@ -881,7 +1002,7 @@ STO_RTN_CODE TssDdMpi::collectResults()
 	char logfile[128];
 
 	/** write results in file */
-	sprintf(logfile, "%sTssDdMpi%d.log", logfile_prefix_.c_str(), comm_rank_);
+	sprintf(logfile, "%sDecDdMpi%d.log", logfile_prefix_.c_str(), comm_rank_);
 
 	ofstream f(logfile, ofstream::out);
 #endif
@@ -891,7 +1012,7 @@ STO_RTN_CODE TssDdMpi::collectResults()
 #ifdef TSSDD_WRITE_FILE
 		/** write results in file */
 		char logfileMaster[128];
-		sprintf(logfileMaster, "%sTssDdMpiMaster.log", logfile_prefix_.c_str());
+		sprintf(logfileMaster, "%sDecDdMpiMaster.log", logfile_prefix_.c_str());
 
 		int niters = master_->wtime_solve_.size();
 
@@ -915,7 +1036,6 @@ STO_RTN_CODE TssDdMpi::collectResults()
 #if USE_ROOT_PROCESSOR == 0
 	else
 #endif
-	if (comm_group_ == 0)
 	{
 		int nsubprobs = subprobs_.size();
 		if (nsubprobs > 0)
@@ -949,8 +1069,8 @@ STO_RTN_CODE TssDdMpi::collectResults()
 }
 
 /** get upper bound */
-double TssDdMpi::getUpperBound(
-		TssDdSub * ddsub, /**< subproblem to evaluate */
+double DecDdMpi::getUpperBound(
+		DecDdSub * ddsub, /**< subproblem to evaluate */
 		bool & feasible   /**< indicating feasibility */)
 {
 	assert(bdsub_);
@@ -962,17 +1082,20 @@ double TssDdMpi::getUpperBound(
 }
 
 /** get upper bound */
-double TssDdMpi::getUpperBound(
+double DecDdMpi::getUpperBound(
 		const double * solution, /**< solution to evaluate */
 		bool & feasible          /**< indicating feasibility */)
 {
 	assert(solution);
 
+	StoModel * stoModel = dynamic_cast<StoModel *>(model_);
+	assert(stoModel != NULL); /** this function should only be called for stochastic models */
+
 	/** get objective value for the first stage */
 	double objval = 0.0;
 	double objval0 = 0.0;
-	for (int j = 0; j < model_->getNumCols(0); ++j)
-		objval0 += model_->getObjCore(0)[j] * solution[j];
+	for (int j = 0; j < stoModel->getNumCols(0); ++j)
+		objval0 += stoModel->getObjCore(0)[j] * solution[j];
 
 #ifdef DSP_EXPERIMENT
 	/** get recourse value */
@@ -991,20 +1114,20 @@ double TssDdMpi::getUpperBound(
 			break;
 		}
 		/** objective */
-		objval += (objval0 + objval_reco) * model_->getProbability()[subprobs_[s]->sind_];
+		objval += (objval0 + objval_reco) * stoModel->getProbability()[subprobs_[s]->sind_];
 		DSPdebugMessage("Rank %d scenario %d objective(first) %e objective(reco) %e objective(wsum) %e\n",
-				comm_rank_, subprobs_[s]->sind_, objval0, objval_reco, (objval0 + objval_reco) * model_->getProbability()[subprobs_[s]->sind_]);
+				comm_rank_, subprobs_[s]->sind_, objval0, objval_reco, (objval0 + objval_reco) * stoModel->getProbability()[subprobs_[s]->sind_]);
 	}
 #else
 	/** get recourse value */
-	double * objval_reco = new double [model_->getNumScenarios()];
+	double * objval_reco = new double [stoModel->getNumSubproblems()];
 	bdsub_->solveRecourse(solution, objval_reco, NULL);
 
 	/** collect objective values */
 	feasible = true;
-	for (int s = 0; s < model_->getNumScenarios(); ++s)
+	for (int s = 0; s < stoModel->getNumSubproblems(); ++s)
 	{
-		objval += objval_reco[s] * model_->getProbability()[s];
+		objval += objval_reco[s] * stoModel->getProbability()[s];
 		if (bdsub_->status_[s] == STO_STAT_PRIM_INFEASIBLE)
 		{
 			feasible = false;
@@ -1024,7 +1147,7 @@ double TssDdMpi::getUpperBound(
 }
 
 /** check solution status and determine whether to continue or stop. */
-bool TssDdMpi::checkStatus(TssDdSub * ddsub)
+bool DecDdMpi::checkStatus(DecDdSub * ddsub)
 {
 	bool doContinue = false;
 	switch (ddsub->si_->getStatus())
@@ -1044,7 +1167,7 @@ bool TssDdMpi::checkStatus(TssDdSub * ddsub)
 }
 
 /** check whether solution is duplicate or not; return NULL if duplicate */
-CoinPackedVector * TssDdMpi::duplicateSolution(
+CoinPackedVector * DecDdMpi::duplicateSolution(
 		int size,           /**< size of array */
 		const double * x,   /**< current solution */
 		Solutions solutions /**< solution pool to check duplication */)
@@ -1067,7 +1190,7 @@ CoinPackedVector * TssDdMpi::duplicateSolution(
 }
 
 /** synchronize solution pool */
-void TssDdMpi::syncSolutions(
+void DecDdMpi::syncSolutions(
 		Solutions & solutions,
 		int & numSyncedSolutions)
 {
@@ -1137,9 +1260,12 @@ void TssDdMpi::syncSolutions(
 }
 
 /** obtain upper bounds for solution pools */
-void TssDdMpi::obtainUpperBounds(
+void DecDdMpi::obtainUpperBounds(
 		int num /**< number of solutions to evaluate */)
 {
+	StoModel * stoModel = dynamic_cast<StoModel *>(model_);
+	assert(stoModel != NULL); /** this function should only be called for stochastic models */
+
 	/** 1. Evaluate the solutions; */
 	int timeExceeded = 0;
 	int timeExceededLocal = 0;
@@ -1155,7 +1281,7 @@ void TssDdMpi::obtainUpperBounds(
 #endif
 			for (int i = comm_group_; i < num; i += num_comm_groups_)
 			{
-				double * sol = ubSolutions_[numSyncedUbSolutions_ + i]->denseVector(model_->getNumCols(0));
+				double * sol = ubSolutions_[numSyncedUbSolutions_ + i]->denseVector(stoModel->getNumCols(0));
 				ub[i] = getUpperBound(sol, feasible);
 				DSPdebugMessage("Rank %d: ub[%d] %e %s\n", comm_rank_, i, ub[i], feasible ? "feas" : "infeas");
 				FREE_ARRAY_PTR(sol);
@@ -1212,7 +1338,7 @@ void TssDdMpi::obtainUpperBounds(
 
 /** collect objective values;
  * This takes the summation of all vals from different processors. */
-void TssDdMpi::collectObjValues(
+void DecDdMpi::collectObjValues(
 		int num,      /**< size of vals */
 		double * vals /**< objective values */)
 {
@@ -1229,10 +1355,13 @@ void TssDdMpi::collectObjValues(
 }
 
 /** add feasibility cuts */
-int TssDdMpi::addFeasCuts(
+int DecDdMpi::addFeasCuts(
 		Solutions solutions /**< solutions to check */)
 {
-	int ncols_first = model_->getNumCols(0); /**< number of first-stage variables */
+	StoModel * stoModel = dynamic_cast<StoModel *>(model_);
+	assert(stoModel != NULL); /** this function should only be called for stochastic models */
+
+	int ncols_first = stoModel->getNumCols(0); /**< number of first-stage variables */
 	int nsols = solutions.size();            /**< number of solutions stored */
 	double ** sol = new double * [nsols];    /**< array of dense vector of solutions */
 	OsiCuts * cuts = new OsiCuts;            /**< cuts generated */
@@ -1257,6 +1386,7 @@ int TssDdMpi::addFeasCuts(
 		MPI_Barrier(comm_);
 	}
 #endif
+
 
 #if 0
 	/** print cuts */
@@ -1288,11 +1418,14 @@ int TssDdMpi::addFeasCuts(
 }
 
 /** add optimality cuts */
-int TssDdMpi::addOptCuts(
+int DecDdMpi::addOptCuts(
 		int num /**< number of solutions to check */)
 {
+	StoModel * stoModel = dynamic_cast<StoModel *>(model_);
+	assert(stoModel != NULL); /** this function should only be called for stochastic models */
+
 	int violated = 0;
-	int ncols_first = model_->getNumCols(0);    /**< number of first-stage variables */
+	int ncols_first = stoModel->getNumCols(0);    /**< number of first-stage variables */
 	int nSolutions = ubSolutions_.size();       /**< number of solutions stored */
 	vector<int> isol;                           /**< solution indices considered in process */
 	int * numsols   = new int [comm_size_];     /**< number of solutions considered in each process */
@@ -1361,7 +1494,7 @@ int TssDdMpi::addOptCuts(
 	{
 		/** initializing */
 		for (int j = 0; j < ncols_first; ++j)
-			aggrow[j] = -(model_->getObjCore(0)[j]);
+			aggrow[j] = -(stoModel->getObjCore(0)[j]);
 		aggrhs = 0.0;
 
 		/** aggregating */
@@ -1397,7 +1530,7 @@ int TssDdMpi::addOptCuts(
 			if (fabs(aggrow[j]) > 1E-10)
 				cutrow.insert(j, aggrow[j]);
 		}
-		cutrow.insert(ncols_first + model_->getNumCols(1), 1.0);
+		cutrow.insert(ncols_first + stoModel->getNumCols(1), 1.0);
 
 		rowcut.setRow(cutrow);
 		rowcut.setUb(COIN_DBL_MAX);
@@ -1440,7 +1573,7 @@ int TssDdMpi::addOptCuts(
 }
 
 /** synchronize cut pool */
-void TssDdMpi::syncCuts(
+void DecDdMpi::syncCuts(
 		int start,     /**< start index to synchronize */
 		OsiCuts * cuts /**< cuts to synchronize */)
 {
@@ -1485,7 +1618,7 @@ void TssDdMpi::syncCuts(
 }
 
 /** update wall clock time remains */
-void TssDdMpi::ticToc()
+void DecDdMpi::ticToc()
 {
 	time_remains_ -= MPI::Wtime() - tic_;
 	tic_ = MPI::Wtime();

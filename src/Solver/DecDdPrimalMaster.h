@@ -1,27 +1,27 @@
 /*
- * TssDdPrimalMaster.h
+ * DecDdPrimalMaster.h
  *
  *  Created on: Dec 11, 2014
- *      Author: kibaekkim
+ *      Author: kibaekkim, ctjandra
  */
 
-#ifndef SRC_SOLVER_TSSDDPRIMALMASTER_H_
-#define SRC_SOLVER_TSSDDPRIMALMASTER_H_
+#ifndef SRC_SOLVER_DECDDPRIMALMASTER_H_
+#define SRC_SOLVER_DECDDPRIMALMASTER_H_
 
-#include "Solver/TssDdMaster.h"
+#include "Solver/DecDdMaster.h"
 
-class TssDdPrimalMaster: public TssDdMaster
+class DecDdPrimalMaster: public DecDdMaster
 {
 public:
 
 	/** constructor */
-	TssDdPrimalMaster(StoParam * par) :
-		TssDdMaster(par),
+	DecDdPrimalMaster(StoParam * par) :
+		DecDdMaster(par),
 		si_(NULL),
 		nrows_(0),
 		ncols_(0),
-		ncols_first_(0),
-		nscen_(0),
+		ncoupling_(0),
+		nsubprobs_(0),
 		nCutsPerIter_(par->TssDdMasterNumCutsPerIter_),
 		cuts_(NULL),
 		ncuts_minor_(0),
@@ -36,10 +36,10 @@ public:
 	}
 
 	/** default destructor */
-	virtual ~TssDdPrimalMaster();
+	virtual ~DecDdPrimalMaster();
 
 	/** create problem */
-	virtual STO_RTN_CODE createProblem(const TssModel * model);
+	virtual STO_RTN_CODE createProblem(DecModel * model);
 
 	/** update problem: may update dual bound */
 	virtual STO_RTN_CODE updateProblem(
@@ -74,7 +74,15 @@ public:
 		if (prox == NULL)
 			prox = prox_;
 		for (int j = nCutsPerIter_; j < ncols_; ++j)
-			si_->setColBounds(j, prox[j - nCutsPerIter_] - rho, prox[j - nCutsPerIter_] + rho);
+		{
+			double clbd = prox[j - nCutsPerIter_] - rho;
+			double cubd = prox[j - nCutsPerIter_] + rho;
+			if (model_->getSenseCouplingRow(j - nCutsPerIter_) == 'L')
+				clbd = CoinMax((double) 0.0, clbd); /* lambda >= 0 */
+			else if (model_->getSenseCouplingRow(j - nCutsPerIter_) == 'G')
+				cubd = CoinMin((double) 0.0, cubd); /* lambda <= 0 */
+			si_->setColBounds(j, clbd, cubd);
+		}
 	}
 
 	/** set print level */
@@ -107,10 +115,12 @@ public:
 
 private:
 
+	DecModel * model_; /**< model */
+
 	int nrows_;       /**< number of original rows (excluding row cuts) */
 	int ncols_;       /**< number of original columns (excluding column cuts) */
-	int ncols_first_; /**< number of first-stage columns */
-	int nscen_;       /**< number of scenario subproblems */
+	int ncoupling_;   /**< number of coupling constraints */
+	int nsubprobs_;   /**< number of scenario subproblems */
 	int nCutsPerIter_;/**< number of cuts added per iteration */
 
 	OsiCuts *      cuts_;           /**< cut pool (can have column cuts and row cuts) */
@@ -129,4 +139,4 @@ private:
 	bool isSolved_;   /**< indicating whether problem is ever solved */
 };
 
-#endif /* SRC_SOLVER_TSSDDPRIMALMASTER_H_ */
+#endif /* SRC_SOLVER_DECDDPRIMALMASTER_H_ */
