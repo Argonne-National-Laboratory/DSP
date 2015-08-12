@@ -6,9 +6,8 @@
  */
 
 //#define DSP_DEBUG
-#define DSP_EXPERIMENT
-#define USE_ROOT_PROCESSOR 1
 //#define DO_SERIALIZE
+#define USE_ROOT_PROCESSOR 1
 
 #include <vector>
 
@@ -974,7 +973,6 @@ double TssDdMpi::getUpperBound(
 	for (int j = 0; j < model_->getNumCols(0); ++j)
 		objval0 += model_->getObjCore(0)[j] * solution[j];
 
-#ifdef DSP_EXPERIMENT
 	/** get recourse value */
 	feasible = true;
 	int nsubprobs = subprobs_.size();
@@ -995,26 +993,6 @@ double TssDdMpi::getUpperBound(
 		DSPdebugMessage("Rank %d scenario %d objective(first) %e objective(reco) %e objective(wsum) %e\n",
 				comm_rank_, subprobs_[s]->sind_, objval0, objval_reco, (objval0 + objval_reco) * model_->getProbability()[subprobs_[s]->sind_]);
 	}
-#else
-	/** get recourse value */
-	double * objval_reco = new double [model_->getNumScenarios()];
-	bdsub_->solveRecourse(solution, objval_reco, NULL);
-
-	/** collect objective values */
-	feasible = true;
-	for (int s = 0; s < model_->getNumScenarios(); ++s)
-	{
-		objval += objval_reco[s] * model_->getProbability()[s];
-		if (bdsub_->status_[s] == STO_STAT_PRIM_INFEASIBLE)
-		{
-			feasible = false;
-			break;
-		}
-	}
-
-	/** free memory */
-	FREE_ARRAY_PTR(objval_reco);
-#endif
 
 	/** infeasible? */
 	if (!feasible)
