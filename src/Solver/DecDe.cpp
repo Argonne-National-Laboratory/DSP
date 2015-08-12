@@ -1,8 +1,8 @@
 /*
- * TssDe.cpp
+ * DecDe.cpp
  *
  *  Created on: Sep 24, 2014
- *      Author: kibaekkim
+ *      Author: kibaekkim, ctjandra
  */
 
 //#define DSP_DEBUG
@@ -10,24 +10,25 @@
 
 /** DSP */
 #include "Utility/StoMessage.h"
-#include "Solver/TssDe.h"
+#include "Solver/DecDe.h"
 #include "SolverInterface/SolverInterfaceClp.h"
 #include "SolverInterface/SolverInterfaceScip.h"
+#include "Model/TssModel.h"
 
-TssDe::TssDe():
-TssSolver(),
+DecDe::DecDe():
+DecSolver(),
 si_(NULL)
 {
 	/** nothing to do */
 }
 
-TssDe::~TssDe()
+DecDe::~DecDe()
 {
 	FREE_PTR(si_)
 }
 
 /** solve */
-STO_RTN_CODE TssDe::solve()
+STO_RTN_CODE DecDe::solve()
 {
 #define FREE_MEMORY       \
 	FREE_PTR(mat)         \
@@ -58,33 +59,59 @@ STO_RTN_CODE TssDe::solve()
 #endif
 	/** get De model */
 	STO_RTN_CHECK_THROW(
-			model_->copyDeterministicEquivalent(mat, clbd, cubd, ctype, obj, rlbd, rubd),
-			"copyDeterministicEquivalent", "TssModel");
+			model_->getFullModel(mat, clbd, cubd, ctype, obj, rlbd, rubd),
+			"getFullModel", "DecModel");
 #ifdef DSP_TIMING
 	printf("Constructed extensive form data, elapsed time %.2f seconds\n", CoinGetTimeOfDay() - stime);
 	stime = CoinGetTimeOfDay();
 #endif
 
-	int nIntegers = model_->getNumCoreIntegers();
+	int nIntegers = model_->getNumIntegers();
 
-	/** relax integrality? */
-	if (par_->relaxIntegrality_[0])
+	if (model_->isStochastic())
 	{
-		for (int j = 0; j < model_->getNumCols(0); ++j)
+		TssModel * tssModel;
+		try
 		{
-			if (ctype[j] != 'C')
-				nIntegers--;
-			ctype[j] = 'C';
+			tssModel = dynamic_cast<TssModel *>(model_);
+		}
+		catch (const std::bad_cast& e)
+		{
+			printf("Model claims to be stochastic when it is not");
+			return STO_RTN_ERR;
+		}
+
+		/** relax integrality? */
+		if (par_->relaxIntegrality_[0] || par_->relaxIntegralityAll_)
+		{
+			for (int j = 0; j < tssModel->getNumCols(0); ++j)
+			{
+				if (ctype[j] != 'C')
+					nIntegers--;
+				ctype[j] = 'C';
+			}
+		}
+		if (par_->relaxIntegrality_[1] || par_->relaxIntegralityAll_)
+		{
+			for (int j = 0; j < tssModel->getNumCols(1); ++j)
+			{
+				if (ctype[tssModel->getNumCols(0) + j] != 'C')
+					nIntegers--;
+			}
+			CoinFillN(ctype + tssModel->getNumCols(0), tssModel->getNumScenarios() * tssModel->getNumCols(1), 'C');
 		}
 	}
-	if (par_->relaxIntegrality_[1])
+	else
 	{
-		for (int j = 0; j < model_->getNumCols(1); ++j)
+		if (par_->relaxIntegralityAll_)
 		{
-			if (ctype[model_->getNumCols(0) + j] != 'C')
-				nIntegers--;
+			for (int j = 0; j < mat->getNumCols(); j++)
+			{
+				if (ctype[j] != 'C')
+					nIntegers--;
+				ctype[j] = 'C';
+			}
 		}
-		CoinFillN(ctype + model_->getNumCols(0), model_->getNumScenarios() * model_->getNumCols(1), 'C');
 	}
 
 	if (nIntegers > 0)
@@ -101,7 +128,7 @@ STO_RTN_CODE TssDe::solve()
 	}
 
 	/** load problem */
-	si_->loadProblem(mat, clbd, cubd, obj, ctype, rlbd, rubd, "TssDe");
+	si_->loadProblem(mat, clbd, cubd, obj, ctype, rlbd, rubd, "DecDe");
 #ifdef DSP_TIMING
 	printf("Loaded problem to solver, elapsed time %.2f seconds\n", CoinGetTimeOfDay() - stime);
 #endif
@@ -126,7 +153,7 @@ STO_RTN_CODE TssDe::solve()
 
 	/** solution status */
 	status_ = si_->getStatus();
-printf("status %d\n", status_);
+
 	/** get solutions */
 	if (status_ == STO_STAT_OPTIMAL ||
 		status_ == STO_STAT_STOPPED_TIME ||

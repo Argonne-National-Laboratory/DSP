@@ -60,7 +60,7 @@ public:
 	/** get number of columns for a given stage */
 	int getNumCols(int stage) const {return ncols_[stage];}
 
-	/** get number of columns for a given stage */
+	/** get number of integer variables for a given stage */
 	int getNumIntegers(int stage) const {return nints_[stage];}
 
 	/** get number of integer variables in core */

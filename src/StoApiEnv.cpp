@@ -7,16 +7,16 @@
 
 #include "StoApiEnv.h"
 
-StoApiEnv::StoApiEnv() : solver_(NULL)
+StoApiEnv::StoApiEnv() : solver_(NULL), decdata_(NULL), model_(NULL)
 {
 	par_ = new StoParam;
-	tss_ = new TssModel;
 }
 
 StoApiEnv::~StoApiEnv()
 {
-	FREE_PTR(tss_);
+	FREE_PTR(model_);
 	FREE_PTR(solver_);
 	FREE_PTR(par_);
+	FREE_PTR(decdata_);
 }
 

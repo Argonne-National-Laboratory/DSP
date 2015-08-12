@@ -1,12 +1,12 @@
 /*
- * TssDdMpiMaster.h
+ * DecDdMaster.h
  *
  *  Created on: Dec 10, 2014
- *      Author: kibaekkim
+ *      Author: kibaekkim, ctjandra
  */
 
-#ifndef SRC_SOLVER_TSSDDMASTER_H_
-#define SRC_SOLVER_TSSDDMASTER_H_
+#ifndef SRC_SOLVER_DECDDMASTER_H_
+#define SRC_SOLVER_DECDDMASTER_H_
 
 #include <vector>
 #include <iostream>
@@ -18,16 +18,16 @@
 /** DSP */
 #include "SolverInterface/SolverInterface.h"
 #include "Solver/StoParam.h"
-#include "Model/TssModel.h"
+#include "Model/DecModel.h"
 
 using namespace std;
 
-class TssDdMaster
+class DecDdMaster
 {
 public:
 
 	/** default constructor */
-	TssDdMaster(StoParam * par) :
+	DecDdMaster(StoParam * par) :
 		par_(par),
 		objval_(COIN_DBL_MAX),
 		solution_(NULL),
@@ -38,10 +38,10 @@ public:
 	}
 
 	/** default destructor */
-	virtual ~TssDdMaster() {}
+	virtual ~DecDdMaster() {}
 
 	/** create problem */
-	virtual STO_RTN_CODE createProblem(const TssModel * model) = 0;
+	virtual STO_RTN_CODE createProblem(DecModel * model) = 0;
 
 	/** update problem: may update dual bound */
 	virtual STO_RTN_CODE updateProblem(
@@ -85,4 +85,4 @@ public:
 	double wtime_accum_;
 };
 
-#endif /* SRC_SOLVER_TSSDDMASTER_H_ */
+#endif /* SRC_SOLVER_DECDDMASTER_H_ */

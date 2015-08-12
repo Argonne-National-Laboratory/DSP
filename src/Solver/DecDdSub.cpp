@@ -1,13 +1,13 @@
 /*
- * TssDdSub.cpp
+ * DecDdSub.cpp
  *
  *  Created on: Dec 10, 2014
- *      Author: kibaekkim
+ *      Author: kibaekkim, ctjandra
  */
 
 //#define DSP_DEBUG
 
-#include "Solver/TssDdSub.h"
+#include "Solver/DecDdSub.h"
 #include "Utility/StoMacros.h"
 #include "Utility/StoMessage.h"
 #include "SolverInterface/SolverInterfaceClp.h"
@@ -15,19 +15,19 @@
 #include "SolverInterface/SCIPconshdlrBendersDd.h"
 #include "SolverInterface/SCIPbranchruleLB.h"
 
-TssDdSub::~TssDdSub()
+DecDdSub::~DecDdSub()
 {
 	FREE_PTR(si_);
 	FREE_PTR(obj_);
 	FREE_ARRAY_PTR(lambda_);
+	FREE_ARRAY_PTR(cpl_rhs_);
 	FREE_2D_ARRAY_PTR(nsols_, solutions_);
 	nsols_ = 0;
+	obj_offset_ = 0;
 }
 
 /** create problem */
-STO_RTN_CODE TssDdSub::createProblem(
-		double     probability, /**< probability */
-		TssModel * model)
+STO_RTN_CODE DecDdSub::createProblem(DecModel * model)
 {
 #define FREE_MEMORY       \
 	FREE_PTR(mat)         \
@@ -48,10 +48,11 @@ STO_RTN_CODE TssDdSub::createProblem(
 	double clbd_aux[1];
 	double cubd_aux[1];
 	double obj_aux[1];
+	int cpl_ncols;
 
 	BGN_TRY_CATCH
 
-	/** augmented scenario index */
+	/** augmented subproblem index */
 	augs[0] = sind_;
 
 	/** for auxiliary term */
@@ -62,40 +63,81 @@ STO_RTN_CODE TssDdSub::createProblem(
 	/** decompose model */
 	STO_RTN_CHECK_THROW(
 			model->decompose(1, augs, 1, clbd_aux, cubd_aux, obj_aux,
-					mat, clbd, cubd, ctype, obj_, rlbd, rubd), "decompose", "TssModel");
+					mat, clbd, cubd, ctype, obj_, rlbd, rubd),
+			"decompose", "DecModel");
 
-	/** number of first-stage variables */
-	ncols_first_ = model->getNumCols(0);
+	STO_RTN_CHECK_THROW(
+			model->decomposeCoupling(1, augs, cpl_mat_, cpl_cols_, cpl_ncols),
+			"decomposeCoupling", "DecModel");
+
+	/** number of coupling variables and constraints for this subproblem */
+	ncols_coupling_ = model->getNumSubproblemCouplingCols(sind_);
+	nrows_coupling_ = model->getNumSubproblemCouplingRows(sind_);
+	assert(ncols_coupling_ == cpl_ncols);
+	assert(nrows_coupling_ == cpl_mat_->getNumRows());
 
 	/** storage for lambda */
-	lambda_ = new double [ncols_first_];
-	CoinZeroN(lambda_, ncols_first_);
+	lambda_ = new double [nrows_coupling_];
+	CoinZeroN(lambda_, nrows_coupling_);
+
+	/** copy right-hand side of coupling rows */
+	cpl_rhs_ = new double [nrows_coupling_];
+	for (int i = 0; i < nrows_coupling_; i++)
+		cpl_rhs_[i] = model->getRhsCouplingRow(i);
+	obj_offset_ = 0;
+
+	/** number of integer variables */
+	int nIntegers = model->getNumIntegers();
 
 	/** adjust first-stage cost */
-	for (int j = 0; j < ncols_first_; ++j)
-		obj_[j] *= probability;
-
-	/** number of integer variables in the core */
-	int nIntegers = model->getNumCoreIntegers();
-
-	/** convert column types */
-	if (par_->relaxIntegrality_[0])
+	if (model->isStochastic())
 	{
-		for (int j = 0; j < model->getNumCols(0); ++j)
+		TssModel * tssModel;
+		try
 		{
-			if (ctype[j] != 'C')
-				nIntegers--;
-			ctype[j] = 'C';
+			tssModel = dynamic_cast<TssModel *>(model);
+		}
+		catch (const std::bad_cast& e)
+		{
+			printf("Error: Model claims to be stochastic when it is not\n");
+			return STO_RTN_ERR;
+		}
+
+		double probability = tssModel->getProbability()[sind_];
+		for (int j = 0; j < tssModel->getNumCols(0); ++j)
+			obj_[j] *= probability;
+
+		/** convert column types */
+		if (par_->relaxIntegrality_[0] || par_->relaxIntegralityAll_)
+		{
+			for (int j = 0; j < tssModel->getNumCols(0); ++j)
+			{
+				if (ctype[j] != 'C')
+					nIntegers--;
+				ctype[j] = 'C';
+			}
+		}
+		if (par_->relaxIntegrality_[1] || par_->relaxIntegralityAll_)
+		{
+			for (int j = 0; j < tssModel->getNumCols(1); ++j)
+			{
+				if (ctype[tssModel->getNumCols(0) + j] != 'C')
+					nIntegers--;
+			}
+			CoinFillN(ctype + tssModel->getNumCols(0), tssModel->getNumCols(1), 'C');
 		}
 	}
-	if (par_->relaxIntegrality_[1])
+	else
 	{
-		for (int j = 0; j < model->getNumCols(1); ++j)
+		if (par_->relaxIntegralityAll_)
 		{
-			if (ctype[model->getNumCols(0) + j] != 'C')
-				nIntegers--;
+			for (int j = 0; j < mat->getNumCols(); j++)
+			{
+				if (ctype[j] != 'C')
+					nIntegers--;
+				ctype[j] = 'C';
+			}
 		}
-		CoinFillN(ctype + model->getNumCols(0), model->getNumCols(1), 'C');
 	}
 
 	if (nIntegers > 0)
@@ -104,7 +146,7 @@ STO_RTN_CODE TssDdSub::createProblem(
 		si_ = new SolverInterfaceClp(par_);
 
 	/** load problem */
-	si_->loadProblem(mat, clbd, cubd, obj_, ctype, rlbd, rubd, "TssDdSub");
+	si_->loadProblem(mat, clbd, cubd, obj_, ctype, rlbd, rubd, "DecDdSub");
 	DSPdebug(mat->verifyMtx(4));
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)
@@ -116,14 +158,14 @@ STO_RTN_CODE TssDdSub::createProblem(
 }
 
 /** add cut generator */
-STO_RTN_CODE TssDdSub::addCutGenerator(TssBdSub * tss)
+STO_RTN_CODE DecDdSub::addCutGenerator(TssBdSub * tss)
 {
 	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(si_);
 	if (si)
 	{
 		SCIPconshdlrBendersDd * conshdlr = new SCIPconshdlrBendersDd(si->getSCIP());
 		DSPdebugMessage("add cut generator %p\n", tss);
-		conshdlr->assignData(tss, si->getNumCols(), ncols_first_, obj_);
+		conshdlr->assignData(tss, si->getNumCols(), ncols_coupling_, obj_);
 		conshdlr->setOriginalVariables(si->getNumCols(), si->getSCIPvars());
 
 		/** add constraint handler */
@@ -138,7 +180,7 @@ STO_RTN_CODE TssDdSub::addCutGenerator(TssBdSub * tss)
 }
 
 /** change cut generator */
-STO_RTN_CODE TssDdSub::chgCutGenerator(TssBdSub * tss)
+STO_RTN_CODE DecDdSub::chgCutGenerator(TssBdSub * tss)
 {
 	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(si_);
 	if (si)
@@ -147,14 +189,14 @@ STO_RTN_CODE TssDdSub::chgCutGenerator(TssBdSub * tss)
 		if (conshdlr)
 		{
 			DSPdebugMessage("change cut generator to %p\n", tss);
-			conshdlr->assignData(tss, si->getNumCols(), ncols_first_, obj_);
+			conshdlr->assignData(tss, si->getNumCols(), ncols_coupling_, obj_);
 		}
 	}
 	return STO_RTN_OK;
 }
 
 /** add branch rule */
-STO_RTN_CODE TssDdSub::addBranchrule()
+STO_RTN_CODE DecDdSub::addBranchrule()
 {
 	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(si_);
 	if (si)
@@ -171,7 +213,7 @@ STO_RTN_CODE TssDdSub::addBranchrule()
 }
 
 /** change branch rule */
-STO_RTN_CODE TssDdSub::chgBranchrule(double lb)
+STO_RTN_CODE DecDdSub::chgBranchrule(double lb)
 {
 	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(si_);
 	if (si)
@@ -186,7 +228,7 @@ STO_RTN_CODE TssDdSub::chgBranchrule(double lb)
 }
 
 /** update problem */
-STO_RTN_CODE TssDdSub::updateProblem(
+STO_RTN_CODE DecDdSub::updateProblem(
 		double * lambda,
 		double primal_bound)
 {
@@ -202,17 +244,30 @@ STO_RTN_CODE TssDdSub::updateProblem(
 	if (lambda)
 	{
 		/** copy lambda */
-		CoinCopyN(lambda, ncols_first_, lambda_);
+		CoinCopyN(lambda, nrows_coupling_, lambda_);
 
 		/** allocate memory */
 		newobj = new double [ncols];
+		obj_offset_ = 0;
 
 		/** update objective coefficients */
 		assert(obj_);
-		for (int j = 0; j < ncols_first_; ++j)
-			newobj[j] = obj_[j] + lambda[j];
-		for (int j = ncols_first_; j < ncols; ++j)
+		for (int j = 0; j < ncols; j++)
 			newobj[j] = obj_[j];
+		for (int i = 0; i < nrows_coupling_; i++)
+		{
+			/** add lambda wrt coupling row i */
+			assert(!cpl_mat_->isColOrdered()); /** matrix must be by row */
+			int size = cpl_mat_->getVector(i).getNumElements();
+			const int * inds = cpl_mat_->getVector(i).getIndices();
+			const double * elems = cpl_mat_->getVector(i).getElements();
+			for (int j = 0; j < size; j++)
+				newobj[inds[j]] += lambda[i] * elems[j];
+
+			/* if rhs is not zero, then the objective has a constant offset, which is added when passing to the master */
+			obj_offset_ += lambda[i] * (-cpl_rhs_[i]);
+		}
+
 		si_->setObjCoef(newobj);
 	}
 
@@ -229,7 +284,7 @@ STO_RTN_CODE TssDdSub::updateProblem(
 }
 
 /** solve problem */
-STO_RTN_CODE TssDdSub::solve()
+STO_RTN_CODE DecDdSub::solve()
 {
 #if 0
 	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(si_);
@@ -245,7 +300,7 @@ STO_RTN_CODE TssDdSub::solve()
 }
 
 /** free solution process data */
-STO_RTN_CODE TssDdSub::freeSolve(bool restart)
+STO_RTN_CODE DecDdSub::freeSolve(bool restart)
 {
 	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(si_);
 	if (si) si->freeSolve(restart);
@@ -254,7 +309,7 @@ STO_RTN_CODE TssDdSub::freeSolve(bool restart)
 }
 
 /** free all solution process data */
-STO_RTN_CODE TssDdSub::freeTransform()
+STO_RTN_CODE DecDdSub::freeTransform()
 {
 	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(si_);
 	if (si) si->freeTransform();
@@ -262,7 +317,7 @@ STO_RTN_CODE TssDdSub::freeTransform()
 }
 
 /** collect cuts */
-STO_RTN_CODE TssDdSub::collectCuts(OsiCuts * cuts)
+STO_RTN_CODE DecDdSub::collectCuts(OsiCuts * cuts)
 {
 	assert(cuts);
 	/** TODO only for SCIP */
@@ -287,7 +342,7 @@ STO_RTN_CODE TssDdSub::collectCuts(OsiCuts * cuts)
 }
 
 /** push cuts */
-STO_RTN_CODE TssDdSub::pushCuts(OsiCuts * cuts)
+STO_RTN_CODE DecDdSub::pushCuts(OsiCuts * cuts)
 {
 	/** TODO only for SCIP */
 	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(si_);
@@ -299,7 +354,7 @@ STO_RTN_CODE TssDdSub::pushCuts(OsiCuts * cuts)
 }
 
 /** collect solutions */
-STO_RTN_CODE TssDdSub::collectSolutions()
+STO_RTN_CODE DecDdSub::collectSolutions()
 {
 	/** free memeory */
 	FREE_2D_ARRAY_PTR(nsols_, solutions_);
@@ -322,14 +377,14 @@ STO_RTN_CODE TssDdSub::collectSolutions()
 }
 
 /** set wall clock time limit */
-void TssDdSub::setTimeLimit(double sec)
+void DecDdSub::setTimeLimit(double sec)
 {
 	assert(si_);
 	si_->setTimeLimit(sec);
 }
 
 /** set print level */
-void TssDdSub::setPrintLevel(int level)
+void DecDdSub::setPrintLevel(int level)
 {
 	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(si_);
 	if (si)
@@ -338,31 +393,31 @@ void TssDdSub::setPrintLevel(int level)
 		si_->setPrintLevel(CoinMax(0, level - 2));
 }
 
-/** get MPI message buffer: [scenario index, objval, first-stage solution] */
-double * TssDdSub::MPImsgbuf()
+/** get MPI message buffer: [scenario index, objval, coupling solution] */
+double * DecDdSub::MPImsgbuf()
 {
-	double * msgbuf = new double [ncols_first_ + 2];
+	double * msgbuf = new double [ncols_coupling_ + 2];
 	MPImsgbuf(msgbuf);
 	return msgbuf;
 }
 
 /** get MPI message buffer */
-STO_RTN_CODE TssDdSub::MPImsgbuf(double * msgbuf)
+STO_RTN_CODE DecDdSub::MPImsgbuf(double * msgbuf)
 {
 	/** The first element in message buffer should be scenario index. */
 	msgbuf[0] = static_cast<double>(sind_);
 
 	/** The second element should be objective value. */
-	msgbuf[1] = si_->getPrimalBound();
+	msgbuf[1] = si_->getPrimalBound() + obj_offset_;
 
-	/** The following elements are for the first-stage solution. */
+	/** The following elements are for the coupling solution. */
 	const double * solution = si_->getSolution();
 	if (solution != NULL)
 	{
-		CoinCopyN(solution, ncols_first_, msgbuf + 2);
+		for (int i = 0; i < ncols_coupling_; i++)
+			msgbuf[2+i] = solution[cpl_cols_[i]];
 		solution = NULL;
 	}
 
 	return STO_RTN_OK;
 }
-

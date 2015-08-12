@@ -1,37 +1,37 @@
 /*
- * TssDdMpi.h
+ * DecDdMpi.h
  *
  *  Created on: Dec 10, 2014
- *      Author: kibaekkim
+ *      Author: kibaekkim, ctjandra
  */
 
-#ifndef SRC_SOLVER_TSSDDMPI_H_
-#define SRC_SOLVER_TSSDDMPI_H_
+#ifndef SRC_SOLVER_DECDDMPI_H_
+#define SRC_SOLVER_DECDDMPI_H_
 
 /** MPI */
 #include "mpi.h"
 
 /** DSP */
-#include "Solver/TssSolver.h"
+#include "Solver/DecSolver.h"
 #include "Solver/TssBdSub.h"
-#include "Solver/TssDdMaster.h"
-#include "Solver/TssDdSub.h"
+#include "Solver/DecDdMaster.h"
+#include "Solver/DecDdSub.h"
 
-//#define TSSDD_WRITE_FILE
+//#define DECDD_WRITE_FILE
 
-class TssDdMpi : public TssSolver
+class DecDdMpi : public DecSolver
 {
 	typedef vector<CoinPackedVector*> Solutions;
 
 public:
 
 	/** default constructor */
-	TssDdMpi(
+	DecDdMpi(
 			MPI_Comm comm,
 			string logfile_prefix);
 
 	/** default destructor */
-	virtual ~TssDdMpi();
+	virtual ~DecDdMpi();
 
 	/** solve */
 	virtual STO_RTN_CODE solve();
@@ -67,7 +67,7 @@ private:
 
 	/** get upper bound */
 	double getUpperBound(
-			TssDdSub * ddsub, /**< subproblem to evaluate */
+			DecDdSub * ddsub, /**< subproblem to evaluate */
 			bool & feasible   /**< indicating feasibility */);
 
 	/** get upper bound */
@@ -76,7 +76,7 @@ private:
 			bool & feasible          /**< indicating feasibility */);
 
 	/** check solution status and determine whether to continue or stop. */
-	bool checkStatus(TssDdSub * ddsub);
+	bool checkStatus(DecDdSub * ddsub);
 
 	/** check whether solution is duplicate or not; return NULL if duplicate */
 	static CoinPackedVector * duplicateSolution(
@@ -142,14 +142,14 @@ private:
 
 	/** Upper bounding procedure */
 	TssBdSub * bdsub_;
-	vector<TssDdSub*> subprobs_; /**< set of subproblems (no element in root) */
+	vector<DecDdSub*> subprobs_; /**< set of subproblems (no element in root) */
 	Solutions ubSolutions_;      /**< saved solutions that were evaluated for upper bounds */
 	int numSyncedUbSolutions_;   /**< number of solutions that were already synced */
 
 	/** Member variables only used in root */
-	TssDdMaster * master_; /**< master problem */
-	int * nsubprobs_;      /**< number of subproblems taken by each rank */
-	int * scenarioSpecs_;  /**< scenario indices of which each process take care */
+	DecDdMaster * master_;  /**< master problem */
+	int * nsubprobsAtRank_; /**< number of subproblems taken by each rank */
+	int * subproblemSpecs_; /**< scenario indices of which each process take care */
 	double * multipliers_;  /**< Lagrangian multipliers */
 
 	double tic_; /**< keep wall clock time for time manage */
@@ -174,4 +174,4 @@ public:
 	string logfile_prefix_; /**< prefix of logfile name */
 };
 
-#endif /* SRC_SOLVER_TSSDDMPI_H_ */
+#endif /* SRC_SOLVER_DECDDMPI_H_ */

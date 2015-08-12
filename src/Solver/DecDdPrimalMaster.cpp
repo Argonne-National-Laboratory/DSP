@@ -1,14 +1,14 @@
 /*
- * TssDdPrimalMaster.cpp
+ * DecDdPrimalMaster.cpp
  *
  *  Created on: Dec 11, 2014
- *      Author: kibaekkim
+ *      Author: kibaekkim, ctjandra
  */
 
 /** DSP */
 #include "Utility/StoMessage.h"
 #include "Utility/StoUtility.h"
-#include "Solver/TssDdPrimalMaster.h"
+#include "Solver/DecDdPrimalMaster.h"
 #include "SolverInterface/SolverInterfaceSpx.h"
 #include "SolverInterface/SolverInterfaceClp.h"
 #include "SolverInterface/OoqpEps.h"
@@ -17,7 +17,7 @@
 
 #define ENABLE_UPPER_BOUNDING 0
 
-TssDdPrimalMaster::~TssDdPrimalMaster()
+DecDdPrimalMaster::~DecDdPrimalMaster()
 {
 	FREE_PTR(si_);
 	FREE_PTR(cuts_);
@@ -31,7 +31,7 @@ TssDdPrimalMaster::~TssDdPrimalMaster()
 }
 
 /** create problem */
-STO_RTN_CODE TssDdPrimalMaster::createProblem(const TssModel * model)
+STO_RTN_CODE DecDdPrimalMaster::createProblem(DecModel * model)
 {
 #define FREE_MEMORY       \
 	FREE_ARRAY_PTR(ctype); \
@@ -63,19 +63,29 @@ STO_RTN_CODE TssDdPrimalMaster::createProblem(const TssModel * model)
 
 	BGN_TRY_CATCH
 
-	/** retrieve model informatio */
-	nscen_ = model->getNumScenarios();
-	ncols_first_ = model->getNumCols(0);
-	nCutsPerIter_ = CoinMin(nCutsPerIter_, nscen_);
+	/** retrieve model information */
+	nsubprobs_ = model->getNumSubproblems();
+	nCutsPerIter_ = CoinMin(nCutsPerIter_, nsubprobs_);
+	ncoupling_ = model->getNumCouplingRows();
+	model_ = model;
 
 	/** LP dimension */
-	nrows_ = ncols_first_;
-	ncols_ = nCutsPerIter_ + nscen_ * ncols_first_;
+	if (model->nonanticipativity())
+	{
+		nrows_ = model_->getNumSubproblemCouplingCols(0); /** initial normalization constraint for nonanticipativity constraints */
+		nzcnt = nrows_ * nsubprobs_;
+	}
+	else
+	{
+		nrows_ = 0;
+		nzcnt = 0;
+	}
+	ncols_ = nCutsPerIter_ + ncoupling_;
+
 #if ENABLE_UPPER_BOUNDING == 1
 	if (par_->TssDdFeasRecoveryInt_ >= 0)
 		ncols_++;
 #endif
-	nzcnt  = nscen_ * ncols_first_;
 
 	/** allocate memory */
 	ctype = new char [ncols_];
@@ -94,7 +104,7 @@ STO_RTN_CODE TssDdPrimalMaster::createProblem(const TssModel * model)
 
 	/** c */
 	CoinFillN(obj, nCutsPerIter_, 1.0);
-	CoinZeroN(obj + nCutsPerIter_, nscen_ * ncols_first_);
+	CoinZeroN(obj + nCutsPerIter_, ncoupling_);
 #if ENABLE_UPPER_BOUNDING == 1
 	if (par_->TssDdFeasRecoveryInt_ >= 0)
 		obj[ncols_ - 1] = 0.0;
@@ -104,8 +114,8 @@ STO_RTN_CODE TssDdPrimalMaster::createProblem(const TssModel * model)
 	if (par_->TssDdEnableTrustRegion_)
 	{
 		assert(rho_ < COIN_DBL_MAX);
-		prox_ = new double [nscen_ * ncols_first_];
-		CoinZeroN(prox_, nscen_ * ncols_first_);
+		prox_ = new double [ncoupling_];
+		CoinZeroN(prox_, ncoupling_);
 	}
 	else
 		rho_ = COIN_DBL_MAX;
@@ -115,8 +125,17 @@ STO_RTN_CODE TssDdPrimalMaster::createProblem(const TssModel * model)
 	CoinFillN(cubd, nCutsPerIter_, +COIN_DBL_MAX);
 
 	/** trust region */
-	CoinFillN(clbd + nCutsPerIter_, nscen_ * ncols_first_, -rho_);
-	CoinFillN(cubd + nCutsPerIter_, nscen_ * ncols_first_, rho_);
+	CoinFillN(clbd + nCutsPerIter_, ncoupling_, -rho_);
+	CoinFillN(cubd + nCutsPerIter_, ncoupling_, rho_);
+
+	/** nonnegative or nonpositive multipliers according to sense */
+	for (i = 0; i < ncoupling_; i++)
+	{
+		if (model->getSenseCouplingRow(i) == 'L')
+			clbd[nCutsPerIter_ + i] = 0;
+		else if (model->getSenseCouplingRow(i) == 'G')
+			cubd[nCutsPerIter_ + i] = 0;
+	}
 
 #if ENABLE_UPPER_BOUNDING == 1
 	if (par_->TssDdFeasRecoveryInt_ >= 0)
@@ -126,25 +145,30 @@ STO_RTN_CODE TssDdPrimalMaster::createProblem(const TssModel * model)
 	}
 #endif
 
-	/** row bounds */
-	CoinZeroN(rlbd, nrows_);
-	CoinZeroN(rubd, nrows_);
-
-	/** for constraints */
-	pos = 0;
-	for (i = 0; i < ncols_first_; ++i)
+	if (model->nonanticipativity())
 	{
-		bgn[i] = pos;
-		for (int j = 0; j < nscen_; ++j)
+		int ncols_first = model_->getNumSubproblemCouplingCols(0);
+
+		/** row bounds */
+		CoinZeroN(rlbd, nrows_);
+		CoinZeroN(rubd, nrows_);
+
+		/** for constraints */
+		pos = 0;
+		for (i = 0; i < ncols_first; ++i)
 		{
-			ind[pos] = nCutsPerIter_ + j * ncols_first_ + i;
-			elem[pos] = 1.0;
-			pos++;
+			bgn[i] = pos;
+			for (int j = 0; j < nsubprobs_; ++j)
+			{
+				ind[pos] = nCutsPerIter_ + j * ncols_first + i;
+				elem[pos] = 1.0;
+				pos++;
+			}
+			len[i] = pos - bgn[i];
 		}
-		len[i] = pos - bgn[i];
+		bgn[nrows_] = pos;
+		assert(pos == nzcnt);
 	}
-	bgn[nrows_] = pos;
-	assert(pos == nzcnt);
 
 	/** constraint matrix */
 	mat = new CoinPackedMatrix(false, ncols_, nrows_, nzcnt, elem, ind, bgn, len);
@@ -193,7 +217,7 @@ STO_RTN_CODE TssDdPrimalMaster::createProblem(const TssModel * model)
 }
 
 /** update problem: may update dual bound */
-STO_RTN_CODE TssDdPrimalMaster::updateProblem(
+STO_RTN_CODE DecDdPrimalMaster::updateProblem(
 		double primal_bound, /**< primal bound of the original problem */
 		double & dual_bound, /**< dual bound of the original problem */
 		double * objvals,    /**< objective values of subproblems */
@@ -208,11 +232,11 @@ STO_RTN_CODE TssDdPrimalMaster::updateProblem(
 	agingCuts();
 
 	double newobj = 0.0;
-	for (int s = 0; s < nscen_; ++s)
+	for (int s = 0; s < nsubprobs_; ++s)
 	{
 #if 0
 		printf("Scenario %d objective %e\n", s, objvals[s]);
-		for (int j = 0, jj = 0; j < ncols_first_; ++j)
+		for (int j = 0, jj = 0; j < model_->getNumSubproblemCouplingCols(s); ++j)
 		{
 			if (jj > 0 && jj % 5 == 0) printf("\n");
 			if (fabs(solution[s][j]) > 1.e-10)
@@ -232,7 +256,7 @@ STO_RTN_CODE TssDdPrimalMaster::updateProblem(
 #if 0
 	/** print proximal point */
 	printf("proximal point:\n");
-	for (int j = 0, jj = 0; j < nscen_ * ncols_first_; ++j)
+	for (int j = 0, jj = 0; j < ncoupling_; ++j)
 	{
 		if (jj > 0 && jj % 5 == 0) printf("\n");
 		if (fabs(prox_[j]) > 1.e-10)
@@ -289,7 +313,7 @@ STO_RTN_CODE TssDdPrimalMaster::updateProblem(
 					}
 				}
 #endif
-				CoinCopyN(solution_ + nCutsPerIter_, nscen_ * ncols_first_, prox_);
+				CoinCopyN(solution_ + nCutsPerIter_, ncoupling_, prox_);
 				if (par_->logLevel_ > 2)
 					printf(", updated proximal point");
 #endif
@@ -323,15 +347,19 @@ STO_RTN_CODE TssDdPrimalMaster::updateProblem(
 		else
 		{
 #if 0
-			double valid = 0.0;
-			for (int s = 0; s < nscen_; ++s)
+			if (model_->nonanticipativity())
 			{
-				valid += objvals[s];
-				for (int j = 0; j < ncols_first_; ++j)
-					valid += solution[s][j] * (prox_[s * ncols_first_ + j] - solution_[nCutsPerIter_ + s * ncols_first_ + j]);
+				int ncols_first = model_->getNumCouplingCols() / model_->getNumSubproblems();
+				double valid = 0.0;
+				for (int s = 0; s < nsubprobs_; ++s)
+				{
+					valid += objvals[s];
+					for (int j = 0; j < ncols_first; ++j)
+						valid += solution[s][j] * (prox_[s * ncols_first + j] - solution_[nCutsPerIter_ + s * ncols_first + j]);
+				}
+				valid -= dual_bound;
+				printf("%e should be positive!\n", valid);
 			}
-			valid -= dual_bound;
-			printf("%e should be positive!\n", valid);
 #endif
 			/** add cuts and re-optimize */
 			nCutsAdded = addCuts(objvals, solution);
@@ -353,7 +381,7 @@ STO_RTN_CODE TssDdPrimalMaster::updateProblem(
 				/** set trust region */
 				setTrustRegion(rho_, prox_);
 			}
-			else
+			else if (!par_->TssDdDisableTrustRegionDecrease_)
 			{
 				/** The following rule is from Linderoth and Wright (2003) */
 				double rho = CoinMin(1.0, rho_) * (dual_bound - newobj) / (primalBound - dual_bound);
@@ -423,7 +451,7 @@ STO_RTN_CODE TssDdPrimalMaster::updateProblem(
 }
 
 /** solve problem */
-STO_RTN_CODE TssDdPrimalMaster::solve()
+STO_RTN_CODE DecDdPrimalMaster::solve()
 {
 	double stime = CoinGetTimeOfDay();
 
@@ -463,7 +491,7 @@ STO_RTN_CODE TssDdPrimalMaster::solve()
 }
 
 /** is solution trust region boundary? */
-bool TssDdPrimalMaster::isSolutionBoundary(double eps)
+bool DecDdPrimalMaster::isSolutionBoundary(double eps)
 {
 	double maxdiff = 0.0;
 	double mindiff = COIN_DBL_MAX;
@@ -489,7 +517,7 @@ bool TssDdPrimalMaster::isSolutionBoundary(double eps)
 }
 
 /** aging cuts */
-STO_RTN_CODE TssDdPrimalMaster::agingCuts()
+STO_RTN_CODE DecDdPrimalMaster::agingCuts()
 {
 	/** exit if no cut */
 	if (si_->getNumRows() == nrows_)
@@ -549,7 +577,7 @@ STO_RTN_CODE TssDdPrimalMaster::agingCuts()
 }
 
 /** add cuts */
-int TssDdPrimalMaster::addCuts(
+int DecDdPrimalMaster::addCuts(
 		double * objvals,     /**< objective values of subproblems */
 		double ** solution,   /**< subproblem solutions */
 		bool      possiblyDel /**< possibly delete cuts*/)
@@ -580,7 +608,7 @@ int TssDdPrimalMaster::addCuts(
 	}
 
 	/** add row cuts by looping over each scenario */
-	for (int s = 0; s < nscen_; ++s)
+	for (int s = 0; s < nsubprobs_; ++s)
 	{
 		assert(fabs(objvals[s]) < 1.0e+20);
 
@@ -588,15 +616,14 @@ int TssDdPrimalMaster::addCuts(
 		int cutidx = s % nCutsPerIter_;
 
 		/** construct cut */
-		aggrhs[cutidx] += objvals[s];
-		for (int j = 0; j < ncols_first_; ++j)
+ 		aggrhs[cutidx] += objvals[s];
+		for (int i = 0; i < ncoupling_; i++)
 		{
-			if (fabs(solution[s][j]) > 1E-10)
-			{
-				aggvec[cutidx][nCutsPerIter_ + s * ncols_first_ + j] -= solution[s][j];
-				if (isSolved_)
-					aggrhs[cutidx] -= solution_[nCutsPerIter_ + s * ncols_first_ + j] * solution[s][j];
-			}
+			/** evaluate solution on coupling constraints (if they are Hx = d, this is (Hx - d)_i) */
+			double hx_d = model_->evalLhsCouplingRowSubprob(i, s, solution[s]) - model_->getRhsCouplingRow(i);
+			aggvec[cutidx][nCutsPerIter_ + i] -= hx_d; /** coefficients for lambda */
+			if (isSolved_)
+				aggrhs[cutidx] -= hx_d * solution_[nCutsPerIter_ + i];
 		}
 	}
 
@@ -688,7 +715,7 @@ int TssDdPrimalMaster::addCuts(
 	}
 #else
 	/** add row cuts by looping over each scenario */
-	for (int s = 0; s < nscen_; ++s)
+	for (int s = 0; s < nsubprobs_; ++s)
 	{
 		assert(fabs(objvals[s]) < 1.0e+20);
 		/** construct cut */
@@ -699,23 +726,21 @@ int TssDdPrimalMaster::addCuts(
 		if (par_->TssDdFeasRecoveryInt_ >= 0)
 			cutrhs2 += objvals[s];
 #endif
-		for (int j = 0; j < ncols_first_; ++j)
+		for (int i = 0; i < ncoupling_; i++)
 		{
-			if (fabs(solution[s][j]) > 1E-10)
+			double hx_d = model_->evalLhsCouplingRowSubprob(i, s, solution[s]) - model_->getRhsCouplingRow(i);
+			cutvec.insert(nsubprobs_ + i, -hx_d);
+#if ENABLE_UPPER_BOUNDING == 2
+			if (par_->TssDdFeasRecoveryInt_ >= 0)
+				cutvec2.insert(nsubprobs_ + i, -hx_d);
+#endif
+			if (isSolved_)
 			{
-				cutvec.insert(nscen_ + s * ncols_first_ + j, -solution[s][j]);
+				cutrhs -= solution_[nsubprobs_ + i] * hx_d;
 #if ENABLE_UPPER_BOUNDING == 2
 				if (par_->TssDdFeasRecoveryInt_ >= 0)
-					cutvec2.insert(nscen_ + s * ncols_first_ + j, -solution[s][j]);
+					cutrhs2 -= solution_[nsubprobs_ + i] * hx_d;
 #endif
-				if (isSolved_)
-				{
-					cutrhs -= solution_[nscen_ + s * ncols_first_ + j] * solution[s][j];
-#if ENABLE_UPPER_BOUNDING == 2
-					if (par_->TssDdFeasRecoveryInt_ >= 0)
-						cutrhs2 -= solution_[nscen_ + s * ncols_first_ + j] * solution[s][j];
-#endif
-				}
 			}
 		}
 
@@ -789,7 +814,7 @@ int TssDdPrimalMaster::addCuts(
 }
 
 /** possibly delete cuts */
-STO_RTN_CODE TssDdPrimalMaster::possiblyDeleteCuts(
+STO_RTN_CODE DecDdPrimalMaster::possiblyDeleteCuts(
 		double sub_objval /**< subproblem objective value */)
 {
 	OsiCuts cuts;
@@ -930,7 +955,7 @@ STO_RTN_CODE TssDdPrimalMaster::possiblyDeleteCuts(
 }
 
 /** recruit cuts: investigating and adding effective cuts (that were deleted) in the cut pool */
-int TssDdPrimalMaster::recruiteCuts()
+int DecDdPrimalMaster::recruiteCuts()
 {
 	int nRecruited = 0;
 	OsiCuts cuts;
@@ -1009,7 +1034,7 @@ int TssDdPrimalMaster::recruiteCuts()
 }
 
 /** remove all cuts from solver interface */
-STO_RTN_CODE TssDdPrimalMaster::removeAllCuts()
+STO_RTN_CODE DecDdPrimalMaster::removeAllCuts()
 {
 	SolverInterfaceClp * clp = dynamic_cast<SolverInterfaceClp*>(si_);
 	SolverInterfaceOoqp * ooqp = dynamic_cast<SolverInterfaceOoqp*>(si_);
@@ -1036,4 +1061,3 @@ STO_RTN_CODE TssDdPrimalMaster::removeAllCuts()
 
 	return STO_RTN_OK;
 }
-

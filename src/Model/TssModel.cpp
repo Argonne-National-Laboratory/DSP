@@ -330,6 +330,26 @@ STO_RTN_CODE TssModel::copyDeterministicEquivalent(
 }
 
 /**
+ * Create a DetModel representing the deterministic equivalent of this model.
+ */
+STO_RTN_CODE TssModel::copyDeterministicEquivalent(
+		DetModel *& det /**< [out] deterministic equivalent model */)
+{
+	CoinPackedMatrix * mat = NULL;
+	double * clbd = NULL;
+	double * cubd = NULL;
+	char   * ctype = NULL;
+	double * obj = NULL;
+	double * rlbd = NULL;
+	double * rubd = NULL;
+
+	STO_RTN_CODE rtn = copyDeterministicEquivalent(mat, clbd, cubd, ctype, obj, rlbd, rubd);
+	det = new DetModel(mat, clbd, cubd, ctype, obj, rlbd, rubd);
+
+	return rtn;
+}
+
+/**
  * This routine decomposes the model based on inputs. If size = 0, then
  * this results in a standard Benders decomposition structure. If size = 1, then
  * this results in a dual decomposition structure.
@@ -358,6 +378,9 @@ STO_RTN_CODE TssModel::decompose(
 	int s, i;
 	int nrows = nrows_[0] + size * nrows_[1];
 	int ncols = ncols_[0] + size * ncols_[1] + naux;
+
+	for (s = 0; s < size; ++s)
+		assert(mat_scen_[scen[s]] != NULL);
 
 	BGN_TRY_CATCH
 

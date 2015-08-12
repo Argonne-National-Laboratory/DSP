@@ -32,8 +32,14 @@ void freeTssModel(StoApiEnv * env);
 /** free solver */
 void freeTssSolver(StoApiEnv * env);
 
+/** If current model is stochastic, return the model as a TssModel object. If no model exists, create one. */
+TssModel * getTssModel(StoApiEnv * env);
+
+/** prepare decomposition model to be solved; returns false if there is an error */
+bool prepareDecModel(StoApiEnv * env);
+
 /** get model pointer */
-TssModel * getModelPtr(StoApiEnv * env);
+DecModel * getModelPtr(StoApiEnv * env);
 
 /** set number of scenarios */
 void setNumberOfScenarios(
@@ -160,6 +166,12 @@ void setDdStoppingTolerance(StoApiEnv * env, double tol);
 /** set number of cuts per iteration added to master */
 void setDdMasterNumCutsPerIter(StoApiEnv* env, int num);
 
+/** set trust region size */
+void setDdTrustRegionSize(StoApiEnv* env, int num);
+
+/** set whether trust region decrease should be disabled */
+void setDdDisableTrustRegionDecrease(StoApiEnv* env, bool yesNo);
+
 /** set SCIP/display/freq */
 void setScipDisplayFreq(StoApiEnv * env, int freq);
 
@@ -179,8 +191,14 @@ int getNumRows(StoApiEnv * env, int stage);
 /** get number of columns */
 int getNumCols(StoApiEnv * env, int stage);
 
+/** get number of columns */
+int getTotalNumCols(StoApiEnv * env);
+
 /** get number of scenarios */
 int getNumScenarios(StoApiEnv * env);
+
+/** get number of subproblems */
+int getNumSubproblems(StoApiEnv * env);
 
 /** get solution time */
 double getSolutionTime(StoApiEnv * env);

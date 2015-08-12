@@ -1,43 +1,46 @@
 /*
- * TssDdSub.h
+ * DecDdSub.h
  *
  *  Created on: Dec 10, 2014
- *      Author: kibaekkim
+ *      Author: kibaekkim, ctjandra
  */
 
-#ifndef SRC_SOLVER_TSSDDSUB_H_
-#define SRC_SOLVER_TSSDDSUB_H_
+#ifndef SRC_SOLVER_DECDDSUB_H_
+#define SRC_SOLVER_DECDDSUB_H_
+
+#include <typeinfo>
 
 /** DSP */
 #include "SolverInterface/SolverInterface.h"
 #include "Solver/TssBdSub.h"
-#include "Model/TssModel.h"
+#include "Model/DecModel.h"
 
-class TssDdSub
+class DecDdSub
 {
 public:
 
 	/** default constructor */
-	TssDdSub(int s, StoParam * par) :
+	DecDdSub(int s, StoParam * par) :
 		par_(par),
 		si_(NULL),
 		sind_(s),
-		ncols_first_(0),
+		nrows_coupling_(0),
+		ncols_coupling_(0),
 		obj_(NULL),
 		lambda_(NULL),
 		nsols_(0),
-		solutions_(NULL)
+		solutions_(NULL),
+		cpl_mat_(NULL),
+		cpl_cols_(NULL)
 	{
 		/** nothing to do */
 	}
 
 	/** default destructor */
-	virtual ~TssDdSub();
+	virtual ~DecDdSub();
 
 	/** create problem */
-	STO_RTN_CODE createProblem(
-			double     probability, /**< probability */
-			TssModel * model);
+	STO_RTN_CODE createProblem(DecModel * model);
 
 	/** add cut generator */
 	STO_RTN_CODE addCutGenerator(TssBdSub * tss);
@@ -100,8 +103,10 @@ public:
 	StoParam * par_;
 	SolverInterface * si_; /**< solver interface */
 
-	int sind_;        /**< scenario index */
-	int ncols_first_; /**< number of first-stage columns */
+	int sind_;           /**< scenario index */
+	int nrows_coupling_; /**< number of coupling constraints for the subproblem (dimension of lambda) */
+	int ncols_coupling_; /**< number of coupling variables for the subproblem
+						   *  (dimension of the part of the solution returned to the master problem) */
 
 private:
 
@@ -112,9 +117,14 @@ private:
 	int nsols_; /**< number of solutions */
 	double ** solutions_; /**< solutions */
 
+	CoinPackedMatrix * cpl_mat_; /**< coupling constraint matrix */
+	int * cpl_cols_;             /**< coupling columns */
+	double * cpl_rhs_;           /**< right-hand sides of coupling rows */
+	double obj_offset_;          /**< constant offset in subproblem objective */
+
 public:
 
 	vector<double> wtime_solution_; /**< solution wall time */
 };
 
-#endif /* SRC_SOLVER_TSSDDSUB_H_ */
+#endif /* SRC_SOLVER_DECDDSUB_H_ */

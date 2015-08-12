@@ -1,25 +1,27 @@
 /*
- * TssDe.h
+ * DecDe.h
  *
  *  Created on: Sep 24, 2014
- *      Author: kibaekkim
+ *      Author: kibaekkim, ctjandra
  */
 
-#ifndef TSSDE_H_
-#define TSSDE_H_
+#ifndef DECDE_H_
+#define DECDE_H_
+
+#include <typeinfo>
 
 /** DSP */
-#include "Solver/TssSolver.h"
+#include "Solver/DecSolver.h"
 #include "SolverInterface/SolverInterface.h"
 
-class TssDe : public TssSolver {
+class DecDe : public DecSolver {
 public:
 
 	/** default constructor */
-	TssDe();
+	DecDe();
 
 	/** default destructor */
-	virtual ~TssDe();
+	virtual ~DecDe();
 
 	/** solve */
 	virtual STO_RTN_CODE solve();
@@ -29,4 +31,4 @@ private:
 	SolverInterface * si_; /**< my solver interface */
 };
 
-#endif /* TSSDE_H_ */
+#endif /* DECDE_H_ */
