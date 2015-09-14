@@ -185,3 +185,7 @@ DSP has been developed and is maintained by:
 ## Acknowledgements
 
 This material is based upon work supported by the U.S. Department of Energy, Office of Science, under contract number DE-AC02-06CH11357. We gratefully acknowledge the computing resources provided on *Blues*, a high-performance computing cluster operated by the Laboratory Computing Resource Center at Argonne National Laboratory. We thank E. Michael Gertz and Stephen Wright for providing the [OOQP](http://pages.cs.wisc.edu/~swright/ooqp/) software package.
+
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/kibaekkim/dsp/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+
