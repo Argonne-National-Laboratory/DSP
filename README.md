@@ -132,9 +132,9 @@ Pkg.update();
 ```julia
     Pkg.clone("https://github.com/kibaekkim/StochJuMP.jl.git");
 ```
-* The [DSPsolver.jl](https://github.com/kibaekkim/DSPsolver.jl.git) package provides an interface to StochJuMP. DSPsolver.jl can be installed by the Julia command
+* The [DSPsolver.jl](https://github.com/Argonne-National-Laboratory/DSPsolver.jl.git) package provides an interface to StochJuMP. DSPsolver.jl can be installed by the Julia command
 ```julia
-    Pkg.clone("https://github.com/kibaekkim/DSPsolver.jl.git");
+    Pkg.clone("https://github.com/Argonne-National-Laboratory/DSPsolver.jl.git");
 ```
 
 ##Example (farmer)
