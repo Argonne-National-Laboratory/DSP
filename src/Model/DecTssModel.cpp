@@ -102,15 +102,22 @@ double DecTssModel::evalLhsCouplingRowSubprob(int row, int s, double * subprobSo
 double DecTssModel::evalLhsCouplingRowAlternative(int row, double ** solutions)
 {
 	double val = 0;
-	for (int s = 0; s < getNumSubproblems(); s++)
-		if (row + 1 < getNumCols(0))
-			val += solutions[s][row] - solutions[s][row+1];
-		else
-			val += solutions[s][row] - solutions[s][0];
+//	for (int s = 0; s < getNumSubproblems(); s++)
+//		if (row + 1 < getNumCols(0))
+//			val += solutions[s][row] - solutions[s][row+1];
+//		else
+//			val += solutions[s][row] - solutions[s][0];
+	int s = row / getNumSubproblems();
+	int i = row % getNumSubproblems();
+	val = solutions[s][i];
+	if (s + 1 < getNumSubproblems())
+		val -= solutions[s+1][i];
+	else
+		val -= solutions[0][i];
 	return val;
 }
 
-double DecTssModel::convertLagrangianFromAlternative(double * multipliers, double *& newMultipliers)
+void DecTssModel::convertLagrangianFromAlternative(double * multipliers, double *& newMultipliers)
 {
 	int ncols_first = getNumCols(0);
 	int nsubprobs = getNumSubproblems();

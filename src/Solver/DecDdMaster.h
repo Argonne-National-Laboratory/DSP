@@ -17,7 +17,7 @@
 
 /** DSP */
 #include "SolverInterface/SolverInterface.h"
-#include "Solver/StoParam.h"
+#include "Utility/DspParams.h"
 #include "Model/DecModel.h"
 
 using namespace std;
@@ -27,10 +27,15 @@ class DecDdMaster
 public:
 
 	/** default constructor */
-	DecDdMaster(StoParam * par) :
+	DecDdMaster(DspParams * par) :
 		par_(par),
 		objval_(COIN_DBL_MAX),
 		solution_(NULL),
+		parLogLevel_(par->getIntParam("LOG_LEVEL")),
+		parTR_(par->getBoolParam("DD/TR")),
+		parTrDecrease_(par->getBoolParam("DD/TR/DECREASE")),
+		parMasterAlgo_(par->getIntParam("DD/MASTER_ALGO")),
+		parStopTol_(par->getDblParam("DD/STOP_TOL")),
 		itncnt_accum_(0),
 		wtime_accum_(0.)
 	{
@@ -45,10 +50,11 @@ public:
 
 	/** update problem: may update dual bound */
 	virtual STO_RTN_CODE updateProblem(
-			double primal_bound, /**< primal bound of the original problem */
-			double & dual_bound, /**< dual bound of the original problem */
-			double * objvals,    /**< objective values of subproblems */
-			double ** solution   /**< subproblem solutions */) = 0;
+			double primal_bound,     /**< primal bound of the original problem */
+			double & dual_bound,     /**< dual bound of the original problem */
+			double * primal_objvals, /**< objective values of subproblems */
+			double * dual_objvals,   /**< objective values of subproblems */
+			double ** solution       /**< subproblem solutions */) = 0;
 
 	/** solve problem */
 	virtual STO_RTN_CODE solve() = 0;
@@ -65,12 +71,22 @@ public:
 	/** get objective value */
 	virtual double getObjValue() {return objval_;}
 
+	/** termination test */
+	virtual bool terminate() = 0;
+
 protected:
 
-	StoParam * par_;   /**< parameters */
+	DspParams * par_;   /**< parameters */
 
 	double objval_;
 	double * solution_; /**< solution */
+
+	/** parameters */
+	int parLogLevel_;
+	bool parTR_;
+	bool parTrDecrease_;
+	int parMasterAlgo_;
+	double parStopTol_;
 
 public:
 

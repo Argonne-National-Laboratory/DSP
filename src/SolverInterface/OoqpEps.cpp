@@ -23,7 +23,14 @@ void OoqpEps::setOoqpStatus(double epsilon, double lowerBound, double upperBound
 void OoqpEps::solve()
 {
 	if (released_)
+	{
 		gutsOfLoadProblem();
+		if (hasOoqpStatus_)
+		{
+			OoqpStatus * mystat = new OoqpStatus(epsilon_, lowerBound_, upperBound_);
+			solver_->useStatus(mystat);
+		}
+	}
 
 	//prob_->print();
 	if (print_level_ > 0) solver_->monitorSelf();
@@ -76,6 +83,7 @@ void OoqpEps::solve()
 	}
 }
 
+#if 0
 /** core part for load problem */
 void OoqpEps::gutsOfLoadProblem()
 {
@@ -358,4 +366,5 @@ void OoqpEps::gutsOfLoadProblem()
 
 #undef FREE_MEMORY
 }
+#endif
 

@@ -115,6 +115,24 @@ void solveBd(
 		StoApiEnv * env,        /**< pointer to API object */
 		int         nauxvars = 1 /**< number of auxiliary variables (scenario clusters) */);
 
+/** set boolean parameter */
+void setBoolParam(StoApiEnv * env, const char * name, bool value);
+
+/** set integer parameter */
+void setIntParam(StoApiEnv * env, const char * name, int value);
+
+/** set double parameter */
+void setDblParam(StoApiEnv * env, const char * name, double value);
+
+/** set string parameter */
+void setStrParam(StoApiEnv * env, const char * name, const char * value);
+
+/** set boolean pointer parameter */
+void setBoolPtrParam(StoApiEnv * env, const char * name, int size, bool * value);
+
+/** set integer pointer parameter */
+void setIntPtrParam(StoApiEnv * env, const char * name, int size, int * value);
+
 /** set log level */
 void setLogLevel(StoApiEnv * env, int level);
 
@@ -167,7 +185,7 @@ void setDdStoppingTolerance(StoApiEnv * env, double tol);
 void setDdMasterNumCutsPerIter(StoApiEnv* env, int num);
 
 /** set trust region size */
-void setDdTrustRegionSize(StoApiEnv* env, int num);
+void setDdTrustRegionSize(StoApiEnv* env, double num);
 
 /** set whether trust region decrease should be disabled */
 void setDdDisableTrustRegionDecrease(StoApiEnv* env, bool yesNo);
@@ -250,6 +268,12 @@ void getDdSubprobTime(StoApiEnv * env, double * time);
 /** get number of master objective values */
 int getDdNumMasterObjValues(StoApiEnv * env);
 
+/** get number of subproblem primal objective values */
+int getDdNumSubPrimalBounds(StoApiEnv * env);
+
+/** get number of subproblem dual objective values */
+int getDdNumSubDualBounds(StoApiEnv * env);
+
 /** get number of subproblem objective values */
 int getDdNumSubproblemObjValues(StoApiEnv * env);
 
@@ -261,6 +285,12 @@ int getDdNumDualBounds(StoApiEnv * env);
 
 /** get history of master objective values */
 void getDdMasterObjValues(StoApiEnv * env, double * vals);
+
+/** get history of subproblem primal objective values */
+void getDdSubPrimalBounds(StoApiEnv * env, double * vals);
+
+/** get history of subproblem dual objective values */
+void getDdSubDualBounds(StoApiEnv * env, double * vals);
 
 /** get history of subproblem objective values */
 void getDdSubproblemObjValues(StoApiEnv * env, double * vals);

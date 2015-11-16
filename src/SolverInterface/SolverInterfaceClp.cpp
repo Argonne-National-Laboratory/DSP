@@ -11,7 +11,7 @@
 /** Coin-OR */
 #include "OsiClpSolverInterface.hpp"
 
-SolverInterfaceClp::SolverInterfaceClp(StoParam * par) :
+SolverInterfaceClp::SolverInterfaceClp(DspParams * par) :
 	SolverInterfaceOsi(par)
 {
 	STO_RTN_CHECK_THROW(initialize(), "initialize", "SolverInterfaceClp");
@@ -26,7 +26,7 @@ SolverInterfaceClp::SolverInterfaceClp(SolverInterfaceClp * si) :
 }
 
 /** copy constructor */
-SolverInterfaceClp::SolverInterfaceClp(StoParam * par, OsiSolverInterface * si) :
+SolverInterfaceClp::SolverInterfaceClp(DspParams * par, OsiSolverInterface * si) :
 		SolverInterfaceOsi(par)
 {
 	si_ = si->clone();

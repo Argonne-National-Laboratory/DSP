@@ -13,7 +13,7 @@
 class DecDdMasterSubgrad: public DecDdMaster
 {
 public:
-	DecDdMasterSubgrad(StoParam * par) :
+	DecDdMasterSubgrad(DspParams * par) :
 		DecDdMaster(par),
 		ncoupling_(0),
 		nsubprobs_(0),
@@ -32,10 +32,11 @@ public:
 
 	/** update problem: may update dual bound */
 	virtual STO_RTN_CODE updateProblem(
-			double primal_bound, /**< primal bound of the original problem */
-			double & dual_bound, /**< dual bound of the original problem */
-			double * objvals,    /**< objective values of subproblems */
-			double ** solution   /**< subproblem solutions */);
+			double primal_bound,     /**< primal bound of the original problem */
+			double & dual_bound,     /**< dual bound of the original problem */
+			double * primal_objvals, /**< objective values of subproblems */
+			double * dual_objvals,   /**< objective values of subproblems */
+			double ** solution       /**< subproblem solutions */);
 
 	/** solve problem */
 	virtual STO_RTN_CODE solve();
@@ -46,11 +47,13 @@ public:
 	/** get Lagrangian multiplier */
 	virtual const double * getLagrangian() {return solution_;}
 
+	/** termination test */
+	virtual bool terminate();
+
 	double getConstScalar() {return stepscal_;}
 
 private:
 
-	DecModel * model_;     /**< model */
 	int ncoupling_;        /**< number of coupling constraints (i.e., dimension of Lagrange multipliers and subgradient) */
 	int nsubprobs_;        /**< number of subproblems */
 	int nstalls_;          /**< number of iterations UB were not improved */
@@ -59,6 +62,7 @@ private:
 	double * gradient_;    /**< subgradient */
 	double * multipliers_; /**< Lagrangian multipliers */
 	bool nonanticipativity_; /**< whether the constraints are nonanticipativity constraints */
+	DecModel * model_;     /**< model */
 };
 
 #endif /* SRC_SOLVER_DECDDMASTERSUBGRAD_H_ */

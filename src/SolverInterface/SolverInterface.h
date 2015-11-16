@@ -14,14 +14,15 @@
 
 /** DSP */
 #include "Utility/StoRtnCodes.h"
-#include "Solver/StoParam.h"
+#include "Utility/StoMacros.h"
+#include "Utility/DspParams.h"
 
 class SolverInterface
 {
 public:
 
 	/** default constructor */
-	SolverInterface(StoParam * par) : par_(par) {}
+	SolverInterface(DspParams * par) : par_(par) {}
 
 	/** default destructor */
 	virtual ~SolverInterface() {par_=NULL;}
@@ -96,6 +97,9 @@ public:
 	/** get row upper bounds */
 	virtual const double * getRowUpper() = 0;
 
+	/** get linear objective function coefficient */
+	virtual const double * getObjCoef() = 0;
+
 	/** get global primal bound (upper bound in minimization) */
 	virtual double getPrimalBound() = 0;
 
@@ -163,7 +167,7 @@ public:
 
 public:
 
-	StoParam * par_;
+	DspParams * par_;
 };
 
 #endif /* SOLVERINTERFACE_H_ */

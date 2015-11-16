@@ -15,13 +15,13 @@ class SolverInterfaceClp: public SolverInterfaceOsi
 public:
 
 	/** default constructor */
-	SolverInterfaceClp(StoParam * par);
+	SolverInterfaceClp(DspParams * par);
 
 	/** copy constructor */
 	SolverInterfaceClp(SolverInterfaceClp * si);
 
 	/** copy constructor */
-	SolverInterfaceClp(StoParam * par, OsiSolverInterface * si);
+	SolverInterfaceClp(DspParams * par, OsiSolverInterface * si);
 
 	/** default destructor */
 	virtual ~SolverInterfaceClp() {}

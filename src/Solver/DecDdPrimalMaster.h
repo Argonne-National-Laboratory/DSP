@@ -15,19 +15,20 @@ class DecDdPrimalMaster: public DecDdMaster
 public:
 
 	/** constructor */
-	DecDdPrimalMaster(StoParam * par) :
+	DecDdPrimalMaster(DspParams * par) :
 		DecDdMaster(par),
 		si_(NULL),
+		model_(NULL),
 		nrows_(0),
 		ncols_(0),
 		ncoupling_(0),
 		nsubprobs_(0),
-		nCutsPerIter_(par->TssDdMasterNumCutsPerIter_),
+		nCutsPerIter_(par->getIntParam("DD/NUM_CUTS_PER_ITER")),
 		cuts_(NULL),
 		ncuts_minor_(0),
 		cutdel_param_(0.5),
 		prox_(NULL),
-		rho_(par->TssDdTrustRegionSize_),
+		rho_(par->getDblParam("DD/TR/SIZE")),
 		trcnt_(0),
 		ubCuts_(NULL),
 		isSolved_(false)
@@ -43,10 +44,11 @@ public:
 
 	/** update problem: may update dual bound */
 	virtual STO_RTN_CODE updateProblem(
-			double primal_bound, /**< primal bound of the original problem */
-			double & dual_bound, /**< dual bound of the original problem */
-			double * objvals,    /**< objective values of subproblems */
-			double ** solution   /**< subproblem solutions */);
+			double primal_bound,     /**< primal bound of the original problem */
+			double & dual_bound,     /**< dual bound of the original problem */
+			double * primal_objvals, /**< objective values of subproblems */
+			double * dual_objvals,   /**< objective values of subproblems */
+			double ** solution       /**< subproblem solutions */);
 
 	/** solve problem */
 	virtual STO_RTN_CODE solve();
@@ -55,6 +57,9 @@ public:
 
 	/** get Lagrangian multiplier */
 	virtual const double * getLagrangian() {return (solution_ + nCutsPerIter_);}
+
+	/** termination test */
+	virtual bool terminate();
 
 	/** is solution trust region boundary? */
 	virtual bool isSolutionBoundary(double eps = 1.0e-5);

@@ -26,11 +26,68 @@
 #include "QpGenSparseMa27.h"
 #endif
 
+/** columns dynamically added */
+class dynColumns
+{
+public:
+	dynColumns(int nrows, int ncols)
+	{
+		cols_ = new CoinPackedMatrix();
+		cols_->setDimensions(nrows, 0);
+	}
+
+	dynColumns(dynColumns * dynCols)
+	{
+		assert(dynCols);
+		if (dynCols->cols_->getNumCols() > 0)
+		{
+			cols_ = new CoinPackedMatrix(*(dynCols->cols_));
+			objs_ = dynCols->objs_;
+			lbs_ = dynCols->lbs_;
+			ubs_ = dynCols->ubs_;
+		}
+		else
+		{
+			cols_ = new CoinPackedMatrix();
+			cols_->setDimensions(dynCols->cols_->getNumRows(), 0);
+		}
+	}
+
+	~dynColumns()
+	{
+		FREE_PTR(cols_);
+	}
+
+	void addCol(int size, const int * indices, const double * vals, double lb, double ub, double obj)
+	{
+		objs_.push_back(obj);
+		lbs_.push_back(lb);
+		ubs_.push_back(ub);
+		cols_->appendCol(size, indices, vals);
+	}
+
+	void clear()
+	{
+		objs_.clear();
+		lbs_.clear();
+		ubs_.clear();
+		cols_->deleteMajorVectors(cols_->getMajorDim(), cols_->getMajorIndices());
+	}
+
+	int size() {return cols_->getNumCols();}
+
+	vector<double> objs_;     /**< objective coefficient */
+	CoinPackedMatrix * cols_; /**< column */
+	vector<double> lbs_;      /**< column lower bound */
+	vector<double> ubs_;      /**< column upper bound */
+};
+
 class SolverInterfaceOoqp: public SolverInterface
 {
 public:
-	SolverInterfaceOoqp(StoParam * par) :
+	SolverInterfaceOoqp(DspParams * par) :
 		SolverInterface(par),
+		dynCols_(NULL),
 		sense_(1),
 		status_(STO_STAT_UNKNOWN),
 		print_level_(0),
@@ -40,16 +97,13 @@ public:
 		resid_(NULL),
 		solver_(NULL),
 		released_(true),
-		my_(0),
-		mz_(0),
-		nrows_(0),
-		ncols_(0),
+		my_(0), mz_(0),
+		nrows_(0), ncols_(0),
 		mat_(NULL),
-		clbd_(NULL),
-		cubd_(NULL),
+		clbd_(NULL), cubd_(NULL),
 		obj_(NULL),
-		rlbd_(NULL),
-		rubd_(NULL),
+		rlbd_(NULL), rubd_(NULL),
+		nnzQ_(0), irowQ_(NULL), jcolQ_(NULL), dQ_(NULL),
 		objval_(0),
 		x_(NULL),
 		y_(NULL),
@@ -91,6 +145,12 @@ public:
 	/** add row */
 	virtual void addRow(int size, const int * indices, const double * vals, double lb, double ub);
 
+	/** add column */
+	virtual void addCol(int size, const int * indices, const double * vals, double lb, double ub, double obj);
+
+	/** clear columns */
+	virtual void clearCols();
+
 	/** add cuts */
 	virtual int addCuts(OsiCuts cuts, double effectiveness = 0.0);
 
@@ -125,7 +185,7 @@ public:
 	virtual const double * getColUpper() {return cubd_;}
 
 	/** get objective */
-	virtual const double * getObjective() {return obj_;}
+	virtual const double * getObjCoef() {return obj_;}
 
 	/** get row lower bounds */
 	virtual const double * getRowLower() {return rlbd_;}
@@ -181,6 +241,9 @@ public:
 	/** set objective coefficients */
 	virtual void setObjCoef(double * obj);
 
+	/** set lower triangular Hessian matrix */
+	virtual void setHessian(int nnzQ, int * irowQ, int * jcolQ, double * dQ);
+
 	/** set column bounds */
 	virtual void setColLower(int index, double lb);
 
@@ -232,6 +295,8 @@ public:
 
 	OsiCuts cuts_; /**< for additional rows/columns */
 
+	dynColumns * dynCols_; /**< dynamically added columns */
+
 protected:
 
 	int sense_; /**< objective sense */
@@ -257,6 +322,10 @@ protected:
 	double * obj_;
 	double * rlbd_;
 	double * rubd_;
+	int nnzQ_;
+	int * irowQ_;
+	int * jcolQ_;
+	double * dQ_;
 
 	double objval_;   /**< objective value */
 	double * x_;      /**< primal solution */

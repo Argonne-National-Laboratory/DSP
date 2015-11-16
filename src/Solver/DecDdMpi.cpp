@@ -17,6 +17,7 @@
 #include "Solver/TssBdSub.h"
 #include "Solver/DecDdPrimalMaster.h"
 #include "Solver/DecDdMasterSubgrad.h"
+#include "Solver/DecDdMasterDSB.h"
 #include "Solver/DecDdSub.h"
 #include "SolverInterface/SolverInterfaceScip.h"
 #include "SolverInterface/OoqpEps.h"
@@ -47,7 +48,16 @@ DecDdMpi::DecDdMpi(
 	nInfeasible_(0),
 	ctime_start_(0.),
 	wtime_start_(0.),
-	logfile_prefix_(logfile_prefix)
+	logfile_prefix_(logfile_prefix),
+	parMasterAlgo_(0),
+	parFeasCuts_(-1),
+	parOptCuts_(-1),
+	parEvalUb_(-1),
+	parProcIdxSize_(0),
+	parProcIdx_(NULL),
+	parNumCutsPerIter_(1),
+	parLogDualVars_(false),
+	parStopTol_(1.0e-5)
 {
 	MPI_Comm_rank(comm, &comm_rank_);
 	MPI_Comm_size(comm, &comm_size_);
@@ -76,6 +86,7 @@ DecDdMpi::~DecDdMpi()
 		}
 		cuts_->dumpCuts();
 	}
+	FREE_ARRAY_PTR(parProcIdx_);
 }
 
 /** initialize solver */
@@ -84,6 +95,55 @@ STO_RTN_CODE DecDdMpi::initialize()
 	BGN_TRY_CATCH
 
 	int nsubprobs = model_->getNumSubproblems();
+
+	/** read parameters */
+	parMasterAlgo_     = par_->getIntParam("DD/MASTER_ALGO");
+	parFeasCuts_       = par_->getIntParam("DD/FEAS_CUTS");
+	parOptCuts_        = par_->getIntParam("DD/OPT_CUTS");
+	parEvalUb_         = par_->getIntParam("DD/EVAL_UB");
+	parNumCutsPerIter_ = par_->getIntParam("DD/NUM_CUTS_PER_ITER");
+	parLogDualVars_    = par_->getBoolParam("DD/LOG_DUAL_VARS");
+	parStopTol_        = par_->getDblParam("DD/STOP_TOL");
+
+	/** cuts and upper bound only supported with nonanticipativity constraints */
+	if (!model_->nonanticipativity() || !model_->isStochastic())
+	{
+		if (parFeasCuts_ >= 0 || parOptCuts_ >= 0)
+		{
+			printf("Warning: Feasibility and optimality cuts are not supported in a general decomposition model\n");
+		}
+		if (parEvalUb_ >= 0)
+		{
+			printf("Warning: Primal heuristic is not supported in a general decomposition model\n");
+		}
+		parFeasCuts_ = -1;
+		parOptCuts_ = -1;
+		parEvalUb_ = -1;
+	}
+
+	/** if TssDdProcIdxSet_ not set, initialize subproblems per process in a default manner */
+#if USE_ROOT_PROCESSOR == 0
+	int effective_comm_rank = comm_rank_ - 1;
+	int effective_comm_size = comm_size_ - 1;
+#else
+	int effective_comm_rank = comm_rank_;
+	int effective_comm_size = comm_size_;
+#endif
+	if (parProcIdxSize_ == 0)
+	{
+		effective_comm_size = CoinMin(effective_comm_size, model_->getNumSubproblems());
+		if (effective_comm_rank < effective_comm_size)
+		{
+			/** round-robin */
+			int size = (int) ((model_->getNumSubproblems() - 1) - effective_comm_rank) / effective_comm_size + 1;
+			assert(size > 0);
+			parProcIdxSize_ = size;
+			parProcIdx_ = new int [size];
+			int i = 0;
+			for (int s = effective_comm_rank; s < model_->getNumSubproblems(); s += effective_comm_size)
+				parProcIdx_[i++] = s;
+		}
+	}
 
 	/** calculate communication groups */
 	num_comm_groups_ = (comm_size_ - 1) / nsubprobs + 1;
@@ -98,13 +158,11 @@ STO_RTN_CODE DecDdMpi::initialize()
 	/** Sanity check:
 	 *    The number of master cuts per iteration should not exceed the number of subproblems;
 	 *    should not be less than 1. */
-	if (par_->TssDdMasterNumCutsPerIter_ > nsubprobs ||
-			par_->TssDdMasterNumCutsPerIter_ < 1)
-		par_->TssDdMasterNumCutsPerIter_ = nsubprobs;
+	if (parNumCutsPerIter_ > nsubprobs || parNumCutsPerIter_ < 1)
+		parNumCutsPerIter_ = nsubprobs;
 
 	/** Root process can print out. */
-	if (comm_rank_ > 0)
-		par_->logLevel_ = -100;
+	if (comm_rank_ > 0) parLogLevel_ = -100;
 
 	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
 
@@ -125,46 +183,6 @@ STO_RTN_CODE DecDdMpi::solve()
 	}
 #endif
 
-	/** cuts and upper bound only supported with nonanticipativity constraints */
-	if (!model_->nonanticipativity() || !model_->isStochastic())
-	{
-		if (par_->TssDdAddFeasCuts_ >= 0 || par_->TssDdAddOptCuts_ >= 0)
-		{
-			printf("Warning: Feasibility and optimality cuts are not supported in a general decomposition model\n");
-		}
-		if (par_->TssDdEvalUb_ >= 0)
-		{
-			printf("Warning: Primal heuristic is not supported in a general decomposition model\n");
-		}
-		par_->TssDdAddFeasCuts_ = -1;
-		par_->TssDdAddOptCuts_ = -1;
-		par_->TssDdEvalUb_ = -1;
-	}
-
-	/** if TssDdProcIdxSet_ not set, initialize subproblems per process in a default manner */
-#if USE_ROOT_PROCESSOR == 0
-	int effective_comm_rank = comm_rank_ - 1;
-	int effective_comm_size = comm_size_ - 1;
-#else
-	int effective_comm_rank = comm_rank_;
-	int effective_comm_size = comm_size_;
-#endif
-	if (par_->TssDdProcIdxSet_ == NULL)
-	{
-		effective_comm_size = CoinMin(effective_comm_size, model_->getNumSubproblems());
-		if (effective_comm_rank < effective_comm_size)
-		{
-			/** round-robin */
-			int size = (int) ((model_->getNumSubproblems() - 1) - effective_comm_rank) / effective_comm_size + 1;
-			assert(size > 0);
-			par_->TssDdNumProcIdx_ = size;
-			par_->TssDdProcIdxSet_ = new int [size];
-			int i = 0;
-			for (int s = effective_comm_rank; s < model_->getNumSubproblems(); s += effective_comm_size)
-				par_->TssDdProcIdxSet_[i++] = s;
-		}
-	}
-
 	/** initialize solver */
 	initialize();
 
@@ -179,7 +197,7 @@ STO_RTN_CODE DecDdMpi::solve()
 	createSubproblem();
 
 	/** print time elapsed for creating problems */
-	if (par_->logLevel_ > 0)
+	if (parLogLevel_ > 0)
 		printf("Time elapsed for creating master and subproblems: %.2f seconds\n",
 			MPI_Wtime() - wtime_start_);
 
@@ -240,16 +258,14 @@ STO_RTN_CODE DecDdMpi::createSubproblem()
 
 	/** SCENARIO DISTRIBUTION:
 	 *    scenarios taken care of by the current processor */
-	for (int s = 0; s < par_->TssDdNumProcIdx_; ++s)
-	{
-		subproblemsForCut.push_back(par_->TssDdProcIdxSet_[s]);
-	}
+	for (int s = 0; s < parProcIdxSize_; ++s)
+		subproblemsForCut.push_back(parProcIdx_[s]);
 
 #if USE_ROOT_PROCESSOR == 0
 	if (comm_rank_ != 0)
 #endif
 	{
-		if (par_->TssDdAddFeasCuts_ >= 0 || par_->TssDdAddOptCuts_ >= 0 || par_->TssDdEvalUb_ >= 0)
+		if (parFeasCuts_ >= 0 || parOptCuts_ >= 0 || parEvalUb_ >= 0)
 		{
 
 			/** these settings are only supported for stochastic models */
@@ -272,9 +288,9 @@ STO_RTN_CODE DecDdMpi::createSubproblem()
 			bdsub_->loadProblem(tssModel);
 		}
 
-		for (int s = 0; s < par_->TssDdNumProcIdx_; ++s)
+		for (int s = 0; s < parProcIdxSize_; ++s)
 		{
-			int sub = par_->TssDdProcIdxSet_[s];
+			int sub = parProcIdx_[s];
 			/** create subproblem instance */
 			DecDdSub * subprob = new DecDdSub(sub, par_);
 			subprobs_.push_back(subprob);
@@ -284,13 +300,13 @@ STO_RTN_CODE DecDdMpi::createSubproblem()
 			assert(subprob->si_);
 
 			SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(subprob->si_);
-			// if (si)
-			// 	subprob->si_->setPrintLevel(CoinMin(CoinMax(0, par_->logLevel_ - 3), 5));
-			// else
-			// 	subprob->si_->setPrintLevel(CoinMax(0,par_->logLevel_ - 3));
+			if (si)
+			 	subprob->si_->setPrintLevel(CoinMin(CoinMax(0, parLogLevel_ - 3), 5));
+			else
+			 	subprob->si_->setPrintLevel(CoinMax(0, parLogLevel_ - 3));
 
 			/** add cut generator */
-			if (par_->TssDdAddFeasCuts_ >= 0 || par_->TssDdAddOptCuts_ >= 0)
+			if (parFeasCuts_ >= 0 || parOptCuts_ >= 0)
 			{
 				/** Should change later */
 				subprob->addCutGenerator(bdsub_);
@@ -321,7 +337,7 @@ STO_RTN_CODE DecDdMpi::createSubproblem()
 	}
 
 	/** Let the root know which subproblems each process take care of. */
-	MPI_Gatherv(par_->TssDdProcIdxSet_, nsubprobs_proc, MPI::INT,
+	MPI_Gatherv(parProcIdx_, nsubprobs_proc, MPI::INT,
 			subproblemSpecs_, nsubprobsAtRank_, displs, MPI::INT, 0, comm_);
 
 	/** free memory */
@@ -345,15 +361,15 @@ STO_RTN_CODE DecDdMpi::solveSubproblem()
 	bool doSolveSubprob = false;
 	if (iterCnt_ == 0)
 	{
-		if (par_->TssDdAddFeasCuts_ >= 0) doAddFeasCuts = true;
-		if (par_->TssDdAddOptCuts_ >= 0) doAddOptCuts = true;
-		if (par_->TssDdEvalUb_ >= 0) doEvalUb = true;
+		if (parFeasCuts_ >= 0) doAddFeasCuts = true;
+		if (parOptCuts_ >= 0) doAddOptCuts = true;
+		if (parEvalUb_ >= 0) doEvalUb = true;
 	}
 	else
 	{
-		if (par_->TssDdAddFeasCuts_ > 0 && iterCnt_ % par_->TssDdAddFeasCuts_ == 0) doAddFeasCuts = true;
-		if (par_->TssDdAddOptCuts_ > 0 && iterCnt_ % par_->TssDdAddOptCuts_ == 0) doAddOptCuts = true;
-		if (par_->TssDdEvalUb_ > 0 && iterCnt_ % par_->TssDdEvalUb_ == 0) doEvalUb = true;
+		if (parFeasCuts_ > 0 && iterCnt_ % parFeasCuts_ == 0) doAddFeasCuts = true;
+		if (parOptCuts_ > 0 && iterCnt_ % parOptCuts_ == 0) doAddOptCuts = true;
+		if (parEvalUb_ > 0 && iterCnt_ % parEvalUb_ == 0) doEvalUb = true;
 	}
 	if (doAddFeasCuts || doAddOptCuts || doEvalUb)
 		doCollectSols = true;
@@ -394,13 +410,13 @@ STO_RTN_CODE DecDdMpi::solveSubproblem()
 
 						if (doContinueLocal == 0) continue;
 
-						if (par_->TssDdAddFeasCuts_ >= 0 || par_->TssDdAddOptCuts_ >= 0)
+						if (parFeasCuts_ >= 0 || parOptCuts_ >= 0)
 						{
 							/** disable cut generator */
 							subprobs_[s]->chgCutGenerator(NULL);
 
 							/** update subproblem */
-							if (par_->TssDdAddOptCuts_ >= 0 && primalBound_ < COIN_DBL_MAX)
+							if (parOptCuts_ >= 0 && primalBound_ < COIN_DBL_MAX)
 								subprobs_[s]->updateProblem(NULL, primalBound_);
 
 							/** push cuts */
@@ -419,7 +435,7 @@ STO_RTN_CODE DecDdMpi::solveSubproblem()
 						}
 
 						/** set time limit */
-						subprobs_[s]->setTimeLimit(CoinMin(time_remains_, par_->ScipLimitsTime_));
+						subprobs_[s]->setTimeLimit(CoinMin(time_remains_, parScipTimeLim_));
 
 						/** solve subproblem */
 						subprobs_[s]->solve();
@@ -624,8 +640,8 @@ STO_RTN_CODE DecDdMpi::syncSubproblem()
 #ifdef DSP_DEBUG
 				DSPdebugMessage("Sending lambda to rank %d, subproblem %d:  ", i, sind);
 				for (int k = 0; k < msglen; k++)
-					DSPdebugMessage("%.4f ", msg[k]);
-				DSPdebugMessage("\n");
+					printf("%.4f ", msg[k]);
+				printf("\n");
 #endif
 
 				CoinCopyN(msg, msglen, sendbuf + curMsglen);
@@ -668,7 +684,7 @@ STO_RTN_CODE DecDdMpi::syncSubproblem()
 		for (int i = 0; i < numSubprobs; ++i)
 		{
 			/** change cut generator */
-			if (par_->TssDdAddFeasCuts_ >= 0 || par_->TssDdAddOptCuts_ >= 0)
+			if (parFeasCuts_ >= 0 || parOptCuts_ >= 0)
 				subprobs_[i]->chgCutGenerator(bdsub_);
 
 			double * lambda = recvbuf + offset;
@@ -691,14 +707,24 @@ STO_RTN_CODE DecDdMpi::createMaster()
 		return STO_RTN_OK;
 
 	/** create master problem */
-	if (par_->TssDdMasterSolver_ == Subgradient)
+	switch(parMasterAlgo_)
+	{
+	case Subgradient:
 		master_ = new DecDdMasterSubgrad(par_);
-	else
+		break;
+	case DSBM:
+		master_ = new DecDdMasterDSB(par_);
+		break;
+	case IPM:
+	case IPM_Feasible:
+	default:
 		master_ = new DecDdPrimalMaster(par_);
+		break;
+	}
 	master_->createProblem(model_);
 
 	/** allocate memory */
-	if (par_->TssDdDualVarsLog_)
+	if (parLogDualVars_)
 	{
 		multipliers_ = new double [model_->getNumCouplingRows()];
 		CoinZeroN(multipliers_, model_->getNumCouplingRows());
@@ -719,7 +745,7 @@ STO_RTN_CODE DecDdMpi::solveMaster()
 
 	wtime_master_.push_back(MPI_Wtime() - stime);
 
-	if (par_->TssDdDualVarsLog_)
+	if (parLogDualVars_)
 	{
 		/** calculate change of the Lagrangian multiplier */
 		int nmult = model_->getNumCouplingRows();
@@ -761,7 +787,7 @@ STO_RTN_CODE DecDdMpi::syncMaster()
 	/** send buffer length per subproblem */
 	for (int s = 0; s < nsubprobs; s++)
 	{
-		slenPerSubproblem[s] = model_->getNumSubproblemCouplingCols(s) + 2;
+		slenPerSubproblem[s] = model_->getNumSubproblemCouplingCols(s) + 3;
 		rbuflen += slenPerSubproblem[s];
 	}
 
@@ -817,7 +843,8 @@ STO_RTN_CODE DecDdMpi::syncMaster()
 	if (comm_rank_ == 0)
 	{
 		/** allocate memory */
-		double * objval_sub   = new double [model_->getNumSubproblems()];
+		double * primal_sub   = new double [model_->getNumSubproblems()];
+		double * dual_sub   = new double [model_->getNumSubproblems()];
 		double ** solution_sub = new double * [model_->getNumSubproblems()];
 		for (int s = 0; s < model_->getNumSubproblems(); ++s)
 			solution_sub[s] = new double [model_->getNumSubproblemCouplingCols(s)];
@@ -833,8 +860,9 @@ STO_RTN_CODE DecDdMpi::syncMaster()
 
 				/** store message */
 				int sind = static_cast<int>(msgpiece[0]);
-				objval_sub[sind] = msgpiece[1];
-				CoinCopyN(msgpiece + 2, model_->getNumSubproblemCouplingCols(sind),	solution_sub[sind]);
+				primal_sub[sind] = msgpiece[1];
+				dual_sub[sind] = msgpiece[2];
+				CoinCopyN(msgpiece + 3, model_->getNumSubproblemCouplingCols(sind),	solution_sub[sind]);
 
 				offset += slenPerSubproblem[sind];
 			}
@@ -851,8 +879,8 @@ STO_RTN_CODE DecDdMpi::syncMaster()
 				int sind = static_cast<int>(msgpiece[0]);
 				DSPdebugMessage("s=%d: obj=%f, ", sind, objval_sub[sind]);
 				for (int k = 0; k < model_->getNumSubproblemCouplingCols(sind); k++)
-					DSPdebugMessage("%f ", solution_sub[sind][k]);
-				DSPdebugMessage("\n");
+					printf("%f ", solution_sub[sind][k]);
+				printf("\n");
 
 				offset += slenPerSubproblem[sind];
 			}
@@ -860,16 +888,22 @@ STO_RTN_CODE DecDdMpi::syncMaster()
 #endif
 
 		/** update master: may update dual bound */
-		master_->updateProblem(primalBound_, dualBound_, objval_sub, solution_sub);
+		master_->updateProblem(primalBound_, dualBound_, primal_sub, dual_sub, solution_sub);
 
 		/** store subproblem objective values */
-		double objval_subprob = 0.;
+		double primal_subprob = 0.;
+		double dual_subprob = 0.;
 		for (int s = 0; s < model_->getNumSubproblems(); ++s)
-			objval_subprob += objval_sub[s];
-		objval_subprob_.push_back(objval_subprob);
+		{
+			primal_subprob += primal_sub[s];
+			dual_subprob += dual_sub[s];
+		}
+		primal_subprob_.push_back(primal_subprob);
+		dual_subprob_.push_back(dual_subprob);
 
 		/** free memory */
-		FREE_ARRAY_PTR(objval_sub);
+		FREE_ARRAY_PTR(primal_sub);
+		FREE_ARRAY_PTR(dual_sub);
 		FREE_2D_ARRAY_PTR(model_->getNumSubproblems(), solution_sub);
 	}
 
@@ -889,7 +923,7 @@ bool DecDdMpi::doTerminate()
 		double gapPrimal = 0.0;
 		double gapMaster = 0.0;
 		gapPrimal = (primalBound_ - dualBound_) / (1.e-10 + fabs(primalBound_));
-		if (par_->TssDdMasterSolver_ != Subgradient)
+		if (parMasterAlgo_ != Subgradient)
 			gapMaster = (master_->getObjValue() - dualBound_) / (1.e-10 + fabs(master_->getObjValue()));
 
 		/** store primal/dual bounds and master objective value */
@@ -898,10 +932,10 @@ bool DecDdMpi::doTerminate()
 		dualBounds_.push_back(dualBound_);
 
 		/** print iteration information */
-		if (par_->logLevel_ > 0)
+		if (parLogLevel_ > 0)
 		{
 			printf("Iteration %3d: Dual Bound %e", iterCnt_, dualBound_);
-			if (par_->TssDdEvalUb_ >= 0)
+			if (parEvalUb_ >= 0)
 			{
 				printf(", Primal Bound %e ", primalBound_);
 				if (gapPrimal > 1.e+4 || gapPrimal < 1.e-4)
@@ -910,10 +944,10 @@ bool DecDdMpi::doTerminate()
 					printf("(Optimality Gap %.2f %%)", gapPrimal * 100);
 			}
 			printf(", Time Elapsed %.2f sec.", MPI::Wtime() - wtime_start_);
-			if (par_->TssDdMasterSolver_ != Subgradient && par_->logLevel_ > 1)
+			if (parMasterAlgo_ != Subgradient && parLogLevel_ > 1)
 			{
 				printf("\n  Master: Obj %e", master_->getObjValue());
-				if (par_->logLevel_ > 2)
+				if (parLogLevel_ > 2)
 				{
 					if (gapMaster > 1.e+4 || gapMaster < 1.e-4)
 						printf(" (Gap %.2e %%)", gapMaster * 100);
@@ -928,51 +962,17 @@ bool DecDdMpi::doTerminate()
 		/** If master is not optimal, terminate. */
 		status_ = master_->getStatus();
 
-		if (par_->iterLimit_ <= iterCnt_)
+		if (parIterLim_ <= iterCnt_)
 		{
 			status_ = STO_STAT_LIM_ITERorTIME;
 			terminate = true;
 		}
 		else if (status_ != STO_STAT_OPTIMAL)
 			terminate = true;
-		else if (gapPrimal < par_->TssDdStoppingTol_)
+		else if (gapPrimal < parStopTol_)
 			terminate = true;
-		else if (par_->TssDdMasterSolver_ == Subgradient)
-		{
-			/** Is the master solution suboptimal? */
-			terminate = true;
-			DecDdMasterSubgrad * master = dynamic_cast<DecDdMasterSubgrad*>(master_);
-			if (master)
-			{
-				if (master->getConstScalar() > 1.0e-6)
-					terminate = false;
-			}
-		}
-		else if (master_->getObjValue() - dualBound_ > -1.e-6  &&
-				gapMaster < par_->TssDdStoppingTol_)
-		{
-			/** Is the master solution suboptimal? */
-			terminate = true;
-			DecDdPrimalMaster * master = dynamic_cast<DecDdPrimalMaster*>(master_);
-			if (master)
-			{
-				if (master->isSolutionBoundary())
-				{
-					printf("Termination test: solution is in TR boundary.\n");
-					terminate = false;
-				}
-				else if (par_->TssDdMasterSolver_ == IPM_Feasible)
-				{
-					OoqpEps * ooqp = dynamic_cast<OoqpEps*>(master->si_);
-					assert(ooqp);
-					bool suboptimal = ooqp->isSuboptimal();
-					DSPdebugMessage("-> %s\n", suboptimal ? "suboptimal" : "optimal");
-
-					if (suboptimal)
-						terminate = false;
-				}
-			}
-		}
+		else
+			terminate = master_->terminate();
 	}
 
 	/** broadcast decision */
@@ -1303,12 +1303,12 @@ void DecDdMpi::obtainUpperBounds(
 	numSyncedUbSolutions_ += num;
 
 	/** 4. print */
-	if (par_->logLevel_ > 2)
+	if (parLogLevel_ > 2)
 	{
 		if (ubUpdated)
 			printf(" -> BEST Primal Bound %e\n", primalBound_);
 	}
-	else if (par_->logLevel_ == 1)
+	else if (parLogLevel_ == 1)
 	{
 		if (ubUpdated) printf(" * ");
 		else printf("   ");

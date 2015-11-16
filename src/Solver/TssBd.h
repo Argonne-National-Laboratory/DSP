@@ -84,6 +84,10 @@ protected:
 	double * obj_aux_;  /**< auxiliary variable objectives */
 	double * clbd_aux_; /**< auxiliary variable lower bounds */
 	double * cubd_aux_; /**< auxiliary variable upper bounds */
+
+	/** parameters */
+	int parNumCores_;
+	int parCutPriority_;
 };
 
 #endif /* TSSBD_H_ */

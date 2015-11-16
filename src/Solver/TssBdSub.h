@@ -26,8 +26,8 @@
 #include "Utility/StoMacros.h"
 #include "Utility/StoRtnCodes.h"
 #include "Utility/StoUtility.h"
+#include "Utility/DspParams.h"
 #include "SolverInterface/SolverInterface.h"
-#include "Solver/StoParam.h"
 
 #define DSP_SOLVER_INTERFACE
 
@@ -49,7 +49,7 @@ public:
 	};
 
 	/** default constructor */
-	TssBdSub(StoParam * par);
+	TssBdSub(DspParams * par);
 
 	/** default destructor */
 	virtual ~TssBdSub();
@@ -157,7 +157,7 @@ private:
 			int & nAddedCols         /**< [out] number of columns added */);
 
 public:
-	StoParam * par_; /**< parameters */
+	DspParams * par_; /**< parameters */
 
 	int nSubs_;                    /**< number of subproblems (CGLPs) */
 	int nAuxvars_;                 /**< number of auxiliary variables for Benders decomposition */
@@ -174,6 +174,13 @@ public:
 	vector<int> scenarios_; /**< scenario indices for cut generation */
 
 	STO_RTN_CODE * status_; /** subproblem solution status */
+
+protected:
+
+	/** parameters */
+	bool parCacheRecourse_;
+	int parOptCuts_;
+	int parNumCores_;
 };
 
 #endif /* TSSBDSUB_H_ */

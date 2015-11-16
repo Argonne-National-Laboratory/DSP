@@ -15,13 +15,13 @@ class SolverInterfaceSpx: public SolverInterfaceOsi
 public:
 
 	/** default constructor */
-	SolverInterfaceSpx(StoParam * par);
+	SolverInterfaceSpx(DspParams * par);
 
 	/** copy constructor */
 	SolverInterfaceSpx(SolverInterfaceSpx * si);
 
 	/** copy constructor */
-	SolverInterfaceSpx(StoParam * par, OsiSolverInterface * si);
+	SolverInterfaceSpx(DspParams * par, OsiSolverInterface * si);
 
 	/** default destructor */
 	virtual ~SolverInterfaceSpx() {}

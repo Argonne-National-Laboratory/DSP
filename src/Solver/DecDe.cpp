@@ -82,7 +82,7 @@ STO_RTN_CODE DecDe::solve()
 		}
 
 		/** relax integrality? */
-		if (par_->relaxIntegrality_[0] || par_->relaxIntegralityAll_)
+		if (parRelaxIntegrality_[0])
 		{
 			for (int j = 0; j < tssModel->getNumCols(0); ++j)
 			{
@@ -91,7 +91,7 @@ STO_RTN_CODE DecDe::solve()
 				ctype[j] = 'C';
 			}
 		}
-		if (par_->relaxIntegrality_[1] || par_->relaxIntegralityAll_)
+		if (parRelaxIntegrality_[1])
 		{
 			for (int j = 0; j < tssModel->getNumCols(1); ++j)
 			{
@@ -103,7 +103,7 @@ STO_RTN_CODE DecDe::solve()
 	}
 	else
 	{
-		if (par_->relaxIntegralityAll_)
+		if (parRelaxIntegrality_[0] || parRelaxIntegrality_[1])
 		{
 			for (int j = 0; j < mat->getNumCols(); j++)
 			{
@@ -118,13 +118,13 @@ STO_RTN_CODE DecDe::solve()
 	{
 		si_ = new SolverInterfaceScip(par_);
 		/** print level */
-		si_->setPrintLevel(CoinMin(par_->logLevel_ + 2, 5));
+		si_->setPrintLevel(CoinMin(par_->getIntParam("LOG_LEVEL") + 2, 5));
 	}
 	else
 	{
 		si_ = new SolverInterfaceClp(par_);
 		/** print level */
-		si_->setPrintLevel(par_->logLevel_);
+		si_->setPrintLevel(parLogLevel_);
 	}
 
 	/** load problem */
@@ -134,13 +134,13 @@ STO_RTN_CODE DecDe::solve()
 #endif
 
 	/** time limit */
-	si_->setTimeLimit(par_->wtimeLimit_);
+	si_->setTimeLimit(parScipTimeLim_);
 
 	/** set iteration limit */
-	si_->setIterLimit(par_->iterLimit_);
+	si_->setIterLimit(parIterLim_);
 
 	/** set node limit */
-	si_->setNodeLimit(par_->nodeLimit_);
+	si_->setNodeLimit(parNodeLim_);
 
 	/** solution time */
 	stime = clockType_ ? CoinGetTimeOfDay() : CoinCpuTime();

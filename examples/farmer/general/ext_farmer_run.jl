@@ -18,12 +18,13 @@ include("ext_farmer_model.jl")
 DSPsolver.loadProblem(m);
 
 # set print level
-DSPsolver.setLogLevel(1);
+DSPsolver.setLogLevel(2);
 
 # solve problem
 if ARGS[1] == "DE"
 	DSPsolver.solve(DSP_SOLVER_DE);
 elseif ARGS[1] == "DD"
+	DSPsolver.setDdMasterSolver(IPM_FEAS);
 	DSPsolver.setDdAddFeasCuts(-1);
 	DSPsolver.setDdAddOptCuts(-1);
 	DSPsolver.setDdEvalUb(-1);

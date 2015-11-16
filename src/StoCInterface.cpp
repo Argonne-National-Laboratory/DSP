@@ -111,9 +111,6 @@ bool prepareDecModel(StoApiEnv * env)
 			STO_RTN_CHECK_THROW(getTssModel(env)->copyDeterministicEquivalent(det),
 					"copyDeterministicEquivalent", "TssModel");
 			env->model_ = new DecDetModel(det, env->decdata_);
-			/** let default settings for subproblems take place */
-			env->par_->TssDdNumProcIdx_ = 0;
-			env->par_->TssDdProcIdxSet_ = NULL;
 		}
 		else
 		{
@@ -131,7 +128,8 @@ bool prepareDecModel(StoApiEnv * env)
 			decDet->setDecData(env->decdata_);
 		}
 
-		if (env->par_->relaxIntegrality_[0] || env->par_->relaxIntegrality_[1])
+		if (env->par_->getBoolPtrParam("RELAX_INTEGRALITY")[0] ||
+				env->par_->getBoolPtrParam("RELAX_INTEGRALITY")[1])
 		{
 			printf("Warning: Relaxing stage integrality only supported in stochastic model; feature disabled\n");
 		}
@@ -347,12 +345,12 @@ void solveBd(
 	tssbd->setAuxColData(nauxvars, obj_aux, clbd_aux, cubd_aux);
 
 	/** set augmented scenarios */
-	int numAugScenarios = env->par_->TssBdNumAugScenarios_;
+	int numAugScenarios = env->par_->getIntPtrParamSize("BD/ARR_AUG_SCENS");
 	if (numAugScenarios > 0)
-		tssbd->setAugScenarios(numAugScenarios, env->par_->TssBdAugScenarios_);
+		tssbd->setAugScenarios(numAugScenarios, env->par_->getIntPtrParam("BD/ARR_AUG_SCENS"));
 
 	/** relax second-stage integrality */
-	setIntRelax(env, 1);
+	env->par_->setBoolPtrParam("RELAX_INTEGRALITY", 1, true);
 
 	FREE_ARRAY_PTR(obj_aux);
 	FREE_ARRAY_PTR(clbd_aux);
@@ -361,164 +359,257 @@ void solveBd(
 	env->solver_->solve();
 }
 
-/** set log level */
-void setLogLevel(StoApiEnv * env, int level)
+/** set boolean parameter */
+void setBoolParam(StoApiEnv * env, const char * name, bool value)
 {
 	STO_API_CHECK_ENV();
-	env->par_->logLevel_ = level;
+	string strname(name);
+	env->par_->setBoolParam(name, value);
+}
+
+/** set integer parameter */
+void setIntParam(StoApiEnv * env, const char * name, int value)
+{
+	STO_API_CHECK_ENV();
+	string strname(name);
+	env->par_->setIntParam(strname, value);
+}
+
+/** set double parameter */
+void setDblParam(StoApiEnv * env, const char * name, double value)
+{
+	STO_API_CHECK_ENV();
+	string strname(name);
+	env->par_->setDblParam(strname, value);
+}
+
+/** set string parameter */
+void setStrParam(StoApiEnv * env, const char * name, const char *  value)
+{
+	STO_API_CHECK_ENV();
+	string strname(name);
+	string strvalue(value);
+	env->par_->setStrParam(strname, strvalue);
+}
+
+/** set boolean pointer parameter */
+void setBoolPtrParam(StoApiEnv * env, const char * name, int size, bool * value)
+{
+	STO_API_CHECK_ENV();
+	string strname(name);
+	env->par_->setBoolPtrParamSize(strname, size);
+	for (int i = 0; i < size; ++i)
+		env->par_->setBoolPtrParam(strname, i, value[i]);
+}
+
+/** set integer pointer parameter */
+void setIntPtrParam(StoApiEnv * env, const char * name, int size, int * value)
+{
+	STO_API_CHECK_ENV();
+	string strname(name);
+	env->par_->setIntPtrParamSize(strname, size);
+	for (int i = 0; i < size; ++i)
+		env->par_->setIntPtrParam(strname, i, value[i]);
+}
+
+/** set log level */
+void setLogLevel(StoApiEnv * env, int num)
+{
+	STO_API_CHECK_ENV();
+	env->par_->setIntParam("LOG_LEVEL", num);
+	printf("WARNING: setLogLevel() is deprecated. "
+			"Please use setIntParam(\"LOG_LEVEL\", %d) instead.\n", num);
 }
 
 /** set number of cores */
 void setNumCores(StoApiEnv * env, int num)
 {
 	STO_API_CHECK_ENV();
-	env->par_->numCores_ = num;
+	env->par_->setIntParam("BD/NUM_CORES", num);
+	printf("WARNING: setNumCores() is deprecated. "
+			"Please use setIntParam(\"BD/NUM_CORES\", %d) instead.\n", num);
 }
 
 /** set node limit */
 void setNodeLimit(StoApiEnv * env, int num)
 {
 	STO_API_CHECK_ENV();
-	env->par_->nodeLimit_ = num;
+	env->par_->setIntParam("NODE_LIM", num);
+	printf("WARNING: setNodeLimit() is deprecated. "
+			"Please use setIntParam(\"NODE_LIM\", %d) instead.\n", num);
 }
 
 /** set iteration limit */
 void setIterLimit(StoApiEnv * env, int num)
 {
 	STO_API_CHECK_ENV();
-	env->par_->iterLimit_ = num;
+	env->par_->setIntParam("ITER_LIM", num);
+	printf("WARNING: setIterLimit() is deprecated. "
+			"Please use setIntParam(\"ITER_LIM\", %d) instead.\n", num);
 }
 
 /** set wallclock limit */
-void setWallLimit(StoApiEnv * env, double lim)
+void setWallLimit(StoApiEnv * env, double num)
 {
 	STO_API_CHECK_ENV();
-	env->par_->wtimeLimit_ = lim;
+	env->par_->setDblParam("WALL_LIM", num);
+	printf("WARNING: setWallLimit() is deprecated. "
+			"Please use setDblParam(\"WALL_LIM\", %f) instead.\n", num);
 }
 
 /** set integrality relaxation */
 void setIntRelax(StoApiEnv * env, int stage)
 {
 	STO_API_CHECK_ENV();
-	env->par_->relaxIntegrality_[stage] = true;
+	env->par_->setBoolPtrParam("RELAX_INTEGRALITY", stage, true);
+	printf("WARNING: setIntRelax() is deprecated. "
+			"Please use setBoolPtrParam(\"RELAX_INTEGRALITY\", %d, true) instead.\n", stage);
 }
 
 /** set Benders augmented scenarios */
 void setBdAugScenarios(StoApiEnv * env, int size, int * scenarios)
 {
 	STO_API_CHECK_ENV();
-	env->par_->TssBdNumAugScenarios_ = size;
-	env->par_->TssBdAugScenarios_ = new int [size];
-	for (int i = 0; i < size; ++i)
-		env->par_->TssBdAugScenarios_[i] = scenarios[i];
+	setIntPtrParam(env, "BD/ARR_AUG_SCENS", size, scenarios);
+	printf("WARNING: setBdAugScenarios() is deprecated. "
+			"Please use setIntPtrParamSize(\"BD/ARR_AUG_SCENS\", %d) "
+			"and setIntPtrParam(\"BD/ARR_AUG_SCENS\", index, value) instead.\n", size);
 }
 
 /** set Benders aggressiveness */
 void setBendersAggressive(StoApiEnv * env, int aggressive)
 {
 	STO_API_CHECK_ENV();
-	env->par_->TssBdBendersPriority_ = aggressive;
+	env->par_->setIntParam("BD/CUT_PRIORITY", aggressive);
+	printf("WARNING: setBendersAggressive() is deprecated. "
+			"Please use setIntParam(\"BD/CUT_PRIORITY\", %d) instead.\n", aggressive);
 }
 
 /** set a set of scenarios for the current process */
 void setDdProcIdxSet(StoApiEnv * env, int size, int * scenarios)
 {
 	STO_API_CHECK_ENV();
-	env->par_->TssDdNumProcIdx_ = size;
-	env->par_->TssDdProcIdxSet_ = new int [size];
-	for (int i = 0; i < size; ++i)
-		env->par_->TssDdProcIdxSet_[i] = scenarios[i];
+	setIntPtrParam(env, "DD/ARR_PROC_IDX", size, scenarios);
+	printf("WARNING: setDdProcIdxSet() is deprecated. "
+			"Please use setIntPtrParamSize(\"DD/ARR_PROC_IDX\", %d) "
+			"and setIntPtrParam(\"DD/ARR_PROC_IDX\", index, value) instead.\n", size);
 }
 
 /** set parameter for adding feasibility cuts */
 void setDdAddFeasCuts(StoApiEnv * env, int freq)
 {
 	STO_API_CHECK_ENV();
-	env->par_->TssDdAddFeasCuts_ = freq;
+	env->par_->setIntParam("DD/FEAS_CUTS", freq);
+	printf("WARNING: setDdAddFeasCuts() is deprecated. "
+			"Please use setIntParam(\"DD/FEAS_CUTS\", %d) instead.\n", freq);
 }
 
 /** set parameter for adding optimality cuts */
 void setDdAddOptCuts(StoApiEnv * env, int freq)
 {
 	STO_API_CHECK_ENV();
-	env->par_->TssDdAddOptCuts_ = freq;
+	env->par_->setIntParam("DD/OPT_CUTS", freq);
+	printf("WARNING: setDdAddOptCuts() is deprecated. "
+			"Please use setIntParam(\"DD/OPT_CUTS\", %d) instead.\n", freq);
 }
 
 /** set parameter for evaluating upper bound */
 void setDdEvalUb(StoApiEnv * env, int freq)
 {
 	STO_API_CHECK_ENV();
-	env->par_->TssDdEvalUb_ = freq;
+	env->par_->setIntParam("DD/EVAL_UB", freq);
+	printf("WARNING: setDdEvalUb() is deprecated. "
+			"Please use setIntParam(\"DD/EVAL_UB\", %d) instead.\n", freq);
 }
 
 /** set parameter for logging changes of distance of dual variables */
 void setDdDualVarsLog(StoApiEnv * env, int yesNo)
 {
 	STO_API_CHECK_ENV();
-	env->par_->TssDdDualVarsLog_ = yesNo;
+	env->par_->setBoolParam("DD/LOG_DUAL_VARS", yesNo);
+	printf("WARNING: setDdDualVarsLog() is deprecated. "
+			"Please use setBoolParam(\"DD/LOG_DUAL_VARS\", %d) instead.\n", yesNo);
 }
 
 /** set on/off DD recourse cache */
 void setDdCacheRecourse(StoApiEnv * env, int yesNo)
 {
 	STO_API_CHECK_ENV();
-	env->par_->TssDdCacheRecourse_ = yesNo;
+	env->par_->setBoolParam("DD/CACHE_RECOURSE", yesNo);
+	printf("WARNING: setDdCacheRecourse() is deprecated. "
+			"Please use setBoolParam(\"DD/CACHE_RECOURSE\", %d) instead.\n", yesNo);
 }
 
 /** set Lagrangian master solver */
 void setDdMasterSolver(StoApiEnv * env, int type)
 {
 	STO_API_CHECK_ENV();
-	env->par_->TssDdMasterSolver_ = type;
+	env->par_->setIntParam("DD/MASTER_ALGO", type);
+	printf("WARNING: setDdMasterSolver() is deprecated. "
+			"Please use setIntParam(\"DD/MASTER_ALGO\", %d) instead.\n", type);
 }
 
 /** set DD stopping tolerance */
 void setDdStoppingTolerance(StoApiEnv * env, double tol)
 {
 	STO_API_CHECK_ENV();
-	env->par_->TssDdStoppingTol_ = tol;
+	env->par_->setDblParam("DD/STOP_TOL", tol);
+	printf("WARNING: setDdStoppingTolerance() is deprecated. "
+			"Please use setDblParam(\"DD/STOP_TOL\", %f) instead.\n", tol);
 }
 
 /** set number of cuts per iteration added to master */
 void setDdMasterNumCutsPerIter(StoApiEnv* env, int num)
 {
 	STO_API_CHECK_ENV();
-	env->par_->TssDdMasterNumCutsPerIter_ = num;
+	env->par_->setIntParam("DD/NUM_CUTS_PER_ITER", num);
+	printf("WARNING: setDdMasterNumCutsPerIter() is deprecated. "
+			"Please use setIntParam(\"DD/NUM_CUTS_PER_ITER\", %d) instead.\n", num);
 }
 
 /** set trust region size */
-void setDdTrustRegionSize(StoApiEnv* env, int num)
+void setDdTrustRegionSize(StoApiEnv* env, double num)
 {
 	STO_API_CHECK_ENV();
-	env->par_->TssDdTrustRegionSize_ = num;
+	env->par_->setDblParam("DD/TR/SIZE", num);
+	printf("WARNING: setDdTrustRegionSize() is deprecated. "
+			"Please use setDblParam(\"DD/TR/SIZE\", %f) instead.\n", num);
 }
 
 /** set whether trust region decrease should be disabled */
 void setDdDisableTrustRegionDecrease(StoApiEnv* env, bool yesNo)
 {
 	STO_API_CHECK_ENV();
-	env->par_->TssDdDisableTrustRegionDecrease_ = yesNo;
+	env->par_->setBoolParam("DD/TR/DECREASE", yesNo);
+	printf("WARNING: setDdDisableTrustRegionDecrease() is deprecated. "
+			"Please use setBoolParam(\"DD/TR/DECREASE\", %s) instead.\n", yesNo ? "true" : "false");
 }
 
 /** set SCIP/display/freq */
 void setScipDisplayFreq(StoApiEnv * env, int freq)
 {
 	STO_API_CHECK_ENV();
-	env->par_->ScipDisplayFreq_ = freq;
+	env->par_->setIntParam("SCIP/DISPLAY_FREQ", freq);
+	printf("WARNING: setScipDisplayFreq() is deprecated. "
+			"Please use setIntParam(\"SCIP/DISPLAY_FREQ\", %d) instead.\n", freq);
 }
 
 /** set SCIP/limits/gap */
 void setScipLimitsGap(StoApiEnv * env, double gap)
 {
 	STO_API_CHECK_ENV();
-	env->par_->ScipLimitsGap_ = gap;
+	env->par_->setDblParam("SCIP/GAP_TOL", gap);
+	printf("WARNING: setScipLimitsGap() is deprecated. "
+			"Please use setDblParam(\"SCIP/GAP_TOL\", %f) instead.\n", gap);
 }
 
 /** set SCIP/limits/time */
 void setScipLimitsTime(StoApiEnv * env, double time)
 {
 	STO_API_CHECK_ENV();
-	env->par_->ScipLimitsTime_ = time;
+	env->par_->setDblParam("SCIP/TIME_LIM", time);
+	printf("WARNING: setScipLimitsTime() is deprecated. "
+			"Please use setDblParam(\"SCIP/TIME_LIM\", %f) instead.\n", time);
 }
 
 /**
@@ -714,16 +805,34 @@ int getDdNumMasterObjValues(StoApiEnv * env)
 	return 0;
 }
 
-/** get number of subproblem objective values */
-int getDdNumSubproblemObjValues(StoApiEnv * env)
+/** get number of subproblem primal objective values */
+int getDdNumSubPrimalBounds(StoApiEnv * env)
 {
 	STO_API_CHECK_SOLVER(0);
 	DecDdMpi * dd = dynamic_cast<DecDdMpi*>(env->solver_);
 	if (dd)
 	{
-		return dd->objval_subprob_.size();
+		return dd->primal_subprob_.size();
 	}
 	return 0;
+}
+
+/** get number of subproblem dual objective values */
+int getDdNumSubDualBounds(StoApiEnv * env)
+{
+	STO_API_CHECK_SOLVER(0);
+	DecDdMpi * dd = dynamic_cast<DecDdMpi*>(env->solver_);
+	if (dd)
+	{
+		return dd->dual_subprob_.size();
+	}
+	return 0;
+}
+
+/** get number of subproblem objective values */
+int getDdNumSubproblemObjValues(StoApiEnv * env)
+{
+	return getDdNumSubPrimalBounds(env);
 }
 
 /** get number of primal bounds */
@@ -762,16 +871,34 @@ void getDdMasterObjValues(StoApiEnv * env, double * vals)
 	}
 }
 
-/** get history of subproblem objective values */
-void getDdSubproblemObjValues(StoApiEnv * env, double * vals)
+/** get history of subproblem primal objective values */
+void getDdSubPrimalBounds(StoApiEnv * env, double * vals)
 {
 	STO_API_CHECK_SOLVER();
 	DecDdMpi * dd = dynamic_cast<DecDdMpi*>(env->solver_);
 	if (dd)
 	{
-		for (unsigned int i = 0; i < dd->objval_subprob_.size(); ++i)
-			vals[i] = dd->objval_subprob_[i];
+		for (unsigned int i = 0; i < dd->primal_subprob_.size(); ++i)
+			vals[i] = dd->primal_subprob_[i];
 	}
+}
+
+/** get history of subproblem dual objective values */
+void getDdSubDualBounds(StoApiEnv * env, double * vals)
+{
+	STO_API_CHECK_SOLVER();
+	DecDdMpi * dd = dynamic_cast<DecDdMpi*>(env->solver_);
+	if (dd)
+	{
+		for (unsigned int i = 0; i < dd->primal_subprob_.size(); ++i)
+			vals[i] = dd->dual_subprob_[i];
+	}
+}
+
+/** get history of subproblem objective values */
+void getDdSubproblemObjValues(StoApiEnv * env, double * vals)
+{
+	getDdSubPrimalBounds(env, vals);
 }
 
 /** get history of primal bounds */

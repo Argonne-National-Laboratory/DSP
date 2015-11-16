@@ -27,7 +27,7 @@ class SolverInterfaceScip : public SolverInterface
 public:
 
 	/** default constructor */
-	SolverInterfaceScip(StoParam * par);
+	SolverInterfaceScip(DspParams * par);
 
 	/** copy constructor */
 	SolverInterfaceScip(SolverInterfaceScip * si);
@@ -146,6 +146,9 @@ public:
 
 	/** get row upper bounds */
 	virtual const double * getRowUpper() {return rubd_;}
+
+	/** get linear objective function coefficient */
+	virtual const double * getObjCoef() {return NULL;}
 
 	/** get variable objective function */
 	virtual double getObjCoeff(int j) {return SCIPvarGetObj(vars_[j]);}

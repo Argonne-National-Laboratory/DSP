@@ -24,6 +24,7 @@ DecDdSub::~DecDdSub()
 	FREE_2D_ARRAY_PTR(nsols_, solutions_);
 	nsols_ = 0;
 	obj_offset_ = 0;
+	parRelaxIntegrality_ = NULL;
 }
 
 /** create problem */
@@ -51,6 +52,9 @@ STO_RTN_CODE DecDdSub::createProblem(DecModel * model)
 	int cpl_ncols;
 
 	BGN_TRY_CATCH
+
+	/** parameters */
+	parRelaxIntegrality_ = par_->getBoolPtrParam("RELAX_INTEGRALITY");
 
 	/** augmented subproblem index */
 	augs[0] = sind_;
@@ -108,7 +112,7 @@ STO_RTN_CODE DecDdSub::createProblem(DecModel * model)
 			obj_[j] *= probability;
 
 		/** convert column types */
-		if (par_->relaxIntegrality_[0] || par_->relaxIntegralityAll_)
+		if (parRelaxIntegrality_[0])
 		{
 			for (int j = 0; j < tssModel->getNumCols(0); ++j)
 			{
@@ -117,7 +121,7 @@ STO_RTN_CODE DecDdSub::createProblem(DecModel * model)
 				ctype[j] = 'C';
 			}
 		}
-		if (par_->relaxIntegrality_[1] || par_->relaxIntegralityAll_)
+		if (parRelaxIntegrality_[1])
 		{
 			for (int j = 0; j < tssModel->getNumCols(1); ++j)
 			{
@@ -129,7 +133,7 @@ STO_RTN_CODE DecDdSub::createProblem(DecModel * model)
 	}
 	else
 	{
-		if (par_->relaxIntegralityAll_)
+		if (parRelaxIntegrality_[0] || parRelaxIntegrality_[1])
 		{
 			for (int j = 0; j < mat->getNumCols(); j++)
 			{
@@ -407,15 +411,18 @@ STO_RTN_CODE DecDdSub::MPImsgbuf(double * msgbuf)
 	/** The first element in message buffer should be scenario index. */
 	msgbuf[0] = static_cast<double>(sind_);
 
-	/** The second element should be objective value. */
+	/** The second element should be primal objective value. */
 	msgbuf[1] = si_->getPrimalBound() + obj_offset_;
+
+	/** The second element should be dual objective value. */
+	msgbuf[2] = si_->getDualBound() + obj_offset_;
 
 	/** The following elements are for the coupling solution. */
 	const double * solution = si_->getSolution();
 	if (solution != NULL)
 	{
 		for (int i = 0; i < ncols_coupling_; i++)
-			msgbuf[2+i] = solution[cpl_cols_[i]];
+			msgbuf[3+i] = solution[cpl_cols_[i]];
 		solution = NULL;
 	}
 

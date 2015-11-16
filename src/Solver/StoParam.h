@@ -16,6 +16,7 @@ enum TssDdMasterSolver
 	Simplex = 0,
 	IPM,
 	IPM_Feasible,
+	DSBM, /**< doubly stabilized bundle method */
 	Subgradient
 };
 
@@ -30,7 +31,7 @@ public:
 		TssBdBendersPriority_(-2000000),
 		TssDdNumProcIdx_(0),
 		TssDdProcIdxSet_(NULL),
-		TssDdMasterSolver_(2),
+		TssDdMasterSolver_(IPM_Feasible),
 		TssDdMasterNumCutsPerIter_(1),
 		TssDdEnableTrustRegion_(1),
 		TssDdTrustRegionSize_(100.),

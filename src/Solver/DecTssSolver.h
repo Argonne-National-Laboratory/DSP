@@ -13,8 +13,8 @@
 #include "Utility/StoRtnCodes.h"
 #include "Utility/StoUtility.h"
 #include "Utility/StoMessage.h"
+#include "Utility/DspParams.h"
 #include "Model/DecModel.h"
-#include "Solver/StoParam.h"
 
 /** 
  * TODO:
@@ -26,7 +26,7 @@ class DecTssSolver : public DecSolver {
 public:
 
 	/** default constructor */
-	DecTssSolver() : DecSolver() {}
+	DecTssSolver() : DecSolver(), tss_(NULL) {}
 
 	DecTssSolver(TssSolver * tss) : tss_(tss) {}
 
@@ -37,7 +37,7 @@ public:
 	}
 
 	/** load model object; will have a shallow pointer (not deep copy) */
-	STO_RTN_CODE loadModel(StoParam * par, DecModel * model)
+	STO_RTN_CODE loadModel(DspParams * par, DecModel * model)
 	{
 		TssModel * tssModel = dynamic_cast<TssModel *>(model);
 		if (tssModel == NULL)

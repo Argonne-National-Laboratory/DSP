@@ -43,6 +43,8 @@ public:
 
 public:
 
+	DecData * getDecData() {return decData_;}
+
 	int getNumSubproblems() {return decData_->getNumSubproblems();}
 
 	int getNumCouplingRows() {return decData_->getNumCouplingRows();}
@@ -121,8 +123,8 @@ public:
 
 protected:
 
-	DecData * decData_;    /**< underlying decomposition information */
 	DetModel * det_;       /**< underlying deterministic model */
+	DecData * decData_;    /**< underlying decomposition information */
 
 };
 

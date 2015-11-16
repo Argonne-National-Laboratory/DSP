@@ -12,6 +12,14 @@ TssSolver::TssSolver() :
 	par_(NULL),
 	message_(NULL),
 	time_remains_(COIN_DBL_MAX),
+	parLogLevel_(0),
+	parNodeLim_(COIN_INT_MAX),
+	parIterLim_(COIN_INT_MAX),
+	parWallLim_(COIN_DBL_MAX),
+	parScipDispFreq_(0),
+	parScipGapTol_(0),
+	parScipTimeLim_(COIN_DBL_MAX),
+	parRelaxIntegrality_(NULL),
 	status_(STO_STAT_UNKNOWN),
 	solution_(NULL),
 	primalBound_(COIN_DBL_MAX),
@@ -30,10 +38,11 @@ TssSolver::~TssSolver()
 	/** TODO should not release? */
 	//FREE_PTR(message_);
 	FREE_ARRAY_PTR(solution_);
+	parRelaxIntegrality_ = NULL;
 }
 
 /** load model object; will have a shallow pointer (not deep copy) */
-STO_RTN_CODE TssSolver::loadModel(StoParam * par, TssModel * model)
+STO_RTN_CODE TssSolver::loadModel(DspParams * par, TssModel * model)
 {
 	BGN_TRY_CATCH
 
@@ -53,8 +62,18 @@ STO_RTN_CODE TssSolver::loadModel(StoParam * par, TssModel * model)
 	/** create message */
 	message_ = new StoMessage;
 
+	/** parameters */
+	parLogLevel_         = par_->getIntParam("LOG_LEVEL");
+	parNodeLim_          = par_->getIntParam("NODE_LIM");
+	parIterLim_          = par_->getIntParam("ITER_LIM");
+	parWallLim_          = par_->getDblParam("WALL_LIM");
+	parScipDispFreq_     = par_->getIntParam("SCIP/DISPLAY_FREQ");
+	parScipGapTol_       = par_->getDblParam("SCIP/GAP_TOL");
+	parScipTimeLim_      = par_->getDblParam("SCIP/TIME_LIM");
+	parRelaxIntegrality_ = par_->getBoolPtrParam("RELAX_INTEGRALITY");
+
 	/** set time limit */
-	time_remains_ = par_->wtimeLimit_;
+	time_remains_ = parWallLim_;
 
 	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
 

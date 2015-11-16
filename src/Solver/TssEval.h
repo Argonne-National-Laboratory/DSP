@@ -29,6 +29,11 @@ public:
 private:
 
 	bool hasSolution_; /** indicating whether a solution is set or not */
+
+protected:
+
+	/** parameters */
+	int parNumCores_;
 };
 
 #endif /* SRC_SOLVER_TSSEVAL_H_ */

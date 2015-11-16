@@ -12,7 +12,7 @@
 
 #include "CoinWarmStartBasis.hpp"
 
-SolverInterfaceOsi::SolverInterfaceOsi(StoParam * par) :
+SolverInterfaceOsi::SolverInterfaceOsi(DspParams * par) :
 	SolverInterface(par),
 	si_(NULL),
 	ws_(NULL)
@@ -29,7 +29,7 @@ SolverInterfaceOsi::SolverInterfaceOsi(SolverInterfaceOsi * si) :
 }
 
 /** copy constructor */
-SolverInterfaceOsi::SolverInterfaceOsi(StoParam * par, OsiSolverInterface * si) :
+SolverInterfaceOsi::SolverInterfaceOsi(DspParams * par, OsiSolverInterface * si) :
 	SolverInterface(par)
 {
 	si_ = si->clone();

@@ -121,7 +121,7 @@ public:
 	double evalLhsCouplingRowAlternative(int row, double ** solutions);
 
 	/** Converts Lagrangian multipliers back from the alternative representation x_i = x_{i+1} (to x = x_i) */
-	double convertLagrangianFromAlternative(double * multipliers, double *& newMultipliers);
+	void convertLagrangianFromAlternative(double * multipliers, double *& newMultipliers);
 
 	void __printData() {return TssModel::__printData();}
 };

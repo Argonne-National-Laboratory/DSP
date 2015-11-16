@@ -24,7 +24,7 @@
 //#define TSS_BD_SUB_DEBUG
 //#define TSS_BD_SUB_DEBUG_MORE
 
-TssBdSub::TssBdSub(StoParam * par):
+TssBdSub::TssBdSub(DspParams * par):
 	par_(par),
 	nSubs_(0),
 	nAuxvars_(1),
@@ -36,7 +36,10 @@ TssBdSub::TssBdSub(StoParam * par):
 	warm_start_(NULL),
 	cut_generation_wall_time_(0.0),
 	nFeasSolutions_(0),
-	status_(NULL)
+	status_(NULL),
+	parCacheRecourse_(par->getBoolParam("DD/CACHE_RECOURSE")),
+	parOptCuts_(par->getIntParam("DD/OPT_CUTS")),
+	parNumCores_(par->getIntParam("BD/NUM_CORES"))
 {
 	/** nothing to do */
 }
@@ -84,7 +87,7 @@ STO_RTN_CODE TssBdSub::loadProblem(
 	nSubs_    = model->getNumScenarios();
 	weight_   = model->getProbability();
 	mat_mp_   = new CoinPackedMatrix * [nSubs_];
-	if (par_->TssDdCacheRecourse_)
+	if (parCacheRecourse_)
 		recourse_ = new SolverInterface * [nSubs_];
 	cglp_     = new OsiSolverInterface * [nSubs_];
 	status_   = new int [nSubs_];
@@ -92,7 +95,7 @@ STO_RTN_CODE TssBdSub::loadProblem(
 	for (int s = nSubs_ - 1; s >= 0; --s)
 	{
 		mat_mp_[s] = NULL;
-		if (par_->TssDdCacheRecourse_) recourse_[s] = NULL;
+		if (parCacheRecourse_) recourse_[s] = NULL;
 		cglp_[s] = NULL;
 	}
 
@@ -126,7 +129,7 @@ STO_RTN_CODE TssBdSub::loadProblem(
 				obj_reco, rlbd_reco, rubd_reco), "copyRecoProb", "TssModel");
 
 		/** create cache for getting recourse solution */
-		if (par_->TssDdCacheRecourse_)
+		if (parCacheRecourse_)
 		{
 			if (model->getNumIntegers(1) > 0)
 				recourse_[s] = new SolverInterfaceScip(par_);
@@ -271,7 +274,7 @@ void TssBdSub::generateCuts(
 		bool doContinue = true;
 #ifdef USE_OMP
 		/** set number of cores to use */
-		omp_set_num_threads(par_->numCores_);
+		omp_set_num_threads(parNumCores_);
 #pragma omp parallel for schedule(dynamic)
 #endif
 		for (int s = nSubs_ - 1; s >= 0; --s)
@@ -296,7 +299,7 @@ void TssBdSub::generateCuts(
 			if (!mat_mp_[s]) continue;
 			if (excludedScenarios_[s]) continue;
 			if (which == BothCuts)
-				solveOneSubproblem(this, s, x, Tx, cutval, cutrhs, par_->TssDdAddOptCuts_);
+				solveOneSubproblem(this, s, x, Tx, cutval, cutrhs, parOptCuts_);
 			else if (which == FeasCut)
 				solveOneFeasSubproblem(this, s, x, Tx, cutval, cutrhs);
 			else if (which == OptCut)
@@ -359,7 +362,7 @@ void TssBdSub::solveSingleRecourse(
 
 	assert(x);
 	assert(objval);
-	if (par_->TssDdCacheRecourse_)
+	if (parCacheRecourse_)
 		assert(recourse_);
 
 	if (!mat_mp_[scenario] || excludedScenarios_[scenario])
@@ -374,7 +377,7 @@ void TssBdSub::solveSingleRecourse(
 
 	/** allocate memory */
 	Tx = new double [nrows];
-	if (par_->TssDdCacheRecourse_)
+	if (parCacheRecourse_)
 	{
 		orgrlbd = new double [nrows];
 		orgrubd = new double [nrows];
@@ -384,7 +387,7 @@ void TssBdSub::solveSingleRecourse(
 	mat_mp_[scenario]->times(x, Tx);
 
 	SolverInterface * si = NULL;
-	if (par_->TssDdCacheRecourse_)
+	if (parCacheRecourse_)
 	{
 		assert(recourse_[scenario]);
 		si = recourse_[scenario];
@@ -408,7 +411,7 @@ void TssBdSub::solveSingleRecourse(
 	const double * rubd = si->getRowUpper();
 
 	/** copy original row bounds */
-	if (par_->TssDdCacheRecourse_)
+	if (parCacheRecourse_)
 	{
 		CoinCopyN(rlbd, si->getNumRows(), orgrlbd);
 		CoinCopyN(rubd, si->getNumRows(), orgrubd);
@@ -448,7 +451,7 @@ void TssBdSub::solveSingleRecourse(
 	}
 
 	/** restore row bounds */
-	if (par_->TssDdCacheRecourse_)
+	if (parCacheRecourse_)
 	{
 		for (int i = nrows - 1; i >= 0; --i)
 		{
@@ -484,7 +487,7 @@ void TssBdSub::solveRecourse(
 
 	assert(x);
 	assert(objval);
-	if (par_->TssDdCacheRecourse_)
+	if (parCacheRecourse_)
 		assert(recourse_);
 
 	double ** Tx = NULL;
@@ -509,7 +512,7 @@ void TssBdSub::solveRecourse(
 
 		Tx[s] = new double [nrows];
 	}
-	if (par_->TssDdCacheRecourse_)
+	if (parCacheRecourse_)
 	{
 		orgrlbd = new double * [ncores];
 		orgrubd = new double * [ncores];
@@ -540,7 +543,7 @@ void TssBdSub::solveRecourse(
 		mat_mp_[s]->times(x, Tx[tid]);
 
 		SolverInterface * si = NULL;
-		if (par_->TssDdCacheRecourse_)
+		if (parCacheRecourse_)
 		{
 			assert(recourse_[s]);
 			si = recourse_[s];
@@ -564,7 +567,7 @@ void TssBdSub::solveRecourse(
 		const double * rubd = si->getRowUpper();
 
 		/** copy original row bounds */
-		if (par_->TssDdCacheRecourse_)
+		if (parCacheRecourse_)
 		{
 			CoinCopyN(rlbd, si->getNumRows(), orgrlbd[tid]);
 			CoinCopyN(rubd, si->getNumRows(), orgrubd[tid]);
@@ -610,7 +613,7 @@ void TssBdSub::solveRecourse(
 		}
 
 		/** restore row bounds */
-		if (par_->TssDdCacheRecourse_)
+		if (parCacheRecourse_)
 		{
 			for (int i = nrows - 1; i >= 0; --i)
 			{

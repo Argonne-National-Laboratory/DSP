@@ -17,7 +17,7 @@ class OoqpEps: public SolverInterfaceOoqp
 public:
 
 	/** default constructor */
-	OoqpEps(StoParam * par) :
+	OoqpEps(DspParams * par) :
 		SolverInterfaceOoqp(par),
 		hasOoqpStatus_(true),
 		epsilon_(COIN_DBL_MAX),
@@ -36,7 +36,7 @@ public:
 	void setOoqpStatus(double epsilon, double lowerBound, double upperBound);
 
 	/** core part for load problem */
-	virtual void gutsOfLoadProblem();
+//	virtual void gutsOfLoadProblem();
 
 	/** get duality gap tolerance */
 	double getDualityGapTol() {return epsilon_;}

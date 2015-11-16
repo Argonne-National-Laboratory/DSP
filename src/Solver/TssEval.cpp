@@ -11,7 +11,9 @@
 #include "Solver/TssBdSub.h"
 #include "Utility/StoMessage.h"
 
-TssEval::TssEval() : hasSolution_(false)
+TssEval::TssEval() :
+hasSolution_(false),
+parNumCores_(1)
 {
 	/** nothing to do */
 }
@@ -35,6 +37,9 @@ STO_RTN_CODE TssEval::solve()
 
 	BGN_TRY_CATCH
 
+	/** parameters */
+	parNumCores_ = par_->getIntParam("BD/NUM_CORES");
+
 	/** allocate memory */
 	objval_reco = new double [model_->getNumScenarios()];
 	solution_reco = new double * [model_->getNumScenarios()];
@@ -50,7 +55,7 @@ STO_RTN_CODE TssEval::solve()
 	for (int j = 0; j < model_->getNumCols(0); ++j)
 		printf("x%d %e\n", j, solution_[j]);
 #endif
-	sub->solveRecourse(solution_, objval_reco, solution_reco, par_->numCores_);
+	sub->solveRecourse(solution_, objval_reco, solution_reco, parNumCores_);
 
 	/** get objective value */
 	primalBound_ = 0.0;

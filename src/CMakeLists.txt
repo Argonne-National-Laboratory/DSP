@@ -19,6 +19,7 @@ set(DSP_SRC_FILES
 	Solver/DecDdMpi.cpp
 	Solver/DecDdPrimalMaster.cpp
 	Solver/DecDdMasterSubgrad.cpp
+	Solver/DecDdMasterDSB.cpp
 	Solver/DecDdSub.cpp
 	Solver/DecDe.cpp
 	Model/StoModel.cpp
@@ -28,7 +29,8 @@ set(DSP_SRC_FILES
 	Model/DecDetModel.cpp
 	Model/DetModel.cpp
 	Utility/StoMessage.cpp
-	Utility/StoUtility.cpp)
+	Utility/StoUtility.cpp
+	Utility/DspParams.cpp)
 
 add_library(Dsp SHARED
 	StoApiEnv.cpp
@@ -82,7 +84,7 @@ install(CODE "message(\"   and add four Julia packages by typing the following i
 install(CODE "message(\"    Pkg.add(\\\"MPI\\\");\")")
 install(CODE "message(\"    Pkg.add(\\\"JuMP\\\");\")")
 install(CODE "message(\"    Pkg.clone(\\\"https://github.com/kibaekkim/StochJuMP.jl.git\\\");\")")
-install(CODE "message(\"    Pkg.clone(\\\"https://github.com/kibaekkim/DSPsolver.jl.git\\\");\")")
+install(CODE "message(\"    Pkg.clone(\\\"https://github.com/Argonne-National-Laboratory/DSPsolver.jl.git\\\");\")")
 install(CODE "message(\"\")")
 install(CODE "message(\"** You can test examples:\")")
 install(CODE "message(\"    julia examples/farmer/farmer_run.jl BD\")")

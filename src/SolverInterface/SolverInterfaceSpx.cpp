@@ -11,7 +11,7 @@
 /** Coin-OR */
 #include "OsiSpxSolverInterface.hpp"
 
-SolverInterfaceSpx::SolverInterfaceSpx(StoParam * par) :
+SolverInterfaceSpx::SolverInterfaceSpx(DspParams * par) :
 SolverInterfaceOsi(par)
 {
 	STO_RTN_CHECK_THROW(initialize(), "initialize", "SolverInterfaceSpx");
@@ -26,7 +26,7 @@ SolverInterfaceSpx::SolverInterfaceSpx(SolverInterfaceSpx * si) :
 }
 
 /** copy constructor */
-SolverInterfaceSpx::SolverInterfaceSpx(StoParam * par, OsiSolverInterface * si) :
+SolverInterfaceSpx::SolverInterfaceSpx(DspParams * par, OsiSolverInterface * si) :
 		SolverInterfaceOsi(par)
 {
 	OsiSpxSolverInterface * spx = dynamic_cast<OsiSpxSolverInterface*>(si);

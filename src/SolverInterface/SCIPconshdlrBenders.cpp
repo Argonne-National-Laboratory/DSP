@@ -60,7 +60,7 @@ SCIP_DECL_CONSSEPALP(SCIPconshdlrBenders::scip_sepalp)
 {
 	*result = SCIP_DIDNOTFIND;
 	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, from_scip_sepalp, result));
-	DSPdebugMessage("scip_sepalp results in %d\n", *result);
+	DSPdebugMessage("scip_sepalp results in %d stage(%d)\n", *result, SCIPgetStage(scip));
 	return SCIP_OKAY;
 }
 
@@ -69,7 +69,7 @@ SCIP_DECL_CONSSEPASOL(SCIPconshdlrBenders::scip_sepasol)
 {
 	*result = SCIP_DIDNOTFIND;
 	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, from_scip_sepasol, result));
-	DSPdebugMessage("scip_sepasol results in %d\n", *result);
+	DSPdebugMessage("scip_sepasol results in %d stage(%d)\n", *result, SCIPgetStage(scip));
 	return SCIP_OKAY;
 }
 
@@ -78,7 +78,7 @@ SCIP_DECL_CONSENFOLP(SCIPconshdlrBenders::scip_enfolp)
 {
 	*result = SCIP_FEASIBLE;
 	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, from_scip_enfolp, result));
-	DSPdebugMessage("scip_enfolp results in %d\n", *result);
+	DSPdebugMessage("scip_enfolp results in %d stage(%d)\n", *result, SCIPgetStage(scip));
 	return SCIP_OKAY;
 }
 
@@ -88,7 +88,7 @@ SCIP_DECL_CONSENFOPS(SCIPconshdlrBenders::scip_enfops)
 	*result = SCIP_FEASIBLE;
 	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, from_scip_enfops, result));
 	if (*result == SCIP_SEPARATED) *result = SCIP_INFEASIBLE;
-	DSPdebugMessage("scip_enfops results in %d\n", *result);
+	DSPdebugMessage("scip_enfops results in %d stage(%d)\n", *result, SCIPgetStage(scip));
 	return SCIP_OKAY;
 }
 
@@ -97,7 +97,7 @@ SCIP_DECL_CONSCHECK(SCIPconshdlrBenders::scip_check)
 {
 	*result = SCIP_FEASIBLE;
 	SCIP_CALL(sepaBenders(scip, conshdlr, sol, from_scip_check, result));
-	DSPdebugMessage("scip_check results in %d\n", *result);
+	DSPdebugMessage("scip_check results in %d stage(%d)\n", *result, SCIPgetStage(scip));
 	return SCIP_OKAY;
 }
 
@@ -130,6 +130,8 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 		if (SCIPisLT(scip, primObj, currObj))
 		{
 			DSPdebugMessage(" -> primObj %e currObj %e\n", primObj, currObj);
+			if (where != from_scip_check)
+				*result = SCIP_DIDNOTRUN;
 			return SCIP_OKAY;
 		}
 	}
@@ -140,31 +142,35 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 
 	/** get current solution */
 	SCIP_CALL(SCIPgetSolVals(scip, sol, nvars_, vars_, vals));
+//	for (int j = 0; j < nvars_ - naux_; ++j)
+//		DSPdebugMessage("var[%d] %e\n", j, vals[j]);
 
-	/** TODO The following filter does not work, meaning that it provides suboptimal solution.
-	 * I do not know the reason. */
-#if 0
-	double maxviol = 1.e-10;
-	for (int j = 0; j < nvars_ - naux_; ++j)
-	{
-		SCIP_VARTYPE vartype = SCIPvarGetType(vars_[j]);
-		if (vartype == SCIP_VARTYPE_CONTINUOUS) continue;
-
-		double viol = 0.5 - fabs(vals[j] - floor(vals[j]) - 0.5);
-		if (viol > maxviol)
-			maxviol = viol;
-	}
-	DSPdebugMessage("maximum violation %e\n", maxviol);
-
+	/** TODO Does this work? */
+#if 1
 	if (where != from_scip_check &&
 		where != from_scip_enfolp &&
-		where != from_scip_enfops &&
-		maxviol > 1.e-7)
+		where != from_scip_enfops)
 	{
-		printf("where %d maxviol %e\n", where, maxviol);
-		/** free memory */
-		SCIPfreeMemoryArray(scip, &vals);
-		return SCIP_OKAY;
+		double maxviol = 1.e-10;
+		for (int j = 0; j < nvars_ - naux_; ++j)
+		{
+			SCIP_VARTYPE vartype = SCIPvarGetType(vars_[j]);
+			if (vartype == SCIP_VARTYPE_CONTINUOUS) continue;
+
+			double viol = 0.5 - fabs(vals[j] - floor(vals[j]) - 0.5);
+			//DSPdebugMessage("var[%d] %e\n", j, vals[j]);
+			if (viol > maxviol)
+				maxviol = viol;
+		}
+		DSPdebugMessage("where %d maxviol %e\n", where, maxviol);
+
+		if (maxviol > 1.e-7)
+		{
+			*result = SCIP_DIDNOTRUN;
+			/** free memory */
+			SCIPfreeMemoryArray(scip, &vals);
+			return SCIP_OKAY;
+		}
 	}
 #endif
 
@@ -226,7 +232,7 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 
 					if (infeasible)
 						*result = SCIP_CUTOFF;
-					else //if (*result != SCIP_CUTOFF)
+					else
 						*result = SCIP_SEPARATED;
 				}
 				else
@@ -273,8 +279,6 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 		double efficacy = rc->violated(vals) / cutrow.twoNorm();
 		SCIP_Bool isEfficacious = efficacy > 1.e-6;
 
-#define KK_TEST
-#ifdef KK_TEST
 		if (SCIPgetStage(scip) == SCIP_STAGE_INITSOLVE ||
 			SCIPgetStage(scip) == SCIP_STAGE_SOLVING)
 		{
@@ -318,7 +322,7 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 
 					if (infeasible)
 						*result = SCIP_CUTOFF;
-					else //if (*result != SCIP_CUTOFF)
+					else
 						*result = SCIP_SEPARATED;
 				}
 				else
@@ -337,85 +341,6 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 					where != from_scip_sepasol &&
 					where != from_scip_enfolp)
 			*result = SCIP_INFEASIBLE;
-#else
-		if (where == from_scip_sepalp ||
-			where == from_scip_sepasol ||
-			where == from_scip_enfolp)
-		{
-			/** create empty row */
-			SCIP_ROW * row = NULL;
-			SCIP_CALL(SCIPcreateEmptyRowCons(scip, &row, conshdlr, "benders", rc->lb(), SCIPinfinity(scip),
-					FALSE, /**< is row local? */
-					FALSE, /**< is row modifiable? */
-					FALSE  /**< is row removable? can this be TRUE? */));
-
-			/** cache the row extension and only flush them if the cut gets added */
-			SCIP_CALL(SCIPcacheRowExtensions(scip, row));
-
-			/** collect all non-zero coefficients */
-			for (int j = 0; j < cutrow.getNumElements(); ++j)
-				SCIP_CALL(SCIPaddVarToRow(scip, row, vars_[cutrow.getIndices()[j]], cutrow.getElements()[j]));
-
-			DSPdebugMessage("found Benders (%s) cut: act=%f, lhs=%f, norm=%f, eff=%f, min=%f, max=%f (range=%f)\n",
-				isOptimalityCut ? "opti" : "feas",
-				SCIPgetRowLPActivity(scip, row), SCIProwGetLhs(row), SCIProwGetNorm(row),
-				SCIPgetCutEfficacy(scip, NULL, row),
-				SCIPgetRowMinCoef(scip, row), SCIPgetRowMaxCoef(scip, row),
-				SCIPgetRowMaxCoef(scip, row)/SCIPgetRowMinCoef(scip, row));
-
-			/** flush all changes before adding cut */
-			SCIP_CALL(SCIPflushRowExtensions(scip, row));
-
-			/** is cut efficacious? */
-			if (isOptimalityCut)
-			{
-				efficacy = SCIPgetCutEfficacy(scip, sol, row);
-				isEfficacious = SCIPisCutEfficacious(scip, sol, row);
-			}
-			else
-			{
-				efficacy = rc->violated(vals);
-				isEfficacious = efficacy > 1.e-6;
-			}
-
-			if (isEfficacious)
-			{
-				/** add cut */
-				SCIP_Bool infeasible;
-				SCIP_CALL(SCIPaddCut(scip, sol, row,
-						FALSE, /**< force cut */
-						&infeasible));
-
-				if (infeasible)
-					*result = SCIP_CUTOFF;
-				else if (*result != SCIP_CUTOFF)
-					*result = SCIP_SEPARATED;
-			}
-
-			/** add cut to global pool */
-			SCIP_CALL(SCIPaddPoolCut(scip, row));
-
-			/** release the row */
-			SCIP_CALL(SCIPreleaseRow(scip, &row));
-		}
-		else
-		{
-			if (isOptimalityCut)
-			{
-				efficacy = rc->violated(vals) / cutrow.twoNorm();
-				isEfficacious = efficacy > 0.05;
-			}
-			else
-			{
-				efficacy = rc->violated(vals);
-				isEfficacious = efficacy > 1.e-6;
-			}
-			DSPdebugMessage("%s efficacy %e\n", isOptimalityCut ? "Opti" : "Feas", efficacy);
-
-			if (isEfficacious == TRUE)
-				*result = SCIP_INFEASIBLE;
-		}
-#endif
 	}
 
 	/** free memory */

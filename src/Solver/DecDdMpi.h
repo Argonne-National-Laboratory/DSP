@@ -162,16 +162,30 @@ public:
 	int nInfeasible_; /**< number of infeasible solutions evaluated for upper bound */
 	double ctime_start_; /**< start time (cpu) */
 	double wtime_start_; /**< start time (wall) */
-	vector<double> wtime_elapsed_; /**< elapsed time per iteration */
+	vector<double> wtime_elapsed_;  /**< elapsed time per iteration */
 	vector<double> wtime_master_;   /**< master solution time */
-	vector<double> wtime_subprob_; /**< subproblem solution time */
+	vector<double> wtime_subprob_;  /**< subproblem solution time */
 	vector<double> objval_master_;  /**< master objective values per iteration */
-	vector<double> objval_subprob_; /**< subproblem objective values per iteration */
+	vector<double> primal_subprob_; /**< subproblem primal objective values per iteration */
+	vector<double> dual_subprob_;   /**< subproblem dual objective values per iteration */
 	vector<double> primalBounds_;   /**< primal bounds per iteration */
 	vector<double> dualBounds_;     /**< dual bounds per iteration */
 	vector<double> changesOfMultiplier_; /**< changes of multipliers */
 
 	string logfile_prefix_; /**< prefix of logfile name */
+
+protected:
+
+	/** parameters */
+	int parMasterAlgo_;
+	int parFeasCuts_;
+	int parOptCuts_;
+	int parEvalUb_;
+	int parProcIdxSize_;
+	int * parProcIdx_;
+	int parNumCutsPerIter_;
+	bool parLogDualVars_;
+	double parStopTol_;
 };
 
 #endif /* SRC_SOLVER_DECDDMPI_H_ */

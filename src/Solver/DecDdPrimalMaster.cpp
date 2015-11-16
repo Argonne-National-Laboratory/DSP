@@ -20,6 +20,7 @@
 DecDdPrimalMaster::~DecDdPrimalMaster()
 {
 	FREE_PTR(si_);
+	model_ = NULL;
 	FREE_PTR(cuts_);
 	FREE_ARRAY_PTR(prox_);
 	FREE_ARRAY_PTR(solution_);
@@ -111,7 +112,7 @@ STO_RTN_CODE DecDdPrimalMaster::createProblem(DecModel * model)
 #endif
 
 	/** proximal point for trust region */
-	if (par_->TssDdEnableTrustRegion_)
+	if (parTR_)
 	{
 		assert(rho_ < COIN_DBL_MAX);
 		prox_ = new double [ncoupling_];
@@ -175,7 +176,7 @@ STO_RTN_CODE DecDdPrimalMaster::createProblem(DecModel * model)
 	DSPdebug(mat->verifyMtx(4));
 
 	/** create solver interface */
-	switch (par_->TssDdMasterSolver_)
+	switch (parMasterAlgo_)
 	{
 	case Simplex:
 		si_ = new SolverInterfaceClp(par_);
@@ -206,7 +207,7 @@ STO_RTN_CODE DecDdPrimalMaster::createProblem(DecModel * model)
 	ubCuts_ = new OsiCuts;
 
 	/** set print level */
-	setPrintLevel(CoinMax(0, par_->logLevel_ - 2));
+	setPrintLevel(CoinMax(0, parLogLevel_ - 2));
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)
 
@@ -218,10 +219,11 @@ STO_RTN_CODE DecDdPrimalMaster::createProblem(DecModel * model)
 
 /** update problem: may update dual bound */
 STO_RTN_CODE DecDdPrimalMaster::updateProblem(
-		double primal_bound, /**< primal bound of the original problem */
-		double & dual_bound, /**< dual bound of the original problem */
-		double * objvals,    /**< objective values of subproblems */
-		double ** solution   /**< subproblem solutions */)
+		double primal_bound,     /**< primal bound of the original problem */
+		double & dual_bound,     /**< dual bound of the original problem */
+		double * primal_objvals, /**< objective values of subproblems */
+		double * dual_objvals,   /**< objective values of subproblems */
+		double ** solution       /**< subproblem solutions */)
 {
 //#define DEBUG_TRUST_REGION
 
@@ -231,42 +233,16 @@ STO_RTN_CODE DecDdPrimalMaster::updateProblem(
 	/** aging cuts */
 	agingCuts();
 
-	double newobj = 0.0;
+	double newprimal = 0.0;
+	double newdual = 0.0;
 	for (int s = 0; s < nsubprobs_; ++s)
 	{
-#if 0
-		printf("Scenario %d objective %e\n", s, objvals[s]);
-		for (int j = 0, jj = 0; j < model_->getNumSubproblemCouplingCols(s); ++j)
-		{
-			if (jj > 0 && jj % 5 == 0) printf("\n");
-			if (fabs(solution[s][j]) > 1.e-10)
-			{
-				printf("%4d [%e] ", j, solution[s][j]);
-				jj++;
-			}
-		}
-		printf("\n");
-#endif
-		newobj += objvals[s];
+		newprimal += primal_objvals[s];
+		newdual += dual_objvals[s];
 	}
 
 	/** set dual objective value */
-	dual_objvals_.push_back(newobj);
-
-#if 0
-	/** print proximal point */
-	printf("proximal point:\n");
-	for (int j = 0, jj = 0; j < ncoupling_; ++j)
-	{
-		if (jj > 0 && jj % 5 == 0) printf("\n");
-		if (fabs(prox_[j]) > 1.e-10)
-		{
-			printf("%4d [%e] ", j, prox_[j]);
-			jj++;
-		}
-	}
-	printf("\n");
-#endif
+	dual_objvals_.push_back(newdual);
 
 #if 0
 	for (int j = 0; j < ncols_; ++j)
@@ -274,12 +250,12 @@ STO_RTN_CODE DecDdPrimalMaster::updateProblem(
 #endif
 
 	/** update trust region FIRST, because this does not change problem. */
-	if (par_->TssDdEnableTrustRegion_)
+	if (parTR_)
 	{
-		if (newobj >= dual_bound + 1.0e-4 * (primalBound - dual_bound))
+		if (newdual >= dual_bound + 1.0e-4 * (primalBound - dual_bound))
 		{
-			if (par_->logLevel_ > 1)
-				printf("-> %s STEP: dual objective %e", isSolved_ ? "SERIOUS" : "INITIAL", newobj);
+			if (parLogLevel_ > 1)
+				printf("  -> %s STEP: dual objective %e", isSolved_ ? "SERIOUS" : "INITIAL", newdual);
 
 			/**
 			 * 03/27/2015 - According to the paper by Linderoth and Wright, we should add cuts here.
@@ -287,7 +263,7 @@ STO_RTN_CODE DecDdPrimalMaster::updateProblem(
 			//if (!isSolved_)
 			{
 				/** add cuts and re-optimize */
-				nCutsAdded = addCuts(objvals, solution);
+				nCutsAdded = addCuts(primal_objvals, solution);
 
 				/** reset minor cut counter */
 				ncuts_minor_ = nCutsAdded;
@@ -314,22 +290,22 @@ STO_RTN_CODE DecDdPrimalMaster::updateProblem(
 				}
 #endif
 				CoinCopyN(solution_ + nCutsPerIter_, ncoupling_, prox_);
-				if (par_->logLevel_ > 2)
+				if (parLogLevel_ > 2)
 					printf(", updated proximal point");
 #endif
 
 				/** possibly delete cuts */
-				possiblyDeleteCuts(newobj);
+				possiblyDeleteCuts(newprimal);
 
 #ifndef DEBUG_TRUST_REGION
 				/** is solution boundary? */
 				if (isSolutionBoundary() &&
 					/*primalBound - dual_bound < 0 ||*/
-					newobj >= dual_bound + 0.5 * (primalBound - dual_bound))
+					newdual >= dual_bound + 0.5 * (primalBound - dual_bound))
 				{
 					/** increase trust region */
 					rho_ = CoinMin(2. * rho_, 1.0e+4);
-					if (par_->logLevel_ > 2)
+					if (parLogLevel_ > 2)
 						printf(", increased trust region size %e", rho_);
 				}
 #endif
@@ -341,7 +317,7 @@ STO_RTN_CODE DecDdPrimalMaster::updateProblem(
 			}
 
 			/** update dual bound */
-			dual_bound = newobj;
+			dual_bound = newdual;
 			trcnt_ = 0;
 		}
 		else
@@ -362,36 +338,36 @@ STO_RTN_CODE DecDdPrimalMaster::updateProblem(
 			}
 #endif
 			/** add cuts and re-optimize */
-			nCutsAdded = addCuts(objvals, solution);
+			nCutsAdded = addCuts(primal_objvals, solution);
 
 			/** increase minor cut counter */
 			ncuts_minor_ += nCutsAdded;
 
 			/** null step */
-			if (par_->logLevel_ > 1)
-				printf("-> null step: dual objective %e", newobj);
+			if (parLogLevel_ > 1)
+				printf("  -> null step: dual objective %e", newdual);
 
 #ifndef DEBUG_TRUST_REGION
 			if (primalBound < dual_bound)
 			{
 				/** increase trust region */
 				rho_ = CoinMin(2. * rho_, 1.0e+4);
-				if (par_->logLevel_ > 2)
+				if (parLogLevel_ > 1)
 					printf(", increased trust region size %e", rho_);
 				/** set trust region */
 				setTrustRegion(rho_, prox_);
 			}
-			else if (!par_->TssDdDisableTrustRegionDecrease_)
+			else if (!parTrDecrease_)
 			{
 				/** The following rule is from Linderoth and Wright (2003) */
-				double rho = CoinMin(1.0, rho_) * (dual_bound - newobj) / (primalBound - dual_bound);
+				double rho = CoinMin(1.0, rho_) * (dual_bound - newdual) / (primalBound - dual_bound);
 				if (rho > 0) trcnt_++;
 				if (rho >= 3 || (trcnt_ >= 3 && fabs(rho - 2.) < 1.0))
 				{
 					/** decrease trust region */
 					rho_ *= 1.0 / CoinMin(rho, 4.);
 					trcnt_ = 0;
-					if (par_->logLevel_ > 2)
+					if (parLogLevel_ > 1)
 						printf(", decreased trust region size %e", rho_);
 
 					/** set trust region */
@@ -404,17 +380,17 @@ STO_RTN_CODE DecDdPrimalMaster::updateProblem(
 	else
 	{
 		/** add cuts and re-optimize */
-		nCutsAdded = addCuts(objvals, solution);
+		nCutsAdded = addCuts(primal_objvals, solution);
 
-		if (par_->logLevel_ > 2)
-			printf("  dual objective %e", newobj);
-		if (newobj >= dual_bound + 1.0e-4 * (primalBound - dual_bound))
+		if (parLogLevel_ > 1)
+			printf("  dual objective %e", newdual);
+		if (newdual >= dual_bound + 1.0e-4 * (primalBound - dual_bound))
 			/** update dual bound */
-			dual_bound = newobj;
+			dual_bound = newdual;
 	}
 
-	if (par_->logLevel_ > 2)
-		printf(", master has %d rows and %d cols after adding %d cuts.\n",
+	if (parLogLevel_ > 1)
+		printf(", master has %d rows and %d cols after adding %d cuts.",
 				si_->getNumRows(), si_->getNumCols(), nCutsAdded);
 
 #if ENABLE_UPPER_BOUNDING == 1
@@ -432,7 +408,7 @@ STO_RTN_CODE DecDdPrimalMaster::updateProblem(
 	{
 		if (ooqp->hasOoqpStatus_ && isSolved_)
 		{
-			double epsilon = (si_->getPrimalBound() - newobj + ooqp->getDualityGap()) / (1. + fabs(si_->getPrimalBound()));
+			double epsilon = (si_->getPrimalBound() - newprimal + ooqp->getDualityGap()) / (1. + fabs(si_->getPrimalBound()));
 //				printf("epsilon %e = primalBound %e newobj %e dualityGap %e\n",
 //						epsilon, si_->getPrimalBound(), newobj, ooqp->getDualityGap());
 			if (epsilon > 1.) epsilon = 1.;
@@ -440,7 +416,7 @@ STO_RTN_CODE DecDdPrimalMaster::updateProblem(
 		}
 	}
 
-	if (par_->logLevel_ > 1)
+	if (parLogLevel_ > 1)
 		printf("\n");
 
 	/** set primal and dual bounds */
@@ -1060,4 +1036,30 @@ STO_RTN_CODE DecDdPrimalMaster::removeAllCuts()
 	}
 
 	return STO_RTN_OK;
+}
+
+/** termination test */
+bool DecDdPrimalMaster::terminate()
+{
+	if (isSolutionBoundary())
+		return false;
+
+	double dual_bound = dual_bounds_[dual_bounds_.size() - 1];
+	double absgap = objval_ - dual_bound;
+	double relgap = absgap / (1.e-10 + fabs(objval_));
+
+	bool terminate = (absgap > -1.0e-6 && relgap < parStopTol_);
+
+	if (parMasterAlgo_ == IPM_Feasible)
+	{
+		OoqpEps * ooqp = dynamic_cast<OoqpEps*>(si_);
+		assert(ooqp);
+		bool suboptimal = ooqp->isSuboptimal();
+		DSPdebugMessage("-> %s\n", suboptimal ? "suboptimal" : "optimal");
+
+		if (suboptimal)
+			terminate = false;
+	}
+
+	return terminate;
 }

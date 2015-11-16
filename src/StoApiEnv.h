@@ -10,7 +10,7 @@
 
 #include "Model/TssModel.h"
 #include "Model/DecData.h"
-#include "Solver/StoParam.h"
+#include "Utility/DspParams.h"
 #include "Solver/DecSolver.h"
 #include "Utility/StoMacros.h"
 
@@ -21,10 +21,10 @@ public:
 	virtual ~StoApiEnv();
 
 public:
-	StoParam * par_;
-	DecModel * model_;
 	DecSolver * solver_;
 	DecData * decdata_;  /**< decomposition data: only used when a general decomposable model is supplied */
+	DecModel * model_;
+	DspParams * par_;
 
 };
 

@@ -18,13 +18,13 @@ class SolverInterfaceOsi: public SolverInterface
 public:
 
 	/** default constructor */
-	SolverInterfaceOsi(StoParam * par);
+	SolverInterfaceOsi(DspParams * par);
 
 	/** copy constructor */
 	SolverInterfaceOsi(SolverInterfaceOsi * si);
 
 	/** copy constructor */
-	SolverInterfaceOsi(StoParam * par, OsiSolverInterface * si);
+	SolverInterfaceOsi(DspParams * par, OsiSolverInterface * si);
 
 	/** default destructor */
 	virtual ~SolverInterfaceOsi();
@@ -77,6 +77,9 @@ public:
 
 	/** get row upper bounds */
 	virtual const double * getRowUpper() {return si_->getRowUpper();}
+
+	/** get linear objective function coefficient */
+	virtual const double * getObjCoef() {return si_->getObjCoefficients();}
 
 	/** get global primal bound (upper bound in minimization) */
 	virtual double getPrimalBound();

@@ -136,7 +136,6 @@ void DetModel::__printData()
 {
 	int ncols = mat_->getNumCols();
 	int nrows = mat_->getNumRows();
-	char tmpstr[128];
 
 	printf("\n### BEGINNING of printing DetModel data ###\n\n");
 

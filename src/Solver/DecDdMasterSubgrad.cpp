@@ -42,10 +42,11 @@ STO_RTN_CODE DecDdMasterSubgrad::createProblem(DecModel * model)
 
 /** update problem: may update dual bound */
 STO_RTN_CODE DecDdMasterSubgrad::updateProblem(
-		double primal_bound, /**< primal bound of the original problem */
-		double & dual_bound, /**< dual bound of the original problem */
-		double * objvals,    /**< objective values of subproblems */
-		double ** solution   /**< subproblem solutions */)
+		double primal_bound,     /**< primal bound of the original problem */
+		double & dual_bound,     /**< dual bound of the original problem */
+		double * primal_objvals, /**< objective values of subproblems */
+		double * dual_objvals,   /**< objective values of subproblems */
+		double ** solution       /**< subproblem solutions */)
 {
 	/** compute gradient */
 	DecTssModel * decTssModel = dynamic_cast<DecTssModel*>(model_);
@@ -64,7 +65,7 @@ STO_RTN_CODE DecDdMasterSubgrad::updateProblem(
 	/** Lagrangian value */
 	double newobj = 0.0;
 	for (int s = 0; s < nsubprobs_; ++s)
-		newobj += objvals[s];
+		newobj += dual_objvals[s];
 
 	/** update dual bound */
 	DSPdebugMessage("-> Lagrangian value %e\n", newobj);
@@ -93,7 +94,7 @@ STO_RTN_CODE DecDdMasterSubgrad::updateProblem(
 	if (primal_bound < 1.0e+20)
 		stepsize_ = stepscal_ * (primal_bound - newobj) / denom;
 	else
-		stepsize_ = 1.0;
+		stepsize_ = stepscal_;
 	DSPdebugMessage("-> step size %e\n", stepsize_);
 
 	return STO_RTN_OK;
@@ -111,6 +112,8 @@ STO_RTN_CODE DecDdMasterSubgrad::solve()
 		else if (model_->getSenseCouplingRow(j) == 'G') /** >= : nonpositive multipliers */
 			multipliers_[j] = CoinMin((double) 0.0, multipliers_[j]);
 	}
+//	for (int j = 0; j < ncoupling_; ++j)
+//		printf("Dual variable %d %f\n", j, multipliers_[j]);
 
 	/** store final multipliers */
 	DecTssModel * decTssModel = dynamic_cast<DecTssModel*>(model_);
@@ -125,7 +128,20 @@ STO_RTN_CODE DecDdMasterSubgrad::solve()
 		for (int j = 0; j < ncoupling_; ++j)
 			solution_[j] = multipliers_[j];
 	}
+//	for (int j = 0; j < ncoupling_; ++j)
+//		printf("Dual variable %d %f\n", j, solution_[j]);
 
 	return STO_RTN_OK;
+}
+
+/** termination test */
+bool DecDdMasterSubgrad::terminate()
+{
+	bool terminate = false;
+
+	if (stepscal_ < 1.0e-6)
+		terminate = true;
+
+	return terminate;
 }
 

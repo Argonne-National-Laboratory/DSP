@@ -1,7 +1,7 @@
 # Julia script of reproducing results for Table 2, Figures 1 and 2 in MPC paper.
 # Kibaek Kim - ANL MCS 2015
 
-smps_file = "./smps/sslp_5_25_500";
+smps_file = "./smps/sslp_5_25_50";
 prefix    = "sslp_5_25_50";
 
 # Arguments from command line
@@ -14,6 +14,9 @@ using DSPsolver
 
 # read problem from SMPS
 DSPsolver.readSmps(smps_file);
+
+# set optionts
+DSPsolver.setLogLevel(1);
 
 # solve problem using Dual Decomposition
 DSPsolver.solve(DSP_SOLVER_BD);

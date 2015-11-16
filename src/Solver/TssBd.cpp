@@ -23,7 +23,9 @@ TssBd::TssBd() :
 	naux_(0),
 	obj_aux_(NULL),
 	clbd_aux_(NULL),
-	cubd_aux_(NULL)
+	cubd_aux_(NULL),
+	parNumCores_(1),
+	parCutPriority_(-200000)
 {
 	/** nothing to do */
 }
@@ -46,6 +48,7 @@ STO_RTN_CODE TssBd::solve()
 	FREE_PTR(tssbdsub)
 
 	assert(model_);
+	assert(par_);
 
 	/** subproblems */
 	const double * probability = NULL; /**< probability */
@@ -54,11 +57,12 @@ STO_RTN_CODE TssBd::solve()
 
 	BGN_TRY_CATCH
 
+	/** parameters */
+	parNumCores_    = par_->getIntParam("BD/NUM_CORES");
+	parCutPriority_ = par_->getIntParam("BD/CUT_PRIORITY");
+
 	/** solution time */
 	double swtime = CoinGetTimeOfDay();
-
-	/** time limit */
-	time_remains_ = par_->wtimeLimit_;
 
 	/** get number of scenarios */
 	probability = model_->getProbability();
@@ -70,7 +74,7 @@ STO_RTN_CODE TssBd::solve()
 		tssbdsub->scenarios_.push_back(s);
 	STO_RTN_CHECK_THROW(tssbdsub->loadProblem(model_, naugs_, augs_, naux_), "loadProblem", "TssBdSub");
 
-	if (par_->logLevel_ > 0) printf("Phase 1:\n");
+	if (parLogLevel_ > 0) printf("Phase 1:\n");
 
 	/** solution time */
 	double stime = clockType_ ? CoinGetTimeOfDay() : CoinCpuTime();
@@ -80,12 +84,12 @@ STO_RTN_CODE TssBd::solve()
 	STO_RTN_CHECK_THROW(findLowerBound(probability, lowerbound), "findLowerBound", "TssBd");
 
 	/** We should have a lower bound here. */
-	if (par_->logLevel_ > 0) printf(" -> Found lower bound %e\n", lowerbound);
+	if (parLogLevel_ > 0) printf(" -> Found lower bound %e\n", lowerbound);
 
 	/** construct master problem */
 	STO_RTN_CHECK_THROW(constructMasterProblem(tssbdsub, lowerbound), "constructMasterProblem", "TssBd");
 
-	if (par_->logLevel_ > 0) printf("Phase 2:\n");
+	if (parLogLevel_ > 0) printf("Phase 2:\n");
 
 	time_remains_ -= CoinGetTimeOfDay() - swtime;
 
@@ -137,7 +141,7 @@ STO_RTN_CODE TssBd::solve()
 							model_->getNumCols(1), solution_reco[augs_[s]]);
 
 				/** collect solution */
-				tssbdsub->solveRecourse(solution_, objval_reco, solution_reco, par_->numCores_);
+				tssbdsub->solveRecourse(solution_, objval_reco, solution_reco, parNumCores_);
 				for (int s = 0; s < model_->getNumScenarios(); ++s)
 				{
 					if (tssbdsub->excludedScenarios_[s]) continue;
@@ -230,7 +234,7 @@ STO_RTN_CODE TssBd::constructMasterProblem(TssBdSub * tssbdsub, double lowerboun
 			"decompose", "TssModel");
 
 	/** convert column types */
-	if (par_->relaxIntegrality_[0])
+	if (parRelaxIntegrality_[0])
 	{
 		for (int j = 0; j < model_->getNumCols(0); ++j)
 		{
@@ -239,7 +243,7 @@ STO_RTN_CODE TssBd::constructMasterProblem(TssBdSub * tssbdsub, double lowerboun
 			ctype[j] = 'C';
 		}
 	}
-	if (par_->relaxIntegrality_[1] && naugs_ > 0)
+	if (parRelaxIntegrality_[1] && naugs_ > 0)
 	{
 		for (int j = 0; j < model_->getNumCols(1); ++j)
 		{
@@ -252,12 +256,12 @@ STO_RTN_CODE TssBd::constructMasterProblem(TssBdSub * tssbdsub, double lowerboun
 	if (nIntegers > 0)
 	{
 		si_ = new SolverInterfaceScip(par_);
-		si_->setPrintLevel(CoinMin(par_->logLevel_ + 1, 5));
+		si_->setPrintLevel(CoinMin(parLogLevel_ + 1, 5));
 	}
 	else
 	{
 		si_ = new SolverInterfaceSpx(par_);
-		si_->setPrintLevel(CoinMax(par_->logLevel_ - 1, 0));
+		si_->setPrintLevel(CoinMax(parLogLevel_ - 1, 0));
 	}
 
 	/** load problem data */
@@ -340,7 +344,7 @@ STO_RTN_CODE TssBd::findLowerBound(
 		int nIntegers = model_->getNumCoreIntegers();
 
 		/** relax second stage? */
-		if (par_->relaxIntegrality_[1])
+		if (parRelaxIntegrality_[1])
 		{
 			/** relax integrality in the second stage */
 			for (int j = 0; j < model_->getNumCols(1); ++j)
@@ -359,13 +363,13 @@ STO_RTN_CODE TssBd::findLowerBound(
 		if (nIntegers > 0)
 		{
 			si[s] = new SolverInterfaceScip(par_);
-			si[s]->setPrintLevel(par_->logLevel_ + 1);
+			si[s]->setPrintLevel(parLogLevel_ + 1);
 		}
 		else
 #endif
 		{
 			si[s] = new SolverInterfaceSpx(par_);
-			si[s]->setPrintLevel(CoinMax(par_->logLevel_ - 1, 0));
+			si[s]->setPrintLevel(CoinMax(parLogLevel_ - 1, 0));
 		}
 		/** load problem */
 		si[s]->loadProblem(mat, clbd, cubd, obj, ctype, rlbd, rubd, "BendersLowerBound");
@@ -376,7 +380,7 @@ STO_RTN_CODE TssBd::findLowerBound(
 
 	/** set number of cores to use */
 #ifdef USE_OMP
-	omp_set_num_threads(par_->numCores_);
+	omp_set_num_threads(parNumCores_);
 #pragma omp parallel for schedule(dynamic)
 #endif
 	for (int s = 0; s < model_->getNumScenarios(); ++s)
@@ -456,7 +460,7 @@ STO_RTN_CODE TssBd::solveSLP(TssBdSub * tssbdsub)
 			objval = si_->getPrimalBound();
 
 			/** print */
-			if (par_->logLevel_)
+			if (parLogLevel_)
 			{
 				niters += si_->getIterationCount();
 				printf("Iteration %4d: objective function: %+E iteration %d\n",
@@ -467,7 +471,7 @@ STO_RTN_CODE TssBd::solveSLP(TssBdSub * tssbdsub)
 #endif
 
 			/** stop at iteration limit */
-			if (iter >= par_->iterLimit_)
+			if (iter >= parIterLim_)
 			{
 				status_ = STO_STAT_STOPPED_ITER;
 				repeat = false;
@@ -560,7 +564,7 @@ STO_RTN_CODE TssBd::configureSMILP(TssBdSub * tssbdsub)
 	SCIP * scip = SiScip->getSCIP();
 
 	/** create constraint handler */
-	SCIPconshdlrBenders * conshdlr = new SCIPconshdlrBenders(scip, par_->TssBdBendersPriority_);
+	SCIPconshdlrBenders * conshdlr = new SCIPconshdlrBenders(scip, parCutPriority_);
 	conshdlr->assignTssBdSub(tssbdsub);
 	conshdlr->setOriginalVariables(SiScip->getNumCols(), SiScip->getSCIPvars());
 
@@ -580,13 +584,13 @@ STO_RTN_CODE TssBd::configureSMILP(TssBdSub * tssbdsub)
 #endif
 
 	/** set node limit */
-	si_->setNodeLimit(par_->nodeLimit_);
+	si_->setNodeLimit(parNodeLim_);
 
 	/** set time limit */
 	si_->setTimeLimit(time_remains_);
 
 	/** set print level */
-	si_->setPrintLevel(CoinMin(par_->logLevel_ + 2, 5));
+	si_->setPrintLevel(CoinMin(parLogLevel_ + 2, 5));
 
 	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
 

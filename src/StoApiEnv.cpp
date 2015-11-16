@@ -9,7 +9,7 @@
 
 StoApiEnv::StoApiEnv() : solver_(NULL), decdata_(NULL), model_(NULL)
 {
-	par_ = new StoParam;
+	par_ = new DspParams;
 }
 
 StoApiEnv::~StoApiEnv()

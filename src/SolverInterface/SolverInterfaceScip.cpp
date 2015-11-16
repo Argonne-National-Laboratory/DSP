@@ -18,7 +18,7 @@
 #include "scip/scipdefplugins.h"
 #include "../examples/Queens/src/scip_exception.hpp"
 
-SolverInterfaceScip::SolverInterfaceScip(StoParam * par) :
+SolverInterfaceScip::SolverInterfaceScip(DspParams * par) :
 	SolverInterface(par),
 	scip_(NULL),
 	solution_(NULL),
@@ -110,8 +110,8 @@ STO_RTN_CODE SolverInterfaceScip::initialize()
 		SCIP_CALL_ABORT(SCIPcreate(&scip_));
 		SCIP_CALL_ABORT(SCIPincludeDefaultPlugins(scip_));
 		setClockType(2);
-		SCIP_CALL_ABORT(SCIPsetIntParam(scip_, "display/freq", par_->ScipDisplayFreq_));
-		SCIP_CALL_ABORT(SCIPsetRealParam(scip_, "limits/gap", par_->ScipLimitsGap_));
+		SCIP_CALL_ABORT(SCIPsetIntParam(scip_, "display/freq", par_->getIntParam("SCIP/DISPLAY_FREQ")));
+		SCIP_CALL_ABORT(SCIPsetRealParam(scip_, "limits/gap", par_->getDblParam("SCIP/GAP_TOL")));
 	}
 	return STO_RTN_OK;
 }

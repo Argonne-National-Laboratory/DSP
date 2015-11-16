@@ -20,7 +20,7 @@ class DecDdSub
 public:
 
 	/** default constructor */
-	DecDdSub(int s, StoParam * par) :
+	DecDdSub(int s, DspParams * par) :
 		par_(par),
 		si_(NULL),
 		sind_(s),
@@ -31,7 +31,10 @@ public:
 		nsols_(0),
 		solutions_(NULL),
 		cpl_mat_(NULL),
-		cpl_cols_(NULL)
+		cpl_cols_(NULL),
+		cpl_rhs_(NULL),
+		obj_offset_(0),
+		parRelaxIntegrality_(NULL)
 	{
 		/** nothing to do */
 	}
@@ -100,7 +103,7 @@ public:
 
 public:
 
-	StoParam * par_;
+	DspParams * par_;
 	SolverInterface * si_; /**< solver interface */
 
 	int sind_;           /**< scenario index */
@@ -125,6 +128,10 @@ private:
 public:
 
 	vector<double> wtime_solution_; /**< solution wall time */
+
+protected:
+
+	const bool * parRelaxIntegrality_;
 };
 
 #endif /* SRC_SOLVER_DECDDSUB_H_ */
