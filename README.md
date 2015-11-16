@@ -132,9 +132,9 @@ Pkg.update();
 ```julia
     Pkg.clone("https://github.com/kibaekkim/StochJuMP.jl.git");
 ```
-* The [DSPsolver.jl](https://github.com/kibaekkim/DSPsolver.jl.git) package provides an interface to StochJuMP. DSPsolver.jl can be installed by the Julia command
+* The [DSPsolver.jl](https://github.com/Argonne-National-Laboratory/DSPsolver.jl.git) package provides an interface to StochJuMP. DSPsolver.jl can be installed by the Julia command
 ```julia
-    Pkg.clone("https://github.com/kibaekkim/DSPsolver.jl.git");
+    Pkg.clone("https://github.com/Argonne-National-Laboratory/DSPsolver.jl.git");
 ```
 
 ##Example (farmer)
@@ -185,3 +185,7 @@ DSP has been developed and is maintained by:
 ## Acknowledgements
 
 This material is based upon work supported by the U.S. Department of Energy, Office of Science, under contract number DE-AC02-06CH11357. We gratefully acknowledge the computing resources provided on *Blues*, a high-performance computing cluster operated by the Laboratory Computing Resource Center at Argonne National Laboratory. We thank E. Michael Gertz and Stephen Wright for providing the [OOQP](http://pages.cs.wisc.edu/~swright/ooqp/) software package.
+
+
+[![Analytics](https://ga-beacon.appspot.com/UA-64449559-2/DSP/README.md)](https://github.com/igrigorik/ga-beacon)
+
