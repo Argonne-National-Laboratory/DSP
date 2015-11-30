@@ -877,7 +877,7 @@ STO_RTN_CODE DecDdMpi::syncMaster()
 			{
 				double * msgpiece = recvbuf + displs[i] + offset;
 				int sind = static_cast<int>(msgpiece[0]);
-				DSPdebugMessage("s=%d: obj=%f, ", sind, objval_sub[sind]);
+				DSPdebugMessage("s=%d: primobj=%f dualobj=%f, ", sind, primal_sub[sind], dual_sub[sind]);
 				for (int k = 0; k < model_->getNumSubproblemCouplingCols(sind); k++)
 					printf("%f ", solution_sub[sind][k]);
 				printf("\n");
@@ -1367,13 +1367,14 @@ int DecDdMpi::addFeasCuts(
 #endif
 
 
-#if 0
+#ifdef DSP_DEBUG
 	/** print cuts */
 	DSPdebugMessage("Rank %d: found %d feasibility cuts\n", comm_rank_, cuts->sizeCuts());
 	for (int i = 0; i < cuts->sizeCuts(); ++i)
 	{
 		OsiRowCut * rc = cuts->rowCutPtr(i);
 		CoinPackedVector rcrow = rc->row();
+		rc->print();
 		DSPdebugMessage("Rank %d: cut[%d] rhs %e minind %d maxind %d nzcnt %d sum %e 1-norm %e 2-norm %e inf-norm %e\n",
 				comm_rank_, i, rc->lb(), rcrow.getMinIndex(), rcrow.getMaxIndex(), rcrow.getNumElements(), rcrow.sum(), rcrow.oneNorm(), rcrow.twoNorm(), rcrow.infNorm());
 	}
@@ -1437,7 +1438,7 @@ int DecDdMpi::addOptCuts(
 	}
 #endif
 
-#if 1
+#ifdef DSP_DEBUG
 	/** print cuts */
 	for (int r = 0; r < comm_size_; ++r)
 	{
@@ -1448,6 +1449,7 @@ int DecDdMpi::addOptCuts(
 			{
 				OsiRowCut * rc = cuts->rowCutPtr(i);
 				CoinPackedVector rcrow = rc->row();
+				rc->print();
 				DSPdebugMessage("Rank %d: cut[%d] rhs %e minind %d maxind %d nzcnt %d sum %e 1-norm %e 2-norm %e inf-norm %e\n",
 						comm_rank_, i, rc->lb(), rcrow.getMinIndex(), rcrow.getMaxIndex(), rcrow.getNumElements(), rcrow.sum(), rcrow.oneNorm(), rcrow.twoNorm(), rcrow.infNorm());
 			}

@@ -254,8 +254,7 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 	/** generate Benders cuts */
 	assert(tss_);
 	tss_->generateCuts(nvars_, vals, &cs);
-	//DSPdebug(cs.printCuts());
-	cs.printCuts();
+	DSPdebug(cs.printCuts());
 
 	/** If found Benders cuts */
 	for (int i = 0; i < cs.sizeCuts(); ++i)

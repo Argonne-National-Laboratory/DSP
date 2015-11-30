@@ -6,6 +6,7 @@
  */
 
 //#define DSP_DEBUG
+#define FORCECUT FALSE
 
 #include "SolverInterface/SCIPconshdlrBendersMPI.h"
 #include "Utility/StoMessage.h"
@@ -245,7 +246,7 @@ SCIP_RETCODE SCIPconshdlrBendersMPI::sepaBenders(
 					/** add cut */
 					SCIP_Bool infeasible;
 					SCIP_CALL(SCIPaddCut(scip, sol, poolcutrow,
-							FALSE, /**< force cut */
+							FORCECUT, /**< force cut */
 							&infeasible));
 
 					if (infeasible)
@@ -395,7 +396,7 @@ SCIP_RETCODE SCIPconshdlrBendersMPI::sepaBenders(
 					/** add cut */
 					SCIP_Bool infeasible;
 					SCIP_CALL(SCIPaddCut(scip, sol, row,
-							FALSE, /**< force cut */
+							FORCECUT, /**< force cut */
 							&infeasible));
 
 					if (infeasible)

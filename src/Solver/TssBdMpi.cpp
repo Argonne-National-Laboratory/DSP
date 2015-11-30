@@ -147,7 +147,7 @@ STO_RTN_CODE TssBdMpi::solve()
 	assert(par_);
 
 	/** subproblems */
-	TssBdSub *     tssbdsub    = NULL; /**< cut generator */
+	TssBdSub * tssbdsub = NULL; /**< cut generator */
 	double lowerbound = 0.0;
 
 	BGN_TRY_CATCH
@@ -228,11 +228,9 @@ STO_RTN_CODE TssBdMpi::solve()
 
 				for (int i = 0; i < comm_size_; ++i)
 				{
-					recvcounts[i] = 0;
-					for (int s = i; s < model_->getNumScenarios(); s += comm_size_)
-						recvcounts[i] += parProcIdxSize_ * model_->getNumCols(1);
+					recvcounts[i] = parProcIdxSize_ * model_->getNumCols(1);
 					displs[i] = i == 0 ? 0 : displs[i-1] + recvcounts[i-1];
-					//DSPdebugMessage("recvcounts_[%d] %d displs_[%d] %d\n", i, recvcounts[i], i, displs[i]);
+					DSPdebugMessage("recvcounts_[%d] %d displs_[%d] %d\n", i, recvcounts[i], i, displs[i]);
 				}
 			}
 
@@ -262,6 +260,7 @@ STO_RTN_CODE TssBdMpi::solve()
 				int ss = parProcIdx_[s];
 				CoinCopyN(solution_reco[ss], model_->getNumCols(1), sendbuf + s * model_->getNumCols(1));
 			}
+
 			MPI_Gatherv(sendbuf, parProcIdxSize_ * model_->getNumCols(1), MPI_DOUBLE,
 					recvbuf, recvcounts, displs, MPI_DOUBLE, 0, comm_);
 

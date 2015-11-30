@@ -1244,13 +1244,16 @@ int TssBdSub::constructCuts(
 			if (fabs(rhs[s]) < 1E-10)
 				rhs[s] = 0.0;
 
-			OsiRowCut rc;
-			rc.setRow(vec);
-			rc.setUb(COIN_DBL_MAX); /** for minimization */
-			rc.setLb(rhs[s]);
+			if (vec.getNumElements())
+			{
+				OsiRowCut rc;
+				rc.setRow(vec);
+				rc.setUb(COIN_DBL_MAX); /** for minimization */
+				rc.setLb(rhs[s]);
 
-			DSPdebug(rc.print());
-			cuts->insert(rc);
+				DSPdebug(rc.print());
+				cuts->insert(rc);
+			}
 
 			break;
 		}
@@ -1292,16 +1295,14 @@ int TssBdSub::constructCuts(
 		for (j = 0; j < ncols; ++j)
 		{
 			if (fabs(aggval[s][j]) > 1E-10)
-			{
 				vec.insert(j, aggval[s][j]);
-			}
 		}
 
 		if (fabs(aggrhs[s]) < 1E-10)
 			aggrhs[s] = 0.0;
 
 		/** effective? */
-		//if (vec.getNumElements() > 1)
+		if (vec.getNumElements() > 0)
 		{
 			OsiRowCut rc;
 			rc.setRow(vec);

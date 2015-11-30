@@ -375,7 +375,6 @@ void solveBdMpi(
 		return;
 	}
 
-	TssModel * tss = getTssModel(env);
 	TssBdMpi * tssbd = new TssBdMpi(comm);
 	env->solver_ = new DecTssSolver(tssbd);
 	env->solver_->loadModel(env->par_, new DecTssModel(*getTssModel(env)));
