@@ -67,6 +67,11 @@ STO_RTN_CODE TssBd::solve()
 	/** get number of scenarios */
 	probability = model_->getProbability();
 
+	/** set objective coefficients for auxiliary variables */
+	CoinZeroN(obj_aux_, naux_);
+	for (int s = 0; s < model_->getNumScenarios(); ++s)
+		obj_aux_[s % naux_] += probability[s];
+
 	/** configure Benders cut generator */
 	/** This does NOT make deep copies. So, DO NOT RELEASE POINTERS. */
 	tssbdsub = new TssBdSub(par_);

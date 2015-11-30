@@ -115,6 +115,12 @@ void solveBd(
 		StoApiEnv * env,        /**< pointer to API object */
 		int         nauxvars = 1 /**< number of auxiliary variables (scenario clusters) */);
 
+/** solve Benders decomposition using MPI */
+void solveBdMpi(
+		StoApiEnv * env,      /**< pointer to API object */
+		int         nauxvars, /**< number of auxiliary variables (scenario clusters) */
+		MPI_Comm    comm      /**< MPI communicator */);
+
 /** set boolean parameter */
 void setBoolParam(StoApiEnv * env, const char * name, bool value);
 
@@ -158,7 +164,7 @@ void setBdAugScenarios(StoApiEnv * env, int size, int * scenarios);
 void setBendersAggressive(StoApiEnv * env, int aggressive);
 
 /** set a set of scenarios for the current process */
-void setDdProcIdxSet(StoApiEnv * env, int size, int * scenarios);
+void setProcIdxSet(StoApiEnv * env, int size, int * scenarios);
 
 /** set parameter for adding feasibility cuts */
 void setDdAddFeasCuts(StoApiEnv * env, int freq);

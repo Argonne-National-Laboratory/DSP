@@ -10,6 +10,7 @@
 #include "Utility/StoMacros.h"
 #include "Solver/TssEval.h"
 #include "Solver/TssBd.h"
+#include "Solver/TssBdMpi.h"
 #include "Solver/DecDdMpi.h"
 #include "Solver/DecDe.h"
 #include "Solver/DecTssSolver.h"
@@ -359,6 +360,50 @@ void solveBd(
 	env->solver_->solve();
 }
 
+/** solve Benders decomposition using MPI */
+void solveBdMpi(
+		StoApiEnv * env,      /**< pointer to API object */
+		int         nauxvars, /**< number of auxiliary variables (scenario clusters) */
+		MPI_Comm    comm      /**< MPI communicator */)
+{
+	STO_API_CHECK_MODEL();
+	freeSolver(env);
+
+	if (!env->model_->isStochastic())
+	{
+		printf("Error: Benders decomposition is currently only supported by stochastic models\n");
+		return;
+	}
+
+	TssModel * tss = getTssModel(env);
+	TssBdMpi * tssbd = new TssBdMpi(comm);
+	env->solver_ = new DecTssSolver(tssbd);
+	env->solver_->loadModel(env->par_, new DecTssModel(*getTssModel(env)));
+
+	/** set auxiliary variables */
+	double * obj_aux = new double [nauxvars];
+	double * clbd_aux = new double [nauxvars];
+	double * cubd_aux = new double [nauxvars];
+	CoinFillN(obj_aux, nauxvars, 1.0);
+	CoinFillN(clbd_aux, nauxvars, -COIN_DBL_MAX);
+	CoinFillN(cubd_aux, nauxvars, +COIN_DBL_MAX);
+	tssbd->setAuxColData(nauxvars, obj_aux, clbd_aux, cubd_aux);
+
+	/** set augmented scenarios */
+	int numAugScenarios = env->par_->getIntPtrParamSize("BD/ARR_AUG_SCENS");
+	if (numAugScenarios > 0)
+		tssbd->setAugScenarios(numAugScenarios, env->par_->getIntPtrParam("BD/ARR_AUG_SCENS"));
+
+	/** relax second-stage integrality */
+	env->par_->setBoolPtrParam("RELAX_INTEGRALITY", 1, true);
+
+	FREE_ARRAY_PTR(obj_aux);
+	FREE_ARRAY_PTR(clbd_aux);
+	FREE_ARRAY_PTR(cubd_aux);
+
+	env->solver_->solve();
+}
+
 /** set boolean parameter */
 void setBoolParam(StoApiEnv * env, const char * name, bool value)
 {
@@ -486,13 +531,13 @@ void setBendersAggressive(StoApiEnv * env, int aggressive)
 }
 
 /** set a set of scenarios for the current process */
-void setDdProcIdxSet(StoApiEnv * env, int size, int * scenarios)
+void setProcIdxSet(StoApiEnv * env, int size, int * scenarios)
 {
 	STO_API_CHECK_ENV();
-	setIntPtrParam(env, "DD/ARR_PROC_IDX", size, scenarios);
-	printf("WARNING: setDdProcIdxSet() is deprecated. "
-			"Please use setIntPtrParamSize(\"DD/ARR_PROC_IDX\", %d) "
-			"and setIntPtrParam(\"DD/ARR_PROC_IDX\", index, value) instead.\n", size);
+	setIntPtrParam(env, "ARR_PROC_IDX", size, scenarios);
+	printf("WARNING: setProcIdxSet() is deprecated. "
+			"Please use setIntPtrParamSize(\"ARR_PROC_IDX\", %d) "
+			"and setIntPtrParam(\"ARR_PROC_IDX\", index, value) instead.\n", size);
 }
 
 /** set parameter for adding feasibility cuts */

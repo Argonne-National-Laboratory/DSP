@@ -95,7 +95,7 @@ public:
 	/** set original variable pointers */
 	SCIP_RETCODE setOriginalVariables(int nvars, SCIP_Var ** vars);
 
-private:
+protected:
 
 	SCIP_RETCODE sepaBenders(
 			SCIP * scip,
@@ -103,8 +103,6 @@ private:
 			SCIP_SOL * sol,
 			whereFrom where,
 			SCIP_RESULT * result);
-
-private:
 
 	/** TODO: These could go in SCIP_ConsData. Does it matter? */
 	TssBdSub * tss_;   /**< pointer to cut generator */

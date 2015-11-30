@@ -71,6 +71,15 @@ public:
 			int nAuxvars = 1);
 #endif
 
+	/** generate Benders cut in raw format (without constructing) */
+	int generateRawCuts(
+			int            ncols,
+			const double * x,
+			double **      cutval, /** dense cut coefficients for each subproblem */
+			double *       cutrhs, /** cut rhs for each subproblem */
+			int            where = TssBd,
+			int            which = BothCuts);
+
 	/** generate Benders cut */
 	void generateCuts(
 			int            ncols,

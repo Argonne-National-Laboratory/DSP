@@ -21,11 +21,23 @@ bool duplicateVector(
 		CoinPackedVector * vec,
 		vector<CoinPackedVector*> vecs);
 
+/** MPI gather function for vector<CoinPackedVectors*> type. */
+void MPIgatherCoinPackedVectors(
+		MPI::Intracomm comm,
+		vector<CoinPackedVector*> vecs_in,
+		vector<CoinPackedVector*> & vecs_out);
+
 /** MPI scatter function for vector<CoinPackedVectors*> type. */
 void MPIscatterCoinPackedVectors(
 		MPI::Intracomm comm,
 		vector<CoinPackedVector*> vecs_in,
 		vector<CoinPackedVector*> & vecs_out);
+
+/** MPI gather function for OsiCuts type. */
+void MPIgatherOsiCuts(
+		MPI::Intracomm comm,
+		OsiCuts cuts_in,
+		OsiCuts & cuts_out);
 
 /** MPI scatter function for OsiCuts type. */
 void MPIscatterOsiCuts(

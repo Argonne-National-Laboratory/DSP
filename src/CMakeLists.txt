@@ -4,6 +4,7 @@ set(DSP_SRC_FILES
 	SolverInterface/OoqpEps.cpp
 	SolverInterface/OoqpStatus.cpp
 	SolverInterface/SCIPconshdlrBenders.cpp
+	SolverInterface/SCIPconshdlrBendersMPI.cpp
 	SolverInterface/SCIPconshdlrBendersDd.cpp
 	SolverInterface/SCIPbranchruleLB.cpp
 	SolverInterface/SolverInterfaceOsi.cpp
@@ -13,6 +14,7 @@ set(DSP_SRC_FILES
 	SolverInterface/SolverInterfaceOoqp.cpp
 	Solver/TssSolver.cpp
 	Solver/TssBd.cpp
+	Solver/TssBdMpi.cpp
 	Solver/TssBdSub.cpp
 	Solver/TssEval.cpp
 	Solver/DecSolver.cpp

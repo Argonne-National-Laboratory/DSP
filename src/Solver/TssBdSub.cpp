@@ -195,37 +195,21 @@ STO_RTN_CODE TssBdSub::loadProblem(
 }
 #endif
 
-/** core of generating Benders cut */
-void TssBdSub::generateCuts(
+/** generate Benders cut in raw format (without constructing) */
+int TssBdSub::generateRawCuts(
 		int            ncols,
 		const double * x,
-		OsiCuts *      cs,
+		double **      cutval, /** dense cut coefficients for each subproblem */
+		double *       cutrhs, /** cut rhs for each subproblem */
 		int            where,
 		int            which)
 {
-#define FREE_MEMORY                    \
-	FREE_2D_ARRAY_PTR(nSubs_,Tx);      \
-	FREE_2D_ARRAY_PTR(nSubs_, cutval); \
-	FREE_ARRAY_PTR(cutrhs);
+#define FREE_MEMORY \
+	FREE_2D_ARRAY_PTR(nSubs_,Tx);
 
-	if (nSubs_ <= 0)
-	{
-		DSPdebugMessage("nSubs_ %d\n", nSubs_);
-		return;
-	}
-
-	double start_time_wall = CoinGetTimeOfDay();
-
-	assert(weight_);
 	assert(mat_mp_);
-	assert(nAuxvars_ > 0);
-	assert(cglp_);
-
-	DSPdebugMessage("\n### START: Bender cut generator ###\n");
-
-	double **     Tx = NULL;
-	double ** cutval = NULL; /** dense cut coefficients for each subproblem */
-	double *  cutrhs = NULL; /** cut rhs for each subproblem */
+	int status;
+	double ** Tx = NULL;
 
 	BGN_TRY_CATCH
 
@@ -255,7 +239,6 @@ void TssBdSub::generateCuts(
 		/** calculate Tx */
 		mat_mp_[s]->times(x, Tx[s]);
 	}
-	cutval = new double * [nSubs_];
 	for (int s = nSubs_ - 1; s >= 0; --s)
 	{
 		cutval[s] = NULL;
@@ -265,7 +248,6 @@ void TssBdSub::generateCuts(
 		cutval[s] = new double [ncols];
 		CoinZeroN(cutval[s], ncols);
 	}
-	cutrhs = new double [nSubs_];
 	CoinZeroN(cutrhs, nSubs_);
 
 	if (where == TssBd)
@@ -309,7 +291,7 @@ void TssBdSub::generateCuts(
 		}
 	}
 
-	int status = STO_STAT_OPTIMAL;
+	status = STO_STAT_OPTIMAL;
 	for (int s = nSubs_ - 1; s >= 0; --s)
 	{
 		if (!mat_mp_[s]) continue;
@@ -328,6 +310,54 @@ void TssBdSub::generateCuts(
 			break;
 		}
 	}
+
+	END_TRY_CATCH(FREE_MEMORY)
+
+	/** free memory */
+	FREE_MEMORY
+
+	return status;
+
+#undef FREE_MEMORY
+}
+
+/** core of generating Benders cut */
+void TssBdSub::generateCuts(
+		int            ncols,
+		const double * x,
+		OsiCuts *      cs,
+		int            where,
+		int            which)
+{
+#define FREE_MEMORY                    \
+	FREE_2D_ARRAY_PTR(nSubs_, cutval); \
+	FREE_ARRAY_PTR(cutrhs);
+
+	if (nSubs_ <= 0)
+	{
+		DSPdebugMessage("nSubs_ %d\n", nSubs_);
+		return;
+	}
+
+	double start_time_wall = CoinGetTimeOfDay();
+
+	DSPdebugMessage("### START: Bender cut generator ###\n");
+
+	double ** cutval = NULL; /** dense cut coefficients for each subproblem */
+	double *  cutrhs = NULL; /** cut rhs for each subproblem */
+
+	BGN_TRY_CATCH
+
+#ifdef DSP_DEBUG_DETAIL
+	PRINT_ARRAY_MSG(ncols, x, "x");
+#endif
+
+	/** allocate memory */
+	cutval = new double * [nSubs_];
+	cutrhs = new double [nSubs_];
+
+	/** generate cuts in raw format */
+	int status = generateRawCuts(ncols, x, cutval, cutrhs, where, which);
 
 	/** construct cuts */
 	if (status == STO_STAT_OPTIMAL ||
@@ -504,13 +534,15 @@ void TssBdSub::solveRecourse(
 	}
 
 	/** allocate memory */
-	Tx = new double * [ncores];
-	for (int s = ncores - 1; s >= 0; --s)
+	Tx = new double * [nSubs_];
+	for (int s = nSubs_ - 1; s >= 0; --s)
 	{
 		Tx[s] = NULL;
 		if (!mat_mp_[s] || excludedScenarios_[s]) continue;
 
 		Tx[s] = new double [nrows];
+		/** calculate Tx */
+		mat_mp_[s]->times(x, Tx[s]);
 	}
 	if (parCacheRecourse_)
 	{
@@ -532,15 +564,13 @@ void TssBdSub::solveRecourse(
 	{
 		if (!mat_mp_[s] || excludedScenarios_[s]) continue;
 
+		DSPdebugMessage("Solve recourse %d\n", s);
 #ifdef USE_OMP
 		/** get thread ID */
 		int tid = omp_get_thread_num();
 #else
 		int tid = 0;
 #endif
-
-		/** calculate Tx */
-		mat_mp_[s]->times(x, Tx[tid]);
 
 		SolverInterface * si = NULL;
 		if (parCacheRecourse_)
@@ -577,9 +607,9 @@ void TssBdSub::solveRecourse(
 		for (int i = nrows - 1; i >= 0; --i)
 		{
 			if (rlbd[i] > -COIN_DBL_MAX)
-				si->setRowLower(i, rlbd[i] - Tx[tid][i]);
+				si->setRowLower(i, rlbd[i] - Tx[s][i]);
 			if (rubd[i] < COIN_DBL_MAX)
-				si->setRowUpper(i, rubd[i] - Tx[tid][i]);
+				si->setRowUpper(i, rubd[i] - Tx[s][i]);
 			//printf("row %d: rlbd %f rubd %f Tx %f\n", i, rlbd[i], rubd[i], Tx[tid][i]);
 		}
 
@@ -603,7 +633,7 @@ void TssBdSub::solveRecourse(
 			/** objective */
 			objval[s] = si->getPrimalBound();
 			/** solution */
-			if (solution)
+			if (solution[s])
 				CoinCopyN(si->getSolution(), si->getNumCols(), solution[s]);
 			break;
 		}
@@ -611,6 +641,7 @@ void TssBdSub::solveRecourse(
 			objval[s] = COIN_DBL_MAX;
 			break;
 		}
+		DSPdebugMessage("status[%d] %d objval %f\n", s, status_[s], objval[s]);
 
 		/** restore row bounds */
 		if (parCacheRecourse_)
@@ -1237,6 +1268,7 @@ int TssBdSub::constructCuts(
 					s, weight_[s],
 					s, j, values[s][j]);
 		}
+		aggval[ind_aux][ncols - nAuxvars_ + ind_aux] += weight_[s];
 		aggrhs[ind_aux] += weight_[s] * rhs[s];
 		DSPdebugMessage("  aggval[%d][%d] %E weight_[%d] %E\n",
 				ind_aux, ncols - nAuxvars_ + ind_aux, aggval[ind_aux][ncols - nAuxvars_ + ind_aux],
@@ -1251,7 +1283,7 @@ int TssBdSub::constructCuts(
 	for (s = nAuxvars_ - 1; s >= 0; --s)
 	{
 		/** auxiliary variable coefficient */
-		aggval[s][ncols - nAuxvars_ + s] = 1;
+		//aggval[s][ncols - nAuxvars_ + s] = 1;
 
 		/** initialize vector */
 		vec.clear();
