@@ -8,7 +8,7 @@ Download
 
 You can clone this repository in your preferred directory by typing::
 
-   git clone https://github.com/kibaekkim/DSP.git
+   git clone https://github.com/Argonne-National-Laboratory/DSP.git
 
 Prerequisites
 ^^^^^^^^^^^^^
@@ -125,5 +125,5 @@ The following packages should be installed.
 
 * The `DSPsolver.jl <https://github.com/kibaekkim/DSPsolver.jl.git>`_ package provides an interface to StochJuMP. DSPsolver.jl can be installed by the Julia command::
 
-   julia> Pkg.clone("https://github.com/kibaekkim/DSPsolver.jl.git");
+   julia> Pkg.clone("https://github.com/Argonne-National-Laboratory/DSPsolver.jl.git");
 
