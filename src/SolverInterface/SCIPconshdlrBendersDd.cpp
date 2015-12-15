@@ -227,6 +227,7 @@ SCIP_RETCODE SCIPconshdlrBendersDd::sepaBenders(
 	bool isCutFromPool = false;
 	int maxEfficaciousCut = -1;
 	double maxEfficacy = 1.e-6;
+	DSPdebugMessage("Number of cutsToAdd_ %d\n", cutsToAdd_->sizeCuts());
 	for (int i = cutsToAdd_->sizeCuts() - 1; i >= 0; --i)
 	{
 		OsiRowCut * rc = cutsToAdd_->rowCutPtr(i);
@@ -234,6 +235,7 @@ SCIP_RETCODE SCIPconshdlrBendersDd::sepaBenders(
 		const CoinPackedVector row = rc->row();
 
 		/** is optimality cut? */
+		DSPdebugMessage("row.getNumElements() %d\n", row.getNumElements());
 		bool isOptimalityCut = row.getIndices()[row.getNumElements() - 1] == nvars_ - 1;
 
 		/** calculate efficacy */
@@ -250,6 +252,7 @@ SCIP_RETCODE SCIPconshdlrBendersDd::sepaBenders(
 		}
 	}
 
+	DSPdebugMessage("maxEfficacy %e\n", maxEfficacy);
 	if (maxEfficaciousCut >= 0)
 	{
 		/** move one from cut pool */
@@ -270,6 +273,7 @@ SCIP_RETCODE SCIPconshdlrBendersDd::sepaBenders(
 	{
 		/** generate Benders cuts */
 		tss_->generateCuts(nvars_, vals, &cs, TssBdSub::TssDd);
+		DSPdebug(cs.printCuts());
 
 		/** construct upper bounding cuts */
 		constructCuts(cs);

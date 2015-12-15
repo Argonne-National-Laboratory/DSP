@@ -5,7 +5,8 @@
  *      Author: kibaekkim
  */
 
-#define DSP_DEBUG
+//#define DSP_DEBUG
+#define FORCECUT FALSE
 
 #include "SolverInterface/SCIPconshdlrBendersMPI.h"
 #include "Utility/StoMessage.h"
@@ -245,7 +246,7 @@ SCIP_RETCODE SCIPconshdlrBendersMPI::sepaBenders(
 					/** add cut */
 					SCIP_Bool infeasible;
 					SCIP_CALL(SCIPaddCut(scip, sol, poolcutrow,
-							FALSE, /**< force cut */
+							FORCECUT, /**< force cut */
 							&infeasible));
 
 					if (infeasible)
@@ -395,7 +396,7 @@ SCIP_RETCODE SCIPconshdlrBendersMPI::sepaBenders(
 					/** add cut */
 					SCIP_Bool infeasible;
 					SCIP_CALL(SCIPaddCut(scip, sol, row,
-							FALSE, /**< force cut */
+							FORCECUT, /**< force cut */
 							&infeasible));
 
 					if (infeasible)
@@ -433,6 +434,7 @@ void SCIPconshdlrBendersMPI::aggregateCuts(OsiCuts cuts_in, OsiCuts &cuts_out)
 	double ** aggval  = NULL; /** aggregated dense cut coefficients */
 	double *  aggrhs  = NULL; /** aggregated cut rhs */
 	CoinPackedVector vec;
+	bool isInfeasible = false;
 
 	/** allocate memory */
 	aggval = new double * [naux_];
@@ -463,7 +465,8 @@ void SCIPconshdlrBendersMPI::aggregateCuts(OsiCuts cuts_in, OsiCuts &cuts_out)
 		if (cut_status_[s] == STO_STAT_PRIM_INFEASIBLE)
 		{
 			cuts_out.insert(rc);
-			continue;
+			isInfeasible = true;
+			break;
 		}
 
 		/** consider only optimality cuts */
@@ -478,34 +481,37 @@ void SCIPconshdlrBendersMPI::aggregateCuts(OsiCuts cuts_in, OsiCuts &cuts_out)
 			aggval[ind_aux][row.getIndices()[j]] += probability_[s] * row.getElements()[j];
 			//DSPdebugMessage("aggval[%d][%d] %e\n", ind_aux, row.getIndices()[j], aggval[ind_aux][row.getIndices()[j]]);
 		}
-		aggval[ind_aux][nvars_ - naux_ + ind_aux] += probability_[s];
+		//aggval[ind_aux][nvars_ - naux_ + ind_aux] += probability_[s];
 		//DSPdebugMessage("aggval[%d][%d] %e\n", ind_aux, nvars_ - naux_ + ind_aux, aggval[ind_aux][nvars_ - naux_ + ind_aux]);
 		aggrhs[ind_aux] += probability_[s] * rc->lb();
 	}
 
-	/** construct cuts to pass */
-	for (int s = 0; s < naux_; ++s)
+	/** We generate optimality cuts only if there is no feasibility cut generated. */
+	if (isInfeasible == false)
 	{
-		/** initialize vector */
-		vec.clear();
-
-		/** set it as sparse */
-		for (int j = 0; j < nvars_; ++j)
+		/** construct cuts to pass */
+		for (int s = 0; s < naux_; ++s)
 		{
-			if (fabs(aggval[s][j]) > 1E-10)
-				vec.insert(j, aggval[s][j]);
+			/** initialize vector */
+			vec.clear();
+
+			/** set it as sparse */
+			for (int j = 0; j < nvars_; ++j)
+			{
+				if (fabs(aggval[s][j]) > 1E-10)
+					vec.insert(j, aggval[s][j]);
+			}
+
+			if (fabs(aggrhs[s]) < 1E-10)
+				aggrhs[s] = 0.0;
+
+			OsiRowCut rc;
+			rc.setRow(vec);
+			rc.setUb(COIN_DBL_MAX); /** TODO: for minimization */
+			rc.setLb(aggrhs[s]);
+
+			cuts_out.insert(rc);
 		}
-
-		if (fabs(aggrhs[s]) < 1E-10)
-			aggrhs[s] = 0.0;
-
-		OsiRowCut rc;
-		rc.setRow(vec);
-		rc.setUb(COIN_DBL_MAX); /** TODO: for minimization */
-		rc.setLb(aggrhs[s]);
-
-//		DSPdebug(rc.print());
-		cuts_out.insert(rc);
 	}
 }
 

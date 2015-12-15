@@ -200,14 +200,14 @@ The dual decomposition method for SMIP is a special case of Lagrangian decomposi
 .. math::
    :label: DD
 
-   \min \quad & c_1^T x_1 &+\;& c_2^T x_2 &+\;& \ldots &+\;& c_k^T x_k &\\
+   \min \quad & c_1^T x_1 + c_2^T x_2 + \ldots + c_k^T x_k \\
    \text{s.t.} \quad
-   & A_1x_1 &   &        &   &        &   &        & = b_1, \\
-   &        &   & A_2x_2 &   &        &   &        & = b_2, \\
-   &        &   &        &   & \ddots &   &        & \;\;\vdots \\
-   &        &   &        &   &        &   & A_kx_k & = b_k, \\
-   & H_1x_1 &+\;& H_2x_2 &+\;& \ldots &+\;& H_kx_k & = d,   \\
-   & x \in X &&&&&&&
+   & A_1x_1 = b_1, \\
+   & A_2x_2 = b_2, \\
+   & \vdots \\
+   & A_kx_k = b_k, \\
+   & H_1x_1 + H_2x_2 + \ldots + H_kx_k = d, \\
+   & x \in X
 
 where :math:`x \in X` represents integrality constraints. Here, :math:`H_1x_1 + \ldots + H_kx_k = d` are the constraints we are interested in relaxing with Lagrangian relaxation, called *coupling constraints*. For instance, in the SMIP case, the coupling constraints are the nonanticipativity constraints. The coupling constraints may include inequalities. Note that when :math:`k=1`, this framework is reduced to standard Lagrangian relaxation.
 
