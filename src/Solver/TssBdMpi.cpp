@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+#define DSP_DEBUG
 
 #include <Solver/TssBdMpi.h>
 #include "Utility/StoUtility.h"
@@ -379,7 +379,8 @@ STO_RTN_CODE TssBdMpi::findLowerBound(
 			obj[j] *= model_->getProbability()[parProcIdx_[s]];
 
 		/** create solve interface */
-		if (model_->getNumIntegers(0) > 0)
+		/** TODO Solving MIP creats a load imbalancing. */
+		if (model_->getNumIntegers(0) < 0)
 		{
 			si = new SolverInterfaceScip(par_);
 			si->setPrintLevel(CoinMax(CoinMin(parLogLevel_ - 1, 5),0));
@@ -649,13 +650,13 @@ STO_RTN_CODE TssBdMpi::runWorkers(TssBdSub * tssbdsub)
 			rc.setUb(COIN_DBL_MAX); /** TODO: for minimization */
 			rc.setLb(cutrhs[s]);
 
-			DSPdebug(rc.print());
+			//DSPdebug(rc.print());
 			cuts.insert(rc);
 
 			/** get status */
 			status[ss++] = tssbdsub->status_[s];
 		}
-		DSPdebugMessage("[%d]: Found %d cuts\n", comm_rank_, cuts.sizeCuts());
+		//DSPdebugMessage("[%d]: Found %d cuts\n", comm_rank_, cuts.sizeCuts());
 
 		/** Send cut generation status to the master */
 		MPI_Gatherv(status, parProcIdxSize_, MPI_INT, NULL, NULL, NULL, MPI_INT, 0, comm_);
@@ -673,7 +674,7 @@ STO_RTN_CODE TssBdMpi::runWorkers(TssBdSub * tssbdsub)
 
 		/** Wait for message from the master */
 		MPI_Bcast(&message, 1, MPI_INT, 0, comm_);
-		DSPdebugMessage("[%d]: Received message [%d]\n", comm_rank_, message);
+		//DSPdebugMessage("[%d]: Received message [%d]\n", comm_rank_, message);
 	}
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)

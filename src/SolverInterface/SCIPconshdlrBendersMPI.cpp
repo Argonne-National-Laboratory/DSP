@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+#define DSP_DEBUG
 
 #include "SolverInterface/SCIPconshdlrBendersMPI.h"
 #include "Utility/StoMessage.h"
@@ -304,7 +304,7 @@ SCIP_RETCODE SCIPconshdlrBendersMPI::sepaBenders(
 		rc.setUb(COIN_DBL_MAX); /** TODO: for minimization */
 		rc.setLb(cutrhs_[s]);
 
-		DSPdebug(rc.print());
+		//DSPdebug(rc.print());
 		cs.insert(rc);
 
 		/** get status */
@@ -319,7 +319,7 @@ SCIP_RETCODE SCIPconshdlrBendersMPI::sepaBenders(
 	/** Collect cuts */
 	MPIgatherOsiCuts(comm_, cs, cs2);
 	DSPdebugMessage("[%d]: Collected %d cuts\n", comm_rank_, cs2.sizeCuts());
-	DSPdebug(cs2.printCuts());
+	//DSPdebug(cs2.printCuts());
 
 	/** aggregate cuts */
 	aggregateCuts(cs2, cs);
@@ -459,7 +459,7 @@ void SCIPconshdlrBendersMPI::aggregateCuts(OsiCuts cuts_in, OsiCuts &cuts_out)
 		OsiRowCut * rc = cuts_in.rowCutPtr(i);
 
 		/** feasibility cut? */
-		DSPdebugMessage("cut_indices %d cut_status %d weight %e\n", s, cut_status_[s], probability_[s]);
+		//DSPdebugMessage("cut_indices %d cut_status %d weight %e\n", s, cut_status_[s], probability_[s]);
 		if (cut_status_[s] == STO_STAT_PRIM_INFEASIBLE)
 		{
 			cuts_out.insert(rc);
@@ -476,10 +476,10 @@ void SCIPconshdlrBendersMPI::aggregateCuts(OsiCuts cuts_in, OsiCuts &cuts_out)
 		for (int j = 0; j < row.getNumElements(); ++j)
 		{
 			aggval[ind_aux][row.getIndices()[j]] += probability_[s] * row.getElements()[j];
-			DSPdebugMessage("aggval[%d][%d] %e\n", ind_aux, row.getIndices()[j], aggval[ind_aux][row.getIndices()[j]]);
+			//DSPdebugMessage("aggval[%d][%d] %e\n", ind_aux, row.getIndices()[j], aggval[ind_aux][row.getIndices()[j]]);
 		}
 		aggval[ind_aux][nvars_ - naux_ + ind_aux] += probability_[s];
-		DSPdebugMessage("aggval[%d][%d] %e\n", ind_aux, nvars_ - naux_ + ind_aux, aggval[ind_aux][nvars_ - naux_ + ind_aux]);
+		//DSPdebugMessage("aggval[%d][%d] %e\n", ind_aux, nvars_ - naux_ + ind_aux, aggval[ind_aux][nvars_ - naux_ + ind_aux]);
 		aggrhs[ind_aux] += probability_[s] * rc->lb();
 	}
 
