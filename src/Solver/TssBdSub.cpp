@@ -1208,6 +1208,7 @@ int TssBdSub::constructCuts(
 	double ** aggval  = NULL; /** aggregated dense cut coefficients */
 	double *  aggrhs  = NULL; /** aggregated cut rhs */
 	CoinPackedVector vec;
+	bool isInfeasible = false;
 
 	BGN_TRY_CATCH
 
@@ -1253,6 +1254,7 @@ int TssBdSub::constructCuts(
 
 				DSPdebug(rc.print());
 				cuts->insert(rc);
+				isInfeasible = true;
 			}
 
 			break;
@@ -1271,7 +1273,7 @@ int TssBdSub::constructCuts(
 					s, weight_[s],
 					s, j, values[s][j]);
 		}
-		aggval[ind_aux][ncols - nAuxvars_ + ind_aux] += weight_[s];
+		//aggval[ind_aux][ncols - nAuxvars_ + ind_aux] += weight_[s];
 		aggrhs[ind_aux] += weight_[s] * rhs[s];
 		DSPdebugMessage("  aggval[%d][%d] %E weight_[%d] %E\n",
 				ind_aux, ncols - nAuxvars_ + ind_aux, aggval[ind_aux][ncols - nAuxvars_ + ind_aux],
@@ -1282,35 +1284,39 @@ int TssBdSub::constructCuts(
 				s, rhs[s]);
 	}
 
-	/** construct cuts to pass */
-	for (s = nAuxvars_ - 1; s >= 0; --s)
+	/** We generate optimality cuts only if there is no feasibility cut generated. */
+	if (isInfeasible == false)
 	{
-		/** auxiliary variable coefficient */
-		//aggval[s][ncols - nAuxvars_ + s] = 1;
-
-		/** initialize vector */
-		vec.clear();
-
-		/** set it as sparse */
-		for (j = 0; j < ncols; ++j)
+		/** construct cuts to pass */
+		for (s = nAuxvars_ - 1; s >= 0; --s)
 		{
-			if (fabs(aggval[s][j]) > 1E-10)
-				vec.insert(j, aggval[s][j]);
-		}
+			/** auxiliary variable coefficient */
+			aggval[s][ncols - nAuxvars_ + s] = 1;
 
-		if (fabs(aggrhs[s]) < 1E-10)
-			aggrhs[s] = 0.0;
+			/** initialize vector */
+			vec.clear();
 
-		/** effective? */
-		if (vec.getNumElements() > 0)
-		{
-			OsiRowCut rc;
-			rc.setRow(vec);
-			rc.setUb(COIN_DBL_MAX); /** for minimization */
-			rc.setLb(aggrhs[s]);
+			/** set it as sparse */
+			for (j = 0; j < ncols; ++j)
+			{
+				if (fabs(aggval[s][j]) > 1E-10)
+					vec.insert(j, aggval[s][j]);
+			}
 
-			DSPdebug(rc.print());
-			cuts->insert(rc);
+			if (fabs(aggrhs[s]) < 1E-10)
+				aggrhs[s] = 0.0;
+
+			/** effective? */
+			if (vec.getNumElements() > 0)
+			{
+				OsiRowCut rc;
+				rc.setRow(vec);
+				rc.setUb(COIN_DBL_MAX); /** for minimization */
+				rc.setLb(aggrhs[s]);
+
+				DSPdebug(rc.print());
+				cuts->insert(rc);
+			}
 		}
 	}
 
