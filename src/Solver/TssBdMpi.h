@@ -67,7 +67,11 @@ private:
 	STO_RTN_CODE configureSLP();
 
 	/** solve Stochastic LP */
-	STO_RTN_CODE solveSLP(TssBdSub * tssbdsub);
+	STO_RTN_CODE solveSLP(
+			TssBdSub *        tssbdsub,      /**< a pointer to the Benders subproblem */
+			SolverInterface * si = si_,      /**< a pointer to the Benders master problem */
+			int               fromWhere = 0, /**< indicator for what this is called: 0 = SLP; 1 = SMILP */
+			OsiCuts *         outcuts = NULL /**< cuts to be returned if cuts is not null */);
 
 	/** configure Stochastic MILP */
 	STO_RTN_CODE configureSMILP(TssBdSub * tssbdsub);

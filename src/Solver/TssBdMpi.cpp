@@ -569,12 +569,15 @@ STO_RTN_CODE TssBdMpi::runMaster(TssBdSub * tssbdsub)
 	/** use L-shaped method to find lower bound */
 	if (model_->getNumCoreIntegers() == 0)
 	{
-		/** configure LP */
+		/** solve Stochastic LP */
 		STO_RTN_CHECK_THROW(solveSLP(tssbdsub), "solveSLP", "TssBd");
 	}
 	else
 	{
-		/** configure MILP */
+		/** solve Stochastic LP */
+		//STO_RTN_CHECK_THROW(solveSLP(tssbdsub), "solveSLP", "TssBd");
+
+		/** solve Stochastic MILP */
 		STO_RTN_CHECK_THROW(solveSMILP(), "solveSMILP", "TssBd");
 	}
 
@@ -736,7 +739,11 @@ STO_RTN_CODE TssBdMpi::configureSMILP(TssBdSub * tssbdsub)
  *
  * TODO: Need more sophisticated cut management for efficiency.
  */
-STO_RTN_CODE TssBdMpi::solveSLP(TssBdSub * tssbdsub)
+STO_RTN_CODE TssBdMpi::solveSLP(
+		TssBdSub * tssbdsub,
+		SolverInterface * si,
+		int whereFrom,
+		OsiCuts * outcuts)
 {
 	int iter = 0;
 	int message = MASTER_NEEDS_CUTS;
@@ -753,30 +760,30 @@ STO_RTN_CODE TssBdMpi::solveSLP(TssBdSub * tssbdsub)
 	BGN_TRY_CATCH
 
 	/** initial solve */
-	si_->solve();
+	si->solve();
 
 	int niters = 0;
 
 	while (message == MASTER_NEEDS_CUTS)
 	{
 		/** solution status */
-		if (si_->getStatus() == STO_STAT_OPTIMAL)
+		if (si->getStatus() == STO_STAT_OPTIMAL)
 		{
 			/** check improvement of objective value */
-			effectiveness = fabs(objval - si_->getPrimalBound()) < 1E-10 ? effectiveness * 10 : effectivenessLB;
+			effectiveness = fabs(objval - si->getPrimalBound()) < 1E-10 ? effectiveness * 10 : effectivenessLB;
 
 			/** optimal */
-			objval = si_->getPrimalBound();
+			objval = si->getPrimalBound();
 
 			/** print */
 			if (parLogLevel_)
 			{
-				niters += si_->getIterationCount();
+				niters += si->getIterationCount();
 				printf("Iteration %4d: objective function: %+E iteration %d\n",
 						iter++, objval, niters);
 			}
 #ifdef TSSBENDERS_DEBUG
-			PRINT_ARRAY(si_->getNumCols(), si_->getColSolution());
+			PRINT_ARRAY(si->getNumCols(), si->getColSolution());
 #endif
 
 			/** stop at iteration limit */
@@ -795,10 +802,10 @@ STO_RTN_CODE TssBdMpi::solveSLP(TssBdSub * tssbdsub)
 			MPI_Bcast(&message, 1, MPI_INT, 0, comm_);
 
 			/** Send solutions to the workers */
-			MPI_Bcast(const_cast<double*>(si_->getSolution()), si_->getNumCols(), MPI_DOUBLE, 0, comm_);
+			MPI_Bcast(const_cast<double*>(si->getSolution()), si->getNumCols(), MPI_DOUBLE, 0, comm_);
 
 			/** generate cuts */
-			tssbdsub->generateCuts(si_->getNumCols(), si_->getSolution(), &cuts);
+			tssbdsub->generateCuts(si->getNumCols(), si->getSolution(), &cuts);
 			//cuts.printCuts();
 
 			/** Collect cuts */
@@ -818,8 +825,12 @@ STO_RTN_CODE TssBdMpi::solveSLP(TssBdSub * tssbdsub)
 				OsiRowCut * rc = cutcollection.rowCutPtr(i);
 				if (!rc) continue;
 
-				double violated = rc->violated(si_->getSolution());
+				double violated = rc->violated(si->getSolution());
 				rc->setEffectiveness(violated);
+
+				/** store cuts if requested */
+				if (outcuts)
+					outcuts->insert(*rc);
 			}
 
 			/** mark elapsed times */
@@ -827,7 +838,7 @@ STO_RTN_CODE TssBdMpi::solveSLP(TssBdSub * tssbdsub)
 			stat_.cut_generation_time_wall_phase1_ += CoinGetTimeOfDay() - stime_wall;
 
 			/** add cuts */
-			int nCutsAdded = si_->addCuts(cutcollection, effectiveness);
+			int nCutsAdded = si->addCuts(cutcollection, effectiveness);
 
 			/** remove cuts */
 			for (int i = 0; i < cutcollection.sizeCuts(); ++i)
@@ -846,11 +857,11 @@ STO_RTN_CODE TssBdMpi::solveSLP(TssBdSub * tssbdsub)
 			}
 
 			/** resolve master */
-			si_->solve();
+			si->solve();
 		}
 		else
 		{
-			status_ = si_->getStatus();
+			status_ = si->getStatus();
 			message = MASTER_STOPPED;
 		}
 	}
@@ -860,17 +871,18 @@ STO_RTN_CODE TssBdMpi::solveSLP(TssBdSub * tssbdsub)
 	MPI_Bcast(&message, 1, MPI_INT, 0, comm_);
 
 	/** assign solution if no integer variable */
-	if (status_ == STO_STAT_OPTIMAL ||
-		status_ == STO_STAT_STOPPED_ITER)
+	if (whereFrom == 0 &&
+			(status_ == STO_STAT_OPTIMAL ||
+			status_ == STO_STAT_STOPPED_ITER))
 	{
 		/** primal bound */
 		if (status_ == STO_STAT_OPTIMAL)
-			primalBound_ = si_->getPrimalBound();
+			primalBound_ = si->getPrimalBound();
 		else
 			primalBound_ = COIN_DBL_MAX;
 
 		/** dual bound */
-		dualBound_ = si_->getPrimalBound();
+		dualBound_ = si->getPrimalBound();
 	}
 
 	/** statistics */
