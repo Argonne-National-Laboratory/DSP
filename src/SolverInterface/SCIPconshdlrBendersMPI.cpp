@@ -324,7 +324,7 @@ SCIP_RETCODE SCIPconshdlrBendersMPI::sepaBenders(
 
 	/** aggregate cuts */
 	aggregateCuts(cs2, cs);
-	DSPdebug(cs.printCuts());
+	//DSPdebug(cs.printCuts());
 
 	/** cleanup cs2 */
 	for (int i = 0; i < cs2.sizeCuts(); ++i)
@@ -492,6 +492,9 @@ void SCIPconshdlrBendersMPI::aggregateCuts(OsiCuts cuts_in, OsiCuts &cuts_out)
 		/** construct cuts to pass */
 		for (int s = 0; s < naux_; ++s)
 		{
+			/** auxiliary variable coefficient */
+			aggval[s][nvars_ - naux_ + s] = 1;
+
 			/** initialize vector */
 			vec.clear();
 
