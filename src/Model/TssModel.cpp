@@ -5,6 +5,9 @@
  *      Author: kibaekkim
  */
 
+//#define DSP_DEBUG
+
+#include "Utility/StoMessage.h"
 #include "TssModel.h"
 
 TssModel::TssModel() :
@@ -378,6 +381,7 @@ STO_RTN_CODE TssModel::decompose(
 	int s, i;
 	int nrows = nrows_[0] + size * nrows_[1];
 	int ncols = ncols_[0] + size * ncols_[1] + naux;
+	DSPdebugMessage("nrows %d ncols %d\n", nrows, ncols);
 
 	for (s = 0; s < size; ++s)
 		assert(mat_scen_[scen[s]] != NULL);
@@ -480,7 +484,7 @@ STO_RTN_CODE TssModel::decompose(
 
 	mat = new CoinPackedMatrix(false, rowIndices, colIndices, elements, nzcnt);
 	mat->setDimensions(nrows, ncols);
-	//mat->verifyMtx(4);
+	DSPdebug(mat->verifyMtx(4));
 
 	/** free memory */
 	FREE_ARRAY_PTR(rowIndices);
@@ -540,25 +544,31 @@ STO_RTN_CODE TssModel::decompose(
 		int sind = scen[s];
 
 		/** column lower bounds */
+		DSPdebugMessage("combining column lower bounds\n");
 		copyCoreColLower(clbd + ncols_[0] + s * ncols_[1], 1);
 		combineRandColLower(clbd + ncols_[0] + s * ncols_[1], 1, sind);
 
 		/** column upper bounds */
+		DSPdebugMessage("combining column upper bounds\n");
 		copyCoreColUpper(cubd + ncols_[0] + s * ncols_[1], 1);
 		combineRandColUpper(cubd + ncols_[0] + s * ncols_[1], 1, sind);
 
 		/** column types */
+		DSPdebugMessage("combining column types\n");
 		copyCoreColType(ctype + ncols_[0] + s * ncols_[1], 1);
 
 		/** objective coefficients */
+		DSPdebugMessage("combining objective coefficients\n");
 		copyCoreObjective(obj + ncols_[0] + s * ncols_[1], 1);
 		combineRandObjective(obj + ncols_[0] + s * ncols_[1], 1, sind);
 
 		/** row lower bounds */
+		DSPdebugMessage("combining row lower bounds\n");
 		copyCoreRowLower(rlbd + nrows_[0] + s * nrows_[1], 1);
 		combineRandRowLower(rlbd + nrows_[0] + s * nrows_[1], 1, sind);
 
 		/** row upper bounds */
+		DSPdebugMessage("combining row upper bounds\n");
 		copyCoreRowUpper(rubd + nrows_[0] + s * nrows_[1], 1);
 		combineRandRowUpper(rubd + nrows_[0] + s * nrows_[1], 1, sind);
 	}

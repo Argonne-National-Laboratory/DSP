@@ -97,7 +97,8 @@ private:
 	int parProcIdxSize_;
 	int * parProcIdx_;
 
-	double * probability_; /**< probability of scenario */
+	double * probability_;  /**< probability of scenario */
+	double probabilitySum_; /**< sum of probabilities */
 };
 
 #endif /* SRC_SOLVER_TSSBDMPI_H_ */

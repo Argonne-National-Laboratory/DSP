@@ -21,7 +21,8 @@ TssBdMpi::TssBdMpi(MPI_Comm comm):
 	comm_group_(-1),
 	parProcIdxSize_(0),
 	parProcIdx_(NULL),
-	probability_(NULL)
+	probability_(NULL),
+	probabilitySum_(0.0)
 {
 	MPI_Comm_rank(comm, &comm_rank_);
 	MPI_Comm_size(comm, &comm_size_);
@@ -113,10 +114,15 @@ STO_RTN_CODE TssBdMpi::initialize()
 			for (int s = i; s < nsubprobs; s += comm_size_)
 			{
 				probability_[s] = recvbuf[j++];
+				probabilitySum_ += probability_[s];
 				DSPdebugMessage("probability[%d] %e\n", s, probability_[s]);
 			}
 		}
 	}
+
+	/** broadcast the sum of probabilities */
+	MPI_Bcast(&probabilitySum_, 1, MPI_DOUBLE, 0, comm_);
+	DSPdebugMessage("[%d] sum of probabilities %e\n", comm_rank_, probabilitySum_);
 
 	/** set objective coefficients for auxiliary variables */
 	CoinZeroN(obj_aux_, naux_);
@@ -172,13 +178,13 @@ STO_RTN_CODE TssBdMpi::solve()
 
 	/** find lower bound */
 	/** TODO: can replace this with TssDd */
-	STO_RTN_CHECK_THROW(findLowerBound(probability_, lowerbound), "findLowerBound", "TssBd");
+	STO_RTN_CHECK_THROW(findLowerBound(probability_, lowerbound), "findLowerBound", "TssBdMpi");
 
 	/** We should have a lower bound here. */
 	if (comm_rank_ == 0 && parLogLevel_ > 0) printf(" -> Found lower bound %e\n", lowerbound);
 
 	/** construct master problem */
-	STO_RTN_CHECK_THROW(constructMasterProblem(tssbdsub, lowerbound), "constructMasterProblem", "TssBd");
+	STO_RTN_CHECK_THROW(constructMasterProblem(tssbdsub, lowerbound), "constructMasterProblem", "TssBdMpi");
 
 
 
@@ -189,13 +195,13 @@ STO_RTN_CODE TssBdMpi::solve()
 	time_remains_ -= CoinGetTimeOfDay() - swtime;
 
 	/** configure Benders master */
-	STO_RTN_CHECK_THROW(configureMaster(tssbdsub), "configureMaster", "TssBd");
+	STO_RTN_CHECK_THROW(configureMaster(tssbdsub), "configureMaster", "TssBdMpi");
 
 	/** run workers */
-	STO_RTN_CHECK_THROW(runWorkers(tssbdsub), "runWorkers", "TssBd");
+	STO_RTN_CHECK_THROW(runWorkers(tssbdsub), "runWorkers", "TssBdMpi");
 
 	/** solve Benders master */
-	STO_RTN_CHECK_THROW(runMaster(tssbdsub), "runMaster", "TssBd");
+	STO_RTN_CHECK_THROW(runMaster(tssbdsub), "runMaster", "TssBdMpi");
 
 	/** solution time */
 	solutionTime_ = (clockType_ ? CoinGetTimeOfDay() : CoinCpuTime()) - stime;
@@ -374,8 +380,9 @@ STO_RTN_CODE TssBdMpi::findLowerBound(
 		//printf("ctype %s\n", ctype);
 
 		/** adjust first-stage cost */
+		DSPdebugMessage("[%d] Adjust first-stage cost by %f\n", comm_rank_, model_->getProbability()[parProcIdx_[s]]);
 		for (int j = 0; j < model_->getNumCols(0); ++j)
-			obj[j] *= model_->getProbability()[parProcIdx_[s]];
+			obj[j] *= model_->getProbability()[parProcIdx_[s]] / probabilitySum_;
 
 		/** create solve interface */
 		/** TODO Solving MIP creats a load imbalancing. */
@@ -545,12 +552,12 @@ STO_RTN_CODE TssBdMpi::configureMaster(TssBdSub * tssbdsub)
 	if (model_->getNumCoreIntegers() == 0)
 	{
 		/** configure LP */
-		STO_RTN_CHECK_THROW(configureSLP(), "configureSLP", "TssBd");
+		STO_RTN_CHECK_THROW(configureSLP(), "configureSLP", "TssBdMpi");
 	}
 	else
 	{
 		/** configure MILP */
-		STO_RTN_CHECK_THROW(configureSMILP(tssbdsub), "configureSMILP", "TssBd");
+		STO_RTN_CHECK_THROW(configureSMILP(tssbdsub), "configureSMILP", "TssBdMpi");
 	}
 
 	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
@@ -570,12 +577,12 @@ STO_RTN_CODE TssBdMpi::runMaster(TssBdSub * tssbdsub)
 	if (model_->getNumCoreIntegers() == 0)
 	{
 		/** configure LP */
-		STO_RTN_CHECK_THROW(solveSLP(tssbdsub), "solveSLP", "TssBd");
+		STO_RTN_CHECK_THROW(solveSLP(tssbdsub), "solveSLP", "TssBdMpi");
 	}
 	else
 	{
 		/** configure MILP */
-		STO_RTN_CHECK_THROW(solveSMILP(), "solveSMILP", "TssBd");
+		STO_RTN_CHECK_THROW(solveSMILP(), "solveSMILP", "TssBdMpi");
 	}
 
 	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
