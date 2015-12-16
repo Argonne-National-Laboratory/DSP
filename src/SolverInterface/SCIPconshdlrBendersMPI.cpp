@@ -140,7 +140,7 @@ SCIP_RETCODE SCIPconshdlrBendersMPI::sepaBenders(
 	CoinPackedVector vec;
 	SCIP_Real * vals = NULL; /**< current solution */
 
-#if 1
+#if 0
 	if (scip_checkpriority_ < 0)
 	{
 		/** consider incumbent solutions only */
@@ -165,7 +165,7 @@ SCIP_RETCODE SCIPconshdlrBendersMPI::sepaBenders(
 //		DSPdebugMessage("var[%d] %e\n", j, vals[j]);
 
 	/** TODO Does this work? */
-#if 1
+#if 0
 	if (where != from_scip_check &&
 		where != from_scip_enfolp &&
 		where != from_scip_enfops)

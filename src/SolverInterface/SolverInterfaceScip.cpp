@@ -112,8 +112,8 @@ STO_RTN_CODE SolverInterfaceScip::initialize()
 		setClockType(2);
 		SCIP_CALL_ABORT(SCIPsetIntParam(scip_, "display/freq", par_->getIntParam("SCIP/DISPLAY_FREQ")));
 		SCIP_CALL_ABORT(SCIPsetRealParam(scip_, "limits/gap", par_->getDblParam("SCIP/GAP_TOL")));
-		SCIP_CALL_ABORT(SCIPsetBoolParam(scip_, "misc/allowdualreds", FALSE));
-		SCIP_CALL_ABORT(SCIPsetBoolParam(scip_, "constraints/indicator/dualreductions", FALSE));
+		//SCIP_CALL_ABORT(SCIPsetBoolParam(scip_, "misc/allowdualreds", FALSE));
+		//SCIP_CALL_ABORT(SCIPsetBoolParam(scip_, "constraints/indicator/dualreductions", FALSE));
 	}
 	return STO_RTN_OK;
 }
