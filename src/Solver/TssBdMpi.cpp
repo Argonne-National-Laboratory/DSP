@@ -577,7 +577,7 @@ STO_RTN_CODE TssBdMpi::runMaster(TssBdSub * tssbdsub)
 	if (model_->getNumCoreIntegers() == 0)
 	{
 		/** solve Stochastic LP */
-		STO_RTN_CHECK_THROW(solveSLP(tssbdsub), "solveSLP", "TssBd");
+		STO_RTN_CHECK_THROW(solveSLP(tssbdsub, si_), "solveSLP", "TssBd");
 	}
 	else
 	{
