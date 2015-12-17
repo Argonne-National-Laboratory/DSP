@@ -221,6 +221,7 @@ STO_RTN_CODE StoModel::readSmps(const char * filename)
 	/** stage information */
 	nrows_core_ = 0;
 	ncols_core_ = 0;
+	nints_core_ = 0;
 	for (i = 0; i < nstgs_; ++i)
 	{
 		assert(core->getNumRows(i) >= 0);
@@ -247,7 +248,6 @@ STO_RTN_CODE StoModel::readSmps(const char * filename)
 		core->copyRowUpper(rubd_core_[i], i);
 
 		/** set column types */
-		nints_core_ = 0;
 		CoinFillN(ctype_core_[i], ncols_[i], 'C');
 		for (j = 0; j < core->getBinaryLength(); ++j)
 		{
@@ -266,13 +266,6 @@ STO_RTN_CODE StoModel::readSmps(const char * filename)
 			nints_core_++;
 		}
 	}
-
-	/** branching priority */
-//	if (nints_core_ > 0)
-//	{
-//		priorities_ = new int [nints_core_];
-//		CoinFillN(priorities_, nints_core_, 1000);
-//	}
 
 	/** construct core matrix rows */
 	j = 0;

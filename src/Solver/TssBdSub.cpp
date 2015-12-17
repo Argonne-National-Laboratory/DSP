@@ -511,7 +511,7 @@ void TssBdSub::solveRecourse(
 		int            ncores    /**< number of cores used to run in parallel */)
 {
 #define FREE_MEMORY \
-	FREE_2D_ARRAY_PTR(ncores,Tx);      \
+	FREE_2D_ARRAY_PTR(nSubs_,Tx);      \
 	FREE_2D_ARRAY_PTR(ncores,orgrlbd); \
 	FREE_2D_ARRAY_PTR(ncores,orgrubd);
 

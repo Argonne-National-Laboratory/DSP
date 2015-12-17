@@ -52,6 +52,7 @@ STO_RTN_CODE TssBdMpi::initialize()
 	BGN_TRY_CATCH
 
 	/** parameters */
+	parNumCores_    = par_->getIntParam("BD/NUM_CORES");
 	parCutPriority_ = par_->getIntParam("BD/CUT_PRIORITY");
 
 	int nsubprobs = model_->getNumScenarios();
@@ -331,7 +332,6 @@ STO_RTN_CODE TssBdMpi::findLowerBound(
 		double & lowerbound)
 {
 #define FREE_MEMORY       \
-	FREE_PTR(si)          \
 	FREE_PTR(mat)         \
 	FREE_ARRAY_PTR(clbd)  \
 	FREE_ARRAY_PTR(cubd)  \
@@ -341,7 +341,7 @@ STO_RTN_CODE TssBdMpi::findLowerBound(
 	FREE_ARRAY_PTR(rubd)
 
 	/** problem */
-	SolverInterface * si = NULL;
+	SolverInterface ** si = NULL;
 	CoinPackedMatrix * mat = NULL;
 	double * clbd = NULL;
 	double * cubd = NULL;
@@ -350,14 +350,19 @@ STO_RTN_CODE TssBdMpi::findLowerBound(
 	double * rlbd = NULL;
 	double * rubd = NULL;
 	int augs[1];
+	bool doNext = true;
 
 	BGN_TRY_CATCH
+
+	/** allocate memory */
+	si = new SolverInterface * [parProcIdxSize_];
 
 	/** initialize lower bound */
 	double localLB = 0.0;
 	lowerbound = 0.0;
 
 	/** create models */
+	DSPdebugMessage("[%d] creating lower bouding problems\n", comm_rank_);
 	for (int s = 0; s < parProcIdxSize_; ++s)
 	{
 		/** augmented scenario index */
@@ -377,52 +382,69 @@ STO_RTN_CODE TssBdMpi::findLowerBound(
 			for (int j = 0; j < model_->getNumCols(1); ++j)
 				ctype[model_->getNumCols(0) + j] = 'C';
 		}
-		//printf("ctype %s\n", ctype);
 
 		/** adjust first-stage cost */
-		DSPdebugMessage("[%d] Adjust first-stage cost by %f\n", comm_rank_, model_->getProbability()[parProcIdx_[s]]);
 		for (int j = 0; j < model_->getNumCols(0); ++j)
 			obj[j] *= model_->getProbability()[parProcIdx_[s]] / probabilitySum_;
 
 		/** create solve interface */
-		/** TODO Solving MIP creats a load imbalancing. */
+		/** TODO Solving MIP creates a load imbalancing. */
 		if (model_->getNumIntegers(0) < 0)
 		{
-			si = new SolverInterfaceScip(par_);
-			si->setPrintLevel(CoinMax(CoinMin(parLogLevel_ - 1, 5),0));
+			si[s] = new SolverInterfaceScip(par_);
+			si[s]->setPrintLevel(CoinMax(CoinMin(parLogLevel_ - 1, 5),0));
 		}
 		else
 		{
-			si = new SolverInterfaceSpx(par_);
-			si->setPrintLevel(CoinMax(parLogLevel_ - 1, 0));
+			si[s] = new SolverInterfaceSpx(par_);
+			si[s]->setPrintLevel(CoinMax(parLogLevel_ - 1, 0));
 		}
 
 		/** load problem */
-		si->loadProblem(mat, clbd, cubd, obj, ctype, rlbd, rubd, "BendersLowerBound");
+		si[s]->loadProblem(mat, clbd, cubd,
+				obj, ctype, rlbd, rubd, "BendersLowerBound");
 
+		/** save memory */
+		FREE_MEMORY
+	}
+
+	/** solve models */
+	DSPdebugMessage("[%d] solving lower bouding problems\n", comm_rank_);
+#ifdef USE_OMP
+	omp_set_num_threads(parNumCores_);
+#pragma omp parallel for schedule(dynamic)
+#endif
+	for (int s = 0; s < parProcIdxSize_; ++s)
+	{
 		/** solve */
-		si->solve();
+		si[s]->solve();
+	}
 
+	/** parse status */
+	DSPdebugMessage("[%d] obtaining lower bounds\n", comm_rank_);
+	for (int s = 0; s < parProcIdxSize_ && doNext == true; ++s)
+	{
 		/** solution status */
-		status_ = si->getStatus();
+		status_ = si[s]->getStatus();
+		DSPdebugMessage("[%d] lower bound subproblem status %d\n", comm_rank_, status_);
 
 		/** get solution */
 		switch (status_)
 		{
 		case STO_STAT_OPTIMAL:
 		case STO_STAT_LIM_ITERorTIME:
-			localLB += si->getPrimalBound();
+			DSPdebugMessage("[%d] lower bound %e\n", comm_rank_, si[s]->getPrimalBound());
+			localLB += si[s]->getPrimalBound();
 			break;
 		case STO_STAT_DUAL_INFEASIBLE:
 			/** need to use L-shaped method in this case */
 			localLB = -COIN_DBL_MAX;
+			doNext = false;
 			break;
 		default:
+			doNext = false;
 			break;
 		}
-
-		/** save memory */
-		FREE_MEMORY
 	}
 
 	DSPdebugMessage("[%d] lower bound %f\n", comm_rank_, localLB);
@@ -431,6 +453,8 @@ STO_RTN_CODE TssBdMpi::findLowerBound(
 	MPI_Reduce(&localLB, &lowerbound, 1, MPI_DOUBLE, MPI_SUM, 0, comm_);
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)
+
+	FREE_2D_PTR(parProcIdxSize_,si);
 
 	return STO_RTN_OK;
 #undef FREE_MEMORY
