@@ -59,6 +59,11 @@ void DspParams::initIntParams()
 	/** Benders cut priority (refer CONSHDLR_SEPAPRIORITY of SCIP constraint handler */
 	IntParams_.createParam("BD/CUT_PRIORITY", -200000);
 
+	/** Benders lower bound methods:
+	 * 0 = solve separate LP relaxation problems;
+	 * 1 = solve separate MILP relaxation problems */
+	IntParams_.createParam("BD/INIT_LB_ALGO", SEPARATE_LP);
+
 	/** algorithm for the master */
 	IntParams_.createParam("DD/MASTER_ALGO", IPM_Feasible);
 

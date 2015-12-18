@@ -30,7 +30,6 @@ set(DSP_SRC_FILES
 	Model/DecTssModel.cpp
 	Model/DecDetModel.cpp
 	Model/DetModel.cpp
-	Utility/StoMessage.cpp
 	Utility/StoUtility.cpp
 	Utility/DspParams.cpp)
 

@@ -54,6 +54,7 @@ STO_RTN_CODE TssBdMpi::initialize()
 	/** parameters */
 	parNumCores_    = par_->getIntParam("BD/NUM_CORES");
 	parCutPriority_ = par_->getIntParam("BD/CUT_PRIORITY");
+	parInitLbAlgo_  = par_->getIntParam("BD/INIT_LB_ALGO");
 
 	int nsubprobs = model_->getNumScenarios();
 	int effective_comm_rank = comm_rank_;
@@ -134,7 +135,7 @@ STO_RTN_CODE TssBdMpi::initialize()
 	}
 
 	/** Root process can print out. */
-	if (comm_rank_ > 0) parLogLevel_ = -100;
+	if (comm_rank_ > 0) parLogLevel_ = -999;
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)
 
@@ -154,6 +155,7 @@ STO_RTN_CODE TssBdMpi::solve()
 	assert(par_);
 
 	/** subproblems */
+	double tic;
 	TssBdSub * tssbdsub = NULL; /**< cut generator */
 	double lowerbound = 0.0;
 
@@ -165,6 +167,9 @@ STO_RTN_CODE TssBdMpi::solve()
 	/** solution time */
 	double swtime = CoinGetTimeOfDay();
 
+	message_->print(1, "Creating Benders sub problems ...");
+	tic = CoinGetTimeOfDay();
+
 	/** configure Benders cut generator */
 	/** This does NOT make deep copies. So, DO NOT RELEASE POINTERS. */
 	tssbdsub = new TssBdSub(par_);
@@ -172,26 +177,29 @@ STO_RTN_CODE TssBdMpi::solve()
 		tssbdsub->scenarios_.push_back(parProcIdx_[s]);
 	STO_RTN_CHECK_THROW(tssbdsub->loadProblem(model_, naugs_, augs_, naux_), "loadProblem", "TssBdSub");
 
-	if (comm_rank_ == 0 && parLogLevel_ > 0) printf("Phase 1:\n");
+	message_->print(1, " (%.2f sec)\n", CoinGetTimeOfDay() - tic);
+
+	message_->print(1, "\n## Phase 1 ##\n\n");
 
 	/** solution time */
 	double stime = clockType_ ? CoinGetTimeOfDay() : CoinCpuTime();
 
+	message_->print(1, "Finding global lower bound ...");
+	tic = CoinGetTimeOfDay();
+
 	/** find lower bound */
 	/** TODO: can replace this with TssDd */
-	STO_RTN_CHECK_THROW(findLowerBound(probability_, lowerbound), "findLowerBound", "TssBdMpi");
+	STO_RTN_CHECK_THROW(findLowerBound(lowerbound), "findLowerBound", "TssBdMpi");
 
-	/** We should have a lower bound here. */
-	if (comm_rank_ == 0 && parLogLevel_ > 0) printf(" -> Found lower bound %e\n", lowerbound);
+	message_->print(1, " (%.2f sec) -> Lower bound %e\n", CoinGetTimeOfDay() - tic, lowerbound);
+	message_->print(1, "Creating master problem instance ...\n");
+	tic = CoinGetTimeOfDay();
 
 	/** construct master problem */
 	STO_RTN_CHECK_THROW(constructMasterProblem(tssbdsub, lowerbound), "constructMasterProblem", "TssBdMpi");
 
-
-
-	/** PHASE 2 */
-
-	if (comm_rank_ == 0 && parLogLevel_ > 0) printf("Phase 2:\n");
+	message_->print(1, " (%.2f sec)\n", CoinGetTimeOfDay() - tic);
+	message_->print(1, "\n##Phase 2 ##\n\n");
 
 	time_remains_ -= CoinGetTimeOfDay() - swtime;
 
@@ -210,6 +218,8 @@ STO_RTN_CODE TssBdMpi::solve()
 	/** broadcast status_ */
 	MPI_Bcast(&status_, 1, MPI_INT, 0, comm_);
 
+	message_->print(1, "Collecting results ...\n");
+	tic = CoinGetTimeOfDay();
 
 	/** collect solution */
 	switch (status_)
@@ -316,6 +326,8 @@ STO_RTN_CODE TssBdMpi::solve()
 		break;
 	}
 
+	message_->print(1, " (%.2f sec)\n", CoinGetTimeOfDay() - tic);
+
 	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)
 
 	/** free memory */
@@ -327,9 +339,7 @@ STO_RTN_CODE TssBdMpi::solve()
 }
 
 /** to find a lower bound by solving a set of group subproblems */
-STO_RTN_CODE TssBdMpi::findLowerBound(
-		const double * probability,
-		double & lowerbound)
+STO_RTN_CODE TssBdMpi::findLowerBound(double & lowerbound)
 {
 #define FREE_MEMORY       \
 	FREE_PTR(mat)         \
@@ -362,7 +372,7 @@ STO_RTN_CODE TssBdMpi::findLowerBound(
 	lowerbound = 0.0;
 
 	/** create models */
-	DSPdebugMessage("[%d] creating lower bouding problems\n", comm_rank_);
+	message_->print(999,"[%d] creating lower bouding problems\n", comm_rank_);
 	for (int s = 0; s < parProcIdxSize_; ++s)
 	{
 		/** augmented scenario index */
@@ -389,15 +399,15 @@ STO_RTN_CODE TssBdMpi::findLowerBound(
 
 		/** create solve interface */
 		/** TODO Solving MIP creates a load imbalancing. */
-		if (model_->getNumIntegers(0) < 0)
+		if (parInitLbAlgo_ == SEPARATE_MILP && model_->getNumIntegers(0) > 0)
 		{
 			si[s] = new SolverInterfaceScip(par_);
-			si[s]->setPrintLevel(CoinMax(CoinMin(parLogLevel_ - 1, 5),0));
+			//si[s]->setPrintLevel(CoinMax(CoinMin(parLogLevel_ - 1, 5),0));
+			si[s]->setPrintLevel(0);
 		}
 		else
 		{
 			si[s] = new SolverInterfaceSpx(par_);
-			si[s]->setPrintLevel(CoinMax(parLogLevel_ - 1, 0));
 		}
 
 		/** load problem */
@@ -409,7 +419,7 @@ STO_RTN_CODE TssBdMpi::findLowerBound(
 	}
 
 	/** solve models */
-	DSPdebugMessage("[%d] solving lower bouding problems\n", comm_rank_);
+	message_->print(999,"[%d] solving lower bouding problems\n", comm_rank_);
 #ifdef USE_OMP
 	omp_set_num_threads(parNumCores_);
 #pragma omp parallel for schedule(dynamic)

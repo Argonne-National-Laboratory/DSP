@@ -59,9 +59,6 @@ STO_RTN_CODE DecSolver::loadModel(DspParams * par, DecModel * model)
 	assert(solution_ == NULL);
 	solution_ = new double [ncols];
 
-	/** create message */
-	message_ = new StoMessage;
-
 	/** parameters */
 	parLogLevel_     = par_->getIntParam("LOG_LEVEL");
 	parNodeLim_      = par_->getIntParam("NODE_LIM");
@@ -71,6 +68,9 @@ STO_RTN_CODE DecSolver::loadModel(DspParams * par, DecModel * model)
 	parScipGapTol_   = par_->getDblParam("SCIP/GAP_TOL");
 	parScipTimeLim_  = par_->getDblParam("SCIP/TIME_LIM");
 	parRelaxIntegrality_ = par_->getBoolPtrParam("RELAX_INTEGRALITY");
+
+	/** create message */
+	message_ = new StoMessage(parLogLevel_);
 
 	/** set time limit */
 	time_remains_ = parWallLim_;

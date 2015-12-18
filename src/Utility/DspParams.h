@@ -24,6 +24,12 @@ enum DSP_DD_MASTER_ALGO
 	Subgradient
 };
 
+enum DSP_BD_INIT_LB_ALGO
+{
+	SEPARATE_LP = 0,
+	SEPARATE_MILP,
+};
+
 /**
  * This class create, set and get parameters.
  */

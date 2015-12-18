@@ -40,6 +40,14 @@ public:
 	/** set auxiliary variable data */
 	void setAugScenarios(int size, int * indices);
 
+protected:
+
+	/** initialize solver */
+	virtual STO_RTN_CODE initialize();
+
+	/** to find a lower bound by solving a set of group subproblems */
+	virtual STO_RTN_CODE findLowerBound(double & lowerbound);
+
 private:
 
 	/** construct master problem */
@@ -52,11 +60,6 @@ private:
 			CoinPackedMatrix **&   mat_tech,
 			OsiSolverInterface **& si_reco);
 #endif
-
-	/** to find a lower bound by solving a set of group subproblems */
-	STO_RTN_CODE findLowerBound(
-			const double * probability,
-			double & lowerbound);
 
 	/** configure Stochastic LP */
 	STO_RTN_CODE configureSLP();
@@ -88,6 +91,7 @@ protected:
 	/** parameters */
 	int parNumCores_;
 	int parCutPriority_;
+	int parInitLbAlgo_;
 };
 
 #endif /* TSSBD_H_ */

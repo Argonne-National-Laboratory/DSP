@@ -38,18 +38,18 @@ public:
 	/** set auxiliary variable data */
 	void setAugScenarios(int size, int * indices);
 
-private:
+protected:
 
 	/** initialize solver */
-	STO_RTN_CODE initialize();
+	virtual STO_RTN_CODE initialize();
+
+	/** to find a lower bound by solving a set of group subproblems */
+	virtual STO_RTN_CODE findLowerBound(double & lowerbound);
+
+private:
 
 	/** construct master problem */
 	STO_RTN_CODE constructMasterProblem(TssBdSub * tssbdsub, double lowerbound);
-
-	/** to find a lower bound by solving a set of group subproblems */
-	STO_RTN_CODE findLowerBound(
-			const double * probability,
-			double & lowerbound);
 
 	/** configure master */
 	STO_RTN_CODE configureMaster(TssBdSub * tssbdsub);
@@ -101,7 +101,7 @@ private:
 	int parProcIdxSize_;
 	int * parProcIdx_;
 
-	double * probability_;  /**< probability of scenario */
+	double * probability_;  /**< probability */
 	double probabilitySum_; /**< sum of probabilities */
 };
 

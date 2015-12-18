@@ -25,7 +25,8 @@ TssBd::TssBd() :
 	clbd_aux_(NULL),
 	cubd_aux_(NULL),
 	parNumCores_(1),
-	parCutPriority_(-200000)
+	parCutPriority_(-200000),
+	parInitLbAlgo_(SEPARATE_LP)
 {
 	/** nothing to do */
 }
@@ -41,6 +42,22 @@ TssBd::~TssBd()
 	naux_ = 0;
 }
 
+/** initialize */
+STO_RTN_CODE TssBd::initialize()
+{
+	/** parameters */
+	parNumCores_    = par_->getIntParam("BD/NUM_CORES");
+	parCutPriority_ = par_->getIntParam("BD/CUT_PRIORITY");
+	parInitLbAlgo_  = par_->getIntParam("BD/INIT_LB_ALGO");
+
+	/** set objective coefficients for auxiliary variables */
+	CoinZeroN(obj_aux_, naux_);
+	for (int s = 0; s < model_->getNumScenarios(); ++s)
+		obj_aux_[s % naux_] += model_->getProbability()[s];
+
+	return STO_RTN_OK;
+}
+
 /** solve */
 STO_RTN_CODE TssBd::solve()
 {
@@ -50,27 +67,20 @@ STO_RTN_CODE TssBd::solve()
 	assert(model_);
 	assert(par_);
 
-	/** subproblems */
-	const double * probability = NULL; /**< probability */
-	TssBdSub *     tssbdsub    = NULL; /**< cut generator */
+	double tic;
+	TssBdSub * tssbdsub = NULL; /**< cut generator */
 	double lowerbound = 0.0;
 
 	BGN_TRY_CATCH
 
-	/** parameters */
-	parNumCores_    = par_->getIntParam("BD/NUM_CORES");
-	parCutPriority_ = par_->getIntParam("BD/CUT_PRIORITY");
+	/** initialize */
+	initialize();
 
 	/** solution time */
 	double swtime = CoinGetTimeOfDay();
 
-	/** get number of scenarios */
-	probability = model_->getProbability();
-
-	/** set objective coefficients for auxiliary variables */
-	CoinZeroN(obj_aux_, naux_);
-	for (int s = 0; s < model_->getNumScenarios(); ++s)
-		obj_aux_[s % naux_] += probability[s];
+	message_->print(1, "Creating Benders sub problems ...");
+	tic = CoinGetTimeOfDay();
 
 	/** configure Benders cut generator */
 	/** This does NOT make deep copies. So, DO NOT RELEASE POINTERS. */
@@ -79,22 +89,29 @@ STO_RTN_CODE TssBd::solve()
 		tssbdsub->scenarios_.push_back(s);
 	STO_RTN_CHECK_THROW(tssbdsub->loadProblem(model_, naugs_, augs_, naux_), "loadProblem", "TssBdSub");
 
-	if (parLogLevel_ > 0) printf("Phase 1:\n");
+	message_->print(1, " (%.2f sec)\n", CoinGetTimeOfDay() - tic);
+
+	message_->print(1, "\n## Phase 1 ##\n\n");
 
 	/** solution time */
 	double stime = clockType_ ? CoinGetTimeOfDay() : CoinCpuTime();
 
+	message_->print(1, "Finding global lower bound ...");
+	tic = CoinGetTimeOfDay();
+
 	/** find lower bound */
 	/** TODO: replace this with TssDd */
-	STO_RTN_CHECK_THROW(findLowerBound(probability, lowerbound), "findLowerBound", "TssBd");
+	STO_RTN_CHECK_THROW(findLowerBound(lowerbound), "findLowerBound", "TssBd");
 
-	/** We should have a lower bound here. */
-	if (parLogLevel_ > 0) printf(" -> Found lower bound %e\n", lowerbound);
+	message_->print(1, " (%.2f sec) -> Lower bound %e\n", CoinGetTimeOfDay() - tic, lowerbound);
+	message_->print(1, "Creating master problem instance ...\n");
+	tic = CoinGetTimeOfDay();
 
 	/** construct master problem */
 	STO_RTN_CHECK_THROW(constructMasterProblem(tssbdsub, lowerbound), "constructMasterProblem", "TssBd");
 
-	if (parLogLevel_ > 0) printf("Phase 2:\n");
+	message_->print(1, " (%.2f sec)\n", CoinGetTimeOfDay() - tic);
+	message_->print(1, "\n##Phase 2 ##\n\n");
 
 	time_remains_ -= CoinGetTimeOfDay() - swtime;
 
@@ -118,6 +135,9 @@ STO_RTN_CODE TssBd::solve()
 
 	/** solution time */
 	solutionTime_ = (clockType_ ? CoinGetTimeOfDay() : CoinCpuTime()) - stime;
+
+	message_->print(1, "Collecting results ...\n");
+	tic = CoinGetTimeOfDay();
 
 	/** collect solution */
 	switch (status_)
@@ -176,6 +196,8 @@ STO_RTN_CODE TssBd::solve()
 		printf("Solution status (%d).\n", status_);
 		break;
 	}
+
+	message_->print(1, " (%.2f sec)\n", CoinGetTimeOfDay() - tic);
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)
 
@@ -301,9 +323,7 @@ STO_RTN_CODE TssBd::configureSLP()
 }
 
 /** to find a lower bound by solving a set of group subproblems */
-STO_RTN_CODE TssBd::findLowerBound(
-		const double * probability,
-		double & lowerbound)
+STO_RTN_CODE TssBd::findLowerBound(double & lowerbound)
 {
 #define FREE_MEMORY       \
 	FREE_PTR(mat)         \
@@ -363,18 +383,18 @@ STO_RTN_CODE TssBd::findLowerBound(
 
 		/** adjust first-stage cost */
 		for (int j = 0; j < model_->getNumCols(0); ++j)
-			obj[j] *= probability[s];
-#if 1
-		if (nIntegers > 0)
+			obj[j] *= model_->getProbability()[s]
+;
+
+		if (parInitLbAlgo_ == SEPARATE_MILP && nIntegers > 0)
 		{
 			si[s] = new SolverInterfaceScip(par_);
-			si[s]->setPrintLevel(parLogLevel_ + 1);
+			//si[s]->setPrintLevel(CoinMax(CoinMin(parLogLevel_ - 1, 5),0));
+			si[s]->setPrintLevel(0);
 		}
 		else
-#endif
 		{
 			si[s] = new SolverInterfaceSpx(par_);
-			si[s]->setPrintLevel(CoinMax(parLogLevel_ - 1, 0));
 		}
 		/** load problem */
 		si[s]->loadProblem(mat, clbd, cubd, obj, ctype, rlbd, rubd, "BendersLowerBound");
@@ -468,7 +488,7 @@ STO_RTN_CODE TssBd::solveSLP(TssBdSub * tssbdsub)
 			if (parLogLevel_)
 			{
 				niters += si_->getIterationCount();
-				printf("Iteration %4d: objective function: %+E iteration %d\n",
+				message_->print(1,"Iteration %4d: objective function: %+E iteration %d\n",
 						iter++, objval, niters);
 			}
 #ifdef TSSBENDERS_DEBUG
@@ -666,154 +686,4 @@ void TssBd::setAugScenarios(int size, int * indices)
 
 	CoinCopyN(indices, naugs_, augs_);
 }
-
-#if 0
-/** construct subproblems */
-STO_RTN_CODE TssBd::constructSubProblem(
-		double * probability,
-		CoinPackedMatrix **&   mat_tech,
-		OsiSolverInterface **& si_reco)
-{
-#define FREE_MEMORY                 \
-	FREE_PTR(mat_tech_l)            \
-	FREE_PTR(mat_reco)              \
-	FREE_ARRAY_PTR(clbd_reco)       \
-	FREE_ARRAY_PTR(cubd_reco)       \
-	FREE_ARRAY_PTR(ctype_reco)      \
-	FREE_ARRAY_PTR(obj_reco)        \
-	FREE_ARRAY_PTR(rlbd_reco)       \
-	FREE_ARRAY_PTR(rubd_reco)       \
-	FREE_ARRAY_PTR(intind_reco)     \
-	FREE_ARRAY_PTR(shifted_indices)
-
-	assert(model_);
-
-	int i, s;
-	std::vector<int> incscn, excscn; /** scenario indices to be included and excluded */
-
-	/** subproblems */
-	CoinPackedMatrix * mat_tech_l = NULL;
-	CoinPackedMatrix * mat_reco = NULL;
-	double * clbd_reco   = NULL;
-	double * cubd_reco   = NULL;
-	double * obj_reco    = NULL;
-	char *   ctype_reco  = NULL;
-	double * rlbd_reco   = NULL;
-	double * rubd_reco   = NULL;
-	int      intlen_reco = 0;
-	int *    intind_reco = NULL;
-	int *    shifted_indices = NULL;
-
-	BGN_TRY_CATCH
-
-	/** get number of scenarios */
-	int nscen = model_->getNumScenarios();
-
-	/** get incscn and excscn */
-	for (s = 0, i = 0; s < nscen; ++s)
-	{
-		/** for scenario augmentation */
-		if (naugs_ > 0 && i < naugs_)
-		{
-			while (i < naugs_ && augs_[i] < s)
-			{
-				i++;
-			}
-			if (i < naugs_ && augs_[i] == s)
-			{
-				/** put in the set of excluded scenarios */
-				excscn.push_back(s);
-				continue;
-			}
-		}
-
-		/** put in the set of included scenarios */
-		incscn.push_back(s);
-	}
-
-	/** for included scenarios */
-	for (unsigned int s = 0; s < incscn.size(); ++s)
-	{
-		/** get probability */
-		probability[s] = model_->getProbability()[incscn[s]];
-
-		/** copy recourse problem */
-		STO_RTN_CHECK_THROW(model_->copyRecoProb(incscn[s], mat_tech[s],
-				mat_reco, clbd_reco, cubd_reco, ctype_reco,
-				obj_reco, rlbd_reco, rubd_reco), "copyRecoProb", "TssModel")
-
-		/** column types */
-		if (relax_[1]) CoinFillN(ctype_reco, model_->getNumCols(1), 'C');
-		convertColTypes(mat_reco->getNumCols(), ctype_reco, intlen_reco, intind_reco);
-
-		/** creating solver interface */
-		si_reco[s] = new OsiClpSolverInterface;
-		si_reco[s]->loadProblem(*mat_reco, clbd_reco, cubd_reco, obj_reco, rlbd_reco, rubd_reco);
-		si_reco[s]->setInteger(intind_reco, intlen_reco);
-		si_reco[s]->messageHandler()->setLogLevel(0);
-
-		//printf("s %d mat_reco %p si_reco %p\n", s, mat_tech[s], si_reco[s]);
-
-		/** free memory */
-		FREE_MEMORY
-	}
-
-#if 0
-	/** for excluded scenarios, create augmented rows */
-	for (unsigned int s = 0; s < excscn.size(); ++s)
-	{
-		printf("Create augmented row for scenario %d\n", excscn[s]);
-		/** copy recourse problem */
-		status = model_->copyRecoProb(excscn[s], mat_tech_l, mat_reco, clbd_reco, cubd_reco, ctype_reco,
-				obj_reco, rlbd_reco, rubd_reco);
-		if (status) CoinError("Failed to copy recourse problem data", "constructSubProblem", "TssBenders");
-
-		/** merge */
-		mat_tech_l->rightAppendPackedMatrix(*mat_reco);
-		mat_tech_l->verifyMtx(4);
-
-		/** allocate temporary memory */
-		shifted_indices = new int [mat_tech_l->getNumElements()];
-
-		/** assign indices */
-		CoinCopyN(mat_tech_l->getIndices(), mat_tech_l->getNumElements(), shifted_indices);
-
-		/** shift indices */
-		if (s > 0)
-		{
-			for (int i = 0; i < mat_tech_l->getNumRows(); ++i)
-			{
-				for (int j = mat_tech_l->getVectorStarts()[i]; j < mat_tech_l->getVectorStarts()[i+1]; ++j)
-				{
-					model_->shiftVecIndices(mat_tech_l->getVectorSize(i),
-							shifted_indices + mat_tech_l->getVectorFirst(i),
-							model_->getNumCols(1) * s,
-							model_->getNumCols(0));
-				}
-			}
-		}
-
-		/** add rows */
-		si_->addRows(mat_tech_l->getNumRows(), mat_tech_l->getVectorStarts(),
-				shifted_indices, mat_tech_l->getElements(), rlbd_reco, rubd_reco);
-
-		/** free memory */
-		FREE_MEMORY
-	}
-#endif
-
-//	/** set subproblem info to LsSolverInterface */
-//	si_->loadSubproblems(
-//			nscen - naugs_, probability,
-//			const_cast<const CoinPackedMatrix **>(mat_tech),
-//			const_cast<const OsiSolverInterface **>(si_reco),
-//			naux_);
-
-	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)
-
-	return STO_RTN_OK;
-
-#undef FREE_MEMORY
-}
-#endif
 
