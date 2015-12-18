@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+#define DSP_DEBUG
 
 #include <Solver/TssBdMpi.h>
 #include "Utility/StoUtility.h"
@@ -135,7 +135,7 @@ STO_RTN_CODE TssBdMpi::initialize()
 	}
 
 	/** Root process can print out. */
-	if (comm_rank_ > 0) parLogLevel_ = -999;
+	if (comm_rank_ > 0) message_->logLevel_ = -999;
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)
 
@@ -167,6 +167,7 @@ STO_RTN_CODE TssBdMpi::solve()
 	/** solution time */
 	double swtime = CoinGetTimeOfDay();
 
+	message_->print(1, "\nPhase 1:\n");
 	message_->print(1, "Creating Benders sub problems ...");
 	tic = CoinGetTimeOfDay();
 
@@ -179,7 +180,6 @@ STO_RTN_CODE TssBdMpi::solve()
 
 	message_->print(1, " (%.2f sec)\n", CoinGetTimeOfDay() - tic);
 
-	message_->print(1, "\n## Phase 1 ##\n\n");
 
 	/** solution time */
 	double stime = clockType_ ? CoinGetTimeOfDay() : CoinCpuTime();
@@ -192,14 +192,14 @@ STO_RTN_CODE TssBdMpi::solve()
 	STO_RTN_CHECK_THROW(findLowerBound(lowerbound), "findLowerBound", "TssBdMpi");
 
 	message_->print(1, " (%.2f sec) -> Lower bound %e\n", CoinGetTimeOfDay() - tic, lowerbound);
-	message_->print(1, "Creating master problem instance ...\n");
+	message_->print(1, "Creating master problem instance ...");
 	tic = CoinGetTimeOfDay();
 
 	/** construct master problem */
 	STO_RTN_CHECK_THROW(constructMasterProblem(tssbdsub, lowerbound), "constructMasterProblem", "TssBdMpi");
 
 	message_->print(1, " (%.2f sec)\n", CoinGetTimeOfDay() - tic);
-	message_->print(1, "\n##Phase 2 ##\n\n");
+	message_->print(1, "\nPhase 2:\n");
 
 	time_remains_ -= CoinGetTimeOfDay() - swtime;
 
@@ -218,7 +218,7 @@ STO_RTN_CODE TssBdMpi::solve()
 	/** broadcast status_ */
 	MPI_Bcast(&status_, 1, MPI_INT, 0, comm_);
 
-	message_->print(1, "Collecting results ...\n");
+	message_->print(1, "Collecting results ...");
 	tic = CoinGetTimeOfDay();
 
 	/** collect solution */
@@ -372,7 +372,7 @@ STO_RTN_CODE TssBdMpi::findLowerBound(double & lowerbound)
 	lowerbound = 0.0;
 
 	/** create models */
-	message_->print(999,"[%d] creating lower bouding problems\n", comm_rank_);
+	DSPdebugMessage("[%d] creating lower bouding problems\n", comm_rank_);
 	for (int s = 0; s < parProcIdxSize_; ++s)
 	{
 		/** augmented scenario index */
@@ -419,7 +419,7 @@ STO_RTN_CODE TssBdMpi::findLowerBound(double & lowerbound)
 	}
 
 	/** solve models */
-	message_->print(999,"[%d] solving lower bouding problems\n", comm_rank_);
+	DSPdebugMessage("[%d] solving lower bouding problems\n", comm_rank_);
 #ifdef USE_OMP
 	omp_set_num_threads(parNumCores_);
 #pragma omp parallel for schedule(dynamic)

@@ -79,6 +79,7 @@ STO_RTN_CODE TssBd::solve()
 	/** solution time */
 	double swtime = CoinGetTimeOfDay();
 
+	message_->print(1, "\nPhase 1:\n");
 	message_->print(1, "Creating Benders sub problems ...");
 	tic = CoinGetTimeOfDay();
 
@@ -91,8 +92,6 @@ STO_RTN_CODE TssBd::solve()
 
 	message_->print(1, " (%.2f sec)\n", CoinGetTimeOfDay() - tic);
 
-	message_->print(1, "\n## Phase 1 ##\n\n");
-
 	/** solution time */
 	double stime = clockType_ ? CoinGetTimeOfDay() : CoinCpuTime();
 
@@ -104,14 +103,14 @@ STO_RTN_CODE TssBd::solve()
 	STO_RTN_CHECK_THROW(findLowerBound(lowerbound), "findLowerBound", "TssBd");
 
 	message_->print(1, " (%.2f sec) -> Lower bound %e\n", CoinGetTimeOfDay() - tic, lowerbound);
-	message_->print(1, "Creating master problem instance ...\n");
+	message_->print(1, "Creating master problem instance ...");
 	tic = CoinGetTimeOfDay();
 
 	/** construct master problem */
 	STO_RTN_CHECK_THROW(constructMasterProblem(tssbdsub, lowerbound), "constructMasterProblem", "TssBd");
 
 	message_->print(1, " (%.2f sec)\n", CoinGetTimeOfDay() - tic);
-	message_->print(1, "\n##Phase 2 ##\n\n");
+	message_->print(1, "\nPhase 2:\n");
 
 	time_remains_ -= CoinGetTimeOfDay() - swtime;
 
@@ -136,7 +135,7 @@ STO_RTN_CODE TssBd::solve()
 	/** solution time */
 	solutionTime_ = (clockType_ ? CoinGetTimeOfDay() : CoinCpuTime()) - stime;
 
-	message_->print(1, "Collecting results ...\n");
+	message_->print(1, "\nCollecting results ...");
 	tic = CoinGetTimeOfDay();
 
 	/** collect solution */

@@ -22,12 +22,11 @@ public:
 		{
 			va_list args;
 			va_start(args, fmt);
-			vfprintf(stdout, fmt, args);
+			vfprintf(stderr, fmt, args);
 			va_end(args);
 		}
 	}
 
-private:
 	int logLevel_;
 };
 
