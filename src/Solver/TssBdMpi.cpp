@@ -22,7 +22,8 @@ TssBdMpi::TssBdMpi(MPI_Comm comm):
 	parProcIdxSize_(0),
 	parProcIdx_(NULL),
 	probability_(NULL),
-	probabilitySum_(0.0)
+	probabilitySum_(0.0),
+	procIdxSizes_(NULL)
 {
 	MPI_Comm_rank(comm, &comm_rank_);
 	MPI_Comm_size(comm, &comm_size_);
@@ -32,6 +33,7 @@ TssBdMpi::~TssBdMpi()
 {
 	FREE_ARRAY_PTR(parProcIdx_);
 	FREE_ARRAY_PTR(probability_);
+	FREE_ARRAY_PTR(procIdxSizes_);
 }
 
 /** initialize solver */
@@ -56,55 +58,50 @@ STO_RTN_CODE TssBdMpi::initialize()
 	parCutPriority_ = par_->getIntParam("BD/CUT_PRIORITY");
 	parInitLbAlgo_  = par_->getIntParam("BD/INIT_LB_ALGO");
 
+	if (comm_rank_ == 0)
+		procIdxSizes_ = new int [comm_size_];
+
 	int nsubprobs = model_->getNumScenarios();
-	int effective_comm_rank = comm_rank_;
 	int effective_comm_size = comm_size_;
 
 	if (parProcIdxSize_ == 0)
 	{
 		effective_comm_size = CoinMin(effective_comm_size, nsubprobs);
-		if (effective_comm_rank < effective_comm_size)
+		if (comm_rank_ < effective_comm_size)
 		{
 			/** round-robin */
-			int size = (int) ((nsubprobs - 1) - effective_comm_rank) / effective_comm_size + 1;
+			int size = (int) ((nsubprobs - 1) - comm_rank_) / effective_comm_size + 1;
 			assert(size > 0);
 			parProcIdxSize_ = size;
 			parProcIdx_ = new int [size];
 			int i = 0;
-			for (int s = effective_comm_rank; s < nsubprobs; s += effective_comm_size)
+			for (int s = comm_rank_; s < nsubprobs; s += effective_comm_size)
 				parProcIdx_[i++] = s;
 		}
 	}
 
+	/** Let the root know how many scenarios each process use. */
+	MPI_Gather(&parProcIdxSize_, 1, MPI_INT, procIdxSizes_, 1, MPI_INT, 0, comm_);
+
 	if (comm_rank_ == 0)
 	{
-		recvbuf = new double [nsubprobs];
 		recvcounts = new int [comm_size_];
 		displs = new int [comm_size_];
 		for (int i = 0; i < comm_size_; ++i)
 		{
-			recvcounts[i] = parProcIdxSize_;
+			recvcounts[i] = procIdxSizes_[i];
 			displs[i] = i == 0 ? 0 : displs[i-1] + recvcounts[i-1];
 			DSPdebugMessage("recvcounts_[%d] %d displs_[%d] %d\n", i, recvcounts[i], i, displs[i]);
 		}
+		recvbuf = new double [displs[comm_size_-1]+recvcounts[comm_size_-1]];
 	}
-
-	/** calculate communication groups */
-	num_comm_groups_ = (comm_size_ - 1) / nsubprobs + 1;
-	if (comm_size_ > nsubprobs
-			&& comm_size_ % nsubprobs > 0
-			&& comm_size_ % nsubprobs < comm_rank_ % nsubprobs + 1)
-		num_comm_groups_ -= 1;
-	comm_group_ = comm_rank_ / nsubprobs;
-	DSPdebugMessage("-> comm_size %d comm_rank %d num_comm_groups %d comm_group %d\n",
-			comm_size_, comm_rank_, num_comm_groups_, comm_group_);
 
 	/** collect probability */
 	lprobability = new double [parProcIdxSize_];
 	for (int i = 0; i < parProcIdxSize_; ++i)
 	{
 		lprobability[i] = model_->getProbability()[parProcIdx_[i]];
-		DSPdebugMessage("[%d] probability[%d] %e\n", comm_rank_, i, 	lprobability[i]);
+		DSPdebugMessage("[%d] probability[%d] %e\n", comm_rank_, i, lprobability[i]);
 	}
 	MPI_Gatherv(lprobability, parProcIdxSize_, MPI_DOUBLE, recvbuf, recvcounts, displs, MPI_DOUBLE, 0, comm_);
 
@@ -218,6 +215,7 @@ STO_RTN_CODE TssBdMpi::solve()
 	/** broadcast status_ */
 	MPI_Bcast(&status_, 1, MPI_INT, 0, comm_);
 
+	message_->print(1, "Solution Status: %d\n", status_);
 	message_->print(1, "Collecting results ...");
 	tic = CoinGetTimeOfDay();
 
@@ -245,7 +243,7 @@ STO_RTN_CODE TssBdMpi::solve()
 
 				for (int i = 0; i < comm_size_; ++i)
 				{
-					recvcounts[i] = parProcIdxSize_ * model_->getNumCols(1);
+					recvcounts[i] = procIdxSizes_[i] * model_->getNumCols(1);
 					displs[i] = i == 0 ? 0 : displs[i-1] + recvcounts[i-1];
 					DSPdebugMessage("recvcounts_[%d] %d displs_[%d] %d\n", i, recvcounts[i], i, displs[i]);
 				}
@@ -633,8 +631,7 @@ STO_RTN_CODE TssBdMpi::runWorkers(TssBdSub * tssbdsub)
 #define FREE_MEMORY \
 	FREE_ARRAY_PTR(solution); \
 	FREE_2D_ARRAY_PTR(model_->getNumScenarios(),cutval); \
-	FREE_ARRAY_PTR(cutrhs); \
-	FREE_ARRAY_PTR(status);
+	FREE_ARRAY_PTR(cutrhs);
 
 	if (comm_rank_ == 0)
 		return STO_RTN_OK;
@@ -646,7 +643,6 @@ STO_RTN_CODE TssBdMpi::runWorkers(TssBdSub * tssbdsub)
 	double ** cutval = NULL;
 	double * cutrhs = NULL;
 	CoinPackedVector vec;
-	int * status = NULL;
 
 	BGN_TRY_CATCH
 
@@ -654,7 +650,6 @@ STO_RTN_CODE TssBdMpi::runWorkers(TssBdSub * tssbdsub)
 	solution = new double [ncols];
 	cutval = new double * [model_->getNumScenarios()];
 	cutrhs = new double [model_->getNumScenarios()];
-	status = new int [parProcIdxSize_];
 
 	/** Wait for message from the master */
 	MPI_Bcast(&message, 1, MPI_INT, 0, comm_);
@@ -695,14 +690,8 @@ STO_RTN_CODE TssBdMpi::runWorkers(TssBdSub * tssbdsub)
 
 			//DSPdebug(rc.print());
 			cuts.insert(rc);
-
-			/** get status */
-			status[ss++] = tssbdsub->status_[s];
 		}
-		//DSPdebugMessage("[%d]: Found %d cuts\n", comm_rank_, cuts.sizeCuts());
-
-		/** Send cut generation status to the master */
-		MPI_Gatherv(status, parProcIdxSize_, MPI_INT, NULL, NULL, NULL, MPI_INT, 0, comm_);
+		DSPdebugMessage("[%d]: Found %d cuts\n", comm_rank_, cuts.sizeCuts());
 
 		/** Send cuts to the master */
 		MPIgatherOsiCuts(comm_, cuts, tempcuts);
@@ -717,7 +706,7 @@ STO_RTN_CODE TssBdMpi::runWorkers(TssBdSub * tssbdsub)
 
 		/** Wait for message from the master */
 		MPI_Bcast(&message, 1, MPI_INT, 0, comm_);
-		//DSPdebugMessage("[%d]: Received message [%d]\n", comm_rank_, message);
+		DSPdebugMessage("[%d]: Received message [%d]\n", comm_rank_, message);
 	}
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)

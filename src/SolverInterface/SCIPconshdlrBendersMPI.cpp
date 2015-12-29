@@ -307,15 +307,8 @@ SCIP_RETCODE SCIPconshdlrBendersMPI::sepaBenders(
 
 		//DSPdebug(rc.print());
 		cs.insert(rc);
-
-		/** get status */
-		my_status_[ss++] = tss_->status_[s];
-		DSPdebugMessage("my_status[%d] %d\n", ss-1, my_status_[ss-1]);
 	}
 	DSPdebugMessage("[%d]: Found %d cuts\n", comm_rank_, cs.sizeCuts());
-
-	/** Collect cut generation stutus */
-	MPI_Gatherv(my_status_, procIdxSize_, MPI_INT, cut_status_, recvcounts_, displs_, MPI_INT, 0, comm_);
 
 	/** Collect cuts */
 	MPIgatherOsiCuts(comm_, cs, cs2);
