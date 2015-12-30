@@ -103,6 +103,8 @@ private:
 
 	double * probability_;  /**< probability */
 	double probabilitySum_; /**< sum of probabilities */
+
+	int * procIdxSizes_; /**< number of subproblems taken by each process (significant only at root) */
 };
 
 #endif /* SRC_SOLVER_TSSBDMPI_H_ */
