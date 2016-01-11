@@ -21,14 +21,16 @@ DSPsolver.setIntParam("ITER_LIM",100);
 DSPsolver.setDblParam("SCIP/GAP_TOL",0.0);
 
 # solve problem
-# DSPsolver.solve(DSP_SOLVER_BD_MPI);
-DSPsolver.solveBdMpi(3);
+DSPsolver.solve(DSP_SOLVER_BD_MPI);
+#DSPsolver.solveBdMpi();
 
 if MPI.Comm_rank(MPI.COMM_WORLD) == 0
 	# print some results
 	println("Solution Status: ", DSPsolver.getSolutionStatus());
 	println("Primal Bound   : ", DSPsolver.getPrimalBound());
 	println("Dual Bound     : ", DSPsolver.getDualBound());
+
+	print(DSPsolver.getSolution());
 end
 
 MPI.Finalize();
