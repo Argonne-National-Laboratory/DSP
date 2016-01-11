@@ -307,8 +307,15 @@ SCIP_RETCODE SCIPconshdlrBendersMPI::sepaBenders(
 
 		//DSPdebug(rc.print());
 		cs.insert(rc);
+
+		/** get status */		
+		my_status_[ss++] = tss_->status_[s];		
+		DSPdebugMessage("my_status[%d] %d\n", ss-1, my_status_[ss-1]);
 	}
 	DSPdebugMessage("[%d]: Found %d cuts\n", comm_rank_, cs.sizeCuts());
+
+	/** Collect cut generation stutus */		
+	MPI_Gatherv(my_status_, procIdxSize_, MPI_INT, cut_status_, recvcounts_, displs_, MPI_INT, 0, comm_);
 
 	/** Collect cuts */
 	MPIgatherOsiCuts(comm_, cs, cs2);
@@ -317,7 +324,7 @@ SCIP_RETCODE SCIPconshdlrBendersMPI::sepaBenders(
 
 	/** aggregate cuts */
 	aggregateCuts(cs2, cs);
-	//DSPdebug(cs.printCuts());
+	DSPdebug(cs.printCuts());
 
 	/** cleanup cs2 */
 	for (int i = 0; i < cs2.sizeCuts(); ++i)
@@ -424,10 +431,16 @@ SCIP_RETCODE SCIPconshdlrBendersMPI::sepaBenders(
 /** aggregate cuts in cuts_in to cuts_out */
 void SCIPconshdlrBendersMPI::aggregateCuts(OsiCuts cuts_in, OsiCuts &cuts_out)
 {
+#define FREE_MEMORY \
+	FREE_2D_ARRAY_PTR(naux_,aggval); \
+	FREE_ARRAY_PTR(aggrhs);
+
 	double ** aggval  = NULL; /** aggregated dense cut coefficients */
 	double *  aggrhs  = NULL; /** aggregated cut rhs */
 	CoinPackedVector vec;
 	bool isInfeasible = false;
+
+	BGN_TRY_CATCH
 
 	/** allocate memory */
 	aggval = new double * [naux_];
@@ -454,10 +467,22 @@ void SCIPconshdlrBendersMPI::aggregateCuts(OsiCuts cuts_in, OsiCuts &cuts_out)
 		OsiRowCut * rc = cuts_in.rowCutPtr(i);
 
 		/** feasibility cut? */
-		//DSPdebugMessage("cut_indices %d cut_status %d weight %e\n", s, cut_status_[s], probability_[s]);
+		DSPdebugMessage("cut_indices %d cut_status %d weight %e\n", s, cut_status_[s], probability_[s]);
 		if (cut_status_[s] == STO_STAT_PRIM_INFEASIBLE)
 		{
-			cuts_out.insert(rc);
+			/** initialize vector */
+			vec.clear();
+
+			/** set row vector */
+			vec = probability_[s] * rc->row();
+
+			OsiRowCut fcut;
+			fcut.setRow(vec);
+			fcut.setUb(COIN_DBL_MAX);
+			fcut.setLb(probability_[s] * rc->lb());
+			//DSPdebug(rc->print());
+
+			cuts_out.insert(fcut);
 			isInfeasible = true;
 			break;
 		}
@@ -509,6 +534,12 @@ void SCIPconshdlrBendersMPI::aggregateCuts(OsiCuts cuts_in, OsiCuts &cuts_out)
 			cuts_out.insert(rc);
 		}
 	}
+
+	END_TRY_CATCH(FREE_MEMORY)
+	
+	FREE_MEMORY
+
+#undef FREE_MEMORY
 }
 
 void SCIPconshdlrBendersMPI::initializeMpi(

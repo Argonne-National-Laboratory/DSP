@@ -152,53 +152,47 @@ STO_RTN_CODE TssBdMpi::solve()
 	assert(par_);
 
 	/** subproblems */
-	double tic;
 	TssBdSub * tssbdsub = NULL; /**< cut generator */
 	double lowerbound = 0.0;
 
 	BGN_TRY_CATCH
 
-	/** initialize */
-	initialize();
-
 	/** solution time */
 	double swtime = CoinGetTimeOfDay();
 
+	/** initialize */
+	initialize();
+
 	message_->print(1, "\nPhase 1:\n");
-	message_->print(1, "Creating Benders sub problems ...");
-	tic = CoinGetTimeOfDay();
 
 	/** configure Benders cut generator */
 	/** This does NOT make deep copies. So, DO NOT RELEASE POINTERS. */
+	message_->print(1, "Creating Benders sub problems ...");
 	tssbdsub = new TssBdSub(par_);
 	for (int s = 0; s < parProcIdxSize_; ++s)
 		tssbdsub->scenarios_.push_back(parProcIdx_[s]);
 	STO_RTN_CHECK_THROW(tssbdsub->loadProblem(model_, naugs_, augs_, naux_), "loadProblem", "TssBdSub");
-
-	message_->print(1, " (%.2f sec)\n", CoinGetTimeOfDay() - tic);
-
+	message_->print(1, " (time elapsed: %.2f sec)\n", CoinGetTimeOfDay() - swtime);
 
 	/** solution time */
 	double stime = clockType_ ? CoinGetTimeOfDay() : CoinCpuTime();
 
 	message_->print(1, "Finding global lower bound ...");
-	tic = CoinGetTimeOfDay();
 
 	/** find lower bound */
 	/** TODO: can replace this with TssDd */
 	STO_RTN_CHECK_THROW(findLowerBound(lowerbound), "findLowerBound", "TssBdMpi");
-
-	message_->print(1, " (%.2f sec) -> Lower bound %e\n", CoinGetTimeOfDay() - tic, lowerbound);
-	message_->print(1, "Creating master problem instance ...");
-	tic = CoinGetTimeOfDay();
+	message_->print(1, " (time elapsed: %.2f sec) -> Lower bound %e\n", CoinGetTimeOfDay() - swtime, lowerbound);
 
 	/** construct master problem */
+	message_->print(1, "Creating master problem instance ...");
 	STO_RTN_CHECK_THROW(constructMasterProblem(tssbdsub, lowerbound), "constructMasterProblem", "TssBdMpi");
+	message_->print(1, " (time elapsed: %.2f sec)\n", CoinGetTimeOfDay() - swtime);
 
-	message_->print(1, " (%.2f sec)\n", CoinGetTimeOfDay() - tic);
 	message_->print(1, "\nPhase 2:\n");
 
 	time_remains_ -= CoinGetTimeOfDay() - swtime;
+	message_->print(1, "Set time limit: %e seconds.\n", time_remains_);
 
 	/** configure Benders master */
 	STO_RTN_CHECK_THROW(configureMaster(tssbdsub), "configureMaster", "TssBdMpi");
@@ -217,7 +211,6 @@ STO_RTN_CODE TssBdMpi::solve()
 
 	message_->print(1, "Solution Status: %d\n", status_);
 	message_->print(1, "Collecting results ...");
-	tic = CoinGetTimeOfDay();
 
 	/** collect solution */
 	switch (status_)
@@ -228,103 +221,120 @@ STO_RTN_CODE TssBdMpi::solve()
 	case STO_STAT_STOPPED_NODE:
 	case STO_STAT_STOPPED_TIME:
 		{
-			/** MPI communication */
-			double primalBound = 0.0;
-			double * sendbuf = new double [parProcIdxSize_ * model_->getNumCols(1)];
-			double * recvbuf = NULL;
-			int * recvcounts = NULL;
-			int * displs = NULL;
+			bool solutionExists = false;
+			
+			if (comm_rank_ == 0) solutionExists = si_->getSolution() == NULL ? false : true;
+			MPI_Bcast(&solutionExists, 1, MPI::BOOL, 0, comm_);
 
-			if (comm_rank_ == 0)
+			if (solutionExists)
 			{
-				recvbuf = new double [model_->getNumScenarios() * model_->getNumCols(1)];
-				recvcounts = new int [comm_size_];
-				displs = new int [comm_size_];
-
-				for (int i = 0; i < comm_size_; ++i)
+				/** MPI communication */
+				double primalBound = 0.0;
+				double * sendbuf = new double [parProcIdxSize_ * model_->getNumCols(1)];
+				double * recvbuf = NULL;
+				int * recvcounts = NULL;
+				int * displs = NULL;
+	
+				if (comm_rank_ == 0)
 				{
-					recvcounts[i] = procIdxSizes_[i] * model_->getNumCols(1);
-					displs[i] = i == 0 ? 0 : displs[i-1] + recvcounts[i-1];
-					DSPdebugMessage("recvcounts_[%d] %d displs_[%d] %d\n", i, recvcounts[i], i, displs[i]);
-				}
-			}
-
-			/** first-stage solution */
-			assert(solution_);
-			if (comm_rank_ == 0)
-				CoinCopyN(si_->getSolution(), model_->getNumCols(0), solution_);
-			MPI_Bcast(solution_, model_->getNumCols(0), MPI_DOUBLE, 0, comm_);
-
-			/** second-stage solution */
-			double * objval_reco = new double [model_->getNumScenarios()];
-			double ** solution_reco = new double * [model_->getNumScenarios()];
-			for (int s = 0; s < model_->getNumScenarios(); ++s)
-				solution_reco[s] = new double [model_->getNumCols(1)];
-
-			if (comm_rank_ == 0)
-			{
-				for (int s = 0; s < naugs_; ++s)
-					CoinCopyN(si_->getSolution() + model_->getNumCols(0) + s * model_->getNumCols(1),
-							model_->getNumCols(1), solution_reco[augs_[s]]);
-			}
-
-			/** collect solution */
-			tssbdsub->solveRecourse(solution_, objval_reco, solution_reco, parNumCores_);
-			for (int s = 0; s < parProcIdxSize_; ++s)
-			{
-				int ss = parProcIdx_[s];
-				CoinCopyN(solution_reco[ss], model_->getNumCols(1), sendbuf + s * model_->getNumCols(1));
-			}
-
-			MPI_Gatherv(sendbuf, parProcIdxSize_ * model_->getNumCols(1), MPI_DOUBLE,
-					recvbuf, recvcounts, displs, MPI_DOUBLE, 0, comm_);
-
-			if (comm_rank_ == 0)
-			{
-				for (int i = 0, j = 0; i < comm_size_; ++i)
-				{
-					if (comm_rank_ == i) continue;
-					for (int s = i; s < model_->getNumScenarios(); s += comm_size_)
+					recvbuf = new double [model_->getNumScenarios() * model_->getNumCols(1)];
+					recvcounts = new int [comm_size_];
+					displs = new int [comm_size_];
+	
+					for (int i = 0; i < comm_size_; ++i)
 					{
-						CoinCopyN(recvbuf + j * model_->getNumCols(1), model_->getNumCols(1),
-								solution_ + model_->getNumCols(0) + model_->getNumCols(1) * s);
-						j++;
+						recvcounts[i] = procIdxSizes_[i] * model_->getNumCols(1);
+						displs[i] = i == 0 ? 0 : displs[i-1] + recvcounts[i-1];
+						DSPdebugMessage("recvcounts_[%d] %d displs_[%d] %d\n", i, recvcounts[i], i, displs[i]);
 					}
 				}
+	
+				/** first-stage solution */
+				assert(solution_);
+				if (comm_rank_ == 0)
+					CoinCopyN(si_->getSolution(), model_->getNumCols(0), solution_);
+				MPI_Bcast(solution_, model_->getNumCols(0), MPI_DOUBLE, 0, comm_);
+	
+				/** second-stage solution */
+				double * objval_reco = new double [model_->getNumScenarios()];
+				double ** solution_reco = new double * [model_->getNumScenarios()];
+				for (int s = 0; s < model_->getNumScenarios(); ++s)
+					solution_reco[s] = new double [model_->getNumCols(1)];
+	
+				if (comm_rank_ == 0)
+				{
+					for (int s = 0; s < naugs_; ++s)
+						CoinCopyN(si_->getSolution() + model_->getNumCols(0) + s * model_->getNumCols(1),
+								model_->getNumCols(1), solution_reco[augs_[s]]);
+				}
+	
+				/** collect solution */
+				tssbdsub->solveRecourse(solution_, objval_reco, solution_reco, parNumCores_);
+				for (int s = 0; s < parProcIdxSize_; ++s)
+				{
+					int ss = parProcIdx_[s];
+					CoinCopyN(solution_reco[ss], model_->getNumCols(1), sendbuf + s * model_->getNumCols(1));
+				}
+	
+				MPI_Gatherv(sendbuf, parProcIdxSize_ * model_->getNumCols(1), MPI_DOUBLE,
+						recvbuf, recvcounts, displs, MPI_DOUBLE, 0, comm_);
+	
+				if (comm_rank_ == 0)
+				{
+					for (int i = 0, j = 0; i < comm_size_; ++i)
+					{
+						//if (comm_rank_ == i) continue;
+						for (int s = i; s < model_->getNumScenarios(); s += comm_size_)
+						{
+							CoinCopyN(recvbuf + j * model_->getNumCols(1), model_->getNumCols(1),
+									solution_ + model_->getNumCols(0) + model_->getNumCols(1) * s);
+							j++;
+						}
+					}
 
-				/** compute primal bound */
-				for (int j = 0; j < model_->getNumCols(0); ++j)
-					primalBound += model_->getObjCore(0)[j] * solution_[j];
+// TODO: I don't think we need to RE-calculate a primal bound.	
+#if 0
+					/** compute primal bound */
+					for (int j = 0; j < model_->getNumCols(0); ++j)
+						primalBound += model_->getObjCore(0)[j] * solution_[j];
+#endif
+				}
+#if 0
+				for (int s = 0; s < parProcIdxSize_; ++s)
+				{
+					int ss = parProcIdx_[s];
+					primalBound += objval_reco[ss] * model_->getProbability()[ss];
+					//DSPdebugMessage("[%d] objval_reco[%d] %e\n", comm_rank_, ss, objval_reco[ss]);
+				}
+				DSPdebugMessage("[%d] primalBound %e\n", comm_rank_, primalBound);
+	
+				/** sum primal bounds from all processes */
+				MPI_Reduce(&primalBound, &primalBound_, 1, MPI_DOUBLE, MPI_SUM, 0, comm_);
+				if (comm_rank_ == 0)
+					DSPdebugMessage("primalBound %e\n", primalBound_);
+#endif
+	
+				/** free memory */
+				FREE_ARRAY_PTR(sendbuf);
+				FREE_ARRAY_PTR(recvbuf);
+				FREE_ARRAY_PTR(recvcounts);
+				FREE_ARRAY_PTR(displs);
+				FREE_ARRAY_PTR(objval_reco);
+				FREE_2D_ARRAY_PTR(model_->getNumScenarios(), solution_reco);
 			}
-			for (int s = 0; s < parProcIdxSize_; ++s)
+			else
 			{
-				int ss = parProcIdx_[s];
-				primalBound += objval_reco[ss] * model_->getProbability()[ss];
-				//DSPdebugMessage("[%d] objval_reco[%d] %e\n", comm_rank_, ss, objval_reco[ss]);
+				/** A dual bound must be already set. */
+				message_->print(1, " (A solution does not exists.)");
 			}
-			DSPdebugMessage("[%d] primalBound %e\n", comm_rank_, primalBound);
-
-			/** sum primal bounds from all processes */
-			MPI_Reduce(&primalBound, &primalBound_, 1, MPI_DOUBLE, MPI_SUM, 0, comm_);
-			if (comm_rank_ == 0)
-				DSPdebugMessage("primalBound %e\n", primalBound_);
-
-			/** free memory */
-			FREE_ARRAY_PTR(sendbuf);
-			FREE_ARRAY_PTR(recvbuf);
-			FREE_ARRAY_PTR(recvcounts);
-			FREE_ARRAY_PTR(displs);
-			FREE_ARRAY_PTR(objval_reco);
-			FREE_2D_ARRAY_PTR(model_->getNumScenarios(), solution_reco);
 		}
 		break;
 	default:
-		if (comm_rank_ == 0)
-			printf("Solution status (%d).\n", status_);
+		message_->print(1, "Solution status (%d).\n", status_);
 		break;
 	}
 
-	message_->print(1, " (%.2f sec)\n", CoinGetTimeOfDay() - tic);
+	message_->print(1, " (time elapsed: %.2f sec)\n", CoinGetTimeOfDay() - swtime);
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)
 
@@ -631,6 +641,7 @@ STO_RTN_CODE TssBdMpi::runWorkers(TssBdSub * tssbdsub)
 #define FREE_MEMORY \
 	FREE_ARRAY_PTR(solution); \
 	FREE_2D_ARRAY_PTR(model_->getNumScenarios(),cutval); \
+	FREE_ARRAY_PTR(status); \
 	FREE_ARRAY_PTR(cutrhs);
 
 	if (comm_rank_ == 0)
@@ -643,6 +654,7 @@ STO_RTN_CODE TssBdMpi::runWorkers(TssBdSub * tssbdsub)
 	double ** cutval = NULL;
 	double * cutrhs = NULL;
 	CoinPackedVector vec;
+	int * status = NULL;
 
 	BGN_TRY_CATCH
 
@@ -650,6 +662,7 @@ STO_RTN_CODE TssBdMpi::runWorkers(TssBdSub * tssbdsub)
 	solution = new double [ncols];
 	cutval = new double * [model_->getNumScenarios()];
 	cutrhs = new double [model_->getNumScenarios()];
+	status = new int [parProcIdxSize_];
 
 	/** Wait for message from the master */
 	MPI_Bcast(&message, 1, MPI_INT, 0, comm_);
@@ -690,8 +703,15 @@ STO_RTN_CODE TssBdMpi::runWorkers(TssBdSub * tssbdsub)
 
 			//DSPdebug(rc.print());
 			cuts.insert(rc);
+
+			/** get status */		
+			status[ss++] = tssbdsub->status_[s];
+			DSPdebugMessage("[%d]: status[%d] %d\n", comm_rank_, ss-1, status[ss-1]);
 		}
 		DSPdebugMessage("[%d]: Found %d cuts\n", comm_rank_, cuts.sizeCuts());
+
+		/** Send cut generation status to the master */		
+		MPI_Gatherv(status, parProcIdxSize_, MPI_INT, NULL, NULL, NULL, MPI_INT, 0, comm_);
 
 		/** Send cuts to the master */
 		MPIgatherOsiCuts(comm_, cuts, tempcuts);
