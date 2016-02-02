@@ -770,6 +770,18 @@ STO_RTN_CODE TssBdMpi::configureSMILP(TssBdSub * tssbdsub)
 	/** add constraint handler */
 	SiScip->addConstraintHandler(conshdlr, true);
 
+	/** set initial solutions */
+	const vector<CoinPackedVector*> init_solutions = model_->getInitialSolutions();
+	for (unsigned i = 0; i < init_solutions.size(); ++i)
+	{
+		double * solution = init_solutions[i]->denseVector(SiScip->getNumCols());
+		SiScip->setSolution(solution);
+		FREE_ARRAY_PTR(solution);
+	}
+
+	/** set branch priorities */
+	SiScip->setBranchPriorities(model_->getNumPriorities(), model_->getPriorities());
+
 	/** set node limit */
 	si_->setNodeLimit(parNodeLim_);
 

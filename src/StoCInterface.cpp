@@ -249,13 +249,23 @@ void loadDecomposition(
 		couplingCols, couplingCoeffs, couplingSenses, couplingRhs);
 }
 
+/** set initial solutions
+ * This function can be called multiple times for multiple initial solutions. */
+void setSolution(
+		StoApiEnv * env,     /**< pointer to API object */
+		int         size,    /**< size of solution array */
+		double *    solution /**< solution to set */)
+{
+	getTssModel(env)->setSolution(size, solution);
+}
 
 /** set branching priority */
-void branchPriorities(
+void setBranchPriorities(
 		StoApiEnv * env,       /**< pointer to API object */
+		int         size,      /**< number of priorities */
 		int *       priorities /**< A smaller number has more priority. */)
 {
-	getTssModel(env)->setPriorities(priorities);
+	getTssModel(env)->setPriorities(size, priorities);
 }
 
 #if 0
@@ -283,9 +293,21 @@ void evaluateSolution(StoApiEnv * env, double * solution)
 		return;
 	}
 
+	if (solution == NULL)
+	{
+		printf("Error: Invalid solution pointer\n");
+		return;
+	}
+
 	env->solver_ = new DecTssSolver(new TssEval);
 	env->solver_->loadModel(env->par_, new DecTssModel(*getTssModel(env)));
-	TssEval * solver = dynamic_cast<TssEval*>(env->solver_);
+	TssEval * solver = dynamic_cast<TssEval*>(dynamic_cast<DecTssSolver*>(env->solver_)->tss_);
+	if (solver == NULL)
+	{
+		printf("Error: Invalid solver pointer\n");
+		return;
+	}
+
 	solver->setSolution(solution);
 	env->solver_->solve();
 }

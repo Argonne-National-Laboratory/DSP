@@ -590,8 +590,21 @@ void SolverInterfaceScip::setSolution(double * solution)
 	SCIP_CALL_ABORT(SCIPsetSolVals(scip_, sol, SCIPgetNOrigVars(scip_), vars_, solution));
 
 	/** check solution and free if infeasible */
-	SCIP_CALL_ABORT(SCIPtrySolFree(scip_, &sol, false, true, true, true, &stored));
+	SCIP_CALL_ABORT(SCIPtrySolFree(scip_, &sol, true, true, true, true, &stored));
+	//SCIP_CALL_ABORT(SCIPaddSolFree(scip_, &sol, &stored));
 	//printf("DEBUG: Is solution added? %s\n", stored ? "yes" : "no");
+}
+
+/** set branch priorities */
+void SolverInterfaceScip::setBranchPriorities(int size, const int * priorities)
+{
+	if (size <= 0) return;
+	int numPriorities = size < SCIPgetNOrigVars(scip_) ? size : SCIPgetNOrigVars(scip_);
+	for (int j = 0; j < numPriorities; ++j)
+	{
+		if (SCIPvarIsIntegral(vars_[j]))
+			SCIP_CALL_ABORT(SCIPchgVarBranchPriority(scip_, vars_[j], priorities[j]));
+	}
 }
 
 /** set objective coefficients */

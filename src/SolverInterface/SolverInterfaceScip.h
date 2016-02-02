@@ -217,6 +217,9 @@ public:
 	/** set solution */
 	virtual void setSolution(double * solution);
 
+	/** set branch priority */
+	virtual void setBranchPriorities(int size, const int * priorities);
+
 	/** set clock type */
 	virtual void setClockType(int type);
 

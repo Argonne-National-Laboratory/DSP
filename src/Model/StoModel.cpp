@@ -32,6 +32,7 @@ StoModel::StoModel() :
 		obj_scen_(NULL),
 		rlbd_scen_(NULL),
 		rubd_scen_(NULL),
+		numPriorities_(0),
 		priorities_(NULL),
 		fromSMPS_(false)
 {
@@ -124,12 +125,18 @@ StoModel::StoModel(const StoModel & rhs) :
 		else
 			rubd_scen_[i] = new CoinPackedVector;
 	}
+	numPriorities_ = 0;
 	priorities_ = NULL;
 	if (rhs.priorities_ != NULL)
 	{
-		priorities_ = new int [nints_core_];
-		CoinCopyN(rhs.priorities_, nints_core_, priorities_);
+		numPriorities_ = rhs.numPriorities_;
+		priorities_ = new int [numPriorities_];
+		CoinCopyN(rhs.priorities_, numPriorities_, priorities_);
 	}
+
+	/** copy initial solutions */
+	for (unsigned i = 0; i < rhs.init_solutions_.size(); ++i)
+		init_solutions_.push_back(new CoinPackedVector(rhs.init_solutions_[i]));
 }
 
 StoModel::~StoModel()
@@ -159,6 +166,8 @@ StoModel::~StoModel()
 	nrows_core_ = 0;
 	ncols_core_ = 0;
 	FREE_ARRAY_PTR(priorities_);
+	for (unsigned i = 0; i < init_solutions_.size(); ++i)
+		FREE_PTR(init_solutions_[i]);
 //	for (unsigned int i = 0; i < branchingHyperplanes_.size(); ++i)
 //		FREE_PTR(branchingHyperplanes_[i].first);
 }
@@ -337,15 +346,22 @@ STO_RTN_CODE StoModel::readSmps(const char * filename)
 
 /** set branching priorities */
 void StoModel::setPriorities(
-		int * priorities /**< the size of the array should be
-		                    at least the number of integer variables in core */)
+		int   size,      /**< size of array */
+		int * priorities /**< branch priority */)
 {
-	if (nints_core_ > 0)
+	if (size > 0)
 	{
+		numPriorities_ = size;
 		if (priorities_ == NULL)
-			priorities_ = new int [nints_core_];
-		CoinCopyN(priorities, nints_core_, priorities_);
+			priorities_ = new int [numPriorities_];
+		CoinCopyN(priorities, numPriorities_, priorities_);
 	}
+}
+
+void StoModel::setSolution(int size, double * solution)
+{
+	if (size > 0)
+		init_solutions_.push_back(new CoinPackedVector(size, solution));
 }
 
 /** split core matrix row for a given stage */

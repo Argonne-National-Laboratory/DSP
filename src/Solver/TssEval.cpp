@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+#define DSP_DEBUG
 
 #include "Solver/TssEval.h"
 #include "Solver/TssBdSub.h"
@@ -46,12 +46,14 @@ STO_RTN_CODE TssEval::solve()
 	for (int s = 0; s < model_->getNumScenarios(); ++s)
 		solution_reco[s] = new double [model_->getNumCols(1)];
 	sub = new TssBdSub(par_);
+	for (int s = 0; s < model_->getNumScenarios(); ++s)
+		sub->scenarios_.push_back(s);
 
 	/** load subproblems */
 	sub->loadProblem(model_, 0, NULL, 0);
 
 	/** evaluate solution */
-#ifdef DSP_DEBUG
+#ifdef DSP_DEBUG2
 	for (int j = 0; j < model_->getNumCols(0); ++j)
 		printf("x%d %e\n", j, solution_[j]);
 #endif

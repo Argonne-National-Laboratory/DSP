@@ -85,11 +85,18 @@ void loadSecondStage(
 		const double *       rlbd,  /**< row lower bounds */
 		const double *       rubd   /**< row upper bounds */);
 
+/** set initial solutions
+ * This function can be called multiple times for multiple initial solutions. */
+void setSolution(
+		StoApiEnv * env,     /**< pointer to API object */
+		int         size,    /**< size of solution array */
+		double *    solution /**< solution to set */);
+
 /** set branching priorities */
-void branchPriorities(
+void setBranchPriorities(
 		StoApiEnv * env,       /**< pointer to API object */
-		int *       priorities /**< A smaller number has more priority.
-		                         The size of the array is at least the number of integer variables. */);
+		int         size,      /**< number of priorities */
+		int *       priorities /**< depending on solver */);
 
 #if 0
 /** add branching object */

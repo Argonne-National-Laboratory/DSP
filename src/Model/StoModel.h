@@ -74,13 +74,24 @@ public:
 	/** get column type for a given stage */
 	const char * getCtypeCore(int stage) {return ctype_core_[stage];}
 
-	/** get branching priorities in core */
+	/** get number of branch priorities */
+	int getNumPriorities() {return numPriorities_;}
+
+	/** get branch priorities */
 	const int * getPriorities() {return priorities_;}
 
-	/** set branching priorities */
+	/** get initial solutions */
+	const vector<CoinPackedVector*> getInitialSolutions() {return init_solutions_;}
+
+	/** set branch priorities */
 	void setPriorities(
-			int * priorities /**< the size of the array should be
-			                    at least the number of integer variables in core */);
+			int   size,      /**< size of array */
+			int * priorities /**< branch priority */);
+
+	/** set initial solutions */
+	void setSolution(
+			int      size,    /**< size of array */
+			double * solution /**< solution */);
 
 #if 0
 	/** add branching object */
@@ -193,7 +204,10 @@ protected:
 
 	StoScenMap scen2stg_; /** map from scenario to stage */
 
-	int * priorities_; /**< branching priority */
+	int numPriorities_; /**< length of branch priorities */
+	int * priorities_;  /**< branch priority */
+
+	vector<CoinPackedVector*> init_solutions_; /**< initial solutions */
 
 	bool fromSMPS_; /**< problem was read from SMPS files? */
 
