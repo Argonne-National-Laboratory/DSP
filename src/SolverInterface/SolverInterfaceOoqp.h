@@ -175,6 +175,9 @@ public:
 	/** get number of columns */
 	virtual int getNumCols() {return ncols_;}
 
+	/** get number of integer variables */
+	virtual int getNumIntegers() {return 0;}
+
 	/** get constraint matrix */
 	virtual CoinPackedMatrix * getMatrix() {return mat_;}
 
@@ -270,6 +273,9 @@ public:
 
 	/** set wall time limit */
 	virtual void setTimeLimit(double sec) {DSPdebugMessage("Not available for OOQP.\n");}
+
+	/** set gap tolerance */
+	virtual void setGapTol(double tol) {}
 
 	/** set print out level */
 	virtual void setPrintLevel(int level) {print_level_ = level;}

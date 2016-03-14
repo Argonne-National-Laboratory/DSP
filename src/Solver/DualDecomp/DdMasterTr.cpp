@@ -17,7 +17,8 @@
 DdMasterTr::DdMasterTr(DspParams * par, DecModel * model, StoMessage * message, int nworkers, int maxnumsubprobs):
 	DdMaster(par, model, message, nworkers, maxnumsubprobs),
 	nthetas_(0), nlambdas_(0),
-	stability_param_(0.0), stability_center_(NULL), trcnt_(0), isSolved_(false),
+	stability_param_(0.0), stability_center_(NULL), trcnt_(0), numIters_(0),
+	cputime_elapsed_(0.0), walltime_elapsed_(0.0), isSolved_(false),
 	cuts_(NULL), ncuts_minor_(0), cutdel_param_(0.5),
 	parTr_(true), parTrSize_(0.0), parTrDecrease_(true), parNumCutsPerIter_(1), parMasterAlgo_(IPM_Feasible), parLogLevel_(0) {}
 
@@ -45,6 +46,10 @@ STO_RTN_CODE DdMasterTr::init()
 	/** create problem */
 	createProblem();
 
+	/** clock */
+	cputime_elapsed_  = CoinCpuTime();
+	walltime_elapsed_ = CoinGetTimeOfDay();
+
 	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
 
 	return STO_RTN_OK;
@@ -59,6 +64,9 @@ STO_RTN_CODE DdMasterTr::solve()
 
 	/** solve */
 	si_->solve();
+
+	/** mark as solved */
+	isSolved_ = true;
 
 	/** solver status */
 	switch(si_->getStatus())
@@ -128,7 +136,7 @@ STO_RTN_CODE DdMasterTr::createProblem()
 
 	BGN_TRY_CATCH
 
-	nthetas_  = CoinMin(model_->getNumSubproblems(), parNumCutsPerIter_);
+	nthetas_  = model_->getNumSubproblems();//CoinMin(model_->getNumSubproblems(), parNumCutsPerIter_);
 	nlambdas_ = model_->getNumCouplingRows();
 
 	/** LP dimension */
@@ -143,6 +151,7 @@ STO_RTN_CODE DdMasterTr::createProblem()
 		nzcnt = 0;
 	}
 	ncols = nthetas_ + nlambdas_;
+	message_->print(999, "nrows %d ncols %d nzcnt %d nthetas_ %d nlambdas_ %d\n", nrows, ncols, nzcnt, nthetas_, nlambdas_);
 
 	/** allocate memory */
 	ctype = new char [ncols];
@@ -155,9 +164,6 @@ STO_RTN_CODE DdMasterTr::createProblem()
 	len   = new int[nrows];
 	ind   = new int[nzcnt];
 	elem  = new double[nzcnt];
-
-	/** initial center */
-	CoinZeroN(stability_center_, nlambdas_);
 
 	/** all continuous variables */
 	CoinFillN(ctype, ncols, 'C');
@@ -216,7 +222,7 @@ STO_RTN_CODE DdMasterTr::createProblem()
 
 	/** constraint matrix */
 	mat = new CoinPackedMatrix(false, ncols, nrows, nzcnt, elem, ind, bgn, len);
-	DSPdebug(mat->verifyMtx(4));
+	//mat->verifyMtx(4);
 
 	/** create solver interface */
 	switch (parMasterAlgo_)
@@ -243,7 +249,8 @@ STO_RTN_CODE DdMasterTr::createProblem()
 
 	/** allocate memory for solution */
 	primsol_ = new double [ncols];
-	CoinZeroN(primsol_, ncols);
+	CoinFillN(primsol_, nthetas_, COIN_DBL_MAX);
+	CoinZeroN(primsol_ + nthetas_, nlambdas_);
 
 	/** initialize cut pool */
 	cuts_ = new OsiCuts;
@@ -335,7 +342,7 @@ STO_RTN_CODE DdMasterTr::updateProblem()
 				/** set trust region */
 				setTrustRegion(stability_param_, stability_center_);
 			}
-			else if (!parTrDecrease_)
+			else if (parTrDecrease_)
 			{
 				/** The following rule is from Linderoth and Wright (2003) */
 				double rho = CoinMin(1.0, stability_param_) * (bestdualobj_ - newdual) / (curprimobj - bestdualobj_);
@@ -380,6 +387,26 @@ STO_RTN_CODE DdMasterTr::updateProblem()
 	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
 
 	return STO_RTN_OK;
+}
+
+/** solver status */
+STO_RTN_CODE DdMasterTr::getStatus()
+{
+	BGN_TRY_CATCH
+
+	double time_elapsed = CoinGetTimeOfDay() - walltime_elapsed_;
+	message_->print(1, "Iteration %3d: Dual Bound %e", numIters_++, bestdualobj_);
+
+	message_->print(1, " Time Elapsed %.2f sec\n", time_elapsed);
+
+	double absgap = primobj_ - bestdualobj_;
+	double relgap = absgap / (1.e-10 + fabs(primobj_));
+	bool terminate = (absgap > -1.0e-6 && relgap < par_->getDblParam("DD/STOP_TOL"));
+	status_ = terminate ? STO_STAT_MW_STOP : STO_STAT_MW_CONTINUE;
+
+	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+
+	return status_;
 }
 
 /** is solution trust region boundary? */
@@ -498,6 +525,8 @@ int DdMasterTr::addCuts(
 				cuts.insert(rc);
 			}
 		}
+		else
+			FREE_PTR(rc);
 	}
 
 	nCutsAdded = cuts.sizeCuts();

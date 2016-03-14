@@ -40,6 +40,9 @@ void DspParams::initBoolParams()
 
 	/** log dual variable values */
 	BoolParams_.createParam("DD/LOG_DUAL_VARS", false);
+
+	/** enable asynchronous parallelization */
+	BoolParams_.createParam("DD/ASYNC", false);
 }
 
 void DspParams::initIntParams()
@@ -52,6 +55,9 @@ void DspParams::initIntParams()
 
 	/** iteration limit */
 	IntParams_.createParam("ITER_LIM", MAX_INT_NUM);
+
+	/** number of cuts to the master per iteration */
+	IntParams_.createParam("BD/NUM_CUTS_PER_ITER", 1);
 
 	/** number of cores used in OpenMP library (Benders only) */
 	IntParams_.createParam("BD/NUM_CORES", 1);
@@ -89,13 +95,13 @@ void DspParams::initDblParams()
 	DblParams_.createParam("WALL_LIM", MAX_DBL_NUM);
 
 	/** initial trust region size */
-	DblParams_.createParam("DD/TR/SIZE", 100);
+	DblParams_.createParam("DD/TR/SIZE", 10);
 
 	/** stopping tolerance */
 	DblParams_.createParam("DD/STOP_TOL", 1.0e-5);
 
 	/** branch-and-bound gap tolerance */
-	DblParams_.createParam("SCIP/GAP_TOL", 0.0);
+	DblParams_.createParam("SCIP/GAP_TOL", 0.0001);
 
 	/** time limit */
 	DblParams_.createParam("SCIP/TIME_LIM", MAX_DBL_NUM);

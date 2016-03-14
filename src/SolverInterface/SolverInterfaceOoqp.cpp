@@ -281,6 +281,9 @@ void SolverInterfaceOoqp::gutsOfLoadProblem()
 	/** for dynamic columns */
 	for (int j = ncols_; j < nx; ++j)
 		c[j] = dynCols_->objs_[j-ncols_] * sense_;
+	/** hessian */
+	for (int i = 0; i <nnzQ_; ++i)
+		dQ_[i] *= sense_;
 
 	/** column bounds */
 	xlow  = new double [nx];
@@ -535,18 +538,22 @@ void SolverInterfaceOoqp::solve()
 	if (released_)
 		gutsOfLoadProblem();
 
-	//prob_->print();
-	if (print_level_ > 2) solver_->monitorSelf();
+//	prob_->print();
+	if (par_->getIntParam("LOG_LEVEL") >= 5)
+		solver_->monitorSelf();
 	int status = solver_->solve(prob_, vars_, resid_);
+	if (par_->getIntParam("LOG_LEVEL") >= 5)
+		printf("OOQP status: %d\n", status);
 	switch(status)
 	{
 	case 0:
 	{
-		double phi = fabs(resid_->residualNorm() - resid_->dualityGap()) / prob_->datanorm();
-		if (phi < 1.0e-6)
-			status_ = STO_STAT_OPTIMAL;
-		else
-			status_ = STO_STAT_UNKNOWN;
+		status_ = STO_STAT_OPTIMAL;
+//		double phi = fabs(resid_->residualNorm() - resid_->dualityGap()) / prob_->datanorm();
+//		if (phi < 1.0e-6)
+//			status_ = STO_STAT_OPTIMAL;
+//		else
+//			status_ = STO_STAT_UNKNOWN;
 		objval_ = prob_->objectiveValue(vars_);
 		vars_->x->copyIntoArray(x_);
 		vars_->y->copyIntoArray(y_);
@@ -622,6 +629,7 @@ void SolverInterfaceOoqp::setObjCoef(double * obj)
 /** set lower triangular Hessian matrix */
 void SolverInterfaceOoqp::setHessian(int nnzQ, int * irowQ, int * jcolQ, double * dQ)
 {
+	releaseOOQP();
 	FREE_ARRAY_PTR(irowQ_);
 	FREE_ARRAY_PTR(jcolQ_);
 	FREE_ARRAY_PTR(dQ_);

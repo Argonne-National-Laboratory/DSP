@@ -9,8 +9,8 @@
 
 /** DSP */
 #include "SolverInterface/SolverInterfaceScip.h"
-#include "SolverInterface/SCIPconshdlrBenders.h"
-#include "SolverInterface/SCIPconshdlrBendersDd.h"
+#include "Solver/Benders/SCIPconshdlrBenders.h"
+#include "Solver/DualDecomp/SCIPconshdlrBendersDd.h"
 #include "Utility/StoMacros.h"
 #include "Utility/StoMessage.h"
 
@@ -109,9 +109,9 @@ STO_RTN_CODE SolverInterfaceScip::initialize()
 	{
 		SCIP_CALL_ABORT(SCIPcreate(&scip_));
 		SCIP_CALL_ABORT(SCIPincludeDefaultPlugins(scip_));
-		setClockType(2);
 		SCIP_CALL_ABORT(SCIPsetIntParam(scip_, "display/freq", par_->getIntParam("SCIP/DISPLAY_FREQ")));
-		SCIP_CALL_ABORT(SCIPsetRealParam(scip_, "limits/gap", par_->getDblParam("SCIP/GAP_TOL")));
+		setClockType(2);
+		setGapTol(par_->getDblParam("SCIP/GAP_TOL"));
 		//SCIP_CALL_ABORT(SCIPsetBoolParam(scip_, "misc/allowdualreds", FALSE));
 		//SCIP_CALL_ABORT(SCIPsetBoolParam(scip_, "constraints/indicator/dualreductions", FALSE));
 	}
@@ -350,7 +350,7 @@ void SolverInterfaceScip::addConstraintHandler(
 	}
 	else
 	{
-		SCIP_CALL_ABORT(SCIPcreateConsBendersDd(scip_, &cons, "BendersDd"));
+		SCIP_CALL_ABORT(SCIPcreateConsBenders(scip_, &cons, "BendersDd"));
 		SCIP_CALL_ABORT(SCIPaddCons(scip_, cons));
 		SCIP_CALL_ABORT(SCIPreleaseCons(scip_, &cons));
 	}
@@ -700,6 +700,12 @@ void SolverInterfaceScip::setClockType(int type)
 void SolverInterfaceScip::setTimeLimit(double sec)
 {
 	SCIP_CALL_ABORT(SCIPsetRealParam(scip_, "limits/time", sec));
+}
+
+/** set gap tolerance */
+void SolverInterfaceScip::setGapTol(double tol)
+{
+	SCIP_CALL_ABORT(SCIPsetRealParam(scip_, "limits/gap", tol));
 }
 
 /** dual reduction */

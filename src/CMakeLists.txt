@@ -1,41 +1,47 @@
 include_directories(Model Solver Utility)
 
 set(DSP_SRC_FILES
-	SolverInterface/OoqpEps.cpp
-	SolverInterface/OoqpStatus.cpp
-	SolverInterface/SCIPconshdlrBenders.cpp
-	SolverInterface/SCIPconshdlrBendersMPI.cpp
-	SolverInterface/SCIPconshdlrBendersDd.cpp
-	SolverInterface/SCIPbranchruleLB.cpp
-	SolverInterface/SolverInterfaceOsi.cpp
-	SolverInterface/SolverInterfaceClp.cpp
-	SolverInterface/SolverInterfaceSpx.cpp
-	SolverInterface/SolverInterfaceScip.cpp
-	SolverInterface/SolverInterfaceOoqp.cpp
-	Solver/TssSolver.cpp
-	Solver/TssBd.cpp
-	Solver/TssBdMpi.cpp
-	Solver/TssBdSub.cpp
-	Solver/TssEval.cpp
-	Solver/DecSolver.cpp
-	Solver/DecDdMpi.cpp
-	Solver/DecDdPrimalMaster.cpp
-	Solver/DecDdMasterSubgrad.cpp
-	Solver/DecDdMasterDSB.cpp
-	Solver/DecDdSub.cpp
-	Solver/DecDe.cpp
+	Model/DecData.cpp
+	Model/DecDetModel.cpp
+	Model/DecTssModel.cpp
+	Model/DetModel.cpp
 	Model/StoModel.cpp
 	Model/TssModel.cpp
-	Model/DecData.cpp
-	Model/DecTssModel.cpp
-	Model/DecDetModel.cpp
-	Model/DetModel.cpp
+	Solver/BaseMasterWorker.cpp
+	Solver/DecSolver.cpp
+	Solver/DspDriver.cpp
+	Solver/Benders/BdDriver.cpp
+	Solver/Benders/BdMaster.cpp
+	Solver/Benders/BdMW.cpp
+	Solver/Benders/BdSub.cpp
+	Solver/Benders/BdWorker.cpp
+	Solver/Benders/SCIPconshdlrBenders.cpp
+	Solver/Benders/SCIPconshdlrBendersWorker.cpp
+	Solver/Deterministic/DeDriver.cpp
+	Solver/DualDecomp/DdDriver.cpp
+	Solver/DualDecomp/DdMaster.cpp
+	Solver/DualDecomp/DdMasterDsb.cpp
+	Solver/DualDecomp/DdMasterReg.cpp
+	Solver/DualDecomp/DdMasterSubgrad.cpp
+	Solver/DualDecomp/DdMasterTr.cpp
+	Solver/DualDecomp/DdMW.cpp
+	Solver/DualDecomp/DdSub.cpp
+	Solver/DualDecomp/DdWorker.cpp
+	Solver/DualDecomp/SCIPconshdlrBendersDd.cpp
+	SolverInterface/OoqpEps.cpp
+	SolverInterface/OoqpStatus.cpp
+	SolverInterface/SCIPbranchruleLB.cpp
+	SolverInterface/SolverInterfaceClp.cpp
+	SolverInterface/SolverInterfaceOoqp.cpp
+	SolverInterface/SolverInterfaceOsi.cpp
+	SolverInterface/SolverInterfaceScip.cpp
+	SolverInterface/SolverInterfaceSpx.cpp
 	Utility/StoUtility.cpp
 	Utility/DspParams.cpp)
 
 add_library(Dsp SHARED
-	StoApiEnv.cpp
-	StoCInterface.cpp
+	DspApiEnv.cpp
+	DspCInterface.cpp
 	${DSP_SRC_FILES})
 
 set(DSP_LIBS

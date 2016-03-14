@@ -33,6 +33,9 @@ typedef int STO_RTN_CODE;
 #define STO_STAT_LIM_PRIM_OBJ       3014
 #define STO_STAT_LIM_DUAL_OBJ       3015
 #define STO_STAT_FEASIBLE           3016
+#define STO_STAT_MW_STOP            3100 /**< stop signal for master-worker framework */
+#define STO_STAT_MW_CONTINUE        3101 /**< continue signal for master-worker framework */
+#define STO_STAT_NOT_SOLVED         3998
 #define STO_STAT_UNKNOWN            3999
 
 #define STO_RTN_MSG_BODY "Error code %d in %s::%s"

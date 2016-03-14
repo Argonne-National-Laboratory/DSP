@@ -17,6 +17,27 @@ BdMW::~BdMW()
 	FREE_ARRAY_PTR(primsol_);
 }
 
+STO_RTN_CODE BdMW::run()
+{
+	BGN_TRY_CATCH
+
+	/** initialize */
+	init();
+
+	/** run master process */
+	runMaster();
+
+	/** run worker processes */
+	runWorker();
+
+	/** finalize */
+	finalize();
+
+	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+
+	return STO_RTN_OK;
+}
+
 STO_RTN_CODE BdMW::init()
 {
 	BGN_TRY_CATCH

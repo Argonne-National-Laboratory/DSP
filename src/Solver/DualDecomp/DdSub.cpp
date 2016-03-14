@@ -57,6 +57,7 @@ STO_RTN_CODE DdSub::createProblem(DecModel * model)
 
 	/** parameters */
 	parRelaxIntegrality_ = par_->getBoolPtrParam("RELAX_INTEGRALITY");
+	gapTol_              = par_->getDblParam("SCIP/GAP_TOL");
 
 	/** augmented subproblem index */
 	augs[0] = sind_;
@@ -367,7 +368,7 @@ void DdSub::setTimeLimit(double sec)
 }
 
 /** set accuracy tolerance */
-void DdSub::setGapTop(double tol)
+void DdSub::setGapTol(double tol)
 {
 	assert(si_);
 	gapTol_ = tol;

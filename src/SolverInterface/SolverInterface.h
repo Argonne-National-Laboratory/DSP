@@ -85,6 +85,9 @@ public:
 	/** get number of columns */
 	virtual int getNumCols() = 0;
 
+	/** get number of integer variables */
+	virtual int getNumIntegers() = 0;
+
 	/** get column lower bounds */
 	virtual const double * getColLower() = 0;
 
@@ -154,6 +157,9 @@ public:
 
 	/** set wall time limit */
 	virtual void setTimeLimit(double sec) = 0;
+
+	/** set gap tolerance */
+	virtual void setGapTol(double tol) = 0;
 
 	/** set print out level */
 	virtual void setPrintLevel(int level) = 0;

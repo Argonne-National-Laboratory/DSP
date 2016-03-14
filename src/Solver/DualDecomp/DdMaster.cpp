@@ -57,6 +57,20 @@ STO_RTN_CODE DdMaster::init()
 	return STO_RTN_OK;
 }
 
+
+/** set init solution */
+STO_RTN_CODE DdMaster::setInitSolution(const double * sol)
+{
+	BGN_TRY_CATCH
+
+	if (primsol_)
+		CoinCopyN(sol, si_->getNumCols(), primsol_);
+
+	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+
+	return STO_RTN_OK;
+}
+
 STO_RTN_CODE DdMaster::recvMessage(int source, int size, double* message)
 {
 	BGN_TRY_CATCH
@@ -68,11 +82,42 @@ STO_RTN_CODE DdMaster::recvMessage(int source, int size, double* message)
 		subindex_[s] = static_cast<int>(message[pos++]);
 		subprimobj_[s] = message[pos++];
 		subdualobj_[s] = message[pos++];
-		CoinCopyN(message + pos, model_->getNumSubproblemCouplingCols(s), subsolution_[s]);
-		pos += model_->getNumSubproblemCouplingCols(s);
+		CoinCopyN(message + pos, model_->getNumSubproblemCouplingCols(subindex_[s]), subsolution_[s]);
+		pos += model_->getNumSubproblemCouplingCols(subindex_[s]);
 	}
 	worker_ = source;
 	rcount_ = pos;
+
+	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+
+	return STO_RTN_OK;
+}
+
+STO_RTN_CODE DdMaster::recvMessage(
+		int      size,   /**< number of MPI ranks */
+		int *    counts,
+		int *    displs,
+		double * message)
+{
+	BGN_TRY_CATCH
+
+	int pos = 0;
+	nsubprobs_ = 0;
+	for (int i = 0, j = 0; i < size - 1; ++i)
+	{
+		message_->print(999, "message count for rank %d: %d\n", i, counts[i]);
+		int nsubprobs = static_cast<int>(message[pos++]);
+		nsubprobs_ += nsubprobs;
+		for (int s = 0; s < nsubprobs; ++s)
+		{
+			subindex_[j] = static_cast<int>(message[pos++]);
+			subprimobj_[j] = message[pos++];
+			subdualobj_[j] = message[pos++];
+			CoinCopyN(message + pos, model_->getNumSubproblemCouplingCols(subindex_[j]), subsolution_[j]);
+			pos += model_->getNumSubproblemCouplingCols(subindex_[j]);
+			j++;
+		}
+	}
 
 	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
 

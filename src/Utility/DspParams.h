@@ -21,7 +21,8 @@ enum DSP_DD_MASTER_ALGO
 	IPM,
 	IPM_Feasible,
 	DSBM, /**< doubly stabilized bundle method */
-	Subgradient
+	Subgradient,
+	Regularize_Bundle
 };
 
 enum DSP_BD_INIT_LB_ALGO

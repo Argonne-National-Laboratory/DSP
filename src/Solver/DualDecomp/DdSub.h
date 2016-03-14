@@ -101,7 +101,7 @@ public:
 	void setTimeLimit(double sec);
 
 	/** set accuracy tolerance */
-	void setGapTop(double tol);
+	void setGapTol(double tol);
 
 	/** set print level */
 	void setPrintLevel(int level);

@@ -27,8 +27,9 @@ STO_RTN_CODE DdWorker::init()
 	rcount_ = 1;
 	for (unsigned s = 0; s < par_->getIntPtrParamSize("ARR_PROC_IDX"); ++s)
 	{
-		scount_ += 3 + model_->getNumSubproblemCouplingCols(s);
-		rcount_ += 1 + model_->getNumSubproblemCouplingRows(s);
+		int ss = par_->getIntPtrParam("ARR_PROC_IDX")[s];
+		scount_ += 3 + model_->getNumSubproblemCouplingCols(ss);
+		rcount_ += 1 + model_->getNumSubproblemCouplingRows(ss);
 	}
 	/** message buffer */
 	sbuf_ = new double [scount_];
@@ -36,6 +37,9 @@ STO_RTN_CODE DdWorker::init()
 
 	/** status */
 	status_ = STO_STAT_MW_CONTINUE;
+
+	/** create problem */
+	createProblem();
 
 	/** time stamp */
 	ticToc();
@@ -51,6 +55,11 @@ STO_RTN_CODE DdWorker::solve()
 	double walltime;
 
 	BGN_TRY_CATCH
+
+	double primobj = 0.0;
+	double dualobj = 0.0;
+	double total_cputime  = 0.0;
+	double total_walltime = 0.0;
 
 	for (unsigned s = 0; s < subprobs_.size(); ++s)
 	{
@@ -88,28 +97,45 @@ STO_RTN_CODE DdWorker::solve()
 
 			/** set solution gap tolerance */
 			if (subprobs_[s]->getPrimalBound() >= subprobs_[s]->theta_
-					&& subprobs_[s]->gapTol_ > 0)
+					&& subprobs_[s]->gapTol_ > par_->getDblParam("SCIP/GAP_TOL"))
 			{
-				double gapTol = subprobs_[s]->gapTol_;
-				gapTol = gapTol < 0.0001 ? 0.0 : gapTol * 0.1;
-				subprobs_[s]->setGapTop(gapTol);
+				/** TODO parameterize this */
+				double gapTol = subprobs_[s]->gapTol_ * 0.5;
+				if (gapTol < par_->getDblParam("SCIP/GAP_TOL"))
+					gapTol = par_->getDblParam("SCIP/GAP_TOL");
+				subprobs_[s]->setGapTol(gapTol);
 				resolve = true;
 			}
 		}
+
+		message_->print(2, "-> subprob %d: solved with gap tolerance %e \n", subprobs_[s]->sind_, subprobs_[s]->gapTol_);
+
 		if (status_ == STO_STAT_MW_STOP)
 			break;
 
+		primobj += subprobs_[s]->si_->getPrimalBound();
+		dualobj += subprobs_[s]->si_->getDualBound();
+		total_cputime  += CoinCpuTime() - cputime;
+		total_walltime += CoinGetTimeOfDay() - walltime;
+
 		/** update statistics */
-		subprobs_[s]->s_statuses_.push_back(subprobs_[s]->si_->getStatus());
-		subprobs_[s]->s_primobjs_.push_back(subprobs_[s]->si_->getPrimalBound());
-		subprobs_[s]->s_dualobjs_.push_back(subprobs_[s]->si_->getDualBound());
+//		subprobs_[s]->s_statuses_.push_back(subprobs_[s]->si_->getStatus());
+//		subprobs_[s]->s_primobjs_.push_back(subprobs_[s]->si_->getPrimalBound());
+//		subprobs_[s]->s_dualobjs_.push_back(subprobs_[s]->si_->getDualBound());
 //		double * s_primsol = new double [subprobs_[s]->si_->getNumCols()];
 //		CoinCopyN(subprobs_[s]->si_->getSolution(), subprobs_[s]->si_->getNumCols(), s_primsol);
 //		subprobs_[s]->s_primsols_.push_back(s_primsol);
 //		s_primsol = NULL;
-		subprobs_[s]->s_cputimes_.push_back(CoinCpuTime() - cputime);
-		subprobs_[s]->s_walltimes_.push_back(CoinGetTimeOfDay() - walltime);
+//		subprobs_[s]->s_cputimes_.push_back(CoinCpuTime() - cputime);
+//		subprobs_[s]->s_walltimes_.push_back(CoinGetTimeOfDay() - walltime);
 	}
+
+	/** update statistics */
+	s_statuses_.push_back(status_);
+	s_primobjs_.push_back(primobj);
+	s_dualobjs_.push_back(dualobj);
+	s_cputimes_.push_back(total_cputime);
+	s_walltimes_.push_back(total_walltime);
 
 	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
 
@@ -150,6 +176,7 @@ STO_RTN_CODE DdWorker::createProblem()
 	for (int s = 0; s < par_->getIntPtrParamSize("ARR_PROC_IDX"); ++s)
 	{
 		/** create subproblem instance */
+		message_->print(999, "Creating DD subproblem for index %d\n", par_->getIntPtrParam("ARR_PROC_IDX")[s]);
 		DdSub * subprob = new DdSub(par_->getIntPtrParam("ARR_PROC_IDX")[s], par_);
 		subprobs_.push_back(subprob);
 

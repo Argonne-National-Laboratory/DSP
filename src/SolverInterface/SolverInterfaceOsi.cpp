@@ -230,12 +230,6 @@ void SolverInterfaceOsi::setIterLimit(int limit)
 	si_->setIntParam(OsiMaxNumIteration, limit);
 }
 
-/** set wall time limit */
-void SolverInterfaceOsi::setTimeLimit(double sec)
-{
-	DSPdebugMessage("Warning: Clp does not support time limit.\n");
-}
-
 /** set print out level */
 void SolverInterfaceOsi::setPrintLevel(int level)
 {

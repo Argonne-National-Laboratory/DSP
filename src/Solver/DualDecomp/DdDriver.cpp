@@ -56,15 +56,12 @@ DdDriver::DdDriver(DspParams * par, DecModel * model, MPI_Comm comm):
 	mw_(NULL), master_(NULL), worker_(NULL),
 	num_infeasible_solutions_(0)
 {
-	/**< maximum number of subproblems considered in a worker */
-	int maxnumsubprobs;
-
 	BGN_TRY_CATCH
 
 	MPI_Comm_rank(comm_, &comm_rank_); /**< get process ID */
 	MPI_Comm_size(comm_, &comm_size_); /**< get number of processes */
-	int tmpnum = par_->getIntPtrParamSize("ARR_PROC_IDX");
-	MPI_Reduce(&tmpnum, &maxnumsubprobs, 1, MPI_INT, MPI_MAX, 0, comm_);
+	/**< maximum number of subproblems considered in a worker */
+	int maxnumsubprobs = model_->getNumSubproblems();
 
 	if (comm_rank_ == 0)
 	{
@@ -141,8 +138,8 @@ STO_RTN_CODE DdDriver::run()
 		/** solution status */
 		status_ = master_->getStatus();
 		/** objective value */
-		primobj_ = master_->getPrimalObjective();
-		dualobj_ = master_->getDualObjective();
+		primobj_ = master_->getBestPrimalObjective();
+		dualobj_ = master_->getBestDualObjective();
 		/** solution */
 		primsol_ = new double [master_->getSiPtr()->getNumCols()];
 		CoinCopyN(master_->getPrimalSolution(), master_->getSiPtr()->getNumCols(), primsol_);

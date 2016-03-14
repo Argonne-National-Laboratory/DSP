@@ -135,6 +135,9 @@ public:
 	/** get number of columns */
 	virtual int getNumCols() {return SCIPgetNOrigVars(scip_);}
 
+	/** get number of integer variables */
+	virtual int getNumIntegers() {return SCIPgetNOrigIntVars(scip_);}
+
 	/** get column lower bounds */
 	virtual const double * getColLower() {return clbd_;}
 
@@ -213,6 +216,9 @@ public:
 
 	/** set time limit */
 	virtual void setTimeLimit(double sec);
+
+	/** set gap tolerance */
+	virtual void setGapTol(double tol);
 
 	/** set solution */
 	virtual void setSolution(double * solution);

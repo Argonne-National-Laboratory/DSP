@@ -10,14 +10,15 @@
 
 DdMasterReg::DdMasterReg(DspParams * par, DecModel * model, StoMessage * message, int nworkers, int maxnumsubprobs):
 	DdMaster(par, model, message, nworkers, maxnumsubprobs),
-	nthetas_(0), nlambdas_(0),
-	stability_param_(10.0), stability_center_(NULL), nlastcuts_(NULL),
-	irowQ_(NULL), jcolQ_(NULL), dQ_(NULL), obj_(NULL) {}
+	sum_of_thetas_(0.0), nthetas_(0), nlambdas_(0),
+	stability_param_(10.0), stability_center_(NULL), nlastcuts_(NULL), primsol_to_worker_(NULL),
+	irowQ_(NULL), jcolQ_(NULL), dQ_(NULL), obj_(NULL), doSolve_(true) {}
 
 DdMasterReg::~DdMasterReg()
 {
 	FREE_ARRAY_PTR(stability_center_);
 	FREE_ARRAY_PTR(nlastcuts_);
+	FREE_2D_ARRAY_PTR(nworkers_, primsol_to_worker_);
 	FREE_ARRAY_PTR(irowQ_);
 	FREE_ARRAY_PTR(jcolQ_);
 	FREE_ARRAY_PTR(dQ_);
@@ -43,6 +44,20 @@ STO_RTN_CODE DdMasterReg::init()
 	return STO_RTN_OK;
 }
 
+/** set init solution */
+STO_RTN_CODE DdMasterReg::setInitSolution(const double * sol)
+{
+	BGN_TRY_CATCH
+
+	CoinCopyN(sol, nthetas_ + nlambdas_, primsol_);
+	for (int i = 0; i < nworkers_; ++i)
+		CoinCopyN(sol, nthetas_ + nlambdas_, primsol_to_worker_[i]);
+
+	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+
+	return STO_RTN_OK;
+}
+
 STO_RTN_CODE DdMasterReg::solve()
 {
 	BGN_TRY_CATCH
@@ -53,43 +68,68 @@ STO_RTN_CODE DdMasterReg::solve()
 	double cputime  = CoinCpuTime();
 	double walltime = CoinGetTimeOfDay();
 
-	/** solve */
-	si_->solve();
-
-	/** solver status */
-	switch(si_->getStatus())
+	if (doSolve_)
 	{
-	case STO_STAT_OPTIMAL:
-	case STO_STAT_LIM_ITERorTIME:
-	case STO_STAT_STOPPED_GAP:
-	case STO_STAT_STOPPED_NODE:
-	case STO_STAT_STOPPED_TIME:
-	{
-		/** get solution */
-		CoinCopyN(si_->getSolution(), si_->getNumCols(), primsol_);
-		//primobj_ = si_->getPrimalBound(); // This is not meaningful.
-		primobj_ = 0.0;
-		for (int j = 0; j < nthetas_; ++j)
-			primobj_ += primsol_[j];
+		/** solve */
+		si_->solve();
 
-		/** update statistics */
-		s_statuses_.push_back(si_->getStatus());
-		s_primobjs_.push_back(si_->getPrimalBound());
-		s_dualobjs_.push_back(si_->getDualBound());
-		double * s_primsol = new double [si_->getNumCols()];
-		CoinCopyN(si_->getSolution(), si_->getNumCols(), s_primsol);
-		s_primsols_.push_back(s_primsol);
-		s_primsol = NULL;
-		s_cputimes_.push_back(CoinCpuTime() - cputime);
-		s_walltimes_.push_back(CoinGetTimeOfDay() - walltime);
+		/** solver status */
+		switch(si_->getStatus())
+		{
+		case STO_STAT_OPTIMAL:
+		case STO_STAT_LIM_ITERorTIME:
+		case STO_STAT_STOPPED_GAP:
+		case STO_STAT_STOPPED_NODE:
+		case STO_STAT_STOPPED_TIME:
+		{
+			/** get solution */
+			CoinCopyN(si_->getSolution(), si_->getNumCols(), primsol_);
+//			printf("primsol_:\n");
+//			for (int j = 0, k = 0; j < si_->getNumCols(); ++j)
+//			{
+//				if (fabs(primsol_[j]) < 1.0e-10) continue;
+//				if (k > 0 && k % 5 == 0) printf("\n");
+//				printf("  [%6d] %+e", j, primsol_[j]);
+//				k++;
+//			}
+//			printf("\n");
 
-		break;
+			sum_of_thetas_ = 0.0;
+			for (int j = 0; j < nthetas_; ++j)
+				sum_of_thetas_ += primsol_[j];
+			primobj_ = sum_of_thetas_;
+			for (int j = 0; j < nlambdas_; ++j)
+			{
+
+				double diff = primsol_[nthetas_ + j] - stability_center_[j];
+				primobj_ -= diff * diff * 0.5 / stability_param_;
+			}
+
+			/** copy lambda */
+			CoinCopyN(primsol_, nthetas_ + nlambdas_, primsol_to_worker_[worker_]);
+
+			/** update statistics */
+			s_statuses_.push_back(si_->getStatus());
+			s_primobjs_.push_back(si_->getPrimalBound());
+			s_dualobjs_.push_back(si_->getDualBound());
+			double * s_primsol = new double [si_->getNumCols()];
+			CoinCopyN(si_->getSolution(), si_->getNumCols(), s_primsol);
+			s_primsols_.push_back(s_primsol);
+			s_primsol = NULL;
+			s_cputimes_.push_back(CoinCpuTime() - cputime);
+			s_walltimes_.push_back(CoinGetTimeOfDay() - walltime);
+
+			break;
+		}
+		default:
+			status_ = STO_STAT_MW_STOP;
+			message_->print(0, "Warning: QP master solution status is %d\n", si_->getStatus());
+			break;
+		}
 	}
-	default:
-		status_ = STO_STAT_MW_STOP;
-		message_->print(0, "Warning: master solution status is %d\n", si_->getStatus());
-		break;
-	}
+
+	message_->print(2, "-> master objective %+e, sum of thetas %+e, solution time %.2f sec\n",
+			primobj_, sum_of_thetas_, CoinGetTimeOfDay() - walltime);
 
 	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
 
@@ -168,8 +208,8 @@ STO_RTN_CODE DdMasterReg::createProblem()
 	CoinZeroN(obj_ + nthetas_, nlambdas_);
 
 	/** bounds */
-	CoinFillN(clbd, nthetas_, -COIN_DBL_MAX);
-	CoinFillN(cubd, nthetas_, +COIN_DBL_MAX);
+	CoinFillN(clbd, ncols, -COIN_DBL_MAX);
+	CoinFillN(cubd, ncols, +COIN_DBL_MAX);
 
 	/** nonnegative or nonpositive multipliers according to sense */
 	for (i = 0; i < nlambdas_; i++)
@@ -205,7 +245,7 @@ STO_RTN_CODE DdMasterReg::createProblem()
 
 	/** constraint matrix */
 	mat = new CoinPackedMatrix(false, ncols, nrows, nzcnt, elem, ind, bgn, len);
-	DSPdebug(mat->verifyMtx(4));
+//	mat->verifyMtx(4);
 
 	/** create solver interface */
 	si_ = new SolverInterfaceOoqp(par_);
@@ -222,13 +262,22 @@ STO_RTN_CODE DdMasterReg::createProblem()
 	{
 		CoinIotaN(irowQ_, nlambdas_, nthetas_);
 		CoinIotaN(jcolQ_, nlambdas_, nthetas_);
-		CoinFillN(dQ_, nlambdas_, -0.5 / stability_param_);
+		CoinFillN(dQ_, nlambdas_, -1.0 / stability_param_);
 		ooqp->setHessian(nlambdas_, irowQ_, jcolQ_, dQ_);
 	}
 
 	/** allocate memory for solution */
 	primsol_ = new double [ncols];
-	CoinZeroN(primsol_, ncols);
+	primsol_to_worker_ = new double * [nworkers_];
+	for (int i = 0; i < nworkers_; ++i)
+	{
+		primsol_to_worker_[i] = new double [nthetas_ + nlambdas_];
+		CoinFillN(primsol_to_worker_[i], nthetas_, COIN_DBL_MAX);
+		CoinZeroN(primsol_to_worker_[i] + nthetas_, nlambdas_);
+	}
+	CoinFillN(primsol_, nthetas_, COIN_DBL_MAX);
+	CoinZeroN(primsol_ + nthetas_, nlambdas_);
+
 
 	/** set print level */
 	si_->setPrintLevel(CoinMax(0, par_->getIntParam("LOG_LEVEL") - 2));
@@ -244,11 +293,11 @@ STO_RTN_CODE DdMasterReg::createProblem()
 /** update problem */
 STO_RTN_CODE DdMasterReg::updateProblem()
 {
+	BGN_TRY_CATCH
+
 	OsiCuts cuts;
 	CoinPackedVector cutvec;
 	double cutrhs = 0.0;
-
-	BGN_TRY_CATCH
 
 	/**
 	 * Construct cuts of form
@@ -256,11 +305,8 @@ STO_RTN_CODE DdMasterReg::updateProblem()
 	 */
 	for (int s = 0; s < nsubprobs_; ++s)
 	{
-		/** cut effectiveness */
-		double eff = primsol_[subindex_[s]] - subprimobj_[s];
-		if (eff < 1.0e-6) continue;
-
 		/** constructing */
+		cutvec.clear();
 		cutvec.insert(subindex_[s], 1.0); /**< theta part */
 		cutrhs = subprimobj_[s];
 		for (int i = 0; i < model_->getNumCouplingRows(); ++i)
@@ -270,7 +316,7 @@ STO_RTN_CODE DdMasterReg::updateProblem()
 			if (fabs(hx_d) > 1.0e-10)
 			{
 				cutvec.insert(nthetas_ + i, -hx_d);
-				cutrhs -= hx_d * primsol_[nthetas_ + i];
+				cutrhs -= hx_d * primsol_to_worker_[worker_][nthetas_ + i];
 			}
 		}
 
@@ -279,18 +325,46 @@ STO_RTN_CODE DdMasterReg::updateProblem()
 		rc->setRow(cutvec);
 		rc->setLb(-COIN_DBL_MAX);
 		rc->setUb(cutrhs);
-		rc->setEffectiveness(eff);
+		rc->setEffectiveness(rc->violated(primsol_to_worker_[worker_]));
 
-		/** local cut pool */
-		cuts.insert(rc);
+//		if (rc->violated(known) > 0)
+//		{
+//			printf("\n######### violation %+e #########\n\n", rc->violated(known));
+//
+//			printf("primsol_:\n");
+//			for (int j = 0, k = 0; j < si_->getNumCols(); ++j)
+//			{
+//				if (fabs(primsol_to_worker_[worker_][j]) < 1.0e-10) continue;
+//				if (k > 0 && k % 5 == 0) printf("\n");
+//				printf("  [%6d] %+e", j, primsol_to_worker_[worker_][j]);
+//				k++;
+//			}
+//			printf("\n");
+//			rc->print();
+//
+//			printf("\n######### violation %+e #########\n\n", rc->violated(known));
+//		}
+
+		if (rc->effectiveness() > 1.0e-6)
+			/** local cut pool */
+			cuts.insert(rc);
+		else
+			FREE_PTR(rc);
 	}
 
 	/** cut counter */
 	nlastcuts_[worker_] = cuts.sizeCuts();
+	message_->print(2, "-> master has %d rows, %d columns, and %d cuts to add\n",
+			si_->getNumRows(), si_->getNumCols(), cuts.sizeCuts());
 
 	/** add cut */
 	if (cuts.sizeCuts() > 0)
+	{
 		si_->addCuts(cuts);
+
+		/** make sure to solve master at the next iteration */
+		doSolve_ = true;
+	}
 	else
 	{
 		/** number of cuts generated from the last iteration */
@@ -301,20 +375,21 @@ STO_RTN_CODE DdMasterReg::updateProblem()
 		if (ncuts == 0)
 		{
 			/** solve without regularization term */
-			solveWithoutReg();
-
-			/** update regularization term */
-			stability_param_ *= 2;
+			terminationTest();
 		}
 	}
 
 	/** update objective function */
-	for (int j = 0; j < nlambdas_; ++j)
+	if (doSolve_)
 	{
-		obj_[nthetas_+j] = primsol_[nthetas_+j] / stability_param_;
-		dQ_[j] = -0.5 / stability_param_;
+		CoinCopyN(primsol_to_worker_[worker_] + nthetas_, nlambdas_, stability_center_);
+		for (int j = 0; j < nlambdas_; ++j)
+		{
+			obj_[nthetas_+j] = stability_center_[j] / stability_param_;
+			dQ_[j] = -1.0 / stability_param_;
+		}
+		refreshObjective();
 	}
-	refreshObjective();
 
 	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
 
@@ -324,19 +399,47 @@ STO_RTN_CODE DdMasterReg::updateProblem()
 /** update objective */
 STO_RTN_CODE DdMasterReg::refreshObjective()
 {
+#define FREE_MEMORY       \
+	FREE_ARRAY_PTR(irowQ) \
+	FREE_ARRAY_PTR(jcolQ) \
+	FREE_ARRAY_PTR(dQ)
+
+	int * irowQ = NULL;
+	int * jcolQ = NULL;
+	double * dQ = NULL;
+
 	BGN_TRY_CATCH
 
 	SolverInterfaceOoqp * ooqp = dynamic_cast<SolverInterfaceOoqp*>(si_);
 	ooqp->setObjCoef(obj_);
-	ooqp->setHessian(nlambdas_, irowQ_, jcolQ_, dQ_);
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	int nnzQ = 0;
+	irowQ = new int [nlambdas_];
+	jcolQ = new int [nlambdas_];
+	dQ    = new double [nlambdas_];
+	for (int i = 0, j = 0; i < nlambdas_; ++i)
+	{
+		if (fabs(dQ_[i]) < 1.0e-8)
+			continue;
+		irowQ[j] = irowQ_[i];
+		jcolQ[j] = jcolQ_[i];
+		dQ[j] = dQ_[i];
+		nnzQ++;
+		j++;
+	}
+
+	ooqp->setHessian(nnzQ, irowQ, jcolQ, dQ);
+
+	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)
+
+	FREE_MEMORY
 
 	return STO_RTN_OK;
+#undef FREE_MEMORY
 }
 
 /** solve without regularization */
-STO_RTN_CODE DdMasterReg::solveWithoutReg()
+STO_RTN_CODE DdMasterReg::terminationTest()
 {
 	BGN_TRY_CATCH
 
@@ -346,6 +449,9 @@ STO_RTN_CODE DdMasterReg::solveWithoutReg()
 	CoinZeroN(obj_ + nthetas_, nlambdas_);
 	CoinZeroN(dQ_, nlambdas_);
 	refreshObjective();
+
+	double cputime  = CoinCpuTime();
+	double walltime = CoinGetTimeOfDay();
 
 	/** solve */
 	si_->solve();
@@ -358,15 +464,56 @@ STO_RTN_CODE DdMasterReg::solveWithoutReg()
 	case STO_STAT_STOPPED_GAP:
 	case STO_STAT_STOPPED_NODE:
 	case STO_STAT_STOPPED_TIME:
-		if (si_->getPrimalBound() - primobj_ < 1.0e-8)
+	{
+		double absgap = fabs(primobj_ - si_->getPrimalBound());
+		double relgap = absgap / (1.0e-10 + fabs(primobj_));
+		message_->print(2, "-> solve QP? %s, termination test: gap tolerance %+e < %+e ?\n",
+				doSolve_ ? "yes" : "no", relgap, par_->getDblParam("DD/STOP_TOL"));
+		if (doSolve_ == false && relgap < par_->getDblParam("DD/STOP_TOL"))
 		{
 			/** let's stop */
 			status_ = STO_STAT_MW_STOP;
+			message_->print(0, "STOP with gap tolerance %+e (%.2f%%).\n", absgap, relgap*100);
+		}
+		else
+		{
+			doSolve_ = false;
+
+			/** get solution */
+			CoinCopyN(si_->getSolution(), si_->getNumCols(), primsol_);
+
+			sum_of_thetas_ = 0.0;
+			for (int j = 0; j < nthetas_; ++j)
+				sum_of_thetas_ += primsol_[j];
+			primobj_ = sum_of_thetas_;
+
+			/** copy lambda */
+			CoinCopyN(primsol_, nthetas_ + nlambdas_, primsol_to_worker_[worker_]);
+
+			/** update statistics */
+			s_statuses_.push_back(si_->getStatus());
+			s_primobjs_.push_back(si_->getPrimalBound());
+			s_dualobjs_.push_back(si_->getDualBound());
+			double * s_primsol = new double [si_->getNumCols()];
+			CoinCopyN(si_->getSolution(), si_->getNumCols(), s_primsol);
+			s_primsols_.push_back(s_primsol);
+			s_primsol = NULL;
+			s_cputimes_.push_back(CoinCpuTime() - cputime);
+			s_walltimes_.push_back(CoinGetTimeOfDay() - walltime);
 		}
 		break;
+	}
 	default:
-		message_->print(0, "Warning: master solution status is %d\n", si_->getStatus());
+		message_->print(0, "Warning: LP master solution status is %d\n", si_->getStatus());
+		status_ = STO_STAT_MW_STOP;
 		break;
+	}
+
+	if (status_ == STO_STAT_MW_CONTINUE)
+	{
+		/** update regularization term */
+		stability_param_ *= 2;
+		message_->print(2, "-> update stability parameter %+e\n", stability_param_);
 	}
 
 	END_TRY_CATCH_RTN(;,STO_RTN_ERR)

@@ -12,6 +12,9 @@
 #include "SolverInterface/SolverInterface.h"
 
 class DdMaster: public DdSolver {
+
+	friend class DdMW;
+
 public:
 
 	/** constructor */
@@ -41,11 +44,17 @@ public:
 	 *   5 coupling column part of the solution
 	 */
 
-	/** receive message from worker */
+	/** receive message from worker (async) */
 	virtual STO_RTN_CODE recvMessage(int source, int size, double * message);
+
+	/** receive message from worker (sync) */
+	virtual STO_RTN_CODE recvMessage(int size, int * counts, int * displs, double * message);
 
 	/** update problem */
 	virtual STO_RTN_CODE updateProblem() = 0;
+
+	/** set init solution */
+	virtual STO_RTN_CODE setInitSolution(const double * sol);
 
 protected:
 
@@ -55,6 +64,9 @@ protected:
 public:
 
 	SolverInterface * getSiPtr() {return si_;}
+
+	double getBestPrimalObjective() {return bestprimobj_;}
+	double getBestDualObjective() {return bestdualobj_;}
 
 protected:
 

@@ -655,7 +655,7 @@ STO_RTN_CODE TssModel::copyRecoProb(
 
 	/** objective coefficients */
 	copyCoreObjective(obj_reco, 1);
-	combineRandObjective(obj_reco, 1, scen, false);
+	combineRandObjective(obj_reco, 1, scen, true);
 
 	/** row lower bounds */
 	copyCoreRowLower(rlbd_reco, 1);

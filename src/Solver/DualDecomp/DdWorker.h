@@ -13,6 +13,9 @@
 #include "Solver/DualDecomp/DdSub.h"
 
 class DdWorker : public DdSolver {
+
+	friend class DdMW;
+
 public:
 
 	/** constructor */
@@ -48,13 +51,13 @@ public:
 	/** receive message from worker */
 	virtual STO_RTN_CODE recvMessage(int size, double * message);
 
+	/** create message */
+	virtual STO_RTN_CODE createMessage();
+
 protected:
 
 	/** create problem */
 	virtual STO_RTN_CODE createProblem();
-
-	/** create message */
-	virtual STO_RTN_CODE createMessage();
 
 protected:
 

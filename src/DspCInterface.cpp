@@ -563,16 +563,6 @@ void getDdMasterDualBounds(DspApiEnv * env, double * vals)
 	}
 }
 
-/** get number of subproblems solved in DD */
-int getDdNumSubproblemSolved(DspApiEnv * env)
-{
-	STO_API_CHECK_SOLVER(0);
-	DdDriver * dd = dynamic_cast<DdDriver*>(env->solver_);
-	if (dd)
-		return  dd->getWorkerPtr()->s_statuses_.size();
-	return 0;
-}
-
 /** get master primal solutionshistory of dual multipliers from dual decomposition */
 void getDdMasterPrimalSolutions(
 		DspApiEnv* env, /**< API environment */
@@ -586,6 +576,16 @@ void getDdMasterPrimalSolutions(
 			for (int j = 0; j < env->model_->getNumCouplingRows(); ++j)
 				vals[i][j] = dd->getMasterPtr()->s_primsols_[i][j];
 	}
+}
+
+/** get number of subproblems solved in DD */
+int getDdNumSubproblemSolved(DspApiEnv * env)
+{
+	STO_API_CHECK_SOLVER(0);
+	DdDriver * dd = dynamic_cast<DdDriver*>(env->solver_);
+	if (dd)
+		return dd->getWorkerPtr()->s_statuses_.size();
+	return 0;
 }
 
 /** get solution time per cpu iteration in DD */
@@ -652,7 +652,6 @@ void printModel(DspApiEnv * env)
 
 #ifdef __cplusplus
 }
-
 #endif
 
 

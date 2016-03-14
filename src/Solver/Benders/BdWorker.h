@@ -26,12 +26,6 @@ public:
 	/** solve */
 	virtual STO_RTN_CODE solve();
 
-	/** generate cuts */
-	virtual STO_RTN_CODE generateCuts(
-			int            ncols, /**< [in] number of master variables */
-			const double * x,     /**< [in] master solution */
-			OsiCuts &      cuts   /**< [out] cuts generated */);
-
 public:
 
 	/** get BdSub pointer */

@@ -28,6 +28,9 @@ public:
 	/** update problem */
 	virtual STO_RTN_CODE updateProblem();
 
+	/** solver status */
+	virtual STO_RTN_CODE getStatus();
+
 protected:
 
 	/** create problem */
@@ -63,8 +66,12 @@ private:
 	double stability_param_;    /**< stability parameter */
 	double * stability_center_; /**< stability center */
 	int trcnt_;                 /**< trust region counter */
+	int numIters_;              /**< number of iterations */
+	double cputime_elapsed_;    /**< cpu time elapsed */
+	double walltime_elapsed_;   /**< wall time elapsed */
 
 	bool isSolved_; /**< indicating whether problem is ever solved */
+
 
 	/** TODO: The following could be encapsulated by a class. */
 	OsiCuts *      cuts_;           /**< cut pool (can have column cuts and row cuts) */

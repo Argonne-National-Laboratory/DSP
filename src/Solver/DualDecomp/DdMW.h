@@ -16,17 +16,13 @@
  * This defines a master-worker framework for dual decomposition.
  */
 class DdMW: public BaseMasterWorker {
-
-	typedef DdMaster Master;
-	typedef DdWorker Worker;
-
 public:
 
 	/** constructor */
 	DdMW(
 			MPI_Comm comm,
-			Master * master,
-			Worker * worker);
+			DdMaster * master,
+			DdWorker * worker);
 
 	/** destructor */
 	virtual ~DdMW();
@@ -52,10 +48,32 @@ protected:
 	/** finalize */
 	virtual STO_RTN_CODE finalize();
 
+private:
+
+	/** run master process (SYNC) */
+	virtual STO_RTN_CODE runMasterSync();
+
+	/** run master process (ASYNC) */
+	virtual STO_RTN_CODE runMasterAsync();
+
+	/** run worker processes (SYNC) */
+	virtual STO_RTN_CODE runWorkerSync();
+
+	/** run worker processes (ASYNC) */
+	virtual STO_RTN_CODE runWorkerAsync();
+
 protected:
 
-	Master * master_; /**< master */
-	Worker * worker_; /**< worker */
+	DdMaster * master_; /**< master */
+	DdWorker * worker_; /**< worker */
+
+private:
+
+	int * nsubprobs_;       /**< number of subproblems for each process */
+	int * subprob_indices_; /**< subproblem indices for each process */
+	int * subprob_displs_;  /**< displacement of subproblem indices */
+
+	int iteration_limit_;   /**< limit on number of iterations */
 };
 
 #endif /* SRC_SOLVER_DECDDMW_H_ */

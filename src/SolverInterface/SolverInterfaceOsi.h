@@ -66,6 +66,9 @@ public:
 	/** get number of columns */
 	virtual int getNumCols() {return si_->getNumCols();}
 
+	/** get number of integer variables */
+	virtual int getNumIntegers() {return si_->getNumIntegers();}
+
 	/** get column lower bounds */
 	virtual const double * getColLower() {return si_->getColLower();}
 
@@ -133,7 +136,10 @@ public:
 	virtual void setIterLimit(int limit);
 
 	/** set wall time limit */
-	virtual void setTimeLimit(double sec);
+	virtual void setTimeLimit(double sec) {}
+
+	/** set gap tolerance */
+	virtual void setGapTol(double tol) {}
 
 	/** set print out level */
 	virtual void setPrintLevel(int level);
