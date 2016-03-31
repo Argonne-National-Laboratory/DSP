@@ -46,64 +46,82 @@ endif()
 
 # Set path variables
 set(EXTRA_DIR ${CMAKE_SOURCE_DIR}/extra)
-set(MA27_DIR ${EXTRA_DIR}/ma27-1.0.0)
-set(OOQP_DIR ${EXTRA_DIR}/OOQP-0.99.25)
-set(SCIPOPTSUITE_DIR ${EXTRA_DIR}/scipoptsuite-3.1.1)
-set(SCIP_DIR ${SCIPOPTSUITE_DIR}/scip-3.1.1)
-set(SOPLEX_DIR ${SCIPOPTSUITE_DIR}/soplex-2.0.1)
-set(SMI_DIR ${EXTRA_DIR}/Smi)
 
 # Build and install external packages
 include(ExternalProject)
 
-# ma27-1.0.0
-ExternalProject_Add(ma27-1.0.0
-	PREFIX ${MA27_DIR}
-	SOURCE_DIR ${MA27_DIR}
-	CONFIGURE_COMMAND ${MA27_DIR}/configure --prefix=${MA27_DIR} FFLAGS=-fPIC
-	BINARY_DIR ${MA27_DIR}
-	BUILD_COMMAND make
-	INSTALL_COMMAND make install
-)
+if (MA27_DIR)
+	message(STATUS "MA27_DIR is set at ${MA27_DIR}")
+else()
+	set(MA27_DIR ${EXTRA_DIR}/ma27-1.0.0)
+	# ma27-1.0.0
+	ExternalProject_Add(ma27-1.0.0
+		PREFIX ${MA27_DIR}
+		SOURCE_DIR ${MA27_DIR}
+		CONFIGURE_COMMAND ${MA27_DIR}/configure --prefix=${MA27_DIR} FFLAGS=-fPIC
+		BINARY_DIR ${MA27_DIR}
+		BUILD_COMMAND make
+		INSTALL_COMMAND make install
+	)
+endif()
 
-# OOQP-0.99.25
-set(OOQP_BLAS "BLAS=${BLAS_LIBRARIES}")
-string(REPLACE ";" "\ " OOQP_BLAS "${OOQP_BLAS}")
-ExternalProject_Add(OOQP-0.99.25
-	DEPENDS ma27-1.0.0
-	PREFIX ${OOQP_DIR}
-	SOURCE_DIR ${OOQP_DIR}
-	CONFIGURE_COMMAND ${OOQP_DIR}/configure --prefix=${OOQP_DIR} CXXFLAGS=-fPIC FFLAGS=-fPIC MA27LIB=${MA27_DIR}/lib/libma27.a ${OOQP_BLAS} CXX=${CMAKE_CXX_COMPILER}
-	BINARY_DIR ${OOQP_DIR}
-	BUILD_COMMAND make
-	INSTALL_COMMAND make install_headers
-)
+if (OOQP_DIR)
+	message(STATUS "OOQP_DIR is set at ${OOQP_DIR}")
+else()
+	set(OOQP_DIR ${EXTRA_DIR}/OOQP-0.99.25)
+	# OOQP-0.99.25
+	set(OOQP_BLAS "BLAS=${BLAS_LIBRARIES}")
+	string(REPLACE ";" "\ " OOQP_BLAS "${OOQP_BLAS}")
+	ExternalProject_Add(OOQP-0.99.25
+		DEPENDS ma27-1.0.0
+		PREFIX ${OOQP_DIR}
+		SOURCE_DIR ${OOQP_DIR}
+		CONFIGURE_COMMAND ${OOQP_DIR}/configure --prefix=${OOQP_DIR} CXXFLAGS=-fPIC FFLAGS=-fPIC MA27LIB=${MA27_DIR}/lib/libma27.a ${OOQP_BLAS} CXX=${CMAKE_CXX_COMPILER}
+		BINARY_DIR ${OOQP_DIR}
+		BUILD_COMMAND make
+		INSTALL_COMMAND make install_headers
+	)
+endif()
 
-# SCIP Optimization Suite (3.1.1)
-ExternalProject_Add(scipoptsuite-3.1.1
-	PREFIX ${SCIPOPTSUITE_DIR}
-	SOURCE_DIR ${SCIPOPTSUITE_DIR}
-	CONFIGURE_COMMAND ""
-	BINARY_DIR ${SCIPOPTSUITE_DIR}
-	BUILD_COMMAND make scipoptlib SHARED=true GMP=false ZLIB=false READLINE=false
-	INSTALL_COMMAND ""
-)
+if (SCIPOPTSUITE_DIR)
+	message(STATUS "SCIPOPTSUITE_DIR is set at ${SCIPOPTSUITE_DIR}")
+	set(SCIP_DIR ${SCIPOPTSUITE_DIR}/scip-3.1.1)
+	set(SOPLEX_DIR ${SCIPOPTSUITE_DIR}/soplex-2.0.1)
+else()
+	set(SCIPOPTSUITE_DIR ${EXTRA_DIR}/scipoptsuite-3.1.1)
+	set(SCIP_DIR ${SCIPOPTSUITE_DIR}/scip-3.1.1)
+	set(SOPLEX_DIR ${SCIPOPTSUITE_DIR}/soplex-2.0.1)
+	# SCIP Optimization Suite (3.1.1)
+	ExternalProject_Add(scipoptsuite-3.1.1
+		PREFIX ${SCIPOPTSUITE_DIR}
+		SOURCE_DIR ${SCIPOPTSUITE_DIR}
+		CONFIGURE_COMMAND ""
+		BINARY_DIR ${SCIPOPTSUITE_DIR}
+		BUILD_COMMAND make scipoptlib SHARED=true GMP=false ZLIB=false READLINE=false
+		INSTALL_COMMAND ""
+	)
+endif()
 
-# COIN-OR Smi (0.95)
-set(SMI_FLAGS "-L${SOPLEX_DIR}/lib -lsoplex")
-ExternalProject_Add(Smi
-	DEPENDS scipoptsuite-3.1.1
-	PREFIX ${SMI_DIR}
-	DOWNLOAD_DIR ${EXTRA_DIR}
-	SVN_REPOSITORY https://projects.coin-or.org/svn/Smi/stable/0.95
-	SVN_TRUST_CERT 1
-	UPDATE_COMMAND ""
-	SOURCE_DIR ${SMI_DIR}
-	CONFIGURE_COMMAND ${SMI_DIR}/configure --enable-static --disable-shared --with-soplex-incdir=${SOPLEX_DIR}/src --with-soplex-lib=${SMI_FLAGS} ADD_CXXFLAGS=-fPIC CXX=${CMAKE_CXX_COMPILER}
-	BINARY_DIR ${SMI_DIR}
-	BUILD_COMMAND make
-	INSTALL_COMMAND make install
-)
+if (SMI_DIR)
+	message(STATUS "SMI_DIR is set at ${SMI_DIR}")
+else()
+	set(SMI_DIR ${EXTRA_DIR}/Smi)
+	# COIN-OR Smi (0.95)
+	set(SMI_FLAGS "-L${SOPLEX_DIR}/lib -lsoplex")
+	ExternalProject_Add(Smi
+		DEPENDS scipoptsuite-3.1.1
+		PREFIX ${SMI_DIR}
+		DOWNLOAD_DIR ${EXTRA_DIR}
+		SVN_REPOSITORY https://projects.coin-or.org/svn/Smi/stable/0.95
+		SVN_TRUST_CERT 1
+		UPDATE_COMMAND ""
+		SOURCE_DIR ${SMI_DIR}
+		CONFIGURE_COMMAND ${SMI_DIR}/configure --enable-static --disable-shared --with-soplex-incdir=${SOPLEX_DIR}/src --with-soplex-lib=${SMI_FLAGS} ADD_CXXFLAGS=-fPIC CXX=${CMAKE_CXX_COMPILER}
+		BINARY_DIR ${SMI_DIR}
+		BUILD_COMMAND make
+		INSTALL_COMMAND make install
+	)
+endif()
 
 # SMI installation script does not copy SmiQuadratic.hpp. (their bug)
 add_custom_command(TARGET Smi POST_BUILD COMMAND cp ${SMI_DIR}/Smi/src/SmiQuadratic.hpp ${SMI_DIR}/include/coin/)
