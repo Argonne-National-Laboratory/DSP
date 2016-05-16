@@ -305,7 +305,7 @@ SCIP_RETCODE SCIPconshdlrBendersMPI::sepaBenders(
 		rc.setUb(COIN_DBL_MAX); /** TODO: for minimization */
 		rc.setLb(cutrhs_[s]);
 
-		//DSPdebug(rc.print());
+		DSPdebug(rc.print());
 		cs.insert(rc);
 
 		/** get status */		
@@ -467,7 +467,7 @@ void SCIPconshdlrBendersMPI::aggregateCuts(OsiCuts cuts_in, OsiCuts &cuts_out)
 		OsiRowCut * rc = cuts_in.rowCutPtr(i);
 
 		/** feasibility cut? */
-		DSPdebugMessage("cut_indices %d cut_status %d weight %e\n", s, cut_status_[s], probability_[s]);
+		DSPdebugMessage("cut_indices %d cut_status %d weight %e lb %e\n", s, cut_status_[s], probability_[s], rc->lb());
 		if (cut_status_[s] == STO_STAT_PRIM_INFEASIBLE)
 		{
 			/** initialize vector */

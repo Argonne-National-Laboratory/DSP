@@ -1377,7 +1377,7 @@ int TssBdSub::calculateCutElements(
             /** l <= Ax <= u, bounded by u */
         	cutrhs += pi[i] * rubd[i];
         }
-		//printf("cutrhs %e, pi %e rlbd %e rubd %e\n", cutrhs, pi[i], rlbd[i], rubd[i]);
+		DSPdebugMessage("cutrhs %e, pi %e rlbd %e rubd %e\n", cutrhs, pi[i], rlbd[i], rubd[i]);
 	}
 //	printf("cutrhs %E\n", cutrhs);
 
@@ -1388,6 +1388,8 @@ int TssBdSub::calculateCutElements(
 		//cutval[j] += rc[j];
         if (cubd[j] >= COIN_DBL_MAX)
         {
+        	if (clbd[j] <= -COIN_DBL_MAX)
+        		continue;
             /** x_j >= l_j */
             cutrhs += rc[j] * clbd[j];
         }
@@ -1411,10 +1413,10 @@ int TssBdSub::calculateCutElements(
             /** l_j <= x_j <= u_j, bounded by u */
             cutrhs += rc[j] * cubd[j];
         }
-		//printf("cutrhs %e, rc %e clbd %e cubd %e\n", cutrhs, rc[j], clbd[j], cubd[j]);
+		DSPdebugMessage("cutrhs %e, rc %e clbd %e cubd %e\n", cutrhs, rc[j], clbd[j], cubd[j]);
 	}
 
-//	printf("cutrhs %E\n", cutrhs);
+	DSPdebugMessage("cutrhs %E\n", cutrhs);
 
 	return 0;
 }

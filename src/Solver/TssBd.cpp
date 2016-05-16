@@ -417,6 +417,7 @@ STO_RTN_CODE TssBd::findLowerBound(double & lowerbound)
 	{
 		/** solution status */
 		status_ = si[s]->getStatus();
+		DSPdebugMessage("subproblem %d status %d\n", s, status_);
 
 		/** get solution */
 		switch (status_)

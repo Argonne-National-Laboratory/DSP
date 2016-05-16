@@ -261,7 +261,7 @@ STO_RTN_CODE TssModel::loadSecondStage(
 	{
 		if (rows_core_[rstart_[1] + i] == NULL)
 		{
-			//printf("creating rows_core_[%d]\n", rstart_[1]+i);
+			DSPdebugMessage("creating rows_core_[%d] with size %d\n", rstart_[1]+i, start[i+1]-start[i]);
 			rows_core_[rstart_[1] + i] = new CoinPackedVector(start[i+1] - start[i], index + start[i], 0.0);
 			//rows_core_[rstart_[1] + i] = new CoinPackedVector(start[i+1] - start[i], index + start[i], value + start[i]);
 		}
@@ -272,7 +272,7 @@ STO_RTN_CODE TssModel::loadSecondStage(
 				bool added = false;
 				if (rows_core_[rstart_[1] + i]->findIndex(index[j]) < 0)
 				{
-					//printf(" added index %d element %e to rows_core_[%d]\n", index[j], value[j], rstart_[1]+i);
+					DSPdebugMessage(" added index[%d] %d element %e to rows_core_[%d]\n", j, index[j], value[j], rstart_[1]+i);
 					rows_core_[rstart_[1] + i]->insert(index[j], 0.);
 					added = true;
 				}
@@ -295,6 +295,7 @@ STO_RTN_CODE TssModel::loadSecondStage(
 
 	/** allocate memory */
 	mat_scen_[s]  = new CoinPackedMatrix(false, ncols_[1], nrows_[1], start[nrows_[1]], value, index, start, len);
+	//DSPdebug(mat_scen_[s]->verifyMtx(4));
 	clbd_scen_[s] = new CoinPackedVector(ncols_[1], cind, clbd);
 	cubd_scen_[s] = new CoinPackedVector(ncols_[1], cind, cubd);
 	obj_scen_[s]  = new CoinPackedVector(ncols_[1], cind, obj);
@@ -420,6 +421,7 @@ STO_RTN_CODE TssModel::decompose(
 		else
 			nzcnt += mat_scen_[scen[s]]->getNumElements();
 	}
+	DSPdebugMessage("nzcnt %d\n", nzcnt);
 
 	/** allocate memory */
 	rowIndices = new int [nzcnt];
@@ -476,10 +478,21 @@ STO_RTN_CODE TssModel::decompose(
 				CoinCopyN(mat_scen_[scen[s]]->getElements() + start, length, elements + pos);
 			}
 			shiftVecIndices(length, colIndices + pos, s * ncols_[1], cstart_[1]);
+			DSPdebugMessage("shift vector indices from %d by %d from %d\n", pos, s * ncols_[1], cstart_[1]);
+			/*for (int k = 0, l = 0; l < length; ++l)
+			{
+				if (fabs(elements[pos+l]) < 1.0e-10) continue;
+				if (k > 0 && k % 4 == 0) printf("\n");
+				printf("  [%5d,%4d,%4d] %+e", i, rowIndices[pos+l], mat_scen_[scen[s]]->getIndices()[start+l], mat_scen_[scen[s]]->getElements()[start+l]);
+				//printf("  [%5d,%4d,%4d] %+e", i, rowIndices[pos+l], colIndices[pos+l], elements[pos+l]);
+				k++;
+			}
+			printf("\n");*/
 			pos += length;
 			rownum++;
 		}
 	}
+	DSPdebugMessage("rownum %d nzcnt %d pos %d\n", rownum, nzcnt, pos);
 	assert(nzcnt == pos);
 
 	mat = new CoinPackedMatrix(false, rowIndices, colIndices, elements, nzcnt);
