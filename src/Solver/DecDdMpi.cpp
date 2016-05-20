@@ -285,7 +285,7 @@ STO_RTN_CODE DecDdMpi::createSubproblem()
 			 *   and evaluating upper bounds. */
 			bdsub_ = new TssBdSub(par_);
 			bdsub_->scenarios_ = subproblemsForCut;
-			bdsub_->loadProblem(tssModel);
+			bdsub_->loadProblem(tssModel); // with one auxiliary variable
 		}
 
 		for (int s = 0; s < parProcIdxSize_; ++s)
@@ -421,7 +421,7 @@ STO_RTN_CODE DecDdMpi::solveSubproblem()
 
 							/** push cuts */
 							subprobs_[s]->pushCuts(cuts_);
-							DSPdebugMessage("Rank %d: pushed %d cuts\n", comm_rank_, cuts_->sizeCuts());
+							DSPdebugMessage("Rank %d: pushed %d cuts, primal bound %e\n", comm_rank_, cuts_->sizeCuts(), primalBound_);
 						}
 
 						/** update wall clock */
@@ -510,10 +510,10 @@ STO_RTN_CODE DecDdMpi::solveSubproblem()
 							for (int j = ncuts; j < cuts_->sizeCuts(); ++j)
 							{
 								double viol = cuts_->rowCutPtr(j)->violated(subprobs_[s]->si_->getSolution());
-//								DSPdebugMessage("Rank %d: subproblem %d violation %e\n", comm_rank_, subprobs_[s]->sind_, viol);
+								DSPdebugMessage("Rank %d: subproblem %d violation %e\n", comm_rank_, subprobs_[s]->sind_, viol);
 								if (viol > 1.0e-6)
 								{
-//									DSPdebugMessage("Rank %d: free transform %d\n", comm_rank_, subprobs_[s]->sind_);
+									DSPdebugMessage("Rank %d: free transform %d\n", comm_rank_, subprobs_[s]->sind_);
 									violated = true;
 									subprobs_[s]->freeTransform();
 									break;
@@ -526,11 +526,15 @@ STO_RTN_CODE DecDdMpi::solveSubproblem()
 				MPI_Barrier(comm_);
 			}
 #endif
-			if (violated)
+			bool recv_violated;
+			MPI_Allreduce(&violated, &recv_violated, 1, MPI_C_BOOL, MPI_LOR, comm_);
+			DSPdebugMessage("Rank %d violated %s\n", comm_rank_, recv_violated ? "true" : "false");
+			if (recv_violated)
 				continue;
 		}
 
 		/** store feasible solutions */
+		DSPdebugMessage("Rank %d: Storing feasible solutions (%d)\n", comm_rank_, (int) solutions.size());
 		for (unsigned int i = 0; i < solutions.size(); ++i)
 		{
 			ubSolutions_.push_back(solutions[i]);
@@ -540,6 +544,7 @@ STO_RTN_CODE DecDdMpi::solveSubproblem()
 		/** 5. obtain upper bounds */
 		if (doEvalUb)
 		{
+			DSPdebugMessage("Rank %d: Obtaining upper bounds...\n", comm_rank_);
 			/** update wall clock */
 			obtainUpperBounds(nsync);
 		}
@@ -559,7 +564,7 @@ STO_RTN_CODE DecDdMpi::solveSubproblem()
 			break;
 
 		/** 6. generate optimality cuts; synchronize cuts; go to 1 if violated. */
-		if (doAddOptCuts)
+		if (doAddOptCuts && nsync > 0)
 			addOptCuts(nsync);
 		break;
 	}
@@ -637,7 +642,7 @@ STO_RTN_CODE DecDdMpi::syncSubproblem()
 					msg = msg_aux;
 				}
 
-#ifdef DSP_DEBUG
+#ifdef DSP_DEBUG2
 				DSPdebugMessage("Sending lambda to rank %d, subproblem %d:  ", i, sind);
 				for (int k = 0; k < msglen; k++)
 					printf("%.4f ", msg[k]);
@@ -868,7 +873,7 @@ STO_RTN_CODE DecDdMpi::syncMaster()
 			}
 		}
 
-#ifdef DSP_DEBUG
+#ifdef DSP_DEBUG2
 		DSPdebugMessage("Sending to master:\n");
 		for (int i = 0; i < comm_size_; ++i)
 		{
@@ -1308,7 +1313,7 @@ void DecDdMpi::obtainUpperBounds(
 		if (ubUpdated)
 			printf(" -> BEST Primal Bound %e\n", primalBound_);
 	}
-	else if (parLogLevel_ == 1)
+	if (parLogLevel_ >= 1)
 	{
 		if (ubUpdated) printf(" * ");
 		else printf("   ");
@@ -1401,6 +1406,15 @@ int DecDdMpi::addFeasCuts(
 int DecDdMpi::addOptCuts(
 		int num /**< number of solutions to check */)
 {
+#define FREE_MEMORY \
+	FREE_PTR(cuts);               \
+	FREE_ARRAY_PTR(numsols);      \
+	FREE_ARRAY_PTR(displs);       \
+	FREE_ARRAY_PTR(cutgroup);     \
+	FREE_ARRAY_PTR(allcutstatus); \
+	FREE_2D_ARRAY_PTR(num, sol);  \
+	FREE_ARRAY_PTR(aggrow);
+	
 	StoModel * stoModel = dynamic_cast<StoModel *>(model_);
 	assert(stoModel != NULL); /** this function should only be called for stochastic models */
 
@@ -1408,9 +1422,11 @@ int DecDdMpi::addOptCuts(
 	int ncols_first = stoModel->getNumCols(0);    /**< number of first-stage variables */
 	int nSolutions = ubSolutions_.size();       /**< number of solutions stored */
 	vector<int> isol;                           /**< solution indices considered in process */
+	vector<int> cutgen_statuses;                /**< cut generation status */
 	int * numsols   = new int [comm_size_];     /**< number of solutions considered in each process */
 	int * displs    = new int [comm_size_];
-	int * cutgroup  = NULL;
+	int * cutgroup  = NULL;                     /**< solution indices for each cut */
+	int * allcutstatus = NULL;                  /**< cut generation status */
 	double ** sol   = new double * [num];       /**< array of dense vector of solutions */
 	OsiCuts * cuts  = new OsiCuts;              /**< cuts generated */
 	double * aggrow = new double [ncols_first]; /**< aggregated optimality cut row */
@@ -1419,6 +1435,7 @@ int DecDdMpi::addOptCuts(
 	/** loop over solutions */
 	for (int i = 0; i < num; ++i)
 		sol[i] = NULL;
+//#define DO_SERIALIZE
 #ifdef DO_SERIALIZE
 	for (int r = 0; r < comm_size_; ++r)
 	{
@@ -1426,11 +1443,22 @@ int DecDdMpi::addOptCuts(
 		{
 			DSPdebugMessage("Rank %d generating optimality cuts\n", comm_rank_);
 #endif
+			/** split solutions to each processor group */
 			for (int i = comm_group_; i < num; i += num_comm_groups_)
 			{
+				int cutgen_status = STO_STAT_OPTIMAL;
 				isol.push_back(i);
 				sol[i] = ubSolutions_[nSolutions - num + i]->denseVector(ncols_first);
+				// The number of columns should be +1 to account for an auxiliary variable in the Benders form.
 				bdsub_->generateCuts(ncols_first + 1, sol[i], cuts, TssBdSub::TssDd, TssBdSub::OptCut);
+				for (int j = 0; j < bdsub_->nSubs_; ++j)
+					if (bdsub_->status_[j] == STO_STAT_PRIM_INFEASIBLE)
+					{
+						cutgen_status = STO_STAT_PRIM_INFEASIBLE;
+						DSPdebugMessage("cutgen_status %d\n", cutgen_status);
+						break;
+					}
+				cutgen_statuses.push_back(cutgen_status);
 			}
 #ifdef DO_SERIALIZE
 		}
@@ -1450,8 +1478,8 @@ int DecDdMpi::addOptCuts(
 				OsiRowCut * rc = cuts->rowCutPtr(i);
 				CoinPackedVector rcrow = rc->row();
 				rc->print();
-				DSPdebugMessage("Rank %d: cut[%d] rhs %e minind %d maxind %d nzcnt %d sum %e 1-norm %e 2-norm %e inf-norm %e\n",
-						comm_rank_, i, rc->lb(), rcrow.getMinIndex(), rcrow.getMaxIndex(), rcrow.getNumElements(), rcrow.sum(), rcrow.oneNorm(), rcrow.twoNorm(), rcrow.infNorm());
+				/*DSPdebugMessage("Rank %d: cut[%d] rhs %e minind %d maxind %d nzcnt %d sum %e 1-norm %e 2-norm %e inf-norm %e\n",
+						comm_rank_, i, rc->lb(), rcrow.getMinIndex(), rcrow.getMaxIndex(), rcrow.getNumElements(), rcrow.sum(), rcrow.oneNorm(), rcrow.twoNorm(), rcrow.infNorm());*/
 			}
 		}
 		MPI_Barrier(comm_);
@@ -1462,14 +1490,38 @@ int DecDdMpi::addOptCuts(
 	syncCuts(0, cuts);
 
 	/** synchronize solution indices */
-	int isol_size[1] = {(int) isol.size()};
-	MPI_Allgather(isol_size, 1, MPI::INT, numsols, 1, MPI::INT, comm_);
+	int isol_size = {(int) isol.size()};
+	MPI_Allgather(&isol_size, 1, MPI::INT, numsols, 1, MPI::INT, comm_);
 
 	for (int i = 0; i < comm_size_; ++i)
 		displs[i] = i == 0 ? 0 : displs[i-1] + numsols[i-1];
 	cutgroup = new int [cuts->sizeCuts()];
-	MPI_Allgatherv(&isol[0], (int) isol.size(), MPI::INT, cutgroup, numsols, displs, MPI::INT, comm_);
+	allcutstatus = new int [cuts->sizeCuts()];
+	MPI_Allgatherv(&isol[0], isol_size, MPI::INT, cutgroup, numsols, displs, MPI::INT, comm_);
+	MPI_Allgatherv(&cutgen_statuses[0], isol_size, MPI::INT, allcutstatus, numsols, displs, MPI::INT, comm_);
 
+#ifdef DSP_DEBUG
+	if (comm_rank_ == 0)
+	{
+		printf("isol_size %d sizeCuts %d\n", isol_size, cuts->sizeCuts());
+		for (int i = 0; i < comm_size_; ++i)
+			printf("  rank %d numsols %d\n", i, numsols[i]);
+		for (int i = 0; i < cuts->sizeCuts(); ++i)
+			printf("  cutgroup[%d] %d\n", i, cutgroup[i]);
+		for (unsigned i = 0; i < cutgen_statuses.size(); ++i)
+			printf("  cutgen_statuses[%d] %d\n", i, cutgen_statuses[i]);
+	}
+#endif
+	DSPdebugMessage("number of synchronized cuts %d\n", cuts->sizeCuts());
+
+#ifdef DO_SERIALIZE
+	MPI_Barrier(comm_);
+	for (int r = 0; r < comm_size_; ++r)
+	{
+		if (r == comm_rank_)
+		{
+			DSPdebugMessage("Rank %d constructing optimality cuts\n", comm_rank_);
+#endif
 	/** construct cuts */
 	for (int k = 0; k < num; ++k)
 	{
@@ -1479,12 +1531,20 @@ int DecDdMpi::addOptCuts(
 		aggrhs = 0.0;
 
 		/** aggregating */
+		bool anycut = false;
 		for (int i = 0; i < cuts->sizeCuts(); ++i)
 		{
 			if (cutgroup[i] != k) continue;
+			if (allcutstatus[i] == STO_STAT_PRIM_INFEASIBLE)
+			{
+				anycut = false;
+				break;
+			}
 
 			OsiRowCut * rc = cuts->rowCutPtr(i);
 			if (rc == NULL) continue;
+			DSPdebug(rc->print());
+			anycut = true;
 
 			/** retrieve cut data */
 			CoinPackedVector row = rc->row();
@@ -1494,12 +1554,16 @@ int DecDdMpi::addOptCuts(
 			{
 				if (row.getIndices()[j] < ncols_first)
 					aggrow[row.getIndices()[j]] += row.getElements()[j];
-//				else
-//					printf("Warning: cut row index exceeds %d\n", row.getIndices()[j]);
 			}
 
 			/** aggregate cut rhs */
 			aggrhs += rc->lb();
+		}
+
+		if (!anycut)
+		{
+			DSPdebugMessage("Rank %d: No cut is generated for solution k=%d.\n", comm_rank_, k);
+			continue;
 		}
 
 		/** create new cut */
@@ -1516,41 +1580,26 @@ int DecDdMpi::addOptCuts(
 		rowcut.setRow(cutrow);
 		rowcut.setUb(COIN_DBL_MAX);
 		rowcut.setLb(aggrhs);
-		//rowcut.print();
+		DSPdebug(rowcut.print());
 
 		/** store cut */
 		cuts_->insertIfNotDuplicate(rowcut);
 	}
+#ifdef DO_SERIALIZE
+		}
+		MPI_Barrier(comm_);
+	}
+#endif
+//#undef DO_SERIALIZE
 	numSyncedCuts_ = cuts_->sizeCuts();
 
 	DSPdebugMessage("Rank %d: optimality cut synchronized %d, cut pool %d\n", comm_rank_, cuts->sizeCuts(), numSyncedCuts_);
 
-	/** check the violation */
-#if 0
-	for (int i = 0; i < num; ++i)
-	{
-		for (int j = nCuts; j < cuts_->sizeCuts(); ++j)
-		{
-			double eff = cuts_->rowCutPtr(j)->violated(sol[i]) / cuts_->rowCutPtr(j)->row().twoNorm();
-			if (eff > 1.0e-6)
-			{
-				violated = 1;
-				break;
-			}
-		}
-		if (violated) break;
-	}
-#endif
-
 	/** free memory */
-	FREE_PTR(cuts);
-	FREE_PTR(numsols);
-	FREE_PTR(displs);
-	FREE_PTR(cutgroup);
-	FREE_2D_ARRAY_PTR(num, sol);
-	FREE_ARRAY_PTR(aggrow);
+	FREE_MEMORY
 
 	return violated;
+#undef FREE_MEMORY
 }
 
 /** synchronize cut pool */
@@ -1593,6 +1642,7 @@ void DecDdMpi::syncCuts(
 		OsiRowCut * rc = cutsGathered.rowCutPtr(i);
 		cuts->insert(rc);
 	}
+	//DSPdebugMessage("Rank %d: number of cuts %d after synchronization\n", comm_rank_, (int) cuts_->sizeCuts());
 
 	/** dump cuts so the original cut pointers were not released. */
 	cutsGathered.dumpCuts();

@@ -283,7 +283,10 @@ int TssBdSub::generateRawCuts(
 			if (which == BothCuts)
 				solveOneSubproblem(this, s, x, Tx, cutval, cutrhs, parOptCuts_);
 			else if (which == FeasCut)
+			{
 				solveOneFeasSubproblem(this, s, x, Tx, cutval, cutrhs);
+				continue;
+			}
 			else if (which == OptCut)
 				solveOneOptSubproblem(this, s, x, Tx, cutval, cutrhs);
 			if (status_[s] == STO_STAT_PRIM_INFEASIBLE)
@@ -360,11 +363,8 @@ void TssBdSub::generateCuts(
 	int status = generateRawCuts(ncols, x, cutval, cutrhs, where, which);
 
 	/** construct cuts */
-	if (status == STO_STAT_OPTIMAL ||
-		 status == STO_STAT_PRIM_INFEASIBLE)
-	{
+	if (status == STO_STAT_OPTIMAL || status == STO_STAT_PRIM_INFEASIBLE)
 		constructCuts(ncols, cutval, cutrhs, x, cs);
-	}
 
 	END_TRY_CATCH(FREE_MEMORY)
 
@@ -1208,7 +1208,7 @@ int TssBdSub::constructCuts(
 	double ** aggval  = NULL; /** aggregated dense cut coefficients */
 	double *  aggrhs  = NULL; /** aggregated cut rhs */
 	CoinPackedVector vec;
-	bool isInfeasible = false;
+	bool generateOptCuts = true;
 
 	BGN_TRY_CATCH
 
@@ -1254,10 +1254,16 @@ int TssBdSub::constructCuts(
 
 				DSPdebug(rc.print());
 				cuts->insert(rc);
-				isInfeasible = true;
+				generateOptCuts = false;
 			}
 
 			break;
+		}
+		
+		if (status_[s] == STO_STAT_FEASIBLE)
+		{
+			generateOptCuts = false;
+			continue;
 		}
 
 		/** consider only optimality cuts */
@@ -1267,17 +1273,14 @@ int TssBdSub::constructCuts(
 		int ind_aux = s % nAuxvars_;
 		for (j = ncols - 1; j >= 0; --j)
 		{
+			if (fabs(values[s][j]) < 1.0e-10) continue;
 			aggval[ind_aux][j] += weight_[s] * values[s][j];
 			DSPdebugMessage("  aggval[%d][%d] %E weight_[%d] %E cutval[%d][%d] %E\n",
 					ind_aux, j, aggval[ind_aux][j],
 					s, weight_[s],
 					s, j, values[s][j]);
 		}
-		//aggval[ind_aux][ncols - nAuxvars_ + ind_aux] += weight_[s];
 		aggrhs[ind_aux] += weight_[s] * rhs[s];
-		DSPdebugMessage("  aggval[%d][%d] %E weight_[%d] %E\n",
-				ind_aux, ncols - nAuxvars_ + ind_aux, aggval[ind_aux][ncols - nAuxvars_ + ind_aux],
-				s, weight_[s]);
 		DSPdebugMessage("  aggrhs[%d] %E weight_[%d] %E cutrhs[%d] %E\n",
 				ind_aux, aggrhs[ind_aux],
 				s, weight_[s],
@@ -1285,7 +1288,7 @@ int TssBdSub::constructCuts(
 	}
 
 	/** We generate optimality cuts only if there is no feasibility cut generated. */
-	if (isInfeasible == false)
+	if (generateOptCuts)
 	{
 		/** construct cuts to pass */
 		for (s = nAuxvars_ - 1; s >= 0; --s)
@@ -1377,7 +1380,7 @@ int TssBdSub::calculateCutElements(
             /** l <= Ax <= u, bounded by u */
         	cutrhs += pi[i] * rubd[i];
         }
-		DSPdebugMessage("cutrhs %e, pi %e rlbd %e rubd %e\n", cutrhs, pi[i], rlbd[i], rubd[i]);
+		//DSPdebugMessage("cutrhs %e, pi %e rlbd %e rubd %e\n", cutrhs, pi[i], rlbd[i], rubd[i]);
 	}
 //	printf("cutrhs %E\n", cutrhs);
 
@@ -1413,10 +1416,10 @@ int TssBdSub::calculateCutElements(
             /** l_j <= x_j <= u_j, bounded by u */
             cutrhs += rc[j] * cubd[j];
         }
-		DSPdebugMessage("cutrhs %e, rc %e clbd %e cubd %e\n", cutrhs, rc[j], clbd[j], cubd[j]);
+		//DSPdebugMessage("cutrhs %e, rc %e clbd %e cubd %e\n", cutrhs, rc[j], clbd[j], cubd[j]);
 	}
 
-	DSPdebugMessage("cutrhs %E\n", cutrhs);
+	//DSPdebugMessage("cutrhs %E\n", cutrhs);
 
 	return 0;
 }

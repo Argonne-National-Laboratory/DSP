@@ -6,6 +6,7 @@
  */
 
 //#define DSP_DEBUG
+//#define SCAN_GLOBAL_CUT_POOL
 
 /** DSP */
 #include "SolverInterface/SCIPconshdlrBenders.h"
@@ -193,7 +194,6 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 			minvals, maxvals, sumvals / nvars_, sumvals, sqrt(ssvals));
 #endif
 
-#define SCAN_GLOBAL_CUT_POOL
 #ifdef SCAN_GLOBAL_CUT_POOL
 	if (SCIPgetStage(scip) == SCIP_STAGE_SOLVING ||
 		SCIPgetStage(scip) == SCIP_STAGE_SOLVED ||

@@ -12,6 +12,7 @@
 
 #define DSP_COLLECT_CUTS 1
 #define KK_DEBUG_PRINT 0
+//#define SCAN_GLOBAL_CUT_POOL
 
 /** constraint data for Benders cuts */
 struct SCIP_ConsData
@@ -148,7 +149,6 @@ SCIP_RETCODE SCIPconshdlrBendersDd::sepaBenders(
 	DSPdebugMessage("Node depth %d\n", SCIPgetDepth(scip));
 	if (SCIPgetDepth(scip) > 0)
 		return SCIP_OKAY;
-#endif
 
 	/** consider incumbent solutions only */
 	double primObj = SCIPgetPrimalbound(scip);
@@ -158,6 +158,7 @@ SCIP_RETCODE SCIPconshdlrBendersDd::sepaBenders(
 		DSPdebugMessage("primObj %e currObj %e\n", primObj, currObj);
 		return SCIP_OKAY;
 	}
+#endif
 
 	/** allocate memory */
 	SCIP_CALL(SCIPallocMemoryArray(scip, &vals, nvars_));
@@ -165,7 +166,6 @@ SCIP_RETCODE SCIPconshdlrBendersDd::sepaBenders(
 	/** get current solution */
 	SCIP_CALL(SCIPgetSolVals(scip, sol, nvars_, vars_, vals));
 
-#define SCAN_GLOBAL_CUT_POOL
 #ifdef SCAN_GLOBAL_CUT_POOL
 	if (SCIPgetStage(scip) == SCIP_STAGE_SOLVING ||
 		SCIPgetStage(scip) == SCIP_STAGE_SOLVED ||
@@ -215,7 +215,7 @@ SCIP_RETCODE SCIPconshdlrBendersDd::sepaBenders(
 		}
 		if (addedPoolCut)
 		{
-			DSPdebugMessage("Added pool cut\n");
+			DSPdebugMessage("Added global pool cut\n");
 			/** free memory */
 			SCIPfreeMemoryArray(scip, &vals);
 			return SCIP_OKAY;
@@ -235,7 +235,7 @@ SCIP_RETCODE SCIPconshdlrBendersDd::sepaBenders(
 		const CoinPackedVector row = rc->row();
 
 		/** is optimality cut? */
-		DSPdebugMessage("row.getNumElements() %d\n", row.getNumElements());
+		//DSPdebugMessage("row.getNumElements() %d\n", row.getNumElements());
 		bool isOptimalityCut = row.getIndices()[row.getNumElements() - 1] == nvars_ - 1;
 
 		/** calculate efficacy */
@@ -252,7 +252,7 @@ SCIP_RETCODE SCIPconshdlrBendersDd::sepaBenders(
 		}
 	}
 
-	DSPdebugMessage("maxEfficacy %e\n", maxEfficacy);
+	DSPdebugMessage("maxEfficacy %e (index %d out of %d)\n", maxEfficacy, maxEfficaciousCut, cutsToAdd_->sizeCuts());
 	if (maxEfficaciousCut >= 0)
 	{
 		/** move one from cut pool */
@@ -310,6 +310,8 @@ SCIP_RETCODE SCIPconshdlrBendersDd::sepaBenders(
 		if (SCIPgetStage(scip) == SCIP_STAGE_INITSOLVE ||
 			SCIPgetStage(scip) == SCIP_STAGE_SOLVING)
 		{
+			DSPdebug(rc->print());
+
 			/** create empty row */
 			SCIP_ROW * row = NULL;
 			SCIP_CALL(SCIPcreateEmptyRowCons(scip, &row, conshdlr, "bendersDd", rc->lb(), SCIPinfinity(scip),
