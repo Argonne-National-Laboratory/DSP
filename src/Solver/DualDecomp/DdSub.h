@@ -48,39 +48,33 @@ public:
 	virtual ~DdSub();
 
 	/** create problem */
-	STO_RTN_CODE createProblem(DecModel * model);
+	DSP_RTN_CODE createProblem(DecModel * model);
 
 	/** add cut generator */
-	STO_RTN_CODE addCutGenerator(BdSub * bdsub);
+	DSP_RTN_CODE addCutGenerator(BdSub * bdsub);
 
 	/** add branch rule */
-	STO_RTN_CODE addBranchrule();
+	DSP_RTN_CODE addBranchrule();
 
 	/** change branch rule */
-	STO_RTN_CODE chgBranchrule(double lb);
+	DSP_RTN_CODE chgBranchrule(double lb);
 
 	/** update problem */
-	STO_RTN_CODE updateProblem(
+	DSP_RTN_CODE updateProblem(
 			double * lambda,
 			double primal_bound = COIN_DBL_MAX);
 
 	/** solve problem */
-	STO_RTN_CODE solve();
-
-	/** free solution process data */
-	STO_RTN_CODE freeSolve(bool restart);
-
-	/** free all solution process data */
-	STO_RTN_CODE freeTransform();
+	DSP_RTN_CODE solve();
 
 	/** collect cuts */
-	STO_RTN_CODE collectCuts(OsiCuts * cuts);
+	DSP_RTN_CODE collectCuts(OsiCuts * cuts);
 
 	/** push cuts */
-	STO_RTN_CODE pushCuts(OsiCuts * cuts);
+	DSP_RTN_CODE pushCuts(OsiCuts * cuts);
 
 	/** collect solutions */
-	STO_RTN_CODE collectSolutions();
+	DSP_RTN_CODE collectSolutions();
 
 	/** get number of solutions */
 	int getNumSolutions() {return nsols_;}
@@ -110,7 +104,7 @@ public:
 	double * MPImsgbuf();
 
 	/** get MPI message buffer */
-	STO_RTN_CODE MPImsgbuf(double * msgbuf);
+	DSP_RTN_CODE MPImsgbuf(double * msgbuf);
 
 public:
 
@@ -142,7 +136,7 @@ private:
 public:
 
 	/** solver statistics */
-	vector<STO_RTN_CODE> s_statuses_;  /**< history of solution statuses */
+	vector<DSP_RTN_CODE> s_statuses_;  /**< history of solution statuses */
 	vector<double>       s_primobjs_;  /**< history of primal objective values */
 	vector<double>       s_dualobjs_;  /**< history of dual objective values */
 //	vector<double*>      s_primsols_;  /**< history of primal solutions */

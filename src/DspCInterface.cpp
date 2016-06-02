@@ -5,8 +5,10 @@
  *      Author: kibaekkim
  */
 
+//#define DSP_DEBUG
+
+#include <Utility/DspMacros.h>
 #include "DspCInterface.h"
-#include "Utility/StoMacros.h"
 #include "Solver/Deterministic/DeDriver.h"
 #include "Solver/Benders/BdDriver.h"
 #include "Solver/DualDecomp/DdDriver.h"
@@ -105,7 +107,7 @@ bool prepareDecModel(DspApiEnv * env)
 		{
 			printf("Decomposition data for a stochastic model supplied: converting model to extensive form\n");
 			DetModel * det;
-			STO_RTN_CHECK_THROW(getTssModel(env)->copyDeterministicEquivalent(det),
+			DSP_RTN_CHECK_THROW(getTssModel(env)->copyDeterministicEquivalent(det),
 					"copyDeterministicEquivalent", "TssModel");
 			env->model_ = new DecDetModel(det, env->decdata_);
 		}
@@ -276,6 +278,7 @@ void solveDe(DspApiEnv * env)
 	env->solver_ = new DeDriver(env->par_, env->model_);
 	env->solver_->init();
 	env->solver_->run();
+	env->solver_->finalize();
 }
 
 /** solve dual decomposition */
@@ -290,6 +293,7 @@ void solveDd(DspApiEnv * env, MPI_Comm comm)
 	env->solver_ = new DdDriver(env->par_, env->model_, comm);
 	env->solver_->init();
 	env->solver_->run();
+	env->solver_->finalize();
 }
 
 /** solve Benders decomposition using MPI */
@@ -308,16 +312,22 @@ void solveBd(
 	}
 
 	if (comm == MPI_UNDEFINED)
+	{
+		DSPdebugMessage("Creating a serial Benders object (comm %d)\n", comm);
 		env->solver_ = new BdDriver(env->par_, new DecTssModel(*getTssModel(env)));
+	}
 	else
+	{
+		DSPdebugMessage("Creating a MPI Benders object (comm %d)\n", comm);
 		env->solver_ = new BdDriver(env->par_, new DecTssModel(*getTssModel(env)), comm);
+	}
 	BdDriver * bd = dynamic_cast<BdDriver*>(env->solver_);
 
 	double * obj_aux  = NULL;
 	double * clbd_aux = NULL;
 	double * cubd_aux = NULL;
 
-	if (nauxvars > 1)
+	if (nauxvars > 0)
 	{
 		/** set auxiliary variables */
 		obj_aux  = new double [nauxvars];
@@ -339,6 +349,7 @@ void solveBd(
 
 	env->solver_->init();
 	env->solver_->run();
+	env->solver_->finalize();
 }
 
 /** set boolean parameter */
@@ -583,8 +594,10 @@ int getDdNumSubproblemSolved(DspApiEnv * env)
 {
 	STO_API_CHECK_SOLVER(0);
 	DdDriver * dd = dynamic_cast<DdDriver*>(env->solver_);
-	if (dd)
-		return dd->getWorkerPtr()->s_statuses_.size();
+	if (dd &&
+		dd->getWorkerList().size() > 0 &&
+		dd->getWorkerList()[0]->getType() == DdWorker::LB)
+		return dd->getWorkerList()[0]->s_statuses_.size();
 	return 0;
 }
 
@@ -593,10 +606,12 @@ void getDdSubproblemCpuTimes(DspApiEnv * env, double * time)
 {
 	STO_API_CHECK_SOLVER();
 	DdDriver * dd = dynamic_cast<DdDriver*>(env->solver_);
-	if (dd)
+	if (dd &&
+		dd->getWorkerList().size() > 0 &&
+		dd->getWorkerList()[0]->getType() == DdWorker::LB)
 	{
-		for (unsigned i = 0; i < dd->getWorkerPtr()->s_cputimes_.size(); ++i)
-			time[i] = dd->getWorkerPtr()->s_cputimes_[i];
+		for (unsigned i = 0; i < dd->getWorkerList()[0]->s_cputimes_.size(); ++i)
+			time[i] = dd->getWorkerList()[0]->s_cputimes_[i];
 	}
 }
 
@@ -605,10 +620,12 @@ void getDdSubproblemWallTimes(DspApiEnv * env, double * time)
 {
 	STO_API_CHECK_SOLVER();
 	DdDriver * dd = dynamic_cast<DdDriver*>(env->solver_);
-	if (dd)
+	if (dd &&
+		dd->getWorkerList().size() > 0 &&
+		dd->getWorkerList()[0]->getType() == DdWorker::LB)
 	{
-		for (unsigned i = 0; i < dd->getWorkerPtr()->s_walltimes_.size(); ++i)
-			time[i] = dd->getWorkerPtr()->s_walltimes_[i];
+		for (unsigned i = 0; i < dd->getWorkerList()[0]->s_cputimes_.size(); ++i)
+			time[i] = dd->getWorkerList()[0]->s_walltimes_[i];
 	}
 }
 
@@ -617,10 +634,12 @@ void getDdSubproblemPrimalBounds(DspApiEnv * env, double * vals)
 {
 	STO_API_CHECK_SOLVER();
 	DdDriver * dd = dynamic_cast<DdDriver*>(env->solver_);
-	if (dd)
+	if (dd &&
+		dd->getWorkerList().size() > 0 &&
+		dd->getWorkerList()[0]->getType() == DdWorker::LB)
 	{
-		for (unsigned i = 0; i < dd->getWorkerPtr()->s_primobjs_.size(); ++i)
-			vals[i] = dd->getWorkerPtr()->s_primobjs_[i];
+		for (unsigned i = 0; i < dd->getWorkerList()[0]->s_cputimes_.size(); ++i)
+			vals[i] = dd->getWorkerList()[0]->s_primobjs_[i];
 	}
 }
 
@@ -629,10 +648,12 @@ void getDdSubproblemDualBounds(DspApiEnv * env, double * vals)
 {
 	STO_API_CHECK_SOLVER();
 	DdDriver * dd = dynamic_cast<DdDriver*>(env->solver_);
-	if (dd)
+	if (dd &&
+		dd->getWorkerList().size() > 0 &&
+		dd->getWorkerList()[0]->getType() == DdWorker::LB)
 	{
-		for (unsigned i = 0; i < dd->getWorkerPtr()->s_dualobjs_.size(); ++i)
-			vals[i] = dd->getWorkerPtr()->s_dualobjs_[i];
+		for (unsigned i = 0; i < dd->getWorkerList()[0]->s_cputimes_.size(); ++i)
+			vals[i] = dd->getWorkerList()[0]->s_dualobjs_[i];
 	}
 }
 

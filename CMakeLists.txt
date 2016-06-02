@@ -34,10 +34,16 @@ if (CMAKE_COMPILER_IS_GNUCC)
 	list(GET GCC_VERSION_COMPONENTS 1 GCC_MINOR)
 endif()
 
-if (${GCC_MAJOR} LESS 5 AND ${GCC_MINOR} LESS 7)
-	set(CMAKE_CXX_FLAGS "${MPI_CXX_COMPILE_FLAGS} -O3 -fopenmp -std=c++0x -DNDEBUG -DUSE_OMP")
+if (DSP_ASSERT EQUAL 1)
+	set(DSP_NDEBUG "")
 else()
-	set(CMAKE_CXX_FLAGS "${MPI_CXX_COMPILE_FLAGS} -O3 -fopenmp -std=c++11 -DNDEBUG -DUSE_OMP")
+	set(DSP_NDEBUG "-DNDEBUG")
+endif()
+
+if (${GCC_MAJOR} LESS 5 AND ${GCC_MINOR} LESS 7)
+	set(CMAKE_CXX_FLAGS "${MPI_CXX_COMPILE_FLAGS} -O3 -fopenmp -std=c++0x ${DSP_NDEBUG} -DUSE_OMP")
+else()
+	set(CMAKE_CXX_FLAGS "${MPI_CXX_COMPILE_FLAGS} -O3 -fopenmp -std=c++11 ${DSP_NDEBUG} -DUSE_OMP")
 endif()
 
 if(APPLE)
@@ -105,6 +111,23 @@ ExternalProject_Add(Smi
 	INSTALL_COMMAND make install
 )
 
+#set(LAZYCPLEX_INCDIR "/opt/ibm/ILOG/CPLEX_Studio1261/cplex/include/ilcplex")
+#set(LAZYCPLEX_LIB "-L/opt/ibm/ILOG/CPLEX_Studio1261/cplex/lib/x86-64_linux/static_pic -lcplex -lm -lpthread")
+#set(SMI_FLAGS "-L${SOPLEX_DIR}/lib -lsoplex")
+#ExternalProject_Add(Smi
+#	DEPENDS scipoptsuite-3.1.1
+#	PREFIX ${SMI_DIR}
+#	DOWNLOAD_DIR ${EXTRA_DIR}
+#	SVN_REPOSITORY https://projects.coin-or.org/svn/Smi/stable/0.95
+#	SVN_TRUST_CERT 1
+#	UPDATE_COMMAND ""
+#	SOURCE_DIR ${SMI_DIR}
+#	CONFIGURE_COMMAND ${SMI_DIR}/configure --enable-static --disable-shared --with-cplex-incdir=${LAZYCPLEX_INCDIR} --with-cplex-lib=${LAZYCPLEX_LIB} --with-soplex-incdir=${SOPLEX_DIR}/src --with-soplex-lib=${SMI_FLAGS} ADD_CXXFLAGS=-fPIC CXX=${CMAKE_CXX_COMPILER}
+#	BINARY_DIR ${SMI_DIR}
+#	BUILD_COMMAND make
+#	INSTALL_COMMAND make install
+#)
+
 # SMI installation script does not copy SmiQuadratic.hpp. (their bug)
 add_custom_command(TARGET Smi POST_BUILD COMMAND cp ${SMI_DIR}/Smi/src/SmiQuadratic.hpp ${SMI_DIR}/include/coin/)
 
@@ -115,6 +138,7 @@ include_directories(
 	src/Solver
 	src/Utility
 	src/SolverInterface
+	${LAZYCPLEX_INCDIR}
 	${OOQP_DIR}/include
 	${SCIP_DIR}/src
 	${SCIP_DIR}/src/scip

@@ -8,8 +8,8 @@
 #ifndef SRC_SOLVER_DSPDRIVER_H_
 #define SRC_SOLVER_DSPDRIVER_H_
 
+#include <Utility/DspMessage.h>
 #include "Utility/DspParams.h"
-#include "Utility/StoMessage.h"
 #include "Model/DecModel.h"
 
 class DspDriver {
@@ -22,15 +22,18 @@ public:
 	virtual ~DspDriver();
 
 	/** initialize */
-	virtual STO_RTN_CODE init() = 0;
+	virtual DSP_RTN_CODE init() = 0;
 
 	/** run */
-	virtual STO_RTN_CODE run() = 0;
+	virtual DSP_RTN_CODE run() = 0;
+
+	/** finalize */
+	virtual DSP_RTN_CODE finalize() = 0;
 
 public:
 
 	/** get solution status */
-	virtual STO_RTN_CODE getStatus() {return status_;}
+	virtual DSP_RTN_CODE getStatus() {return status_;}
 
 	/** get primal solution */
 	virtual const double * getPrimalSolution() {return primsol_;}
@@ -60,11 +63,11 @@ protected:
 
 	DspParams * par_;
 	DecModel * model_;
-	StoMessage * message_; /**< message handler */
+	DspMessage * message_; /**< message handler */
 
 protected:
 
-	STO_RTN_CODE status_; /**< solution status */
+	DSP_RTN_CODE status_; /**< solution status */
 	double * primsol_;    /**< primal solution in extensive form */
 	double * dualsol_;    /**< dual solution in extensive form */
 	double   primobj_;    /**< primal objective bound */

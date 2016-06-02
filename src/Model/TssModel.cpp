@@ -7,7 +7,7 @@
 
 //#define DSP_DEBUG
 
-#include "Utility/StoMessage.h"
+#include <Utility/DspMessage.h>
 #include "TssModel.h"
 
 TssModel::TssModel() :
@@ -29,7 +29,7 @@ TssModel::~TssModel()
 }
 
 /** set number of scenarios */
-STO_RTN_CODE TssModel::setNumberOfScenarios(int nscen)
+DSP_RTN_CODE TssModel::setNumberOfScenarios(int nscen)
 {
 	BGN_TRY_CATCH
 
@@ -75,13 +75,13 @@ STO_RTN_CODE TssModel::setNumberOfScenarios(int nscen)
 		rubd_scen_[s] = NULL;
 	}
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 /** set dimensions */
-STO_RTN_CODE TssModel::setDimensions(
+DSP_RTN_CODE TssModel::setDimensions(
 		const int ncols1, /**< number of first-stage columns */
 		const int nrows1, /**< number of first-stage rows */
 		const int ncols2, /**< number of second-stage columns */
@@ -122,13 +122,13 @@ STO_RTN_CODE TssModel::setDimensions(
 	for (int i = 0; i < nrows_core_; ++i)
 		rows_core_[i] = NULL;
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 /** load first-stage problem */
-STO_RTN_CODE TssModel::loadFirstStage(
+DSP_RTN_CODE TssModel::loadFirstStage(
 		const CoinBigIndex * start, /**< start index for each row */
 		const int *          index, /**< column indices */
 		const double *       value, /**< constraint elements */
@@ -144,13 +144,13 @@ STO_RTN_CODE TssModel::loadFirstStage(
 	if (ncols_ == NULL || ncols_[0] <= 0)
 	{
 		printf("Error: invalid number of columns.\n");
-		return STO_RTN_ERR;
+		return DSP_RTN_ERR;
 	}
 
 	if (nrows_ == NULL || nrows_[0] < 0)
 	{
 		printf("Error: invalid number of rows.\n");
-		return STO_RTN_ERR;
+		return DSP_RTN_ERR;
 	}
 
 	/** allocate memory and values */
@@ -179,13 +179,13 @@ STO_RTN_CODE TssModel::loadFirstStage(
 		rows_core_[i] = new CoinPackedVector(start[i+1] - start[i], index + start[i], value + start[i]);
 	}
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 /** load first-stage problem */
-STO_RTN_CODE TssModel::loadSecondStage(
+DSP_RTN_CODE TssModel::loadSecondStage(
 		const int            s,     /**< scenario index */
 		const double         prob,  /**< probability */
 		const CoinBigIndex * start, /**< start index for each row */
@@ -212,25 +212,25 @@ STO_RTN_CODE TssModel::loadSecondStage(
 	if (ncols_ == NULL || ncols_[1] <= 0)
 	{
 		printf("Error: invalid number of columns for scenario %d.\n", s);
-		return STO_RTN_ERR;
+		return DSP_RTN_ERR;
 	}
 
 	if (nrows_ == NULL || nrows_[1] <= 0)
 	{
 		printf("Error: invalid number of rows for scenario %d.\n", s);
-		return STO_RTN_ERR;
+		return DSP_RTN_ERR;
 	}
 
 	if (nscen_ <= 0)
 	{
 		printf("Error: invalid number of scenarios.\n");
-		return STO_RTN_ERR;
+		return DSP_RTN_ERR;
 	}
 
 	if (s < 0 || s >= nscen_)
 	{
 		printf("Error: invalid scenario index.\n");
-		return STO_RTN_ERR;
+		return DSP_RTN_ERR;
 	}
 
 	/** allocate values */
@@ -301,17 +301,17 @@ STO_RTN_CODE TssModel::loadSecondStage(
 	rlbd_scen_[s] = new CoinPackedVector(nrows_[1], rind, rlbd);
 	rubd_scen_[s] = new CoinPackedVector(nrows_[1], rind, rubd);
 
-	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
 	FREE_MEMORY;
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 /**
  * This constructs a deterministic equivalent form.
  */
-STO_RTN_CODE TssModel::copyDeterministicEquivalent(
+DSP_RTN_CODE TssModel::copyDeterministicEquivalent(
 		CoinPackedMatrix *& mat, /**< [out] constraint matrix */
 		double *& clbd,          /**< [out] column lower bounds */
 		double *& cubd,          /**< [out] column upper bounds */
@@ -323,7 +323,7 @@ STO_RTN_CODE TssModel::copyDeterministicEquivalent(
 	int * scen = new int [nscen_];
 	CoinIotaN(scen, nscen_, 0);
 
-	STO_RTN_CODE rtn = decompose(nscen_, scen, 0, NULL, NULL, NULL,
+	DSP_RTN_CODE rtn = decompose(nscen_, scen, 0, NULL, NULL, NULL,
 			mat, clbd, cubd, ctype, obj, rlbd, rubd);
 
 	/** free array */
@@ -335,7 +335,7 @@ STO_RTN_CODE TssModel::copyDeterministicEquivalent(
 /**
  * Create a DetModel representing the deterministic equivalent of this model.
  */
-STO_RTN_CODE TssModel::copyDeterministicEquivalent(
+DSP_RTN_CODE TssModel::copyDeterministicEquivalent(
 		DetModel *& det /**< [out] deterministic equivalent model */)
 {
 	CoinPackedMatrix * mat = NULL;
@@ -346,7 +346,7 @@ STO_RTN_CODE TssModel::copyDeterministicEquivalent(
 	double * rlbd = NULL;
 	double * rubd = NULL;
 
-	STO_RTN_CODE rtn = copyDeterministicEquivalent(mat, clbd, cubd, ctype, obj, rlbd, rubd);
+	DSP_RTN_CODE rtn = copyDeterministicEquivalent(mat, clbd, cubd, ctype, obj, rlbd, rubd);
 	det = new DetModel(mat, clbd, cubd, ctype, obj, rlbd, rubd);
 
 	return rtn;
@@ -357,7 +357,7 @@ STO_RTN_CODE TssModel::copyDeterministicEquivalent(
  * this results in a standard Benders decomposition structure. If size = 1, then
  * this results in a dual decomposition structure.
  */
-STO_RTN_CODE TssModel::decompose(
+DSP_RTN_CODE TssModel::decompose(
 		int size,                /**< [in] size of scenario subset */
 		int * scen,              /**< [in] subset of scenarios */
 		int naux,                /**< [in] number of auxiliary columns */
@@ -579,15 +579,15 @@ STO_RTN_CODE TssModel::decompose(
 	CoinCopyN(obj_aux, naux, obj + ncols - naux);
 	CoinFillN(ctype + ncols - naux, naux, 'C');
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 /**
  * This copies recourse problem structure for a given scenario index.
  */
-STO_RTN_CODE TssModel::copyRecoProb(
+DSP_RTN_CODE TssModel::copyRecoProb(
 		int scen,                     /**< [in] scenario index */
 		CoinPackedMatrix *& mat_tech, /**< [out] technology matrix */
 		CoinPackedMatrix *& mat_reco, /**< [out] recourse matrix */
@@ -665,7 +665,7 @@ STO_RTN_CODE TssModel::copyRecoProb(
 	copyCoreRowUpper(rubd_reco, 1);
 	combineRandRowUpper(rubd_reco, 1, scen);
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }

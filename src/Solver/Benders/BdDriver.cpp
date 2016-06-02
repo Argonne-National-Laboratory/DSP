@@ -13,7 +13,7 @@
 
 BdDriver::BdDriver(DspParams * par, DecModel * model):
 	DspDriver(par, model),
-	useMPI_(false), comm_(-32766), comm_rank_(0), comm_size_(0),
+	useMPI_(false), comm_(MPI_UNDEFINED), comm_rank_(0), comm_size_(0),
 	mw_(NULL), master_(NULL), worker_(NULL),
 	numPriorities_(0), priorities_(NULL)
 {
@@ -46,7 +46,7 @@ BdDriver::~BdDriver()
 }
 
 /** initialize */
-STO_RTN_CODE BdDriver::init()
+DSP_RTN_CODE BdDriver::init()
 {
 	BGN_TRY_CATCH
 
@@ -64,13 +64,13 @@ STO_RTN_CODE BdDriver::init()
 	if (useMPI_)
 		mw_ = new BdMW(comm_, master_, worker_);
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 /** run */
-STO_RTN_CODE BdDriver::run()
+DSP_RTN_CODE BdDriver::run()
 {
 	BGN_TRY_CATCH
 
@@ -151,31 +151,31 @@ STO_RTN_CODE BdDriver::run()
 		numIterations_ = master_->getSiPtr()->getIterationCount();
 	}
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
-STO_RTN_CODE BdDriver::setAuxVarData(int size, double* obj, double* clbd, double* cubd)
+DSP_RTN_CODE BdDriver::setAuxVarData(int size, double* obj, double* clbd, double* cubd)
 {
-	if (size <= 0) return STO_RTN_ERR;
-	if (!master_) return STO_RTN_OK;
+	if (size <= 0) return DSP_RTN_ERR;
+	if (!master_) return DSP_RTN_OK;
 
 	BGN_TRY_CATCH
 
 	master_->setAuxVarData(size, obj, clbd, cubd);
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
-STO_RTN_CODE BdDriver::setPriorities(
+DSP_RTN_CODE BdDriver::setPriorities(
 		int   size,      /**< size of array */
 		int * priorities /**< branch priority */)
 {
-	if (size <= 0) return STO_RTN_ERR;
-	if (!master_) return STO_RTN_OK;
+	if (size <= 0) return DSP_RTN_ERR;
+	if (!master_) return DSP_RTN_OK;
 
 	BGN_TRY_CATCH
 
@@ -184,29 +184,29 @@ STO_RTN_CODE BdDriver::setPriorities(
 		priorities_ = new int [numPriorities_];
 	CoinCopyN(priorities, numPriorities_, priorities_);
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
-STO_RTN_CODE BdDriver::setSolution(
+DSP_RTN_CODE BdDriver::setSolution(
 		int      size,    /**< size of array */
 		double * solution /**< solution */)
 {
-	if (size <= 0) return STO_RTN_ERR;
-	if (!master_) return STO_RTN_OK;
+	if (size <= 0) return DSP_RTN_ERR;
+	if (!master_) return DSP_RTN_OK;
 
 	BGN_TRY_CATCH
 
 	initsols_.push_back(new CoinPackedVector(size, solution));
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 /** find lower bound */
-STO_RTN_CODE BdDriver::findLowerBound()
+DSP_RTN_CODE BdDriver::findLowerBound()
 {
 #define FREE_MEMORY \
 	FREE_PTR(dd);
@@ -223,11 +223,11 @@ STO_RTN_CODE BdDriver::findLowerBound()
 	/** set lower bound */
 	dualobj_ = dd->getPrimalObjectiveValue();
 
-	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
 	FREE_MEMORY
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 #undef FREE_MEMORY
 }
 
@@ -257,4 +257,8 @@ SCIPconshdlrBenders * BdDriver::constraintHandler()
 	END_TRY_CATCH_RTN(;,NULL)
 
 	return conshdlr;
+}
+
+DSP_RTN_CODE BdDriver::finalize() {
+	return DSP_RTN_OK;
 }

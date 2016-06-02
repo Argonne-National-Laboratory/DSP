@@ -11,10 +11,8 @@
 //#define DSP_HAS_MA57
 
 /** DSP */
+#include <Utility/DspMessage.h>
 #include "SolverInterface/SolverInterface.h"
-#include "Utility/StoMessage.h"
-
-/** OOQP */
 #include "QpGenData.h"
 #include "QpGenVars.h"
 #include "QpGenResiduals.h"
@@ -89,7 +87,7 @@ public:
 		SolverInterface(par),
 		dynCols_(NULL),
 		sense_(1),
-		status_(STO_STAT_UNKNOWN),
+		status_(DSP_STAT_UNKNOWN),
 		print_level_(0),
 		qp_(NULL),
 		prob_(NULL),
@@ -161,7 +159,7 @@ public:
 	virtual int getObjSense() {return sense_;}
 
 	/** solution status */
-	virtual STO_RTN_CODE getStatus() {return status_;}
+	virtual DSP_RTN_CODE getStatus() {return status_;}
 
 	/** get number of rows */
 	virtual int getNumRows() {return my_ + mz_;}
@@ -286,10 +284,10 @@ public:
 protected:
 
 	/** initialize solver interface */
-	virtual STO_RTN_CODE initialize() {return STO_RTN_OK;}
+	virtual DSP_RTN_CODE initialize() {return DSP_RTN_OK;}
 
 	/** finalize solver interface */
-	virtual STO_RTN_CODE finalize();
+	virtual DSP_RTN_CODE finalize();
 
 	/** release OOQP objects */
 	virtual void releaseOOQP();
@@ -306,7 +304,7 @@ public:
 protected:
 
 	int sense_; /**< objective sense */
-	STO_RTN_CODE status_; /**< solution status */
+	DSP_RTN_CODE status_; /**< solution status */
 	int print_level_;
 
 	/** OOQP objects */

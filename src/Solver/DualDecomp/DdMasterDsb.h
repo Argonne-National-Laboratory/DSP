@@ -8,7 +8,7 @@
 #ifndef SRC_SOLVER_DUALDECOMP_DDMASTERDSB_H_
 #define SRC_SOLVER_DUALDECOMP_DDMASTERDSB_H_
 
-#include "Solver/DualDecomp/DdMaster.h"
+#include "Solver/DualDecomp/DdMasterSync.h"
 
 /** Implementation of Doubly Stabilized Bundle Method
  *
@@ -51,40 +51,40 @@
  *              0.0, 0.0, x_1^2, (x_1^2)^T x_1^1, 0.0             , |x_1^2|^2 ,           ; (y_1^2)
  *              0.0, 0.0, x_2^2, 0.0            , (x_2^2)^T x_2^1 , 0.0       , |x_2^2|^2 ] (y_2^2)
  */
-class DdMasterDsb: public DdMaster {
+class DdMasterDsb: public DdMasterSync {
 public:
 
 	/** constructor */
-	DdMasterDsb(DspParams * par, DecModel * model, StoMessage * message, int nworkers, int maxnumsubprobs);
+	DdMasterDsb(DspParams * par, DecModel * model, DspMessage * message, int nworkers, int maxnumsubprobs);
 
 	/** destructor */
 	virtual ~DdMasterDsb();
 
 	/** initialize */
-	virtual STO_RTN_CODE init();
+	virtual DSP_RTN_CODE init();
 
 	/** solve */
-	virtual STO_RTN_CODE solve();
+	virtual DSP_RTN_CODE solve();
 
 	/** update problem */
-	virtual STO_RTN_CODE updateProblem();
+	virtual DSP_RTN_CODE updateProblem();
 
 protected:
 
 	/** create problem */
-	virtual STO_RTN_CODE createProblem();
+	virtual DSP_RTN_CODE createProblem();
 
 private:
 
 	/** manage bundle */
-	STO_RTN_CODE manageBundle(
+	DSP_RTN_CODE manageBundle(
 			double * objvals /**< subproblem objective values */);
 
 	/** apply level change */
-	STO_RTN_CODE applyLevelChange();
+	DSP_RTN_CODE applyLevelChange();
 
 	/** update dynamic objective coefficients */
-	STO_RTN_CODE updateDynObjs();
+	DSP_RTN_CODE updateDynObjs();
 
 private:
 

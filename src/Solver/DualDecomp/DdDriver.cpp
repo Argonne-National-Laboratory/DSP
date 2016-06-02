@@ -5,7 +5,10 @@
  *      Author: kibaekkim
  */
 
+#define DSP_DEBUG
+
 #include "Solver/DualDecomp/DdDriver.h"
+#include "Solver/DualDecomp/DdMasterAtr.h"
 #include "Solver/DualDecomp/DdMasterTr.h"
 #include "Solver/DualDecomp/DdMasterDsb.h"
 #include "Solver/DualDecomp/DdMasterSubgrad.h"
@@ -14,7 +17,7 @@
 DdDriver::DdDriver(DspParams * par, DecModel * model):
 	DspDriver(par, model),
 	comm_(-1), comm_rank_(0), comm_size_(0),
-	mw_(NULL), master_(NULL), worker_(NULL),
+	mw_(NULL), master_(NULL),
 	num_infeasible_solutions_(0)
 {
 	BGN_TRY_CATCH
@@ -43,8 +46,14 @@ DdDriver::DdDriver(DspParams * par, DecModel * model):
 		break;
 	}
 
-	/** create worker */
-	worker_ = new DdWorker(par_, model_, message_);
+	/** create a lower bounder */
+	worker_.push_back(new DdWorkerLB(par_, model_, message_));
+
+	/** create a Benders cut generator */
+	worker_.push_back(new DdWorkerCGBd(par_, model_, message_));
+
+	/** create a upper bounder */
+	worker_.push_back(new DdWorkerUB(par_, model_, message_));
 
 	END_TRY_CATCH(;)
 }
@@ -53,7 +62,7 @@ DdDriver::DdDriver(DspParams * par, DecModel * model):
 /** constructor with MPI */
 DdDriver::DdDriver(DspParams * par, DecModel * model, MPI_Comm comm):
 	DspDriver(par, model), comm_(comm),
-	mw_(NULL), master_(NULL), worker_(NULL),
+	mw_(NULL), master_(NULL),
 	num_infeasible_solutions_(0)
 {
 	BGN_TRY_CATCH
@@ -71,7 +80,10 @@ DdDriver::DdDriver(DspParams * par, DecModel * model, MPI_Comm comm):
 		case Simplex:
 		case IPM:
 		case IPM_Feasible:
-			master_ = new DdMasterTr(par_, model_, message_, comm_size_, maxnumsubprobs);
+			if (par_->getBoolParam("DD/ASYNC"))
+				master_ = new DdMasterAtr(par_, model_, message_, comm_size_, maxnumsubprobs);
+			else
+				master_ = new DdMasterTr(par_, model_, message_, comm_size_, maxnumsubprobs);
 			break;
 		case DSBM:
 			master_ = new DdMasterDsb(par_, model_, message_, comm_size_, maxnumsubprobs);
@@ -87,7 +99,21 @@ DdDriver::DdDriver(DspParams * par, DecModel * model, MPI_Comm comm):
 	else
 	{
 		/** create worker */
-		worker_ = new DdWorker(par_, model_, message_);
+		if (comm_rank_ <= model_->getNumSubproblems())
+		{
+			DSPdebugMessage("Rank %d creates a worker for lower bounds.\n", comm_rank_);
+			worker_.push_back(new DdWorkerLB(par_, model_, message_));
+		}
+
+		/** create worker for upper bounds */
+		if (comm_rank_ > model_->getNumSubproblems() || comm_size_ - 1 <= model_->getNumSubproblems())
+		{
+			DSPdebugMessage("Rank %d creates a worker for Benders cut generation.\n", comm_rank_);
+			worker_.push_back(new DdWorkerCGBd(par_, model_, message_));
+
+			DSPdebugMessage("Rank %d creates a worker for upper bounds.\n", comm_rank_);
+			worker_.push_back(new DdWorkerUB(par_, model_, message_));
+		}
 	}
 
 	END_TRY_CATCH(;)
@@ -97,28 +123,37 @@ DdDriver::~DdDriver()
 {
 	FREE_PTR(mw_);
 	FREE_PTR(master_);
-	FREE_PTR(worker_);
+	DSPdebugMessage("rank %d: worker size %lu\n", comm_rank_, worker_.size());
+	for (unsigned i = 0; i < worker_.size(); ++i)
+	{
+		DSPdebugMessage("rank %d: free memory for worker type %d\n", comm_rank_, worker_[i]->getType());
+		FREE_PTR(worker_[i]);
+	}
 }
 
 /** initialize */
-STO_RTN_CODE DdDriver::init()
+DSP_RTN_CODE DdDriver::init()
 {
 	BGN_TRY_CATCH
 
 	/** initialize master/worker */
 	if (master_) master_->init();
-	if (worker_) worker_->init();
+	for (unsigned i = 0; i < worker_.size(); ++i)
+		worker_[i]->init();
 
 	/** create master/worker framework */
-	mw_ = new DdMW(comm_, master_, worker_);
+	if (par_->getBoolParam("DD/ASYNC"))
+		mw_ = new DdMWAsync(comm_, master_, worker_);
+	else
+		mw_ = new DdMWSync(comm_, master_, worker_);
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 /** run */
-STO_RTN_CODE DdDriver::run()
+DSP_RTN_CODE DdDriver::run()
 {
 	BGN_TRY_CATCH
 
@@ -149,7 +184,18 @@ STO_RTN_CODE DdDriver::run()
 		numIterations_ = master_->getSiPtr()->getIterationCount();
 	}
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
+}
+
+DSP_RTN_CODE DdDriver::finalize()
+{
+	BGN_TRY_CATCH
+
+	mw_->finalize();
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
 }

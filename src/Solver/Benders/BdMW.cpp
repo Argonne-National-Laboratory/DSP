@@ -9,15 +9,19 @@
 #include "Solver/Benders/BdMW.h"
 
 BdMW::BdMW(MPI_Comm comm, BdMaster * master, BdWorker * worker):
-	BaseMasterWorker(comm),
-	master_(master), worker_(worker), primsol_(NULL) {}
+BaseMasterWorker(),
+comm_(comm),
+master_(master), worker_(worker), primsol_(NULL) {
+	MPI_Comm_rank(comm, &comm_rank_);
+	MPI_Comm_size(comm, &comm_size_);
+}
 
 BdMW::~BdMW()
 {
 	FREE_ARRAY_PTR(primsol_);
 }
 
-STO_RTN_CODE BdMW::run()
+DSP_RTN_CODE BdMW::run()
 {
 	BGN_TRY_CATCH
 
@@ -33,27 +37,27 @@ STO_RTN_CODE BdMW::run()
 	/** finalize */
 	finalize();
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
-STO_RTN_CODE BdMW::init()
+DSP_RTN_CODE BdMW::init()
 {
 	BGN_TRY_CATCH
 
 	if (comm_rank_ == 0)
 		primsol_  = new double [master_->getModelPtr()->getFullModelNumCols()];
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
-STO_RTN_CODE BdMW::runMaster()
+DSP_RTN_CODE BdMW::runMaster()
 {
 	if (!master_)
-		return STO_RTN_OK;
+		return DSP_RTN_OK;
 
 	BGN_TRY_CATCH
 
@@ -64,12 +68,12 @@ STO_RTN_CODE BdMW::runMaster()
 	int message = MASTER_STOPPED;
 	MPI_Bcast(&message, 1, MPI_INT, 0, comm_);
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
-STO_RTN_CODE BdMW::runWorker()
+DSP_RTN_CODE BdMW::runWorker()
 {
 #define FREE_MEMORY \
 	FREE_ARRAY_PTR(solution); \
@@ -78,7 +82,7 @@ STO_RTN_CODE BdMW::runWorker()
 	FREE_ARRAY_PTR(cutrhs);
 
 	if (!worker_)
-		return STO_RTN_OK;
+		return DSP_RTN_OK;
 
 	OsiCuts cuts, tempcuts;
 	int message;
@@ -168,15 +172,15 @@ STO_RTN_CODE BdMW::runWorker()
 		DSPdebugMessage("[%d]: Received message [%d]\n", comm_rank_, message);
 	}
 
-	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
 	FREE_MEMORY
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 #undef FREE_MEMORY
 }
 
-STO_RTN_CODE BdMW::finalize()
+DSP_RTN_CODE BdMW::finalize()
 {
 #define FREE_MEMORY            \
 	FREE_ARRAY_PTR(nsubprobs)  \
@@ -287,10 +291,10 @@ STO_RTN_CODE BdMW::finalize()
 		MPI_Gatherv(subsols, scount, MPI_DOUBLE, NULL, NULL, NULL, MPI_DOUBLE, 0, comm_);
 	}
 
-	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
 	FREE_MEMORY
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 #undef FREE_MEMORY
 }

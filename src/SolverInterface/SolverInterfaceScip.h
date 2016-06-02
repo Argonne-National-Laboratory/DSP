@@ -41,10 +41,10 @@ public:
 protected:
 
 	/** initialize solver interface */
-	virtual STO_RTN_CODE initialize();
+	virtual DSP_RTN_CODE initialize();
 
 	/** finalize solver interface */
-	virtual STO_RTN_CODE finalize();
+	virtual DSP_RTN_CODE finalize();
 
 public:
 
@@ -123,7 +123,7 @@ public:
 	virtual void solve();
 
 	/** solution status */
-	virtual STO_RTN_CODE getStatus();
+	virtual DSP_RTN_CODE getStatus();
 
 	/**
 	 * Get functions

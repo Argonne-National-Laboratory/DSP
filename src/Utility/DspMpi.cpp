@@ -1,21 +1,22 @@
 /*
- * StoUtility.cpp
+ * DspUtility.cpp
  *
- *  Created on: Feb 2, 2015
- *      Author: kibaekkim
+ *  Refactored on: April 8, 2016
+ *     Created on: Feb 2, 2015
+ *         Author: kibaekkim
  */
-
-#include "math.h"
-#include "assert.h"
 
 //#define DSP_DEBUG
 
-/** DSP */
-#include "Utility/StoUtility.h"
-#include "Utility/StoMacros.h"
-#include "Utility/StoMessage.h"
+#include <Utility/DspMacros.h>
+#include <Utility/DspMessage.h>
+#include <Utility/DspMpi.h>
+#include "math.h"
+#include "assert.h"
 
-/** check whether solution is duplicate or not; return NULL if duplicate */
+/** DSP */
+
+/** check whether solution is duplicate or not */
 bool duplicateVector(
 		CoinPackedVector * vec,
 		vector<CoinPackedVector*> vecs)
@@ -24,10 +25,15 @@ bool duplicateVector(
 
 	/** number of saved solutions */
 	int num = vecs.size();
+	DSPdebugMessage("number of vectors %d\n", num);
 	for (int i = num - 1; i >= 0; --i)
 	{
+#ifdef DSP_DEBUG
+		DSPdebugMessage("vecs[%d]:\n", i);
+		DspMessage::printArray(vecs[i]);
+#endif
 		if (vec->getNumElements() != vecs[i]->getNumElements() ||
-				vec->getMinIndex() != vecs[i]->getMinIndex() ||
+			vec->getMinIndex() != vecs[i]->getMinIndex() ||
 			vec->getMaxIndex() != vecs[i]->getMaxIndex() ||
 			fabs(vec->infNorm() - vecs[i]->infNorm()) > 1.0e-8 ||
 			fabs(vec->oneNorm() - vecs[i]->oneNorm()) > 1.0e-8 ||
@@ -44,7 +50,7 @@ bool duplicateVector(
 	return dup;
 }
 
-void MPIgatherCoinPackedVectors(
+DSP_RTN_CODE MPIgatherCoinPackedVectors(
 		MPI::Intracomm comm,
 		vector<CoinPackedVector*> vecs_in,
 		vector<CoinPackedVector*> & vecs_out)
@@ -181,9 +187,11 @@ void MPIgatherCoinPackedVectors(
 	FREE_ARRAY_PTR(values);
 	FREE_ARRAY_PTR(rcounts);
 	FREE_ARRAY_PTR(displs);
+
+	return DSP_RTN_OK;
 }
 
-void MPIscatterCoinPackedVectors(
+DSP_RTN_CODE MPIAllgatherCoinPackedVectors(
 		MPI::Intracomm comm,
 		vector<CoinPackedVector*> vecs_in,
 		vector<CoinPackedVector*> & vecs_out)
@@ -305,10 +313,12 @@ void MPIscatterCoinPackedVectors(
 	FREE_ARRAY_PTR(values);
 	FREE_ARRAY_PTR(rcounts);
 	FREE_ARRAY_PTR(displs);
+
+	return DSP_RTN_OK;
 }
 
 /** MPI gather function for OsiCuts type. */
-void MPIgatherOsiCuts(
+DSP_RTN_CODE MPIgatherOsiCuts(
 		MPI::Intracomm comm,
 		OsiCuts cuts_in,
 		OsiCuts & cuts_out)
@@ -405,10 +415,12 @@ void MPIgatherOsiCuts(
 	FREE_ARRAY_PTR(rhs_out);
 	FREE_ARRAY_PTR(ncutss);
 	FREE_ARRAY_PTR(displs);
+
+	return DSP_RTN_OK;
 }
 
-/** MPI scatter function for OsiCuts type. */
-void MPIscatterOsiCuts(
+/** MPI Allgather function for OsiCuts type. */
+DSP_RTN_CODE MPIAllgatherOsiCuts(
 		MPI::Intracomm comm,
 		OsiCuts cuts_in,
 		OsiCuts & cuts_out)
@@ -449,7 +461,7 @@ void MPIscatterOsiCuts(
 	}
 
 	/** synchronize row vectors */
-	MPIscatterCoinPackedVectors(comm, rows_in, rows_out);
+	MPIAllgatherCoinPackedVectors(comm, rows_in, rows_out);
 
 	/** all gather number of vectors */
 	{
@@ -497,5 +509,448 @@ void MPIscatterOsiCuts(
 	FREE_ARRAY_PTR(rhs_out);
 	FREE_ARRAY_PTR(ncutss);
 	FREE_ARRAY_PTR(displs);
+
+	return DSP_RTN_OK;
 }
 
+/** MPI_Send for vector<CoinPackedVectors*> */
+DSP_RTN_CODE MPIsendCoinPackedVectors(
+		MPI::Intracomm comm,
+		int to_rank,
+		vector<CoinPackedVector*> vecs,
+		int tag)
+{
+#define FREE_MEMORY          \
+	FREE_ARRAY_PTR(sendibuf) \
+	FREE_ARRAY_PTR(senddbuf)
+
+	/** send buffers */
+	int *    sendibuf = NULL; /**< integer type */
+	double * senddbuf = NULL; /**< double type */
+
+	BGN_TRY_CATCH
+
+	int number_of_vectors  = vecs.size(); /**< number of vectors */
+	int number_of_elements = 0;           /**< number of elements */
+
+	/** send the number of vectors */
+	MPI_Send(&number_of_vectors, 1, MPI_INT, to_rank, tag, comm);
+
+	/** send the numbers of elements */
+	sendibuf = new int [number_of_vectors];
+	for (int i = 0; i < number_of_vectors; ++i)
+	{
+		DSPdebugMessage("-> Process %d: vecs_in[%d]->getNumElements() %d\n",
+				comm.Get_rank(), i, vecs[i]->getNumElements());
+		sendibuf[i] = vecs[i]->getNumElements();
+	}
+	MPI_Send(sendibuf, number_of_vectors, MPI_INT, to_rank, tag, comm);
+	for (int i = 0; i < number_of_vectors; ++i)
+		number_of_elements += sendibuf[i];
+	FREE_ARRAY_PTR(sendibuf);
+
+	/** send indices */
+	sendibuf = new int [number_of_elements];
+	for (int i = 0; i < number_of_vectors; ++i)
+	{
+		CoinCopyN(vecs[i]->getIndices(), vecs[i]->getNumElements(), sendibuf);
+		sendibuf += vecs[i]->getNumElements();
+	}
+	sendibuf -= number_of_elements;
+	MPI_Send(sendibuf, number_of_elements, MPI_INT, to_rank, tag, comm);
+	FREE_ARRAY_PTR(sendibuf);
+
+	/** send values */
+	senddbuf = new double [number_of_elements];
+	for (int i = 0; i < number_of_vectors; ++i)
+	{
+		CoinCopyN(vecs[i]->getElements(), vecs[i]->getNumElements(), senddbuf);
+		senddbuf += vecs[i]->getNumElements();
+	}
+	senddbuf -= number_of_elements;
+	MPI_Send(senddbuf, number_of_elements, MPI_DOUBLE, to_rank, tag, comm);
+	FREE_ARRAY_PTR(senddbuf);
+
+	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
+
+	FREE_MEMORY
+
+	return DSP_RTN_OK;
+#undef FREE_MEMORY
+}
+
+/** MPI_Recv for vector<CoinPackedVectors*> */
+DSP_RTN_CODE MPIrecvCoinPackedVectors(
+		MPI::Intracomm comm,
+		int from_rank,
+		vector<CoinPackedVector*> & vecs,
+		int tag)
+{
+#define FREE_MEMORY          \
+	FREE_ARRAY_PTR(indices) \
+	FREE_ARRAY_PTR(elements) \
+	FREE_ARRAY_PTR(numbers_of_elements)
+
+	MPI_Status status;
+
+	/** receive buffers */
+	int *    indices  = NULL;
+	double * elements = NULL;
+	int * numbers_of_elements = NULL;
+
+	BGN_TRY_CATCH
+
+	int number_of_vectors;  /**< number of vectors */
+	int number_of_elements = 0; /**< number of elements */
+
+	/** receive the number of vectors */
+	MPI_Recv(&number_of_vectors, 1, MPI_INT, from_rank, tag, comm, &status);
+
+	/** receive the numbers of elements */
+	numbers_of_elements = new int [number_of_vectors];
+	MPI_Recv(numbers_of_elements, number_of_vectors, MPI_INT, from_rank, tag, comm, &status);
+	for (int i = 0; i < number_of_vectors; ++i)
+		number_of_elements += numbers_of_elements[i];
+
+	/** receive indices */
+	indices = new int [number_of_elements];
+	MPI_Recv(indices, number_of_elements, MPI_INT, from_rank, tag, comm, &status);
+
+	/** receive values */
+	elements = new double [number_of_elements];
+	MPI_Recv(elements, number_of_elements, MPI_DOUBLE, from_rank, tag, comm, &status);
+
+	/** construct vectors */
+	for (int i = 0; i < number_of_vectors; ++i)
+	{
+		CoinPackedVector * vec = new CoinPackedVector(
+				numbers_of_elements[i], indices, elements);
+		indices += numbers_of_elements[i];
+		elements  += numbers_of_elements[i];
+		vecs.push_back(vec);
+	}
+	indices -= number_of_elements;
+	elements  -= number_of_elements;
+
+	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
+
+	FREE_MEMORY
+
+	return DSP_RTN_OK;
+#undef FREE_MEMORY
+}
+
+/** MPI_Send for OsiCuts */
+DSP_RTN_CODE MPIsendOsiCuts(
+		MPI::Intracomm comm,
+		int to_rank,
+		OsiCuts cuts,
+		int tag)
+{
+#define FREE_MEMORY     \
+	FREE_ARRAY_PTR(lhs) \
+	FREE_ARRAY_PTR(rhs)
+
+	double * lhs = NULL;
+	double * rhs = NULL;
+
+	BGN_TRY_CATCH
+
+	/** input: cut elements */
+	int ncuts = cuts.sizeCuts(); /**< number of cuts in this processor */
+	vector<CoinPackedVector*> rows;
+
+	/** allocate memory */
+	lhs = new double [ncuts];
+	rhs = new double [ncuts];
+
+	/** parse cuts */
+	for (int i = 0; i < ncuts; ++i)
+	{
+		OsiRowCut * rc = cuts.rowCutPtr(i);
+		assert(rc);
+		/** row vectors */
+		rows.push_back(new CoinPackedVector(rc->row()));
+		/** lhs */
+		lhs[i] = rc->lb();
+		/** rhs */
+		rhs[i] = rc->ub();
+	}
+
+	/** send row vectors */
+	MPIsendCoinPackedVectors(comm, to_rank, rows, tag);
+
+	/** send lhs */
+	MPI_Send(lhs, ncuts, MPI_DOUBLE, to_rank, tag, comm);
+
+	/** send rhs */
+	MPI_Send(rhs, ncuts, MPI_DOUBLE, to_rank, tag, comm);
+
+	/** free vector */
+	for (unsigned i = 0; i < rows.size(); ++i)
+		FREE_PTR(rows[i]);
+
+	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
+
+	FREE_MEMORY
+
+	return DSP_RTN_OK;
+#undef FREE_MEMORY
+}
+
+/** MPI_Recv for OsiCuts */
+DSP_RTN_CODE MPIrecvOsiCuts(
+		MPI::Intracomm comm,
+		int from_rank,
+		OsiCuts & cuts,
+		int tag)
+{
+#define FREE_MEMORY     \
+	FREE_ARRAY_PTR(lhs) \
+	FREE_ARRAY_PTR(rhs)
+
+	MPI_Status status;
+	int ncuts;
+	vector<CoinPackedVector*> rows;
+	double * lhs = NULL;
+	double * rhs = NULL;
+
+	BGN_TRY_CATCH
+
+	/** receive row vectors */
+	MPIrecvCoinPackedVectors(comm, from_rank, rows, tag);
+
+	ncuts = rows.size();
+	lhs = new double [ncuts];
+	rhs = new double [ncuts];
+
+	/** receive lhs */
+	MPI_Recv(lhs, ncuts, MPI_DOUBLE, from_rank, tag, comm, &status);
+
+	/** receive rhs */
+	MPI_Recv(rhs, ncuts, MPI_DOUBLE, from_rank, tag, comm, &status);
+
+	/** construct cuts */
+	for (int i = 0; i < ncuts; ++i)
+	{
+		OsiRowCut rc;
+		rc.setRow(rows[i]);
+		rc.setLb(lhs[i]);
+		rc.setUb(rhs[i]);
+		cuts.insert(rc);
+	}
+
+	/** free vector */
+	for (unsigned i = 0; i < rows.size(); ++i)
+		FREE_PTR(rows[i]);
+
+	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
+
+	FREE_MEMORY
+
+	return DSP_RTN_OK;
+#undef FREE_MEMORY
+}
+
+/** MPI_Scatter function for vector<CoinPackedVectors*> */
+DSP_RTN_CODE MPIscatterCoinPackedVectors(
+		MPI::Intracomm comm,
+		vector<CoinPackedVector*> vecs_in,
+		vector<CoinPackedVector*> & vecs_out)
+{
+#define FREE_MEMORY \
+	FREE_ARRAY_PTR(numbers_of_vectors)  \
+	FREE_ARRAY_PTR(numbers_of_elements) \
+	FREE_ARRAY_PTR(indices)             \
+	FREE_ARRAY_PTR(values)
+
+	int comm_rank = comm.Get_rank();
+	int   number_of_vectors;          /**< number of vectors in process */
+	int * numbers_of_vectors = NULL;  /**< number of vectors per process */
+	int   number_of_elements;         /**< number of elements in process */
+	int * numbers_of_elements = NULL; /**< number of elements per vector in comm world */
+	int * indices = NULL;
+	double * values = NULL;
+
+	BGN_TRY_CATCH
+
+	/** scatter the number of vectors */
+	if (comm_rank == 0)
+	{
+		number_of_vectors = vecs_in.size();
+		MPI_Scatter(&number_of_vectors, 1, MPI_INT, NULL, 0, MPI_INT, 0, comm);
+	}
+	else
+		MPI_Scatter(NULL, 0, MPI_INT, &number_of_vectors, 1, MPI_INT, 0, comm);
+
+	/** scatter the numbers of elements */
+	if (comm_rank == 0)
+	{
+		numbers_of_elements = new int [number_of_vectors];
+		for (int i = 0; i < number_of_vectors; ++i)
+		{
+			DSPdebugMessage("-> Process %d: vecs_in[%d]->getNumElements() %d\n",
+					comm.Get_rank(), i, vecs_in[i]->getNumElements());
+			numbers_of_elements[i] = vecs_in[i]->getNumElements();
+		}
+		MPI_Scatter(numbers_of_elements, number_of_vectors, MPI_INT, NULL, 0, MPI_INT, 0, comm);
+	}
+	else
+	{
+		numbers_of_elements = new int [number_of_vectors];
+		MPI_Scatter(NULL, 0, MPI_INT, numbers_of_elements, number_of_vectors, MPI_INT, 0, comm);
+	}
+
+	/** get number of elements per process */
+	number_of_elements = 0;
+	for (int i = 0; i < number_of_vectors; ++i)
+		number_of_elements += numbers_of_elements[i];
+
+	/** scatter indices */
+	if (comm_rank == 0)
+	{
+		indices = new int [number_of_elements];
+		for (int i = 0; i < number_of_vectors; ++i)
+		{
+			CoinCopyN(vecs_in[i]->getIndices(), numbers_of_elements[i], indices);
+			indices += numbers_of_elements[i];
+		}
+		indices -= number_of_elements;
+		MPI_Scatter(indices, number_of_elements, MPI_INT, NULL, 0, MPI_INT, 0, comm);
+	}
+	else
+	{
+		indices = new int [number_of_elements];
+		MPI_Scatter(NULL, 0, MPI_INT, indices, number_of_elements, MPI_INT, 0, comm);
+	}
+
+	/** scatter values */
+	if (comm_rank == 0)
+	{
+		values = new double [number_of_elements];
+		for (int i = 0; i < number_of_vectors; ++i)
+		{
+			CoinCopyN(vecs_in[i]->getElements(), vecs_in[i]->getNumElements(), values);
+			values += vecs_in[i]->getNumElements();
+		}
+		values -= number_of_elements;
+		MPI_Scatter(values, number_of_elements, MPI_DOUBLE, NULL, 0, MPI_DOUBLE, 0, comm);
+	}
+	else
+	{
+		values = new double [number_of_elements];
+		MPI_Scatter(NULL, 0, MPI_DOUBLE, values, number_of_elements, MPI_DOUBLE, 0, comm);
+	}
+
+	/** re-construct output vectors */
+	if (comm_rank > 0)
+	{
+		DSPdebugMessage("Rank %d: number_of_vectors %d\n", comm_rank, number_of_vectors);
+		for (int i = 0; i < number_of_vectors; ++i)
+		{
+			CoinPackedVector * vec = new CoinPackedVector(
+					numbers_of_elements[i], indices, values);
+			indices += numbers_of_elements[i];
+			values  += numbers_of_elements[i];
+			vecs_out.push_back(vec);
+		}
+		indices -= number_of_elements;
+		values  -= number_of_elements;
+	}
+
+	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
+
+	FREE_MEMORY
+
+	return DSP_RTN_OK;
+#undef FREE_MEMORY
+}
+
+/** MPI_Scatter function for OsiCuts */
+DSP_RTN_CODE MPIscatterOsiCuts(
+		MPI::Intracomm comm,
+		OsiCuts cuts_in,
+		OsiCuts * cuts_out)
+{
+#define FREE_MEMORY     \
+	FREE_ARRAY_PTR(lhs) \
+	FREE_ARRAY_PTR(rhs)
+
+	int comm_rank;
+	MPI_Status status;
+	int ncuts;
+	vector<CoinPackedVector*> rows_in, rows_out;
+	double * lhs = NULL;
+	double * rhs = NULL;
+
+	BGN_TRY_CATCH
+
+	MPI_Comm_rank(comm, &comm_rank);
+
+	if (comm_rank == 0)
+	{
+		/** allocate memory */
+		ncuts = cuts_in.sizeCuts();
+		lhs = new double [ncuts];
+		rhs = new double [ncuts];
+
+		/** parse cuts */
+		for (int i = 0; i < ncuts; ++i)
+		{
+			OsiRowCut * rc = cuts_in.rowCutPtr(i);
+			assert(rc);
+			/** row vectors */
+			rows_in.push_back(new CoinPackedVector(rc->row()));
+			/** lhs */
+			lhs[i] = rc->lb();
+			/** rhs */
+			rhs[i] = rc->ub();
+		}
+	}
+
+	/** receive row vectors */
+	MPIscatterCoinPackedVectors(comm, rows_in, rows_out);
+
+	if (comm_rank > 0)
+	{
+		ncuts = rows_out.size();
+		lhs = new double [ncuts];
+		rhs = new double [ncuts];
+	}
+
+
+	/** scatter lhs */
+	if (comm_rank == 0)
+		MPI_Scatter(lhs, ncuts, MPI_DOUBLE, NULL, 0, MPI_DOUBLE, 0, comm);
+	else
+		MPI_Scatter(NULL, 0, MPI_DOUBLE, lhs, ncuts, MPI_DOUBLE, 0, comm);
+
+	/** receive rhs */
+	if (comm_rank == 0)
+		MPI_Scatter(rhs, ncuts, MPI_DOUBLE, NULL, 0, MPI_DOUBLE, 0, comm);
+	else
+		MPI_Scatter(NULL, 0, MPI_DOUBLE, rhs, ncuts, MPI_DOUBLE, 0, comm);
+
+	if (comm_rank > 0 && cuts_out != NULL)
+	{
+		/** construct cuts */
+		for (int i = 0; i < ncuts; ++i)
+		{
+			OsiRowCut rc;
+			rc.setRow(rows_out[i]);
+			rc.setLb(lhs[i]);
+			rc.setUb(rhs[i]);
+			cuts_out->insert(rc);
+		}
+		/** free vector */
+		for (unsigned i = 0; i < rows_out.size(); ++i)
+			FREE_PTR(rows_out[i]);
+	}
+
+	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
+
+	FREE_MEMORY
+
+	return DSP_RTN_OK;
+#undef FREE_MEMORY
+}

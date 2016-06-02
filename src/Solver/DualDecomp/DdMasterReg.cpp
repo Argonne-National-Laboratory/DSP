@@ -8,8 +8,8 @@
 #include "Solver/DualDecomp/DdMasterReg.h"
 #include "SolverInterface/SolverInterfaceOoqp.h"
 
-DdMasterReg::DdMasterReg(DspParams * par, DecModel * model, StoMessage * message, int nworkers, int maxnumsubprobs):
-	DdMaster(par, model, message, nworkers, maxnumsubprobs),
+DdMasterReg::DdMasterReg(DspParams * par, DecModel * model, DspMessage * message, int nworkers, int maxnumsubprobs):
+	DdMasterSync(par, model, message, nworkers, maxnumsubprobs),
 	sum_of_thetas_(0.0), nthetas_(0), nlambdas_(0),
 	stability_param_(10.0), stability_center_(NULL), nlastcuts_(NULL), primsol_to_worker_(NULL),
 	irowQ_(NULL), jcolQ_(NULL), dQ_(NULL), obj_(NULL), doSolve_(true) {}
@@ -26,11 +26,11 @@ DdMasterReg::~DdMasterReg()
 }
 
 /** initialize */
-STO_RTN_CODE DdMasterReg::init()
+DSP_RTN_CODE DdMasterReg::init()
 {
 	BGN_TRY_CATCH
 
-	DdMaster::init();
+	DdMasterSync::init();
 
 	/** number of cuts generated at the last iteration for each worker */
 	nlastcuts_ = new int [nworkers_];
@@ -39,13 +39,13 @@ STO_RTN_CODE DdMasterReg::init()
 	/** create problem */
 	createProblem();
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 /** set init solution */
-STO_RTN_CODE DdMasterReg::setInitSolution(const double * sol)
+DSP_RTN_CODE DdMasterReg::setInitSolution(const double * sol)
 {
 	BGN_TRY_CATCH
 
@@ -53,17 +53,17 @@ STO_RTN_CODE DdMasterReg::setInitSolution(const double * sol)
 	for (int i = 0; i < nworkers_; ++i)
 		CoinCopyN(sol, nthetas_ + nlambdas_, primsol_to_worker_[i]);
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
-STO_RTN_CODE DdMasterReg::solve()
+DSP_RTN_CODE DdMasterReg::solve()
 {
 	BGN_TRY_CATCH
 
-	if (status_ == STO_STAT_MW_STOP)
-		return STO_RTN_OK;
+	if (status_ == DSP_STAT_MW_STOP)
+		return DSP_RTN_OK;
 
 	double cputime  = CoinCpuTime();
 	double walltime = CoinGetTimeOfDay();
@@ -76,11 +76,11 @@ STO_RTN_CODE DdMasterReg::solve()
 		/** solver status */
 		switch(si_->getStatus())
 		{
-		case STO_STAT_OPTIMAL:
-		case STO_STAT_LIM_ITERorTIME:
-		case STO_STAT_STOPPED_GAP:
-		case STO_STAT_STOPPED_NODE:
-		case STO_STAT_STOPPED_TIME:
+		case DSP_STAT_OPTIMAL:
+		case DSP_STAT_LIM_ITERorTIME:
+		case DSP_STAT_STOPPED_GAP:
+		case DSP_STAT_STOPPED_NODE:
+		case DSP_STAT_STOPPED_TIME:
 		{
 			/** get solution */
 			CoinCopyN(si_->getSolution(), si_->getNumCols(), primsol_);
@@ -122,7 +122,7 @@ STO_RTN_CODE DdMasterReg::solve()
 			break;
 		}
 		default:
-			status_ = STO_STAT_MW_STOP;
+			status_ = DSP_STAT_MW_STOP;
 			message_->print(0, "Warning: QP master solution status is %d\n", si_->getStatus());
 			break;
 		}
@@ -131,12 +131,12 @@ STO_RTN_CODE DdMasterReg::solve()
 	message_->print(2, "-> master objective %+e, sum of thetas %+e, solution time %.2f sec\n",
 			primobj_, sum_of_thetas_, CoinGetTimeOfDay() - walltime);
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
-STO_RTN_CODE DdMasterReg::createProblem()
+DSP_RTN_CODE DdMasterReg::createProblem()
 {
 #define FREE_MEMORY       \
 	FREE_ARRAY_PTR(ctype); \
@@ -282,16 +282,16 @@ STO_RTN_CODE DdMasterReg::createProblem()
 	/** set print level */
 	si_->setPrintLevel(CoinMax(0, par_->getIntParam("LOG_LEVEL") - 2));
 
-	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
 	FREE_MEMORY;
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 #undef FREE_MEMORY
 }
 
 /** update problem */
-STO_RTN_CODE DdMasterReg::updateProblem()
+DSP_RTN_CODE DdMasterReg::updateProblem()
 {
 	BGN_TRY_CATCH
 
@@ -391,13 +391,13 @@ STO_RTN_CODE DdMasterReg::updateProblem()
 		refreshObjective();
 	}
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 /** update objective */
-STO_RTN_CODE DdMasterReg::refreshObjective()
+DSP_RTN_CODE DdMasterReg::refreshObjective()
 {
 #define FREE_MEMORY       \
 	FREE_ARRAY_PTR(irowQ) \
@@ -430,16 +430,16 @@ STO_RTN_CODE DdMasterReg::refreshObjective()
 
 	ooqp->setHessian(nnzQ, irowQ, jcolQ, dQ);
 
-	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
 	FREE_MEMORY
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 #undef FREE_MEMORY
 }
 
 /** solve without regularization */
-STO_RTN_CODE DdMasterReg::terminationTest()
+DSP_RTN_CODE DdMasterReg::terminationTest()
 {
 	BGN_TRY_CATCH
 
@@ -459,11 +459,11 @@ STO_RTN_CODE DdMasterReg::terminationTest()
 	/** solver status */
 	switch(si_->getStatus())
 	{
-	case STO_STAT_OPTIMAL:
-	case STO_STAT_LIM_ITERorTIME:
-	case STO_STAT_STOPPED_GAP:
-	case STO_STAT_STOPPED_NODE:
-	case STO_STAT_STOPPED_TIME:
+	case DSP_STAT_OPTIMAL:
+	case DSP_STAT_LIM_ITERorTIME:
+	case DSP_STAT_STOPPED_GAP:
+	case DSP_STAT_STOPPED_NODE:
+	case DSP_STAT_STOPPED_TIME:
 	{
 		double absgap = fabs(primobj_ - si_->getPrimalBound());
 		double relgap = absgap / (1.0e-10 + fabs(primobj_));
@@ -472,7 +472,7 @@ STO_RTN_CODE DdMasterReg::terminationTest()
 		if (doSolve_ == false && relgap < par_->getDblParam("DD/STOP_TOL"))
 		{
 			/** let's stop */
-			status_ = STO_STAT_MW_STOP;
+			status_ = DSP_STAT_MW_STOP;
 			message_->print(0, "STOP with gap tolerance %+e (%.2f%%).\n", absgap, relgap*100);
 		}
 		else
@@ -505,18 +505,18 @@ STO_RTN_CODE DdMasterReg::terminationTest()
 	}
 	default:
 		message_->print(0, "Warning: LP master solution status is %d\n", si_->getStatus());
-		status_ = STO_STAT_MW_STOP;
+		status_ = DSP_STAT_MW_STOP;
 		break;
 	}
 
-	if (status_ == STO_STAT_MW_CONTINUE)
+	if (status_ == DSP_STAT_MW_CONTINUE)
 	{
 		/** update regularization term */
 		stability_param_ *= 2;
 		message_->print(2, "-> update stability parameter %+e\n", stability_param_);
 	}
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }

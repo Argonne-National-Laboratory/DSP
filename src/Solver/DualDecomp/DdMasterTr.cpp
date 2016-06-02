@@ -5,22 +5,26 @@
  *      Author: kibaekkim
  */
 
+//#define DSP_DEBUG
+
 /** COIN */
 #include "CoinWarmStartBasis.hpp"
 
 /** DSP */
 #include "Solver/DualDecomp/DdMasterTr.h"
+#include "SolverInterface/SolverInterfaceCpx.h"
 #include "SolverInterface/SolverInterfaceClp.h"
 #include "SolverInterface/SolverInterfaceOoqp.h"
 #include "SolverInterface/OoqpEps.h"
 
-DdMasterTr::DdMasterTr(DspParams * par, DecModel * model, StoMessage * message, int nworkers, int maxnumsubprobs):
-	DdMaster(par, model, message, nworkers, maxnumsubprobs),
+DdMasterTr::DdMasterTr(DspParams * par, DecModel * model, DspMessage * message, int nworkers, int maxnumsubprobs):
+	DdMasterSync(par, model, message, nworkers, maxnumsubprobs),
 	nthetas_(0), nlambdas_(0),
 	stability_param_(0.0), stability_center_(NULL), trcnt_(0), numIters_(0),
 	cputime_elapsed_(0.0), walltime_elapsed_(0.0), isSolved_(false),
 	cuts_(NULL), ncuts_minor_(0), cutdel_param_(0.5),
-	parTr_(true), parTrSize_(0.0), parTrDecrease_(true), parNumCutsPerIter_(1), parMasterAlgo_(IPM_Feasible), parLogLevel_(0) {}
+	parTr_(true), parTrSize_(0.0), parTrDecrease_(true), parNumCutsPerIter_(1), parMasterAlgo_(IPM_Feasible), parLogLevel_(0)
+	{}
 
 DdMasterTr::~DdMasterTr()
 {
@@ -29,11 +33,11 @@ DdMasterTr::~DdMasterTr()
 }
 
 /** initialize */
-STO_RTN_CODE DdMasterTr::init()
+DSP_RTN_CODE DdMasterTr::init()
 {
 	BGN_TRY_CATCH
 
-	DdMaster::init();
+	DdMasterSync::init();
 
 	/** read parameters */
 	parTr_ = par_->getBoolParam("DD/TR");
@@ -50,12 +54,12 @@ STO_RTN_CODE DdMasterTr::init()
 	cputime_elapsed_  = CoinCpuTime();
 	walltime_elapsed_ = CoinGetTimeOfDay();
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
-STO_RTN_CODE DdMasterTr::solve()
+DSP_RTN_CODE DdMasterTr::solve()
 {
 	BGN_TRY_CATCH
 
@@ -71,15 +75,23 @@ STO_RTN_CODE DdMasterTr::solve()
 	/** solver status */
 	switch(si_->getStatus())
 	{
-	case STO_STAT_OPTIMAL:
-	case STO_STAT_LIM_ITERorTIME:
-	case STO_STAT_STOPPED_GAP:
-	case STO_STAT_STOPPED_NODE:
-	case STO_STAT_STOPPED_TIME:
+	case DSP_STAT_OPTIMAL:
+	case DSP_STAT_LIM_ITERorTIME:
+	case DSP_STAT_STOPPED_GAP:
+	case DSP_STAT_STOPPED_NODE:
+	case DSP_STAT_STOPPED_TIME:
 	{
 		/** get solution */
 		CoinCopyN(si_->getSolution(), si_->getNumCols(), primsol_);
 		primobj_ = si_->getPrimalBound();
+//		for (int j = 0, k = 0; j < si_->getNumCols(); ++j)
+//		{
+//			if (fabs(primsol_[j]) < 1.0e-10) continue;
+//			if (k > 0 && k % 5 == 0) printf("\n");
+//			printf("  [%6d] %+e", j, primsol_[j]);
+//			k++;
+//		}
+//		printf("\n");
 
 		/** update statistics */
 		s_statuses_.push_back(si_->getStatus());
@@ -95,17 +107,17 @@ STO_RTN_CODE DdMasterTr::solve()
 		break;
 	}
 	default:
-		status_ = STO_STAT_MW_STOP;
+		status_ = DSP_STAT_MW_STOP;
 		message_->print(0, "Warning: master solution status is %d\n", si_->getStatus());
 		break;
 	}
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
-STO_RTN_CODE DdMasterTr::createProblem()
+DSP_RTN_CODE DdMasterTr::createProblem()
 {
 #define FREE_MEMORY        \
 	FREE_ARRAY_PTR(ctype); \
@@ -228,10 +240,13 @@ STO_RTN_CODE DdMasterTr::createProblem()
 	switch (parMasterAlgo_)
 	{
 	case Simplex:
-		si_ = new SolverInterfaceClp(par_);
+//		si_ = new SolverInterfaceClp(par_);
+		si_ = new SolverInterfaceCpx(par_);
 		break;
 	case IPM:
 		si_ = new SolverInterfaceOoqp(par_);
+//		si_ = new SolverInterfaceCpx(par_);
+//		dynamic_cast<SolverInterfaceCpx*>(si_)->useBarrier_ = true;
 		break;
 	case IPM_Feasible:
 		si_ = new OoqpEps(par_);
@@ -258,15 +273,15 @@ STO_RTN_CODE DdMasterTr::createProblem()
 	/** set print level */
 	si_->setPrintLevel(CoinMax(0, parLogLevel_ - 2));
 
-	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
 	FREE_MEMORY;
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 #undef FREE_MEMORY
 }
 
-STO_RTN_CODE DdMasterTr::updateProblem()
+DSP_RTN_CODE DdMasterTr::updateProblem()
 {
 	BGN_TRY_CATCH
 
@@ -290,7 +305,7 @@ STO_RTN_CODE DdMasterTr::updateProblem()
 	{
 		if (newdual >= bestdualobj_ + 1.0e-4 * (curprimobj - bestdualobj_))
 		{
-			message_->print(2, "  -> %s STEP: dual objective %e", isSolved_ ? "SERIOUS" : "INITIAL", newdual);
+			message_->print(2, "TR -> %s STEP: dual objective %e", isSolved_ ? "SERIOUS" : "INITIAL", newdual);
 
 			/** reset minor cut counter */
 			ncuts_minor_ = nCutsAdded;
@@ -303,19 +318,19 @@ STO_RTN_CODE DdMasterTr::updateProblem()
 			{
 				/** update proximal point */
 				CoinCopyN(primsol_ + nthetas_, nlambdas_, stability_center_);
-				message_->print(2, ", updated proximal point");
+				message_->print(3, ", updated proximal point");
 
 				/** possibly delete cuts */
 				possiblyDeleteCuts(newprimal);
 
 				/** is solution boundary? */
-				if (isSolutionBoundary() &&
+				if (/*isSolutionBoundary() &&*/
 					/*primalBound - dual_bound < 0 ||*/
 					newdual >= bestdualobj_ + 0.5 * (curprimobj - bestdualobj_))
 				{
 					/** increase trust region */
 					stability_param_ = CoinMin(2. * stability_param_, 1.0e+4);
-					message_->print(2, ", increased trust region size %e", stability_param_);
+					message_->print(3, ", increased trust region size %e", stability_param_);
 				}
 
 				/** set trust region */
@@ -325,6 +340,8 @@ STO_RTN_CODE DdMasterTr::updateProblem()
 			/** update dual bound */
 			bestdualobj_ = newdual;
 			trcnt_ = 0;
+
+			message_->print(2, "\n");
 		}
 		else
 		{
@@ -332,13 +349,13 @@ STO_RTN_CODE DdMasterTr::updateProblem()
 			ncuts_minor_ += nCutsAdded;
 
 			/** null step */
-			message_->print(1, "  -> null step: dual objective %e", newdual);
+			message_->print(3, "TR -> null step: dual objective %e", newdual);
 
 			if (curprimobj < bestdualobj_)
 			{
 				/** increase trust region */
 				stability_param_ = CoinMin(2. * stability_param_, 1.0e+4);
-				message_->print(1, ", increased trust region size %e", stability_param_);
+				message_->print(3, ", increased trust region size %e", stability_param_);
 				/** set trust region */
 				setTrustRegion(stability_param_, stability_center_);
 			}
@@ -351,24 +368,26 @@ STO_RTN_CODE DdMasterTr::updateProblem()
 				{
 					/** decrease trust region */
 					stability_param_ *= 1.0 / CoinMin(rho, 4.);
-					message_->print(1, ", decreased trust region size %e", stability_param_);
+					message_->print(3, ", decreased trust region size %e", stability_param_);
 					trcnt_ = 0;
 
 					/** set trust region */
 					setTrustRegion(stability_param_, stability_center_);
 				}
 			}
+
+			message_->print(3, "\n");
 		}
 	}
 	else
 	{
-		message_->print(1, "  dual objective %e", newdual);
+		message_->print(3, "TR -> dual objective %e\n", newdual);
 		if (newdual >= bestdualobj_ + 1.0e-4 * (curprimobj - bestdualobj_))
 			/** update dual bound */
 			bestdualobj_ = newdual;
 	}
 
-	message_->print(1, ", master has %d rows and %d cols after adding %d cuts.",
+	message_->print(4, "TR -> master has %d rows and %d cols after adding %d cuts.\n",
 				si_->getNumRows(), si_->getNumCols(), nCutsAdded);
 
 	OoqpEps * ooqp = dynamic_cast<OoqpEps*>(si_);
@@ -376,37 +395,16 @@ STO_RTN_CODE DdMasterTr::updateProblem()
 	{
 		if (ooqp->hasOoqpStatus_ && isSolved_)
 		{
+			DSPdebugMessage("bestprimobj %+e bestdualobj %+e\n", bestprimobj_, bestdualobj_);
 			double epsilon = (si_->getPrimalBound() - newprimal + ooqp->getDualityGap()) / (1. + fabs(si_->getPrimalBound()));
 			if (epsilon > 1.) epsilon = 1.;
 			ooqp->setOoqpStatus(epsilon, -bestprimobj_, -bestdualobj_);
 		}
 	}
 
-	message_->print(1, "\n");
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
-
-	return STO_RTN_OK;
-}
-
-/** solver status */
-STO_RTN_CODE DdMasterTr::getStatus()
-{
-	BGN_TRY_CATCH
-
-	double time_elapsed = CoinGetTimeOfDay() - walltime_elapsed_;
-	message_->print(1, "Iteration %3d: Dual Bound %e", numIters_++, bestdualobj_);
-
-	message_->print(1, " Time Elapsed %.2f sec\n", time_elapsed);
-
-	double absgap = primobj_ - bestdualobj_;
-	double relgap = absgap / (1.e-10 + fabs(primobj_));
-	bool terminate = (absgap > -1.0e-6 && relgap < par_->getDblParam("DD/STOP_TOL"));
-	status_ = terminate ? STO_STAT_MW_STOP : STO_STAT_MW_CONTINUE;
-
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
-
-	return status_;
+	return DSP_RTN_OK;
 }
 
 /** is solution trust region boundary? */
@@ -430,10 +428,11 @@ bool DdMasterTr::isSolutionBoundary(double eps)
 		if (diff < mindiff)
 			mindiff = diff;
 	}
+	DSPdebugMessage("TR mindiff %+e\n", mindiff);
 
 	END_TRY_CATCH(;)
 
-	return fabs(maxdiff) < eps;
+	return fabs(mindiff) < eps;
 }
 
 /** add cuts */
@@ -469,14 +468,14 @@ int DdMasterTr::addCuts(
 		assert(fabs(subprimobj_[s]) < 1.0e+20);
 
 		/** cut index */
-		int cutidx = s % nthetas_;
+		int cutidx = subindex_[s] % nthetas_;
 
 		/** construct cut */
  		aggrhs[cutidx] += subprimobj_[s];
 		for (int i = 0; i < nlambdas_; i++)
 		{
 			/** evaluate solution on coupling constraints (if they are Hx = d, this is (Hx - d)_i) */
-			double hx_d = model_->evalLhsCouplingRowSubprob(i, s, subsolution_[s]) - model_->getRhsCouplingRow(i);
+			double hx_d = model_->evalLhsCouplingRowSubprob(i, subindex_[s], subsolution_[s]) - model_->getRhsCouplingRow(i);
 			aggvec[cutidx][nthetas_ + i] -= hx_d; /** coefficients for lambda */
 			if (isSolved_)
 				aggrhs[cutidx] -= hx_d * primsol_[nthetas_ + i];
@@ -530,6 +529,7 @@ int DdMasterTr::addCuts(
 	}
 
 	nCutsAdded = cuts.sizeCuts();
+	DSPdebug(cuts.printCuts());
 	if (nCutsAdded > 0)
 		/** apply cuts */
 		si_->addCuts(cuts);
@@ -546,14 +546,14 @@ int DdMasterTr::addCuts(
 }
 
 /** possibly delete cuts */
-STO_RTN_CODE DdMasterTr::possiblyDeleteCuts(
+DSP_RTN_CODE DdMasterTr::possiblyDeleteCuts(
 		double subobjval /**< sum of subproblem objective values */)
 {
 	OsiCuts cuts;
 	int nrows = model_->nonanticipativity() ? model_->getNumSubproblemCouplingCols(0) : 0;
 	int ncuts = si_->getNumRows() - nrows;
 	if (ncuts == 0)
-		return STO_RTN_OK;
+		return DSP_RTN_OK;
 
 	BGN_TRY_CATCH
 
@@ -634,7 +634,7 @@ STO_RTN_CODE DdMasterTr::possiblyDeleteCuts(
 
 	/** get basis information */
 	CoinWarmStartBasis * ws = NULL;
-	if (osi) ws = dynamic_cast<CoinWarmStartBasis*>(osi->getWarmStart()->clone());
+	if (osi && osi->getWarmStart()) ws = dynamic_cast<CoinWarmStartBasis*>(osi->getWarmStart()->clone());
 
 	vector<char> aStat; /**< status of artificial variables */
 
@@ -653,7 +653,7 @@ STO_RTN_CODE DdMasterTr::possiblyDeleteCuts(
 			{
 				rc->setEffectiveness(1.0);
 				cuts.insert(*rc);
-				if (osi)
+				if (osi && ws)
 					aStat.push_back(ws->getArtifStatus(i2));
 			}
 		}
@@ -666,7 +666,7 @@ STO_RTN_CODE DdMasterTr::possiblyDeleteCuts(
 
 	/** exit if no cut to delete */
 	if (nCutsToDelete == 0)
-		return STO_RTN_OK;
+		return DSP_RTN_OK;
 
 	/** remove all cuts from solver interface */
 	removeAllCuts();
@@ -674,7 +674,7 @@ STO_RTN_CODE DdMasterTr::possiblyDeleteCuts(
 	/** apply cuts */
 	si_->addCuts(cuts);
 
-	if (osi)
+	if (osi && ws)
 	{
 		/** create new basis */
 		CoinWarmStartBasis * basis = new CoinWarmStartBasis(
@@ -684,9 +684,9 @@ STO_RTN_CODE DdMasterTr::possiblyDeleteCuts(
 		osi->setWarmStart(basis);
 	}
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 /** recruite cuts */
@@ -774,7 +774,7 @@ int DdMasterTr::recruiteCuts()
 }
 
 /** remove all cuts */
-STO_RTN_CODE DdMasterTr::removeAllCuts()
+DSP_RTN_CODE DdMasterTr::removeAllCuts()
 {
 	BGN_TRY_CATCH
 
@@ -802,13 +802,13 @@ STO_RTN_CODE DdMasterTr::removeAllCuts()
 		ooqp->cuts_.dumpCuts();
 	}
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 /** change trust region */
-STO_RTN_CODE DdMasterTr::setTrustRegion(double stability_param, double * stability_center)
+DSP_RTN_CODE DdMasterTr::setTrustRegion(double stability_param, double * stability_center)
 {
 	BGN_TRY_CATCH
 
@@ -824,7 +824,34 @@ STO_RTN_CODE DdMasterTr::setTrustRegion(double stability_param, double * stabili
 		si_->setColBounds(j, clbd, cubd);
 	}
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
+}
+
+DSP_RTN_CODE DdMasterTr::terminationTest()
+{
+	if (status_ == DSP_STAT_MW_STOP)
+		return status_;
+
+	BGN_TRY_CATCH
+
+	if (isSolutionBoundary() == false)
+	{
+		double time_elapsed = CoinGetTimeOfDay() - walltime_elapsed_;
+		double absgap = primobj_ - bestdualobj_;
+		double relgap = absgap / (1.e-10 + fabs(primobj_));
+		DSPdebugMessage("absgap %+e relgap %+e\n", absgap, relgap);
+		if (absgap > -1.0e-6 && relgap < par_->getDblParam("DD/STOP_TOL"))
+		{
+			status_ = DSP_STAT_MW_STOP;
+			message_->print(1, "DdMasterTr: STOP with gap tolerance %+e (%.2f%%).\n", absgap, relgap*100);
+		}
+	}
+	else
+		message_->print(4, "TR -> The current solution is in TR boundary.\n");
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return status_;
 }

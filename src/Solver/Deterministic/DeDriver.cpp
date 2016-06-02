@@ -7,6 +7,7 @@
 
 #include "Model/TssModel.h"
 #include "Solver/Deterministic/DeDriver.h"
+#include "SolverInterface/SolverInterfaceCpx.h"
 #include "SolverInterface/SolverInterfaceScip.h"
 #include "SolverInterface/SolverInterfaceClp.h"
 
@@ -19,7 +20,7 @@ DeDriver::~DeDriver()
 }
 
 /** initilize */
-STO_RTN_CODE DeDriver::init()
+DSP_RTN_CODE DeDriver::init()
 {
 	BGN_TRY_CATCH
 
@@ -27,11 +28,11 @@ STO_RTN_CODE DeDriver::init()
 
 	END_TRY_CATCH(;)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 /** run */
-STO_RTN_CODE DeDriver::run()
+DSP_RTN_CODE DeDriver::run()
 {
 #define FREE_MEMORY       \
 	FREE_PTR(mat)         \
@@ -58,7 +59,7 @@ STO_RTN_CODE DeDriver::run()
 	double stime;
 
 	/** get DE model */
-	STO_RTN_CHECK_THROW(
+	DSP_RTN_CHECK_THROW(
 			model_->getFullModel(mat, clbd, cubd, ctype, obj, rlbd, rubd),
 			"getFullModel", "DeDriver");
 
@@ -74,7 +75,7 @@ STO_RTN_CODE DeDriver::run()
 		catch (const std::bad_cast& e)
 		{
 			printf("Model claims to be stochastic when it is not");
-			return STO_RTN_ERR;
+			return DSP_RTN_ERR;
 		}
 
 		/** relax integrality? */
@@ -113,9 +114,11 @@ STO_RTN_CODE DeDriver::run()
 
 	if (nIntegers > 0)
 	{
-		si_ = new SolverInterfaceScip(par_);
+//		si_ = new SolverInterfaceScip(par_);
+		si_ = new SolverInterfaceCpx(par_);
 		/** print level */
-		si_->setPrintLevel(CoinMin(par_->getIntParam("LOG_LEVEL") + 2, 5));
+//		si_->setPrintLevel(CoinMin(par_->getIntParam("LOG_LEVEL") + 2, 5));
+		si_->setPrintLevel(par_->getIntParam("LOG_LEVEL"));
 	}
 	else
 	{
@@ -151,10 +154,10 @@ STO_RTN_CODE DeDriver::run()
 	status_ = si_->getStatus();
 
 	/** get solutions */
-	if (status_ == STO_STAT_OPTIMAL ||
-		status_ == STO_STAT_STOPPED_TIME ||
-		status_ == STO_STAT_STOPPED_NODE ||
-		status_ == STO_STAT_STOPPED_GAP)
+	if (status_ == DSP_STAT_OPTIMAL ||
+		status_ == DSP_STAT_STOPPED_TIME ||
+		status_ == DSP_STAT_STOPPED_NODE ||
+		status_ == DSP_STAT_STOPPED_GAP)
 	{
 		/** objective bounds */
 		primobj_ = si_->getPrimalBound();
@@ -172,10 +175,13 @@ STO_RTN_CODE DeDriver::run()
 	/** save memory */
 	FREE_MEMORY
 
-	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 
 #undef FREE_MEMORY
 }
 
+DSP_RTN_CODE DeDriver::finalize() {
+	return DSP_RTN_OK;
+}

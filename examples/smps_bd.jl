@@ -16,7 +16,7 @@ using DSPsolver
 DSPsolver.readSmps(smps_file);
 
 # set optionts
-DSPsolver.setLogLevel(1);
+DSPsolver.setIntParam("LOG_LEVEL",1);
 
 # solve problem using Dual Decomposition
 DSPsolver.solve(DSP_SOLVER_BD);
@@ -31,8 +31,4 @@ gap    = (primal - dual) / abs(primal + 1.0e-10);
 @printf("Dual Bound   : %+e\n", dual);
 @printf("Gap          : %.2f %%\n", gap * 100);
 
-# Write results
-f = open("$prefix.csv", "w");
-println(f, primal, ",", dual, ",", gap);
-close(f);
 

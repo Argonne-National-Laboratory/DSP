@@ -20,16 +20,16 @@ class BdMaster: public DecSolver {
 public:
 
 	/** constructor */
-	BdMaster(DspParams * par, DecModel * model, StoMessage * message);
+	BdMaster(DspParams * par, DecModel * model, DspMessage * message);
 
 	/** destructor */
 	virtual ~BdMaster();
 
 	/** initialize */
-	virtual STO_RTN_CODE init();
+	virtual DSP_RTN_CODE init();
 
 	/** solve */
-	virtual STO_RTN_CODE solve();
+	virtual DSP_RTN_CODE solve();
 
 public:
 
@@ -39,26 +39,26 @@ public:
 public:
 
 	/** set dual objective value */
-	virtual STO_RTN_CODE setDualObjective(double dualobj);
+	virtual DSP_RTN_CODE setDualObjective(double dualobj);
 
 	/** set constraint handler for Benders cut generation */
-	virtual STO_RTN_CODE setConshdlr(SCIPconshdlrBenders * conshdlr);
+	virtual DSP_RTN_CODE setConshdlr(SCIPconshdlrBenders * conshdlr);
 
 	/** set auxiliary column data */
-	virtual STO_RTN_CODE setAuxVarData(int size, double * obj, double * clbd, double * cubd);
+	virtual DSP_RTN_CODE setAuxVarData(int size, double * obj, double * clbd, double * cubd);
 
 	/** set initial solutions */
-	virtual STO_RTN_CODE setSolutions(Solutions initsols);
+	virtual DSP_RTN_CODE setSolutions(Solutions initsols);
 
 	/** set branching priorities */
-	virtual STO_RTN_CODE setBranchingPriority(
+	virtual DSP_RTN_CODE setBranchingPriority(
 			int   size,      /**< size of array */
 			int * priorities /**< branch priority */);
 
 protected:
 
 	/** create problem */
-	virtual STO_RTN_CODE createProblem();
+	virtual DSP_RTN_CODE createProblem();
 
 protected:
 

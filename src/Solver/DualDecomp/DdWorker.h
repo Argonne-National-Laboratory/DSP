@@ -13,55 +13,23 @@
 #include "Solver/DualDecomp/DdSub.h"
 
 class DdWorker : public DdSolver {
-
-	friend class DdMW;
-
 public:
 
+	enum {
+		Base = 0,
+		LB,  /**< lower bounder */
+		UB,  /**< upper bounder */
+		CGBd /**< Benders cut generator */
+	};
+
 	/** constructor */
-	DdWorker(DspParams * par, DecModel * model, StoMessage * message);
+	DdWorker(DspParams * par, DecModel * model, DspMessage * message);
 
 	/** destructor */
 	virtual ~DdWorker();
 
-	/** initialize */
-	virtual STO_RTN_CODE init();
+	virtual int getType() {return Base;}
 
-	/** solve */
-	virtual STO_RTN_CODE solve();
-
-	/**
-	 * Messages to communicate with master
-	 *
-	 * Structure of the message to receive:
-	 *   1 signal to either continue or stop
-	 *   [for each subproblem]
-	 *   2 theta
-	 *   3 lambda
-	 *
-	 * Structure of the message to send:
-	 *   1 number of subproblems
-	 *   [for each subproblem]
-	 *   2 subproblem index
-	 *   3 primal objective
-	 *   4 dual objective
-	 *   5 coupling column part of the solution
-	 */
-
-	/** receive message from worker */
-	virtual STO_RTN_CODE recvMessage(int size, double * message);
-
-	/** create message */
-	virtual STO_RTN_CODE createMessage();
-
-protected:
-
-	/** create problem */
-	virtual STO_RTN_CODE createProblem();
-
-protected:
-
-	vector<DdSub*> subprobs_; /**< set of subproblems */
 };
 
 #endif /* SRC_SOLVER_DUALDECOMP_DDWORKER_H_ */

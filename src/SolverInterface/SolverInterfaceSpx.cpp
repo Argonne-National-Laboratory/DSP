@@ -5,16 +5,14 @@
  *      Author: kibaekkim
  */
 
+#include <Utility/DspMacros.h>
 #include "SolverInterface/SolverInterfaceSpx.h"
-#include "Utility/StoMacros.h"
-
-/** Coin-OR */
 #include "OsiSpxSolverInterface.hpp"
 
 SolverInterfaceSpx::SolverInterfaceSpx(DspParams * par) :
 SolverInterfaceOsi(par)
 {
-	STO_RTN_CHECK_THROW(initialize(), "initialize", "SolverInterfaceSpx");
+	DSP_RTN_CHECK_THROW(initialize(), "initialize", "SolverInterfaceSpx");
 }
 
 /** copy constructor */
@@ -41,7 +39,7 @@ SolverInterfaceSpx::SolverInterfaceSpx(DspParams * par, OsiSolverInterface * si)
 }
 
 /** initialize solver interface */
-STO_RTN_CODE SolverInterfaceSpx::initialize()
+DSP_RTN_CODE SolverInterfaceSpx::initialize()
 {
 	if (si_ == NULL)
 	{
@@ -49,6 +47,6 @@ STO_RTN_CODE SolverInterfaceSpx::initialize()
 		si_->setHintParam(OsiDoDualInResolve);
 		si_->setHintParam(OsiDoScale);
 	}
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 

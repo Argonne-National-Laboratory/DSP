@@ -8,12 +8,12 @@
 #ifndef STOMODEL_H_
 #define STOMODEL_H_
 
+#include <Utility/DspMacros.h>
+#include <Utility/DspRtnCodes.h>
 #include <map>
 #include "CoinTime.hpp"
 #include "SmiScnModel.hpp"
 
-#include "Utility/StoMacros.h"
-#include "Utility/StoRtnCodes.h"
 
 /*
  * This class is a wrapper for SMI, which reads and writes SMPS files.
@@ -39,7 +39,7 @@ public:
 	virtual ~StoModel();
 
 	/** read SMPS files */
-	STO_RTN_CODE readSmps(const char * filename);
+	DSP_RTN_CODE readSmps(const char * filename);
 
 	void __printData();
 

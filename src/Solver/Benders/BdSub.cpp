@@ -9,7 +9,9 @@
 #include "omp.h"
 #endif
 
-#include "Utility/StoMessage.h"
+//#define DSP_DEBUG
+
+#include <Utility/DspMessage.h>
 #include "Solver/Benders/BdSub.h"
 
 /** Coin */
@@ -38,19 +40,25 @@ BdSub::~BdSub()
 	FREE_ARRAY_PTR(status_);
 }
 
-STO_RTN_CODE BdSub::setSubIndices(int size, int* indices)
+DSP_RTN_CODE BdSub::setSubIndices(int size, int* indices)
 {
 	BGN_TRY_CATCH
 
 	nsubprobs_ = size;
+
+	/** allocate memory */
+	if (subindices_)
+		FREE_ARRAY_PTR(subindices_);
+	subindices_ = new int [size];
+
 	CoinCopyN(indices, size, subindices_);
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
-STO_RTN_CODE BdSub::loadProblem(TssModel* model)
+DSP_RTN_CODE BdSub::loadProblem(TssModel* model)
 {
 #define FREE_MEMORY            \
 	FREE_PTR(mat_reco)         \
@@ -89,7 +97,7 @@ STO_RTN_CODE BdSub::loadProblem(TssModel* model)
 		warm_start_[i] = NULL;
 
 		/** copy recourse problem */
-		STO_RTN_CHECK_THROW(model->copyRecoProb(subindices_[i],
+		DSP_RTN_CHECK_THROW(model->copyRecoProb(subindices_[i],
 				mat_mp_[i], mat_reco, clbd_reco, cubd_reco, ctype_reco,
 				obj_reco, rlbd_reco, rubd_reco), "copyRecoProb", "TssModel");
 
@@ -110,11 +118,11 @@ STO_RTN_CODE BdSub::loadProblem(TssModel* model)
 		FREE_MEMORY
 	}
 
-	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
 	FREE_MEMORY
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 #undef FREE_MEMORY
 }
 
@@ -153,18 +161,18 @@ int BdSub::generateCuts(
 	bool doContinue = true;
 #ifdef USE_OMP
 	/** set number of cores to use */
-	omp_set_num_threads(par_->getIntParam("NUM_CORES"));
+	omp_set_num_threads(par_->getIntParam("BD/NUM_CORES"));
 #pragma omp parallel for schedule(dynamic)
 #endif
 	for (int s = nsubprobs_ - 1; s >= 0; --s)
 	{
 		if (doContinue == false)
 		{
-			status_[s] = STO_STAT_NOT_SOLVED;
+			status_[s] = DSP_STAT_NOT_SOLVED;
 			continue;
 		}
 		solveOneSubproblem(this, s, x, Tx, cutval, cutrhs);
-		if (status_[s] == STO_STAT_PRIM_INFEASIBLE)
+		if (status_[s] == DSP_STAT_PRIM_INFEASIBLE)
 			doContinue = false;
 	}
 
@@ -241,7 +249,7 @@ void BdSub::solveOneSubproblem(
 	if (cglp->getObjValue() > 1.e-6)
 	{
 		/** save solution status */
-		cgl->status_[s] = STO_STAT_PRIM_INFEASIBLE;
+		cgl->status_[s] = DSP_STAT_PRIM_INFEASIBLE;
 
 		/** calculate feasibility cut elements */
 		calculateCutElements(
@@ -255,7 +263,7 @@ void BdSub::solveOneSubproblem(
 
 	if (!enableOptCuts)
 	{
-		cgl->status_[s] = STO_STAT_FEASIBLE;
+		cgl->status_[s] = DSP_STAT_FEASIBLE;
 		FREE_MEMORY
 		return;
 	}
@@ -285,7 +293,7 @@ void BdSub::solveOneSubproblem(
 		cglp->isIterationLimitReached())
 	{
 		/** save solution status */
-		cgl->status_[s] = STO_STAT_OPTIMAL;
+		cgl->status_[s] = DSP_STAT_OPTIMAL;
 		DSPdebugMessage("  solution status: optimal\n");
 
 		/** TODO: add parametric cuts */
@@ -318,25 +326,25 @@ void BdSub::solveOneSubproblem(
 	else if (cglp->isProvenPrimalInfeasible())
 	{
 		/** save solution status */
-		cgl->status_[s] = STO_STAT_PRIM_INFEASIBLE;
+		cgl->status_[s] = DSP_STAT_PRIM_INFEASIBLE;
 		DSPdebugMessage("  solution status: primal infeasible\n");
 	}
 	else if (cglp->isProvenDualInfeasible())
 	{
 		/** save solution status */
-		cgl->status_[s] = STO_STAT_DUAL_INFEASIBLE;
+		cgl->status_[s] = DSP_STAT_DUAL_INFEASIBLE;
 		DSPdebugMessage("  solution status: dual infeasible\n");
 	}
 	else if (cglp->isAbandoned() ||
 			 cglp->isPrimalObjectiveLimitReached() ||
 			 cglp->isDualObjectiveLimitReached())
 	{
-		cgl->status_[s] = STO_STAT_STOPPED_UNKNOWN;
+		cgl->status_[s] = DSP_STAT_STOPPED_UNKNOWN;
 		DSPdebugMessage("  solution status: stopped unknown\n");
 	}
 	else
 	{
-		cgl->status_[s] = STO_STAT_UNKNOWN;
+		cgl->status_[s] = DSP_STAT_UNKNOWN;
 		DSPdebugMessage("  solution status: unknown\n");
 	}
 
@@ -346,7 +354,7 @@ void BdSub::solveOneSubproblem(
 #undef FREE_MEMORY
 }
 
-STO_RTN_CODE BdSub::solveFeasProblem(
+DSP_RTN_CODE BdSub::solveFeasProblem(
 		OsiSolverInterface * si, /**< [in] subproblem solver interface */
 		int & nAddedCols         /**< [out] number of columns added */)
 {
@@ -397,12 +405,12 @@ STO_RTN_CODE BdSub::solveFeasProblem(
 	/** should be always optimal */
 	assert(si->isProvenOptimal());
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
-STO_RTN_CODE BdSub::chgToOrgProblem(
+DSP_RTN_CODE BdSub::chgToOrgProblem(
 		OsiSolverInterface * si, /**< [in] subproblem solver interface */
 		const double * obj,      /**< [in] original objective function */
 		int & nAddedCols         /**< [out] number of columns added */)
@@ -422,15 +430,15 @@ STO_RTN_CODE BdSub::chgToOrgProblem(
 	/** set original objective */
 	si->setObjective(obj);
 
-	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
 	FREE_MEMORY
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 #undef FREE_MEMORY
 }
 
-STO_RTN_CODE BdSub::calculateCutElements(
+DSP_RTN_CODE BdSub::calculateCutElements(
 		int nrows,                         /**< [in] number of rows in subproblem */
 		int ncols,                         /**< [in] number of columns in subproblem */
 		const CoinPackedMatrix * mat_tech, /**< [in] technology matrix */
@@ -480,9 +488,9 @@ STO_RTN_CODE BdSub::calculateCutElements(
             /** l <= Ax <= u, bounded by u */
         	cutrhs += pi[i] * rubd[i];
         }
-		//printf("cutrhs %e, pi %e rlbd %e rubd %e\n", cutrhs, pi[i], rlbd[i], rubd[i]);
+		DSPdebugMessage("cutrhs %e, pi %e rlbd %e rubd %e\n", cutrhs, pi[i], rlbd[i], rubd[i]);
 	}
-//	printf("cutrhs %E\n", cutrhs);
+	DSPdebugMessage("cutrhs %E\n", cutrhs);
 
 	/** loop over columns */
 	for (j = ncols - 1; j >= 0; --j)
@@ -491,6 +499,9 @@ STO_RTN_CODE BdSub::calculateCutElements(
 		//cutval[j] += rc[j];
         if (cubd[j] >= COIN_DBL_MAX)
         {
+        	/** free variable? */
+        	if (clbd[j] <= -COIN_DBL_MAX)
+        		continue;
             /** x_j >= l_j */
             cutrhs += rc[j] * clbd[j];
         }
@@ -514,12 +525,12 @@ STO_RTN_CODE BdSub::calculateCutElements(
             /** l_j <= x_j <= u_j, bounded by u */
             cutrhs += rc[j] * cubd[j];
         }
-		//printf("cutrhs %e, rc %e clbd %e cubd %e\n", cutrhs, rc[j], clbd[j], cubd[j]);
+		DSPdebugMessage("cutrhs %e, rc %e clbd %e cubd %e\n", cutrhs, rc[j], clbd[j], cubd[j]);
 	}
 
-//	printf("cutrhs %E\n", cutrhs);
+	DSPdebugMessage("cutrhs %E\n", cutrhs);
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }

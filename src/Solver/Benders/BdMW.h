@@ -28,21 +28,21 @@ public:
 	virtual ~BdMW();
 
 	/** run the framework */
-	virtual STO_RTN_CODE run();
+	virtual DSP_RTN_CODE run();
 
 protected:
 
 	/** initialize */
-	virtual STO_RTN_CODE init();
+	virtual DSP_RTN_CODE init();
 
 	/** run master process */
-	virtual STO_RTN_CODE runMaster();
+	virtual DSP_RTN_CODE runMaster();
 
 	/** run worker processes */
-	virtual STO_RTN_CODE runWorker();
+	virtual DSP_RTN_CODE runWorker();
 
 	/** finalize */
-	virtual STO_RTN_CODE finalize();
+	virtual DSP_RTN_CODE finalize();
 
 public:
 
@@ -50,6 +50,11 @@ public:
 	const double * getPrimalSolution() {return primsol_;}
 
 protected:
+
+	/** Common member variables */
+	MPI_Comm comm_;
+	int comm_rank_;
+	int comm_size_;
 
 	BdMaster * master_; /**< master */
 	BdWorker * worker_; /**< worker */

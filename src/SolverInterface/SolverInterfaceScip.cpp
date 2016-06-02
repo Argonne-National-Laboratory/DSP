@@ -8,13 +8,11 @@
 //#define DSP_DEBUG
 
 /** DSP */
+#include <Utility/DspMacros.h>
+#include <Utility/DspMessage.h>
 #include "SolverInterface/SolverInterfaceScip.h"
 #include "Solver/Benders/SCIPconshdlrBenders.h"
 #include "Solver/DualDecomp/SCIPconshdlrBendersDd.h"
-#include "Utility/StoMacros.h"
-#include "Utility/StoMessage.h"
-
-/** SCIP */
 #include "scip/scipdefplugins.h"
 #include "../examples/Queens/src/scip_exception.hpp"
 
@@ -31,7 +29,7 @@ SolverInterfaceScip::SolverInterfaceScip(DspParams * par) :
 	rlbd_(NULL),
 	rubd_(NULL)
 {
-	STO_RTN_CHECK_THROW(initialize(), "initialize", "SolverInterfaceScip");
+	DSP_RTN_CHECK_THROW(initialize(), "initialize", "SolverInterfaceScip");
 }
 
 /** copy constructor */
@@ -39,7 +37,7 @@ SolverInterfaceScip::SolverInterfaceScip(SolverInterfaceScip * si) :
 	SolverInterface(si->par_),
 	scip_(NULL)
 {
-	STO_RTN_CHECK_THROW(initialize(), "initialize", "SolverInterfaceScip");
+	DSP_RTN_CHECK_THROW(initialize(), "initialize", "SolverInterfaceScip");
 
 	SCIP * source = si->getSCIP();
 
@@ -92,7 +90,7 @@ SolverInterface * SolverInterfaceScip::clone()
 
 SolverInterfaceScip::~SolverInterfaceScip()
 {
-	STO_RTN_CHECK_THROW(finalize(), "finalize", "SolverInterfaceScip");
+	DSP_RTN_CHECK_THROW(finalize(), "finalize", "SolverInterfaceScip");
 	FREE_ARRAY_PTR(solution_);
 	FREE_ARRAY_PTR(vars_);
 	FREE_ARRAY_PTR(clbd_);
@@ -103,7 +101,7 @@ SolverInterfaceScip::~SolverInterfaceScip()
 }
 
 /** create SCIP */
-STO_RTN_CODE SolverInterfaceScip::initialize()
+DSP_RTN_CODE SolverInterfaceScip::initialize()
 {
 	if (scip_ == NULL)
 	{
@@ -115,11 +113,11 @@ STO_RTN_CODE SolverInterfaceScip::initialize()
 		//SCIP_CALL_ABORT(SCIPsetBoolParam(scip_, "misc/allowdualreds", FALSE));
 		//SCIP_CALL_ABORT(SCIPsetBoolParam(scip_, "constraints/indicator/dualreductions", FALSE));
 	}
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 /** free SCIP */
-STO_RTN_CODE SolverInterfaceScip::finalize()
+DSP_RTN_CODE SolverInterfaceScip::finalize()
 {
 	if (scip_)
 	{
@@ -132,7 +130,7 @@ STO_RTN_CODE SolverInterfaceScip::finalize()
 		nconss_ = 0;
 		scip_ = NULL;
 	}
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 /** load problem */
@@ -505,27 +503,27 @@ void SolverInterfaceScip::clearCuts()
 }
 
 /** solution status */
-STO_RTN_CODE SolverInterfaceScip::getStatus()
+DSP_RTN_CODE SolverInterfaceScip::getStatus()
 {
 	/** solution status */
 	switch (SCIPgetStatus(scip_))
 	{
 	case SCIP_STATUS_OPTIMAL:
-		return STO_STAT_OPTIMAL;
+		return DSP_STAT_OPTIMAL;
 	case SCIP_STATUS_INFEASIBLE:
-		return STO_STAT_PRIM_INFEASIBLE;
+		return DSP_STAT_PRIM_INFEASIBLE;
 	case SCIP_STATUS_UNBOUNDED:
-		return STO_STAT_DUAL_INFEASIBLE;
+		return DSP_STAT_DUAL_INFEASIBLE;
 	case SCIP_STATUS_NODELIMIT:
-		return STO_STAT_STOPPED_NODE;
+		return DSP_STAT_STOPPED_NODE;
 	case SCIP_STATUS_TIMELIMIT:
-		return STO_STAT_STOPPED_TIME;
+		return DSP_STAT_STOPPED_TIME;
 	case SCIP_STATUS_GAPLIMIT:
-		return STO_STAT_STOPPED_GAP;
+		return DSP_STAT_STOPPED_GAP;
 	default:
 		printf("Unexpected solution status %d\n", SCIPgetStatus(scip_));
 		writeMps("unexpectedStatus.mps");	
-		return STO_STAT_UNKNOWN;
+		return DSP_STAT_UNKNOWN;
 	}
 }
 

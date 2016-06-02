@@ -5,15 +5,15 @@
  *      Author: kibaekkim
  */
 
-#ifndef STOAPIENV_H_
-#define STOAPIENV_H_
+#ifndef DSPAPIENV_H_
+#define DSPAPIENV_H_
 
+#include <Utility/DspMacros.h>
 #include "Model/TssModel.h"
 #include "Model/DecData.h"
 #include "Utility/DspParams.h"
 #include "Solver/DspDriver.h"
 #include "Solver/DecSolver.h"
-#include "Utility/StoMacros.h"
 
 class DspApiEnv
 {
@@ -29,4 +29,4 @@ public:
 
 };
 
-#endif /* STOAPIENV_H_ */
+#endif /* DSPAPIENV_H_ */

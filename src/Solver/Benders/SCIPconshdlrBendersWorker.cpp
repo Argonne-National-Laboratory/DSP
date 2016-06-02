@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-#include "Utility/StoMessage.h"
+#include <Utility/DspMessage.h>
 #include "Solver/Benders/SCIPconshdlrBendersWorker.h"
 #include "Solver/Benders/BdMW.h"
 

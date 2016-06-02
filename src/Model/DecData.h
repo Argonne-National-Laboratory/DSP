@@ -74,7 +74,7 @@ public:
 	 * Given a matrix from the entire problem, selects columns corresponding to the given subproblems
 	 * and discards rows that correspond to other subproblems (i.e. not involving any selected columns).
 	 */
-	STO_RTN_CODE decompose(
+	DSP_RTN_CODE decompose(
 		int size,                /**< [in] size of subproblem subset */
 		int * subprobs,          /**< [in] subset of subproblems */
 		CoinPackedMatrix *& mat, /**< [in/out] constraint matrix */
@@ -86,7 +86,7 @@ public:
 		double *& rubd           /**< [in/out] row upper bounds */);
 
 	/** Helper function to decompose the coupling constraint matrix into subproblems */
-	STO_RTN_CODE decomposeCoupling(
+	DSP_RTN_CODE decomposeCoupling(
 		int size,                    /**< [in] size of subproblem subset */
 		int * subprobs,              /**< [in] subset of subproblems */
 		CoinPackedMatrix *& cpl_mat, /**< [out] coupling constraint matrix */

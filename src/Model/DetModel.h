@@ -8,10 +8,10 @@
 #ifndef DETMODEL_H_
 #define DETMODEL_H_
 
+#include <Utility/DspMacros.h>
+#include <Utility/DspMpi.h>
 #include "CoinTime.hpp"
 
-#include "Utility/StoMacros.h"
-#include "Utility/StoUtility.h"
 
 /**
  * Deterministic model. To be used with general decomposition models (DecModel) that are not based on stochastic

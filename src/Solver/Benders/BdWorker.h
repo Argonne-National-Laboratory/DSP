@@ -15,16 +15,16 @@ class BdWorker: public DecSolver {
 public:
 
 	/** constructor */
-	BdWorker(DspParams * par, DecModel * model, StoMessage * message);
+	BdWorker(DspParams * par, DecModel * model, DspMessage * message);
 
 	/** destructor */
 	virtual ~BdWorker();
 
 	/** initialize */
-	virtual STO_RTN_CODE init();
+	virtual DSP_RTN_CODE init();
 
 	/** solve */
-	virtual STO_RTN_CODE solve();
+	virtual DSP_RTN_CODE solve();
 
 public:
 
@@ -34,7 +34,7 @@ public:
 protected:
 
 	/** create problem */
-	virtual STO_RTN_CODE createProblem();
+	virtual DSP_RTN_CODE createProblem();
 
 private:
 

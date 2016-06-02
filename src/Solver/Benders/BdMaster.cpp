@@ -5,12 +5,14 @@
  *      Author: kibaekkim
  */
 
+#define DSP_DEBUG
+
 #include "Solver/Benders/BdMaster.h"
 #include "SolverInterface/SolverInterfaceScip.h"
 #include "SolverInterface/SolverInterfaceSpx.h"
 #include "Solver/Benders/SCIPconshdlrBendersWorker.h"
 
-BdMaster::BdMaster(DspParams* par, DecModel* model, StoMessage * message):
+BdMaster::BdMaster(DspParams* par, DecModel* model, DspMessage * message):
 	DecSolver(par, model, message),
 	si_(NULL),
 	naux_(1), obj_aux_(NULL), clbd_aux_(NULL), cubd_aux_(NULL)
@@ -32,7 +34,7 @@ BdMaster::~BdMaster()
 	FREE_ARRAY_PTR(cubd_aux_);
 }
 
-STO_RTN_CODE BdMaster::init()
+DSP_RTN_CODE BdMaster::init()
 {
 	BGN_TRY_CATCH
 
@@ -45,13 +47,12 @@ STO_RTN_CODE BdMaster::init()
 	/** set print level */
 	si_->setPrintLevel(CoinMin(par_->getIntParam("LOG_LEVEL") + 2, 5));
 
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
-
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
-STO_RTN_CODE BdMaster::solve()
+DSP_RTN_CODE BdMaster::solve()
 {
 	BGN_TRY_CATCH
 
@@ -68,11 +69,11 @@ STO_RTN_CODE BdMaster::solve()
 	status_ = si_->getStatus();
 	switch(status_)
 	{
-	case STO_STAT_OPTIMAL:
-	case STO_STAT_LIM_ITERorTIME:
-	case STO_STAT_STOPPED_GAP:
-	case STO_STAT_STOPPED_NODE:
-	case STO_STAT_STOPPED_TIME:
+	case DSP_STAT_OPTIMAL:
+	case DSP_STAT_LIM_ITERorTIME:
+	case DSP_STAT_STOPPED_GAP:
+	case DSP_STAT_STOPPED_NODE:
+	case DSP_STAT_STOPPED_TIME:
 		/** get solution */
 		CoinCopyN(si_->getSolution(), si_->getNumCols(), primsol_);
 		/** primal objective value */
@@ -85,12 +86,12 @@ STO_RTN_CODE BdMaster::solve()
 		break;
 	}
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
-STO_RTN_CODE BdMaster::setSolutions(Solutions initsols)
+DSP_RTN_CODE BdMaster::setSolutions(Solutions initsols)
 {
 	BGN_TRY_CATCH
 
@@ -105,12 +106,12 @@ STO_RTN_CODE BdMaster::setSolutions(Solutions initsols)
 		}
 	}
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
-STO_RTN_CODE BdMaster::setBranchingPriority(
+DSP_RTN_CODE BdMaster::setBranchingPriority(
 		int   size,      /**< size of array */
 		int * priorities /**< branch priority */)
 {
@@ -122,15 +123,15 @@ STO_RTN_CODE BdMaster::setBranchingPriority(
 		SiScip->setBranchPriorities(size, priorities);
 	}
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
-STO_RTN_CODE BdMaster::setConshdlr(SCIPconshdlrBenders* conshdlr)
+DSP_RTN_CODE BdMaster::setConshdlr(SCIPconshdlrBenders* conshdlr)
 {
 	if (si_->getNumIntegers() == 0)
-		return STO_RTN_OK;
+		return DSP_RTN_OK;
 
 	BGN_TRY_CATCH
 
@@ -140,12 +141,12 @@ STO_RTN_CODE BdMaster::setConshdlr(SCIPconshdlrBenders* conshdlr)
 	/** add constraint handler */
 	SiScip->addConstraintHandler(conshdlr, true);
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
-STO_RTN_CODE BdMaster::createProblem()
+DSP_RTN_CODE BdMaster::createProblem()
 {
 #define FREE_MEMORY       \
 	FREE_PTR(mat)         \
@@ -161,7 +162,7 @@ STO_RTN_CODE BdMaster::createProblem()
 	if (naux_ <= 0 || !obj_aux_ || !clbd_aux_ || !cubd_aux_)
 	{
 		printf("Warning: Auxiliary column information is required.\n");
-		return STO_RTN_ERR;
+		return DSP_RTN_ERR;
 	}
 
 	/** master problem */
@@ -179,12 +180,14 @@ STO_RTN_CODE BdMaster::createProblem()
 
 	/** number of integer variables in the core */
 	int nIntegers = model_->getNumIntegers();
+	DSPdebugMessage("ncols %d, nIntegers %d\n", ncols, nIntegers);
 
 	/** decompose model */
-	STO_RTN_CHECK_THROW(model_->decompose(
+	DSP_RTN_CHECK_THROW(model_->decompose(
 			0, NULL, naux_, clbd_aux_, cubd_aux_, obj_aux_,
 			mat, clbd, cubd, ctype, obj, rlbd, rubd),
 			"decompose", "TssModel");
+	DSPdebugMessage("Decomposed the model.\n");
 
 	/** convert column types */
 	if (model_->isStochastic())
@@ -197,12 +200,13 @@ STO_RTN_CODE BdMaster::createProblem()
 		catch (const std::bad_cast& e)
 		{
 			printf("Model claims to be stochastic when it is not");
-			return STO_RTN_ERR;
+			return DSP_RTN_ERR;
 		}
 
 		/** relax integrality? */
 		if (par_->getBoolPtrParam("RELAX_INTEGRALITY")[0])
 		{
+			DSPdebugMessage("Relax first-stage integrality.\n");
 			for (int j = 0; j < tssModel->getNumCols(0); ++j)
 			{
 				if (ctype[j] != 'C')
@@ -210,20 +214,10 @@ STO_RTN_CODE BdMaster::createProblem()
 				ctype[j] = 'C';
 			}
 		}
-		if (par_->getBoolPtrParam("RELAX_INTEGRALITY")[1])
-		{
-			for (int j = 0; j < tssModel->getNumCols(1); ++j)
-			{
-				if (ctype[tssModel->getNumCols(0) + j] != 'C')
-					nIntegers--;
-			}
-			CoinFillN(ctype + tssModel->getNumCols(0), tssModel->getNumScenarios() * tssModel->getNumCols(1), 'C');
-		}
 	}
 	else
 	{
-		if (par_->getBoolPtrParam("RELAX_INTEGRALITY")[0] ||
-				par_->getBoolPtrParam("RELAX_INTEGRALITY")[1])
+		if (par_->getBoolPtrParam("RELAX_INTEGRALITY")[0])
 		{
 			for (int j = 0; j < mat->getNumCols(); j++)
 			{
@@ -236,29 +230,33 @@ STO_RTN_CODE BdMaster::createProblem()
 
 	if (nIntegers > 0)
 	{
+		assert(si_==NULL);
 		si_ = new SolverInterfaceScip(par_);
 		si_->setPrintLevel(CoinMin(par_->getIntParam("LOG_LEVEL") + 1, 5));
+		DSPdebugMessage("Successfully created SCIP interface \n");
 	}
 	else
 	{
 		si_ = new SolverInterfaceSpx(par_);
 		si_->setPrintLevel(CoinMax(par_->getIntParam("LOG_LEVEL") - 1, 0));
+		DSPdebugMessage("Successfully created Soplex interface \n");
 	}
 
 	/** load problem data */
 	si_->loadProblem(mat, clbd, cubd, obj, ctype, rlbd, rubd, "BdMaster");
+	DSPdebugMessage("Successfully load the problem.\n");
 
 	/** save memory */
 	FREE_MEMORY
 
-	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 
 #undef FREE_MEMORY
 }
 
-STO_RTN_CODE BdMaster::setDualObjective(double dualobj)
+DSP_RTN_CODE BdMaster::setDualObjective(double dualobj)
 {
 #define FREE_MEMORY         \
 	FREE_ARRAY_PTR(auxind)  \
@@ -285,15 +283,15 @@ STO_RTN_CODE BdMaster::setDualObjective(double dualobj)
 	CoinCopyN(si_->getObjCoef(), ncols, auxcoef);
 	si_->addRow(ncols, auxind, auxcoef, dualobj_, COIN_DBL_MAX);
 
-	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
 	FREE_MEMORY
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 #undef FREE_MEMORY
 }
 
-STO_RTN_CODE BdMaster::setAuxVarData(int size, double* obj, double* clbd, double* cubd)
+DSP_RTN_CODE BdMaster::setAuxVarData(int size, double* obj, double* clbd, double* cubd)
 {
 	BGN_TRY_CATCH
 
@@ -310,7 +308,7 @@ STO_RTN_CODE BdMaster::setAuxVarData(int size, double* obj, double* clbd, double
 	CoinCopyN(clbd, naux_, clbd_aux_);
 	CoinCopyN(cubd, naux_, cubd_aux_);
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
