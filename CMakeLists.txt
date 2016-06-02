@@ -50,6 +50,9 @@ if(APPLE)
 	set(CMAKE_MACOSX_RPATH OFF)
 endif()
 
+# Read paths from a file
+include(config_path.cmake)
+
 # Set path variables
 set(EXTRA_DIR ${CMAKE_SOURCE_DIR}/extra)
 
