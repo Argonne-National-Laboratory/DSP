@@ -20,14 +20,17 @@
  */
 class DdMW: public BaseMasterWorker {
 
+protected:
+
 	typedef vector<CoinPackedVector*> Solutions;
 
 public:
 
 	/** constructor */
 	DdMW(
-			DdMaster *        master, /**< master problem */
-			vector<DdWorker*> worker  /**< worker for finding lower bounds */);
+			DecModel *   model,  /**< model pointer */
+			DspParams *  par,    /**< parameters */
+			DspMessage * message /**< message pointer */);
 
 	/** destructor */
 	virtual ~DdMW();
@@ -55,13 +58,18 @@ protected:
 			const double * x,   /**< current solution */
 			Solutions solutions /**< solution pool to check duplication */);
 
+	/** print header info */
+	virtual void printHeaderInfo();
+
 	/** print iteration info */
 	virtual void printIterInfo();
 
-protected:
+public:
 
 	DdMaster *        master_; /**< master */
 	vector<DdWorker*> worker_; /**< worker for lower bounds */
+
+protected:
 
 	DecModel * model_;     /**< DecModel object */
 	DspParams * par_;      /**< parameters */

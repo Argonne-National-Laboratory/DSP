@@ -20,7 +20,11 @@ class DdMaster: public DdSolver {
 public:
 
 	/** constructor */
-	DdMaster(DspParams * par, DecModel * model, DspMessage * message, int nworkers, int maxnumsubprobs);
+	DdMaster(
+			DspParams *  par,     /**< parameter pointer */
+			DecModel *   model,   /**< model pointer */
+			DspMessage * message, /**< message pointer */
+			int nworkers          /**< number of workers */);
 
 	/** destructor */
 	virtual ~DdMaster();
@@ -52,9 +56,7 @@ protected:
 
 	double bestprimobj_; /**< best primal objective value */
 	double bestdualobj_; /**< best dual objective value */
-
 	int nworkers_;          /**< number of workers */
-	int maxnumsubprobs_;    /**< maximum number of subproblems among workers */
 };
 
 #endif /* SRC_SOLVER_DUALDECOMP_DDMASTER_H_ */

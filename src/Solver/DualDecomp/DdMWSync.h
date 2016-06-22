@@ -12,23 +12,25 @@
 
 class DdMWSync: public DdMWPara {
 
-	typedef vector<CoinPackedVector*> Solutions;
-
 public:
 
 	/** constructor */
 	DdMWSync(
-			MPI_Comm          comm,   /**< MPI communicator */
-			DdMaster *        master, /**< master problem */
-			vector<DdWorker*> worker  /**< worker for finding lower bounds */);
+			MPI_Comm     comm,   /**< MPI communicator */
+			DecModel *   model,  /**< model pointer */
+			DspParams *  par,    /**< parameters */
+			DspMessage * message /**< message pointer */);
 
 	/** destructor */
 	virtual ~DdMWSync();
 
-protected:
-
 	/** initialize */
 	virtual DSP_RTN_CODE init();
+
+	/** finalize */
+	virtual DSP_RTN_CODE finalize();
+
+protected:
 
 	/** run master process */
 	virtual DSP_RTN_CODE runMaster();
@@ -43,14 +45,6 @@ private:
 			Solutions solutions, /**< solutions at which cuts are generated */
 			OsiCuts & cuts       /**< cuts generated */);
 
-	/** generate Benders cuts */
-	DSP_RTN_CODE generateBendersCuts(
-			Solutions solutions, /**< solutions at which cuts are generated */
-			OsiCuts & cuts       /**< cuts generated */);
-
-	/** receive Benders cuts */
-	DSP_RTN_CODE recvBendersCuts(OsiCuts & cuts);
-
 	/** sync upper bound */
 	DSP_RTN_CODE syncUpperbound(
 			int nsolutions = 0, /**< number of solutions */
@@ -61,23 +55,16 @@ private:
 			Solutions solutions, /**< solutions to evaluate */
 			vector<double>&  upperbounds /**< list of upper bounds */);
 
+	/** store coupling solution */
+	DSP_RTN_CODE storeCouplingSolutions(Solutions & stored);
+
 	/** set coupling solutions */
 	DSP_RTN_CODE setCouplingSolutions(
 			Solutions &solutions /**< solution placeholder */);
 
-	/** store coupling solution */
-	DSP_RTN_CODE storeCouplingSolutions(Solutions & stored);
-
-	/** send coupling solution */
-	DSP_RTN_CODE sendCouplingSolutions(Solutions solutions);
-
-	/** get coupling solutions */
-	DSP_RTN_CODE getCouplingSolutions(
-			Solutions &solutions /**< solution placeholder */);
-
-	/** receive coupling solutions */
-	DSP_RTN_CODE recvCouplingSolutions(
-			Solutions &solutions /**< received solution placeholder */);
+	/** broadcast coupling solutions */
+	DSP_RTN_CODE bcastCouplingSolutions(
+			Solutions & solutions /**< solutions to broadcast */);
 
 	/** scatter coupling solution */
 	DSP_RTN_CODE scatterCouplingSolutions(

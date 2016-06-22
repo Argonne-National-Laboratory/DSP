@@ -7,10 +7,16 @@
 
 #include <Solver/DualDecomp/DdMaster.h>
 
-DdMaster::DdMaster(DspParams * par, DecModel * model, DspMessage * message, int nworkers, int maxnumsubprobs) :
-	DdSolver(par, model, message),
-	si_(NULL), bestprimobj_(COIN_DBL_MAX), bestdualobj_(-COIN_DBL_MAX),
-	nworkers_(nworkers), maxnumsubprobs_(maxnumsubprobs) {}
+DdMaster::DdMaster(
+		DspParams *  par,     /**< parameter pointer */
+		DecModel *   model,   /**< model pointer */
+		DspMessage * message, /**< message pointer */
+		int nworkers          /**< number of workers */):
+DdSolver(par, model, message),
+si_(NULL),
+bestprimobj_(COIN_DBL_MAX),
+bestdualobj_(-COIN_DBL_MAX),
+nworkers_(nworkers) {}
 
 DdMaster::~DdMaster()
 {

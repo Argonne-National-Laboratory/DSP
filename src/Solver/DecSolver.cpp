@@ -5,6 +5,9 @@
  *      Author: kibaekkim, ctjandra
  */
 
+#include <iostream>
+#include <fstream>
+#include <iomanip>
 #include "Solver/DecSolver.h"
 
 DecSolver::DecSolver(DspParams * par, DecModel * model, DspMessage * message):
@@ -34,4 +37,35 @@ DSP_RTN_CODE DecSolver::ticToc()
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
+}
+
+/** write output to a file */
+void DecSolver::write(const char * filename)
+{
+	BGN_TRY_CATCH
+
+	ofstream myfile;
+	myfile.open(filename);
+	myfile << "Priaml Objective: " << primobj_ << "\n";
+	myfile << "Dual Objective: " << dualobj_ << "\n";
+	myfile << setw(6) << right << "Iter";
+	myfile << setw(10) << "Status";
+	myfile << setw(14) << "Prim";
+	myfile << setw(14) << "Dual";
+	myfile << setw(10) << "Cpu";
+	myfile << setw(10) << "Wall";
+	myfile << "\n";
+	for (unsigned i = 0; i < s_statuses_.size(); ++i)
+	{
+		myfile << setw(6) << i;
+		myfile << setw(10) << s_statuses_[i];
+		myfile << setw(14) << scientific << setprecision(5) << s_primobjs_[i];
+		myfile << setw(14) << scientific << setprecision(5) << s_dualobjs_[i];
+		myfile << setw(10) << fixed << setprecision(2) << s_cputimes_[i];
+		myfile << setw(10) << fixed << setprecision(2) << s_walltimes_[i];
+		myfile << "\n";
+	}
+	myfile.close();
+
+	END_TRY_CATCH(;)
 }

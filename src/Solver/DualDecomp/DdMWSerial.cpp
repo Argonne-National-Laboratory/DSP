@@ -7,6 +7,10 @@
 
 #include <Solver/DualDecomp/DdMWSerial.h>
 
+DdMWSerial::DdMWSerial(): DdMW(){
+	// TODO Auto-generated constructor stub
+}
+
 DdMWSerial::DdMWSerial(
 		DdMaster *        master, /**< master problem */
 		vector<DdWorker*> worker  /**< worker for finding lower bounds */):

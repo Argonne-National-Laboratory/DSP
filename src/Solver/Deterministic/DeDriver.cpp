@@ -7,7 +7,7 @@
 
 #include "Model/TssModel.h"
 #include "Solver/Deterministic/DeDriver.h"
-#include "SolverInterface/SolverInterfaceCpx.h"
+//#include "SolverInterface/SolverInterfaceCpx.h"
 #include "SolverInterface/SolverInterfaceScip.h"
 #include "SolverInterface/SolverInterfaceClp.h"
 
@@ -114,11 +114,11 @@ DSP_RTN_CODE DeDriver::run()
 
 	if (nIntegers > 0)
 	{
-//		si_ = new SolverInterfaceScip(par_);
-		si_ = new SolverInterfaceCpx(par_);
+		si_ = new SolverInterfaceScip(par_);
+//		si_ = new SolverInterfaceCpx(par_);
 		/** print level */
-//		si_->setPrintLevel(CoinMin(par_->getIntParam("LOG_LEVEL") + 2, 5));
-		si_->setPrintLevel(par_->getIntParam("LOG_LEVEL"));
+		si_->setPrintLevel(CoinMin(par_->getIntParam("LOG_LEVEL") + 2, 5));
+//		si_->setPrintLevel(par_->getIntParam("LOG_LEVEL"));
 	}
 	else
 	{

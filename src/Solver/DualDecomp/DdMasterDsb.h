@@ -55,7 +55,11 @@ class DdMasterDsb: public DdMasterSync {
 public:
 
 	/** constructor */
-	DdMasterDsb(DspParams * par, DecModel * model, DspMessage * message, int nworkers, int maxnumsubprobs);
+	DdMasterDsb(
+			DspParams *  par,     /**< parameter pointer */
+			DecModel *   model,   /**< model pointer */
+			DspMessage * message, /**< message pointer */
+			int nworkers          /**< number of workers */);
 
 	/** destructor */
 	virtual ~DdMasterDsb();

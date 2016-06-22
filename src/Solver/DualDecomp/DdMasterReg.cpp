@@ -8,11 +8,24 @@
 #include "Solver/DualDecomp/DdMasterReg.h"
 #include "SolverInterface/SolverInterfaceOoqp.h"
 
-DdMasterReg::DdMasterReg(DspParams * par, DecModel * model, DspMessage * message, int nworkers, int maxnumsubprobs):
-	DdMasterSync(par, model, message, nworkers, maxnumsubprobs),
-	sum_of_thetas_(0.0), nthetas_(0), nlambdas_(0),
-	stability_param_(10.0), stability_center_(NULL), nlastcuts_(NULL), primsol_to_worker_(NULL),
-	irowQ_(NULL), jcolQ_(NULL), dQ_(NULL), obj_(NULL), doSolve_(true) {}
+DdMasterReg::DdMasterReg(
+		DspParams *  par,     /**< parameter pointer */
+		DecModel *   model,   /**< model pointer */
+		DspMessage * message, /**< message pointer */
+		int nworkers          /**< number of workers */):
+DdMasterSync(par, model, message, nworkers),
+sum_of_thetas_(0.0),
+nthetas_(0),
+nlambdas_(0),
+stability_param_(10.0),
+stability_center_(NULL),
+nlastcuts_(NULL),
+primsol_to_worker_(NULL),
+irowQ_(NULL),
+jcolQ_(NULL),
+dQ_(NULL),
+obj_(NULL),
+doSolve_(true) {}
 
 DdMasterReg::~DdMasterReg()
 {

@@ -5,15 +5,20 @@
  *      Author: kibaekkim
  */
 
-#define DSP_DEBUG
+//#define DSP_DEBUG
 #include "Solver/DualDecomp/DdMWSync.h"
 #include "Solver/DualDecomp/DdMasterSync.h"
+#include "Solver/DualDecomp/DdMasterTr.h"
+#include "Solver/DualDecomp/DdMasterDsb.h"
+#include "Solver/DualDecomp/DdMasterSubgrad.h"
+#include "Solver/DualDecomp/DdMasterReg.h"
 
 DdMWSync::DdMWSync(
-		MPI_Comm          comm,   /**< MPI communicator */
-		DdMaster *        master, /**< master problem */
-		vector<DdWorker*> worker  /**< worker for finding lower bounds */):
-DdMWPara(comm, master, worker) {}
+		MPI_Comm     comm,   /**< MPI communicator */
+		DecModel *   model,  /**< model pointer */
+		DspParams *  par,    /**< parameters */
+		DspMessage * message /**< message pointer */):
+DdMWPara(comm,model,par,message) {}
 
 DdMWSync::~DdMWSync() {}
 
@@ -21,8 +26,93 @@ DSP_RTN_CODE DdMWSync::init()
 {
 	BGN_TRY_CATCH
 
-	DdMWPara::init();
+	/** This should be before DdMwPara::init(); */
 	sync_ = true;
+
+	/** initialize MPI communication settings */
+	DdMWPara::init();
+
+	if (comm_rank_ == 0)
+	{
+		/** create master */
+		switch (par_->getIntParam("DD/MASTER_ALGO"))
+		{
+		case Simplex:
+		case IPM:
+		case IPM_Feasible:
+			master_ = new DdMasterTr(par_, model_, message_, comm_size_);
+			break;
+		case DSBM:
+			master_ = new DdMasterDsb(par_, model_, message_, comm_size_);
+			break;
+		case Subgradient:
+			master_ = new DdMasterSubgrad(par_, model_, message_, comm_size_);
+			break;
+		case Regularize_Bundle:
+			master_ = new DdMasterReg(par_, model_, message_, comm_size_);
+			break;
+		}
+		/** initialize master */
+		master_->init();
+	}
+	else
+	{
+		/** create workers */
+		if (lb_comm_rank_ >= 0)
+		{
+			/** create LB worker */
+			DSPdebugMessage("Rank %d creates a worker for lower bounds.\n", comm_rank_);
+			worker_.push_back(new DdWorkerLB(par_, model_, message_));
+			/** create CG worker */
+			if (parFeasCuts_ >= 0 || parOptCuts_ >= 0)
+			{
+				DSPdebugMessage("Rank %d creates a worker for Benders cut generation.\n", comm_rank_);
+				worker_.push_back(new DdWorkerCGBd(par_, model_, message_));
+			}
+			/** create UB worker */
+			if (parEvalUb_ >= 0)
+			{
+				DSPdebugMessage("Rank %d creates a worker for upper bounds.\n", comm_rank_);
+				worker_.push_back(new DdWorkerUB(par_, model_, message_));
+			}
+		}
+		/** initialize workers */
+		for (unsigned i = 0; i < worker_.size(); ++i)
+			worker_[i]->init();
+	}
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
+}
+
+DSP_RTN_CODE DdMWSync::finalize()
+{
+	BGN_TRY_CATCH
+
+	char filename[32];
+
+	/** free master */
+	if (master_)
+	{
+		sprintf(filename, "proc%d.out", comm_rank_);
+		master_->write(filename);
+		master_->finalize();
+		FREE_PTR(master_);
+	}
+
+	/** free workers */
+	for (unsigned i = 0; i < worker_.size(); ++i)
+	{
+		sprintf(filename, "proc%d-%d.out", comm_rank_, i);
+		worker_[i]->write(filename);
+		worker_[i]->finalize();
+		FREE_PTR(worker_[i]);
+	}
+	worker_.clear();
+
+	/** finalize MPI settings */
+	DdMWPara::finalize();
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -149,8 +239,8 @@ DSP_RTN_CODE DdMWSync::runMaster()
 		DSPdebugMessage("Rank %d calls MPI_Gatherv.\n", comm_rank_);
 		MPI_Gatherv(NULL, 0, MPI_DOUBLE, recvbuf, rcounts, rdispls, MPI_DOUBLE, 0, subcomm_);
 
-		DSPdebugMessage2("master receive buffer:\n");
-		DSPdebug2(for (int i = 0; i < subcomm_size_; ++i) {
+		DSPdebugMessage("master receive buffer:\n");
+		DSPdebug(for (int i = 0; i < subcomm_size_; ++i) {
 			DSPdebugMessage("  rank %d:\n", i);
 			message_->printArray(rcounts[i], recvbuf + rdispls[i]);
 		});
@@ -159,7 +249,7 @@ DSP_RTN_CODE DdMWSync::runMaster()
 		master->nsubprobs_ = 0;
 		for (int i = 0, j = 0, pos = 0; i < subcomm_size_; ++i)
 		{
-			message_->print(3, "message count for rank %d: %d\n", i, rcounts[i]);
+			message_->print(5, "message count for rank %d: %d\n", i, rcounts[i]);
 			for (int s = 0; s < nsubprobs_[i]; ++s)
 			{
 				master->subindex_[j] = static_cast<int>(recvbuf[pos++]);
@@ -210,16 +300,10 @@ DSP_RTN_CODE DdMWSync::runMaster()
 		{
 			/** set coupling solutions */
 			setCouplingSolutions(stored);
-
-			/** sync Benders-cut info */
-			cg_status = syncBendersInfo(stored, cuts);
 			/** clear stored solutions */
 			stored.clear();
-
-			/** collect upper bounds */
-			if (cg_status == DSP_STAT_MW_CONTINUE)
-				syncUpperbound();
-
+			/** sync Benders cut information */
+			cg_status = syncBendersInfo(stored, cuts);
 			/** resolve subproblems? */
 			if (cg_status == DSP_STAT_MW_RESOLVE)
 			{
@@ -227,6 +311,9 @@ DSP_RTN_CODE DdMWSync::runMaster()
 				DSPdebugMessage("Rank %d: resolve subproblems.\n", comm_rank_);
 				continue;
 			}
+			/** collect upper bounds */
+			if (cg_status == DSP_STAT_MW_CONTINUE)
+				syncUpperbound();
 		}
 
 		/** update problem */
@@ -281,6 +368,8 @@ DSP_RTN_CODE DdMWSync::runMaster()
 		});
 
 		/** scatter message */
+		if (parEvalUb_ >= 0)
+			MPI_Bcast(&(master_->bestprimobj_), 1, MPI_DOUBLE, 0, subcomm_);
 		MPI_Scatterv(sendbuf, scounts, sdispls, MPI_DOUBLE, NULL, 0, MPI_DOUBLE, 0, subcomm_);
 	}
 
@@ -333,7 +422,7 @@ DSP_RTN_CODE DdMWSync::runWorker()
 
 	OsiCuts cuts, emptycuts;
 	bool resolveSubprob = false;
-	DSP_RTN_CODE cg_status;
+	DSP_RTN_CODE cg_status = DSP_STAT_MW_CONTINUE;
 
 	BGN_TRY_CATCH
 
@@ -355,10 +444,11 @@ DSP_RTN_CODE DdMWSync::runWorker()
 
 	/** retrieve DdWorkerLB */
 	DdWorkerLB * workerlb = NULL;
-	if (comm_color_ == comm_color_main)
+	if (lb_comm_ != MPI_COMM_NULL)
 	{
 		assert(worker_[0]->getType()==DdWorker::LB);
 		workerlb = dynamic_cast<DdWorkerLB*>(worker_[0]);
+		DSPdebugMessage("Rank %d runs DdWorkerLB.\n", comm_rank_);
 	}
 
 	/** solutions to derive Benders cuts and evaluate upper bounds */
@@ -367,7 +457,7 @@ DSP_RTN_CODE DdMWSync::runWorker()
 	/** loop until when the master signals stop */
 	while (1)
 	{
-		if (comm_color_ == comm_color_main)
+		if (lb_comm_ != MPI_COMM_NULL)
 		{
 			/** Solve subproblems assigned to each process  */
 			workerlb->solve();
@@ -383,22 +473,31 @@ DSP_RTN_CODE DdMWSync::runWorker()
 						comm_rank_, workerlb->subprobs_[s]->sind_,
 						workerlb->subprobs_[s]->getPrimalBound(), workerlb->subprobs_[s]->getDualBound());
 			}
-			DSPdebugMessage2("Rank %d: Worker send message (%d):\n", comm_rank_, scount);
-			DSPdebug2(message_->printArray(scount, sendbuf));
+#ifdef DSP_DEBUG2
+			for (int i = 0; i < lb_comm_size_; ++i)
+			{
+				if (i == lb_comm_rank_)
+				{
+					DSPdebugMessage("Rank %d: Worker send message (%d):\n", comm_rank_, scount);
+					DSPdebug(message_->printArray(scount, sendbuf));
+				}
+				MPI_Barrier(lb_comm_);
+			}
+#endif
 			/** send message to the master */
 			MPI_Gatherv(sendbuf, scount, MPI_DOUBLE, NULL, NULL, NULL, MPI_DOUBLE, 0, subcomm_);
 		}
 
 		/** receive signal from the master */
 		MPI_Bcast(&signal, 1, MPI_INT, 0, comm_);
-		DSPdebugMessage2("Rank %d received signal %d.\n", comm_rank_, signal);
+		DSPdebugMessage("Rank %d received signal %d.\n", comm_rank_, signal);
 		SIG_BREAK;
 
 		/** We may generate Benders-type cuts and find upper bounds */
 		if (parEvalUb_ >= 0 || parFeasCuts_ >= 0 || parOptCuts_ >= 0)
 		{
 			/** get coupling solutions */
-			signal = getCouplingSolutions(solutions);
+			signal = bcastCouplingSolutions(solutions);
 			SIG_BREAK;
 
 			/** sync Benders cut information */
@@ -423,7 +522,7 @@ DSP_RTN_CODE DdMWSync::runWorker()
 		DSPdebugMessage2("Rank %d received signal %d.\n", comm_rank_, signal);
 		SIG_BREAK;
 
-		if (comm_color_ == comm_color_main)
+		if (lb_comm_ != MPI_COMM_NULL)
 		{
 			/** move cuts to a global pool */
 			for (int i = 0; i < cuts.sizeCuts(); ++i)
@@ -433,16 +532,13 @@ DSP_RTN_CODE DdMWSync::runWorker()
 			}
 			cuts.dumpCuts();
 
-			/** apply Benders cuts */
-			if (parFeasCuts_ >= 0 || parOptCuts_ >= 0)
-			{
-				workerlb->subprobs_[0]->pushCuts(cutsToAdd_);
-				DSPdebugMessage("Rank %d pushed %d Benders cuts.\n", comm_rank_, cutsToAdd_->sizeCuts());
-			}
-
 			/** update subproblems */
 			if (cg_status == DSP_STAT_MW_CONTINUE)
 			{
+				double bestprimalobj = COIN_DBL_MAX;
+				if (parEvalUb_ >= 0)
+					/** receive upper bound */
+					MPI_Bcast(&bestprimalobj, 1, MPI_DOUBLE, 0, subcomm_);
 				/** receive message from the master */
 				MPI_Scatterv(NULL, NULL, NULL, MPI_DOUBLE, recvbuf, rcount, MPI_DOUBLE, 0, subcomm_);
 				DSPdebugMessage2("Worker received message (%d):\n", rcount);
@@ -451,7 +547,13 @@ DSP_RTN_CODE DdMWSync::runWorker()
 				for (int s = 0, pos = 0; s < narrprocidx; ++s)
 				{
 					workerlb->subprobs_[s]->theta_ = recvbuf[pos++];
-					workerlb->subprobs_[s]->updateProblem(recvbuf + pos);
+					workerlb->subprobs_[s]->updateProblem(recvbuf + pos, bestprimalobj);
+					/** apply Benders cuts */
+					if (parFeasCuts_ >= 0 || parOptCuts_ >= 0)
+					{
+						workerlb->subprobs_[s]->pushCuts(cutsToAdd_);
+						DSPdebugMessage("Rank %d pushed %d Benders cuts.\n", comm_rank_, cutsToAdd_->sizeCuts());
+					}
 					pos += model_->getNumSubproblemCouplingRows(workerlb->subprobs_[s]->sind_);
 				}
 			}
@@ -470,185 +572,14 @@ DSP_RTN_CODE DdMWSync::runWorker()
 #undef FREE_MEMORY
 }
 
-DSP_RTN_CODE DdMWSync::generateBendersCuts(
-		Solutions solutions,
-		OsiCuts & cuts) {
-#define FREE_MEMORY FREE_ARRAY_PTR(aggcut)
-
-	int ret = DSP_STAT_MW_CONTINUE;
-
-	if (solutions.size() == 0) return ret;
-	if (parFeasCuts_ < 0 && parOptCuts_ < 0) return ret;
-	if (model_->isStochastic() == false)
-	{
-		message_->print(0, "This problem is not a stochastic program. Benders cut option is valid only for stochastic programming.\n");
-		parFeasCuts_ = -1;
-		parOptCuts_ = -1;
-		return ret;
-	}
-
-	vector<int> cuttype;
-	TssModel * tssmodel = NULL;
-	double * aggcut = NULL;
-	double aggrhs;
-
-	BGN_TRY_CATCH
-
-//	/** clean cut pool */
-//	for (int i = 0; i < cutsToAdd_->sizeCuts(); ++i)
-//	{
-//		OsiRowCut * rc = cutsToAdd_->rowCutPtr(i);
-//		FREE_PTR(rc);
-//	}
-//	cutsToAdd_->dumpCuts();
-
-	/** retrieve DdWorkerCGBd */
-	DdWorkerCGBd * workercg = NULL;
-	for (unsigned i = 0; i < worker_.size(); ++i)
-	{
-		if (worker_[i]->getType() == DdWorker::CGBd)
-		{
-			workercg = dynamic_cast<DdWorkerCGBd*>(worker_[i]);
-			DSPdebugMessage("Rank %d works for generating Benders cuts.\n", comm_rank_);
-			break;
-		}
-	}
-
-	if (workercg == NULL)
-	{
-		DSPdebugMessage("Rank %d does not work for generating Benders cuts.\n", comm_rank_);
-		return ret;
-	}
-
-	/** downcast to TssModel */
-	tssmodel = dynamic_cast<TssModel*>(model_);
-
-	/** allocate memory */
-	aggcut = new double [tssmodel->getNumCols(0) + 1];
-
-	/** generate cuts */
-	for (unsigned i = 0; i < solutions.size(); ++i)
-	{
-		/** create local cut pools */
-		OsiCuts cuts, allcuts;
-
-		/** generate cuts at a solution */
-		DSP_RTN_CHECK_THROW(workercg->generateCuts(solutions[i], &cuts, cuttype), "generateCuts", "DdWorkerCGBd");
-		DSPdebugMessage("Rank %d: Benders cut generator generated %d cuts for solution %d.\n", comm_rank_, cuts.sizeCuts(), i);
-
-		/** check if there exists a feasibility cut */
-		bool hasFeasibilityCuts = false;
-		bool hasOptimalityCuts = true;
-		for (unsigned j = 0; j < cuttype.size(); ++j)
-		{
-			if (cuttype[j] == DdWorkerCGBd::Feas)
-			{
-				hasFeasibilityCuts = true;
-				hasOptimalityCuts = false;
-				break;
-			}
-			if (cuttype[j] != DdWorkerCGBd::Opt)
-				hasOptimalityCuts = false;
-		}
-
-		/** MPI_Allreduce */
-		bool genFeasibilityCuts = false;
-		bool genOptimalityCuts  = false;
-		MPI_Allreduce(&hasFeasibilityCuts, &genFeasibilityCuts, 1, MPI_C_BOOL, MPI_LOR, cg_comm_);
-		MPI_Allreduce(&hasOptimalityCuts, &genOptimalityCuts, 1, MPI_C_BOOL, MPI_LAND, cg_comm_);
-		DSPdebugMessage2("Rank %d: hasFeasibilityCuts = %s, hasOptimalityCuts = %s\n",
-				comm_rank_, hasFeasibilityCuts ? "true" : "false", hasOptimalityCuts ? "true" : "false");
-
-		if ((genFeasibilityCuts == true && parFeasCuts_ >= 0) ||
-			(genOptimalityCuts == true && parOptCuts_ >= 0))
-		{
-			if (num_comm_colors_ == 1)
-				MPIAllgatherOsiCuts(cg_comm_, cuts, allcuts);
-			else
-				MPIgatherOsiCuts(cg_comm_, cuts, allcuts);
-
-			if (cg_comm_rank_ == 0 || num_comm_colors_ == 1)
-			{
-				if (genOptimalityCuts)
-				{
-					/** construct optimality cut */
-					CoinZeroN(aggcut, tssmodel->getNumCols(0) + 1);
-					for (int j = 0; j < tssmodel->getNumCols(0); ++j)
-						aggcut[j] = -(tssmodel->getObjCore(0)[j]);
-					aggrhs = 0.0;
-
-					for (int j = 0; j < allcuts.sizeCuts(); ++j)
-					{
-						OsiRowCut * rc = allcuts.rowCutPtr(j);
-						CoinPackedVector cutrow = rc->row();
-						for (int k = 0; k < cutrow.getNumElements(); ++k)
-							aggcut[cutrow.getIndices()[k]] += cutrow.getElements()[k];
-						aggrhs += rc->lb();
-						DSPdebugMessage2("allcuts[%d]:\n", j);
-						DSPdebug2(rc->print());
-					}
-					DSPdebug2(message_->printArray(tssmodel->getNumCols(0) + 1, aggcut));
-
-					CoinPackedVector orow;
-					for (int j = 0; j < tssmodel->getNumCols(0); ++j)
-						if (fabs(aggcut[j]) > 1.0e-8)
-							orow.insert(j, aggcut[j]);
-					orow.insert(tssmodel->getNumCols(0) + tssmodel->getNumCols(1), 1.0);
-
-					OsiRowCut ocut;
-					ocut.setRow(orow);
-					ocut.setUb(COIN_DBL_MAX);
-					ocut.setLb(aggrhs);
-
-					DSPdebug2(ocut.print());
-					cuts.insertIfNotDuplicate(ocut);
-				}
-
-				if (genFeasibilityCuts)
-				{
-					/** copy cut pointers */
-					for (int j = 0; j < allcuts.sizeCuts(); ++j)
-					{
-						OsiRowCut * rc = allcuts.rowCutPtr(j);
-						DSPdebug(rc->print());
-						cuts.insertIfNotDuplicate(*rc);
-						ret = DSP_STAT_MW_RESOLVE;
-					}
-				}
-			}
-		}
-
-		/** free cuts */
-		for (int j = 0; j < cuts.sizeCuts(); ++j)
-		{
-			OsiRowCut * rc = cuts.rowCutPtr(j);
-			FREE_PTR(rc);
-		}
-		cuts.dumpCuts();
-		for (int j = 0; j < allcuts.sizeCuts(); ++j)
-		{
-			OsiRowCut * rc = allcuts.rowCutPtr(j);
-			FREE_PTR(rc);
-		}
-		allcuts.dumpCuts();
-	}
-
-	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
-
-	FREE_MEMORY
-
-	return ret;
-#undef FREE_MEMORY
-}
-
-DSP_RTN_CODE DdMWSync::recvCouplingSolutions(Solutions &solutions) {
+/** broadcast coupling solutions */
+DSP_RTN_CODE DdMWSync::bcastCouplingSolutions(
+		Solutions & solutions /**< solutions to broadcast */)
+{
 #define FREE_MEMORY         \
 	FREE_ARRAY_PTR(number_of_elements) \
 	FREE_ARRAY_PTR(indices)            \
 	FREE_ARRAY_PTR(elements)
-
-	assert(comm_color_ > comm_color_main);
-	assert(num_comm_colors_ > 1);
 
 	int * number_of_elements = NULL; /**< number of elements per solution */
 	int * indices            = NULL; /**< indices of solution vectors */
@@ -662,145 +593,68 @@ DSP_RTN_CODE DdMWSync::recvCouplingSolutions(Solutions &solutions) {
 
 	BGN_TRY_CATCH
 
-	/** clear the local solution pool */
-	for (unsigned i = 0; i < solutions.size(); ++i)
-		FREE_PTR(solutions[i]);
-	solutions.clear();
+	if (comm_rank_ == 0)
+		number_of_solutions = solutions.size();
+	else
+	{
+		/** clear the local solution pool */
+		for (unsigned i = 0; i < solutions.size(); ++i)
+			FREE_PTR(solutions[i]);
+		solutions.clear();
+	}
 
-	DSPdebugMessage("rank %d comm_key %d\n", comm_rank_, comm_key_);
+	/** broadcast the number of solutions */
+	MPI_Bcast(&number_of_solutions, 1, MPI_INT, 0, comm_);
 
-	/** receive the number of solutions */
-	for (int k = 1; k < num_comm_colors_; ++k)
-		if (comm_root_keys_[k] == comm_rank_)
-		{
-			MPI_Recv(&number_of_solutions, 1, MPI_INT, 0, DSP_MPI_TAG_SOLS, comm_, &status);
-			DSPdebugMessage("Rank %d received the number_of_solutions %d\n", comm_rank_, number_of_solutions);
-		}
-	if (cg_comm_ != MPI_COMM_NULL)
-		MPI_Bcast(&number_of_solutions, 1, MPI_INT, 0, cg_comm_);
-	if (ub_comm_ != MPI_COMM_NULL)
-		MPI_Bcast(&number_of_solutions, 1, MPI_INT, 0, ub_comm_);
-
-	/** receive the number of elements for each solution */
+	/** broadcast the number of elements for each solution */
 	number_of_elements = new int [number_of_solutions];
-	for (int k = 1; k < num_comm_colors_; ++k)
-		if (comm_root_keys_[k] == comm_rank_)
-		{
-			MPI_Recv(number_of_elements, number_of_solutions, MPI_INT, 0, DSP_MPI_TAG_SOLS, comm_, &status);
-		}
-	if (cg_comm_ != MPI_COMM_NULL)
-		MPI_Bcast(number_of_elements, number_of_solutions, MPI_INT, 0, cg_comm_);
-	if (ub_comm_ != MPI_COMM_NULL)
-		MPI_Bcast(number_of_elements, number_of_solutions, MPI_INT, 0, ub_comm_);
-
 	int total_elements = 0;
-	for (int i = 0; i < number_of_solutions; ++i)
-		total_elements += number_of_elements[i];
-	DSPdebugMessage("total_elements %d\n", total_elements);
+	if (comm_rank_ == 0)
+	{
+		for (int i = 0; i < number_of_solutions; ++i)
+		{
+			number_of_elements[i] = solutions[i]->getNumElements();
+			total_elements += number_of_elements[i];
+		}
+	}
+	MPI_Bcast(number_of_elements, number_of_solutions, MPI_INT, 0, comm_);
+	if (comm_rank_ > 0)
+	{
+		for (int i = 0; i < number_of_solutions; ++i)
+			total_elements += number_of_elements[i];
+		DSPdebugMessage("Rank %d received total_elements %d\n", comm_rank_, total_elements);
+	}
 
 	/** receive indices and elements */
 	indices = new int [total_elements];
 	elements = new double [total_elements];
-	for (int k = 1; k < num_comm_colors_; ++k)
-		if (comm_root_keys_[k] == comm_rank_)
+	if (comm_rank_ == 0)
+	{
+		for (int i = 0, j = 0; i < number_of_solutions; ++i)
 		{
-			MPI_Recv(indices, total_elements, MPI_INT, 0, DSP_MPI_TAG_SOLS, comm_, &status);
-			MPI_Recv(elements, total_elements, MPI_DOUBLE, 0, DSP_MPI_TAG_SOLS, comm_, &status);
-			for (int i = 0, pos = 0; i < number_of_solutions; ++i)
-			{
-				DSPdebugMessage2("solution %d:\n", i);
-				DSPdebug2({
-					for (int j = 0; j < number_of_elements[i]; ++j)
-					{
-						if (j > 0 && j % 5 == 0) printf("\n");
-						printf("  [%6d] %+e", indices[pos+j], elements[pos+j]);
-					}
-					printf("\n");
-				});
-				pos += number_of_elements[i];
-			}
+			CoinCopyN(solutions[i]->getIndices(), solutions[i]->getNumElements(), indices + j);
+			CoinCopyN(solutions[i]->getElements(), solutions[i]->getNumElements(), elements + j);
+			j += solutions[i]->getNumElements();
 		}
-	if (cg_comm_ != MPI_COMM_NULL)
-	{
-		MPI_Bcast(indices, total_elements, MPI_INT, 0, cg_comm_);
-		MPI_Bcast(elements, total_elements, MPI_DOUBLE, 0, cg_comm_);
 	}
-	if (ub_comm_ != MPI_COMM_NULL)
-	{
-		MPI_Bcast(indices, total_elements, MPI_INT, 0, ub_comm_);
-		MPI_Bcast(elements, total_elements, MPI_DOUBLE, 0, ub_comm_);
-	}
+	MPI_Bcast(indices, total_elements, MPI_INT, 0, comm_);
+	MPI_Bcast(elements, total_elements, MPI_DOUBLE, 0, comm_);
 
-	for (int i = 0, j = 0; i < number_of_solutions; ++i)
+	if (comm_rank_ > 0)
 	{
-		solutions.push_back(new CoinPackedVector(number_of_elements[i], indices + j, elements + j));
-		j += number_of_elements[i];
+		for (int i = 0, j = 0; i < number_of_solutions; ++i)
+		{
+			solutions.push_back(new CoinPackedVector(number_of_elements[i], indices + j, elements + j));
+			j += number_of_elements[i];
+		}
+		DSPdebugMessage("Rank %d received solutions.size() %lu\n", comm_rank_, solutions.size());
 	}
-
-	DSPdebugMessage("solutions.size() %lu\n", solutions.size());
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_STAT_MW_STOP)
 
 	FREE_MEMORY
 
 	return signal;
-#undef FREE_MEMORY
-}
-
-DSP_RTN_CODE DdMWSync::sendCouplingSolutions(Solutions solutions)
-{
-#define FREE_MEMORY \
-		FREE_ARRAY_PTR(number_of_elements) \
-		FREE_ARRAY_PTR(indices)            \
-		FREE_ARRAY_PTR(elements)
-
-	int * number_of_elements = NULL; /**< number of elements per solution */
-	int * indices            = NULL; /**< indices of solution vectors */
-	double * elements        = NULL; /**< elements of solution vectors */
-
-	BGN_TRY_CATCH
-
-	int signal = DSP_STAT_MW_CONTINUE;
-
-	/** send coupling solutions to root process for cut generation and upper bounding */
-	int number_of_solutions = solutions.size();
-	for (int k = 1; k < num_comm_colors_; ++k)
-	{
-		DSPdebugMessage("send message to %d\n", comm_root_keys_[k]);
-		MPI_Send(&number_of_solutions, 1, MPI_INT, comm_root_keys_[k], DSP_MPI_TAG_SOLS, comm_);
-	}
-
-	/** send the number of elements */
-	number_of_elements = new int [number_of_solutions];
-	int total_elements = 0;
-	for (int i = 0; i < number_of_solutions; ++i)
-	{
-		number_of_elements[i] = solutions[i]->getNumElements();
-		total_elements += number_of_elements[i];
-	}
-	for (int k = 1; k < num_comm_colors_; ++k)
-		MPI_Send(number_of_elements, number_of_solutions, MPI_INT, comm_root_keys_[k], DSP_MPI_TAG_SOLS, comm_);
-
-	/** send indices and elements */
-	indices = new int [total_elements];
-	elements = new double [total_elements];
-	for (int i = 0, j = 0; i < number_of_solutions; ++i)
-	{
-		CoinCopyN(solutions[i]->getIndices(), solutions[i]->getNumElements(), indices + j);
-		CoinCopyN(solutions[i]->getElements(), solutions[i]->getNumElements(), elements + j);
-		j += solutions[i]->getNumElements();
-	}
-	for (int k = 1; k < num_comm_colors_; ++k)
-	{
-		MPI_Send(indices, total_elements, MPI_INT, comm_root_keys_[k], DSP_MPI_TAG_SOLS, comm_);
-		MPI_Send(elements, total_elements, MPI_DOUBLE, comm_root_keys_[k], DSP_MPI_TAG_SOLS, comm_);
-	}
-
-	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
-
-	FREE_MEMORY
-
-	return DSP_RTN_OK;
 #undef FREE_MEMORY
 }
 
@@ -811,7 +665,6 @@ DSP_RTN_CODE DdMWSync::calculateUpperbound(
 	/** return if there is no solution to evaluate */
 	if (solutions.size() == 0) return DSP_RTN_OK;
 	if (parEvalUb_ < 0) return DSP_RTN_OK;
-	if (ub_comm_rank_ < 0) return DSP_RTN_OK;
 
 	DdWorkerUB * workerub = NULL;
 
@@ -886,52 +739,17 @@ DSP_RTN_CODE DdMWSync::storeCouplingSolutions(Solutions & stored) {
 			stored.push_back(x);
 		}
 	}
-	DSPdebugMessage("Rank %d stored %lu solutions.\n", comm_rank_, stored.size());
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
-}
-
-DSP_RTN_CODE DdMWSync::recvBendersCuts(OsiCuts & cuts) {
-
-	if (num_comm_colors_ == 1) return DSP_RTN_OK;
-	if (parFeasCuts_ < 0 && parOptCuts_ < 0) return DSP_RTN_OK;
-
-	int recv_flag;
-	MPI_Status status;
-
-	BGN_TRY_CATCH
-
-	/** check if there is a message to receive */
-	MPI_Iprobe(comm_root_keys_[1], DSP_MPI_TAG_CGBD, comm_, &recv_flag, &status);
-	if (recv_flag == 0) return DSP_RTN_OK;
-
-	/** receive cuts */
-	MPIrecvOsiCuts(comm_, comm_root_keys_[1], cuts, DSP_MPI_TAG_CGBD);
-
-	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
-
-	return DSP_RTN_OK;
-}
-
-DSP_RTN_CODE DdMWSync::getCouplingSolutions(Solutions& solutions) {
-	if (num_comm_colors_ == 1)
-		/** scatter coupling solutions */
-		return scatterCouplingSolutions(solutions);
-	else
-		/** receive coupling solutions from the master*/
-		return recvCouplingSolutions(solutions);
 }
 
 DSP_RTN_CODE DdMWSync::setCouplingSolutions(Solutions& solutions) {
 	/** store coupling solutions */
 	storeCouplingSolutions(solutions);
 	/** scatter/send coupling solutions */
-	if (num_comm_colors_ == 1)
-		return scatterCouplingSolutions(solutions);
-	else
-		return sendCouplingSolutions(solutions);
+	return bcastCouplingSolutions(solutions);
 }
 
 DSP_RTN_CODE DdMWSync::syncBendersInfo(
@@ -939,34 +757,17 @@ DSP_RTN_CODE DdMWSync::syncBendersInfo(
 		OsiCuts & cuts)
 {
 	MPI_Status status;
-	DSP_RTN_CODE cg_status = DSP_STAT_MW_CONTINUE;
-
-	if (solutions.size() <= 0) return cg_status;
+	int cg_status = DSP_STAT_MW_CONTINUE;
 	if (parFeasCuts_ < 0 && parOptCuts_ < 0) return cg_status;
 
 	BGN_TRY_CATCH
 
-	switch (num_comm_colors_)
+	if (comm_rank_ == 0)
 	{
-	case 1:
-		if (comm_rank_ == 0)
-		{
-			/** receive cut generation status */
-			MPI_Recv(&cg_status, 1, MPI_INT, comm_root_keys_[1], DSP_MPI_TAG_CGBD, comm_, &status);
-		}
-		else
-		{
-			/** generate Benders cuts */
-			cg_status = generateBendersCuts(solutions, cuts);
-			if (cg_comm_rank_ == 0)
-			{
-				/** send the cut generation status */
-				MPI_Send(&cg_status, 1, MPI_INT, 0, DSP_MPI_TAG_CGBD, comm_);
-			}
-		}
-		break;
-	case 2:
-	case 3:
+		/** receive CG status */
+		MPI_Recv(&cg_status, 1, MPI_INT, lb_comm_root_, DSP_MPI_TAG_CGBD, comm_, &status);
+	}
+	else if (lb_comm_rank_ >= 0)
 	{
 		/** clear cut pool */
 		for (int i = 0; i < cuts.sizeCuts(); ++i)
@@ -975,46 +776,13 @@ DSP_RTN_CODE DdMWSync::syncBendersInfo(
 			FREE_PTR(rc);
 		}
 		cuts.dumpCuts();
-
-		if (comm_rank_ == 0)
-		{
-			/** receive cut generation status */
-			MPI_Recv(&cg_status, 1, MPI_INT, comm_root_keys_[1], DSP_MPI_TAG_CGBD, comm_, &status);
-			/** scatter cut generation status */
-			MPI_Scatter(&cg_status, 1, MPI_INT, NULL, 0, MPI_INT, 0, subcomm_);
-			/** receive Benders cuts */
-			recvBendersCuts(cuts);
-			/** scatter Benders cuts to the lower bound workers*/
-			MPIscatterOsiCuts(subcomm_, cuts, NULL);
-		}
-		else
-		{
-			if (comm_color_ == comm_color_cg)
-			{
-				/** generate Benders cuts */
-				cg_status = generateBendersCuts(solutions, cuts);
-				if (cg_comm_rank_ == 0)
-				{
-					/** send the cut generation status */
-					MPI_Send(&cg_status, 1, MPI_INT, 0, DSP_MPI_TAG_CGBD, comm_);
-					/** send the cuts to the root */
-					MPIsendOsiCuts(comm_, 0, cuts, DSP_MPI_TAG_CGBD);
-				}
-			}
-			else if (comm_color_ == comm_color_main)
-			{
-				/** scatter cut generation status */
-				MPI_Scatter(NULL, 0, MPI_INT, &cg_status, 1, MPI_INT, 0, subcomm_);
-				/** receive Benders cuts */
-				MPIscatterOsiCuts(subcomm_, OsiCuts(), &cuts);
-			}
-			/** TODO comm_color_ub? */
-		}
-		break;
-	}
-	default:
-		throw "Unexpected value for the number of communication colors.";
-		break;
+		/** generate Benders cuts */
+		cg_status = generateBendersCuts(lb_comm_, lb_comm_rank_, solutions, cuts);
+		/** send CG status */
+		if (lb_comm_rank_ == 0)
+			MPI_Send(&cg_status, 1, MPI_INT, 0, DSP_MPI_TAG_CGBD, comm_);
+		/** broadcast cuts */
+		MPIbcastOsiCuts(lb_comm_, &cuts);
 	}
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
@@ -1043,69 +811,43 @@ DSP_RTN_CODE DdMWSync::syncUpperbound(
 	if (comm_rank_ == 0)
 	{
 		/** receive the number of solutions */
-		MPI_Recv(&nsolutions, 1, MPI_INT, comm_root_keys_[2], DSP_MPI_TAG_UB, comm_, &status);
+		MPI_Recv(&nsolutions, 1, MPI_INT, lb_comm_root_, DSP_MPI_TAG_UB, comm_, &status);
 		DSPdebugMessage("Rank %d nsolutions %d\n", comm_rank_, nsolutions);
 
 		/** allocate memory */
-		primobjs = new double [nsolutions];
 		primobjzeros = new double [comm_size_];
 		CoinZeroN(primobjzeros, comm_size_);
 	}
 	else
 	{
-		/** number of solutions */
-		if (ub_comm_rank_ == 0)
-		{
-			/** send the number of solutions */
+		/** send the number of solutions */
+		if (lb_comm_rank_ == 0)
 			MPI_Send(&nsolutions, 1, MPI_INT, 0, DSP_MPI_TAG_UB, comm_);
-		}
 	}
 
-	switch (num_comm_colors_)
-	{
-	case 1:
-		if (comm_rank_ == 0)
-		{
-			/** reduce the sum of upper bounds */
-			MPI_Reduce(primobjzeros, primobjs, nsolutions, MPI_DOUBLE, MPI_SUM, 0, comm_);
-		}
-		else
-		{
-			/** reduce the sum of upper bounds */
-			MPI_Reduce(&upperbounds[0], NULL, nsolutions, MPI_DOUBLE, MPI_SUM, 0, comm_);
-		}
-		break;
-	case 2:
-	case 3:
-		if (comm_rank_ == 0)
-		{
-			/** receive upper bounds */
-			MPI_Recv(primobjs, nsolutions, MPI_DOUBLE, comm_root_keys_[2], DSP_MPI_TAG_UB, comm_, &status);
-		}
-		else
-		{
-			/** take the sum of upper bounds */
-			if (ub_comm_rank_ == 0)
-				sumub = new double [nsolutions];
-			MPI_Reduce(&upperbounds[0], sumub, nsolutions, MPI_DOUBLE, MPI_SUM, 0, ub_comm_);
-			/** send the upper bounds to the root */
-			if (ub_comm_rank_ == 0)
-				MPI_Send(sumub, nsolutions, MPI_DOUBLE, 0, DSP_MPI_TAG_UB, comm_);
-		}
-		break;
-	default:
-		throw "Unexpected value for the number of communication colors.";
-		break;
-	}
+	/** allocate memory */
+	primobjs = new double [nsolutions];
 
 	if (comm_rank_ == 0)
 	{
-		/** calculate primal objective */
+		/** receive upper bounds */
+		MPI_Recv(primobjs, nsolutions, MPI_DOUBLE, lb_comm_root_, DSP_MPI_TAG_UB, comm_, &status);
+		/** calculate best primal objective */
 		for (int i = 0; i < nsolutions; ++i)
 		{
 			DSPdebugMessage("solution %d: primal objective %+e\n", i, primobjs[i]);
 			master_->bestprimobj_ = primobjs[i] < master_->bestprimobj_ ? primobjs[i] : master_->bestprimobj_;
 		}
+	}
+	else if (lb_comm_ != MPI_COMM_NULL)
+	{
+		/** take the sum of upper bounds */
+		if (lb_comm_rank_ == 0)
+			sumub = new double [nsolutions];
+		MPI_Reduce(&upperbounds[0], sumub, nsolutions, MPI_DOUBLE, MPI_SUM, 0, lb_comm_);
+		/** send the upper bounds to the root */
+		if (lb_comm_rank_ == 0)
+			MPI_Send(sumub, nsolutions, MPI_DOUBLE, 0, DSP_MPI_TAG_UB, comm_);
 	}
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)

@@ -19,10 +19,13 @@
 
 using namespace std;
 
-#define DSP_MPI_TAG_LB    0
-#define DSP_MPI_TAG_CGBD  1
-#define DSP_MPI_TAG_UB    2
-#define DSP_MPI_TAG_SOLS  3
+#define DSP_MPI_TAG_LB        0
+#define DSP_MPI_TAG_CGBD      1
+#define DSP_MPI_TAG_UB        2
+#define DSP_MPI_TAG_SOLS      3
+#define DSP_MPI_TAG_ASK_SOLS  33
+#define DSP_MPI_TAG_SIG       4
+#define DSP_MPI_TAG_CGUB      5
 
 /** check whether solution is duplicate or not; return NULL if duplicate */
 bool duplicateVector(
@@ -61,6 +64,11 @@ DSP_RTN_CODE MPIscatterCoinPackedVectors(
 		vector<CoinPackedVector*> vecs_in,
 		vector<CoinPackedVector*> & vecs_out);
 
+/** MPI_Bcast function for vector<CoinPackedVectors*> */
+DSP_RTN_CODE MPIbcastCoinPackedVectors(
+		MPI::Intracomm comm,
+		vector<CoinPackedVector*> & vecs);
+
 /** MPI_Send for OsiCuts */
 DSP_RTN_CODE MPIsendOsiCuts(
 		MPI::Intracomm comm,
@@ -92,5 +100,10 @@ DSP_RTN_CODE MPIscatterOsiCuts(
 		MPI::Intracomm comm,
 		OsiCuts cuts_in,
 		OsiCuts * cuts_out);
+
+/** MPI_Bcast function for OsiCuts */
+DSP_RTN_CODE MPIbcastOsiCuts(
+		MPI::Intracomm comm,
+		OsiCuts * cuts);
 
 #endif /* DSPUTILITY_H_ */

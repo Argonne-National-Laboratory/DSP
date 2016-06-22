@@ -9,10 +9,11 @@
 #include "Solver/DualDecomp/DdMW.h"
 
 DdMW::DdMW(
-		DdMaster *        master, /**< master problem */
-		vector<DdWorker*> worker  /**< worker for finding lower bounds */):
-BaseMasterWorker(), master_(master), worker_(worker),
-model_(NULL), par_(NULL), message_(NULL),
+		DecModel *   model,  /**< model pointer */
+		DspParams *  par,    /**< parameters */
+		DspMessage * message /**< message pointer */):
+BaseMasterWorker(),
+master_(NULL), model_(model), par_(par), message_(message),
 parFeasCuts_(-1), parOptCuts_(-1), parEvalUb_(-1),
 itercode_(' '), itercnt_(0), iterstime_(0.0)
 {
@@ -30,17 +31,11 @@ DSP_RTN_CODE DdMW::run()
 {
 	BGN_TRY_CATCH
 
-	/** initialize */
-	init();
-
 	/** run master process */
 	runMaster();
 
 	/** run worker processes */
 	runWorker();
-
-	/** finalize */
-	finalize();
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -48,22 +43,9 @@ DSP_RTN_CODE DdMW::run()
 }
 
 /** initialize */
-DSP_RTN_CODE DdMW::init() {
+DSP_RTN_CODE DdMW::init()
+{
 	BGN_TRY_CATCH
-
-	/** retrieve model, parameter, and message objects */
-	if (master_)
-	{
-		model_   = master_->getModelPtr();
-		par_     = master_->getParPtr();
-		message_ = master_->getMessagePtr();
-	}
-	if (worker_.size() > 0)
-	{
-		model_   = worker_[0]->getModelPtr();
-		par_     = worker_[0]->getParPtr();
-		message_ = worker_[0]->getMessagePtr();
-	}
 
 	parFeasCuts_ = par_->getIntParam("DD/FEAS_CUTS");
 	parOptCuts_  = par_->getIntParam("DD/OPT_CUTS");
@@ -100,10 +82,9 @@ CoinPackedVector * DdMW::duplicateSolution(
 		if (fabs(x[i]) > 1.0e-8)
 			xvec->insert(i, x[i]);
 	}
-#ifdef DSP_DEBUG
-	DSPdebugMessage("Number of elements in xvec: %d\n", xvec->getNumElements());
-	message_->printArray(xvec);
-#endif
+	DSPdebug({
+		DSPdebugMessage("Number of elements in xvec: %d\n", xvec->getNumElements());
+		message_->printArray(xvec);});
 	dup = duplicateVector(xvec, solutions);
 	DSPdebugMessage("duplicateVector: %s\n", dup ? "true" : "false");
 
@@ -113,12 +94,31 @@ CoinPackedVector * DdMW::duplicateSolution(
 	return xvec;
 }
 
+void DdMW::printHeaderInfo() {
+	/**
+	 * PRINT DISPLAY
+	 *
+	 * 0123456789012345678901234567890123456789
+	 * iter      curobj     primobj dualobj gap time
+	 *  %4d  %+10e  %+10e  %+10e  %6.2f  %6.1f
+	 */
+	message_->print(1, "  %4s  %13s  %13s  %13s  %6s  %6s\n",
+			"iter", "curobj", "primobj", "dualobj", "gap(%)", "times");
+}
+
 void DdMW::printIterInfo() {
 	message_->print(1, " %c%4d  %+10e", itercode_, itercnt_, master_->getPrimalObjective());
 	if (master_->getBestPrimalObjective() < 1.0e+20)
 		message_->print(1, "  %+10e", master_->getBestPrimalObjective());
 	else
-		message_->print(1, "  %+10s", "inf");
-	message_->print(1, "  %+10e  %6.2f  %6.1f\n",
-			master_->getBestDualObjective(), master_->getRelDualityGap()*100, CoinGetTimeOfDay() - iterstime_);
+		message_->print(1, "  %+13s", "Large");
+	if (master_->getBestDualObjective() > -1.0e+20)
+		message_->print(1, "  %+10e", master_->getBestDualObjective());
+	else
+		message_->print(1, "  %+13s", "Large");
+	if (master_->getRelDualityGap() >= 10)
+		message_->print(1, "  %6s", "Large");
+	else
+		message_->print(1, "  %6.2f", master_->getRelDualityGap()*100);
+	message_->print(1, "  %6.1f\n", CoinGetTimeOfDay() - iterstime_);
 }

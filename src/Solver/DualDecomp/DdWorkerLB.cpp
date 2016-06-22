@@ -8,7 +8,7 @@
 #include <Solver/DualDecomp/DdWorkerLB.h>
 
 DdWorkerLB::DdWorkerLB(DspParams * par, DecModel * model, DspMessage * message) :
-		DdWorker(par, model, message) {
+		DdWorker(par, model, message), solution_key_(-1) {
 }
 
 DdWorkerLB::~DdWorkerLB() {

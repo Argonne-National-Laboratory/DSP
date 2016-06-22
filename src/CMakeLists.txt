@@ -26,6 +26,7 @@ set(DSP_SRC_FILES
 	Solver/DualDecomp/DdMasterSync.cpp
 	Solver/DualDecomp/DdMasterTr.cpp
 	Solver/DualDecomp/DdMW.cpp
+	Solver/DualDecomp/DdMWAsync.cpp
 	Solver/DualDecomp/DdMWPara.cpp
 	Solver/DualDecomp/DdMWSync.cpp
 	Solver/DualDecomp/DdSub.cpp
@@ -43,7 +44,7 @@ set(DSP_SRC_FILES
 	SolverInterface/SolverInterfaceOsi.cpp
 	SolverInterface/SolverInterfaceScip.cpp
 	SolverInterface/SolverInterfaceSpx.cpp
-	SolverInterface/SolverInterfaceCpx.cpp
+#	SolverInterface/SolverInterfaceCpx.cpp
 	Utility/DspMpi.cpp
 	Utility/DspParams.cpp)
 
@@ -71,7 +72,7 @@ set(DSP_LIBS
 	${OOQP_DIR}/lib/libooqpsparse.a
 	${OOQP_DIR}/lib/libooqpbase.a
 	${MA27_DIR}/lib/libma27.a
-	/opt/ibm/ILOG/CPLEX_Studio1261/cplex/lib/x86-64_linux/static_pic/libcplex.a
+#	/opt/ibm/ILOG/CPLEX_Studio1261/cplex/lib/x86-64_linux/static_pic/libcplex.a
 	${MPI_CXX_LIBRARIES}
 	${BLAS_LIBRARIES}
 	${LAPACK_LIBRARIES}

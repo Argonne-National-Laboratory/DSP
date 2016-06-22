@@ -12,19 +12,36 @@
 
 /** DSP */
 #include "Solver/DualDecomp/DdMasterTr.h"
-#include "SolverInterface/SolverInterfaceCpx.h"
+//#include "SolverInterface/SolverInterfaceCpx.h"
 #include "SolverInterface/SolverInterfaceClp.h"
 #include "SolverInterface/SolverInterfaceOoqp.h"
 #include "SolverInterface/OoqpEps.h"
 
-DdMasterTr::DdMasterTr(DspParams * par, DecModel * model, DspMessage * message, int nworkers, int maxnumsubprobs):
-	DdMasterSync(par, model, message, nworkers, maxnumsubprobs),
-	nthetas_(0), nlambdas_(0),
-	stability_param_(0.0), stability_center_(NULL), trcnt_(0), numIters_(0),
-	cputime_elapsed_(0.0), walltime_elapsed_(0.0), isSolved_(false),
-	cuts_(NULL), ncuts_minor_(0), cutdel_param_(0.5),
-	parTr_(true), parTrSize_(0.0), parTrDecrease_(true), parNumCutsPerIter_(1), parMasterAlgo_(IPM_Feasible), parLogLevel_(0)
-	{}
+DdMasterTr::DdMasterTr(
+		DspParams *  par,     /**< parameter pointer */
+		DecModel *   model,   /**< model pointer */
+		DspMessage * message, /**< message pointer */
+		int nworkers          /**< number of workers */):
+DdMasterSync(par, model, message, nworkers),
+nthetas_(0),
+nlambdas_(0),
+stability_param_(0.0),
+stability_center_(NULL),
+trcnt_(0),
+numIters_(0),
+cputime_elapsed_(0.0),
+walltime_elapsed_(0.0),
+isSolved_(false),
+cuts_(NULL),
+ncuts_minor_(0),
+cutdel_param_(0.5),
+parTr_(true),
+parTrSize_(0.0),
+parTrDecrease_(true),
+parNumCutsPerIter_(1),
+parMasterAlgo_(IPM_Feasible),
+parLogLevel_(0)
+{}
 
 DdMasterTr::~DdMasterTr()
 {
@@ -240,8 +257,8 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 	switch (parMasterAlgo_)
 	{
 	case Simplex:
-//		si_ = new SolverInterfaceClp(par_);
-		si_ = new SolverInterfaceCpx(par_);
+		si_ = new SolverInterfaceClp(par_);
+//		si_ = new SolverInterfaceCpx(par_);
 		break;
 	case IPM:
 		si_ = new SolverInterfaceOoqp(par_);
@@ -271,7 +288,7 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 	cuts_ = new OsiCuts;
 
 	/** set print level */
-	si_->setPrintLevel(CoinMax(0, parLogLevel_ - 2));
+	si_->setPrintLevel(CoinMax(0, parLogLevel_ - 5));
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 

@@ -175,45 +175,6 @@ int getNumIterations(DspApiEnv * env);
 /** get number of nodes */
 int getNumNodes(DspApiEnv * env);
 
-/** get number of infeasible solutions evaluated in DD */
-int getDdNumInfeasSolutions(DspApiEnv * env);
-
-/** get number of master problem solved in DD */
-int getDdNumMasterSolved(DspApiEnv * env);
-
-/** get master solution statuses */
-void getDdMasterStatuses(DspApiEnv * env, int * status);
-
-/** get master solution cpu time per iteration in DD */
-void getDdMasterCpuTimes(DspApiEnv * env, double * time);
-
-/** get master solution wall times per iteration in DD */
-void getDdMasterWallTimes(DspApiEnv * env, double * time);
-
-/** get history of master objective values */
-void getDdMasterPrimalBounds(DspApiEnv * env, double * vals);
-
-/** get history of dual multipliers from dual decomposition */
-void getDdMasterPrimalSolutions(DspApiEnv * env, double ** vals);
-
-/** get number of subproblems solved in DD */
-int getDdNumSubproblemSolved(DspApiEnv * env);
-
-/** get subproblem solution statuses */
-void getDdSubproblemStatuses(DspApiEnv * env, int * status);
-
-/** get iteration cpu time per iteration in DD */
-void getDdSubproblemCpuTimes(DspApiEnv * env, double * time);
-
-/** get iteration wall time per iteration in DD */
-void getDdSubproblemWallTimes(DspApiEnv * env, double * time);
-
-/** get history of subproblem primal objective values */
-void getDdSubproblemPrimalBounds(DspApiEnv * env, double * vals);
-
-/** get history of subproblem dual objective values */
-void getDdSubproblemDualBounds(DspApiEnv * env, double * vals);
-
 /**
  * Misc.
  */

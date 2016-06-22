@@ -1,4 +1,4 @@
-OPTION READ_CONF "Read configuration file" OFF)
+OPTION (READ_CONF "Read configuration file" OFF)
 IF(READ_CONF)
   set(MA27_DIR "")
   set(OOQP_DIR "")

@@ -60,6 +60,9 @@ public:
 	/** get message pointer */
 	virtual DspMessage * getMessagePtr() {return message_;}
 
+	/** write output to a file */
+	virtual void write(const char * filename);
+
 protected:
 
 	/** update time stamp and time remains */

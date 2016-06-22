@@ -8,18 +8,33 @@
 #include "Solver/DualDecomp/DdMasterDsb.h"
 #include "SolverInterface/SolverInterfaceOoqp.h"
 
-DdMasterDsb::DdMasterDsb(DspParams * par, DecModel * model, DspMessage * message, int nworkers, int maxnumsubprobs) :
-	DdMasterSync(par, model, message, nworkers, maxnumsubprobs),
-	prox_(NULL), lambda_(NULL),
-	phi_t_(10.0), phi_l_(1000.0),
-	alpha_t_(0.1), alpha_l_(0.1),
-	eps_opt_(1.0e-6), eps_e_(1.0e-6), eps_g_(1.0e-6),
-	tau_min_(1.0e-6), tau_(1.0),
-	upperbound_(1.0e+20), valueAtProx_(-1.0e+20), level_(0.0), gg_(0.0),
-	isSolved_(false),
-	nrows_(0), ncols_(0), nzcnt_(0),
-	modelObjval_(0.0),
-	bb_(0.0) {}
+DdMasterDsb::DdMasterDsb(
+		DspParams *  par,     /**< parameter pointer */
+		DecModel *   model,   /**< model pointer */
+		DspMessage * message, /**< message pointer */
+		int nworkers          /**< number of workers */) :
+DdMasterSync(par, model, message, nworkers),
+prox_(NULL),
+lambda_(NULL),
+phi_t_(10.0),
+phi_l_(1000.0),
+alpha_t_(0.1),
+alpha_l_(0.1),
+eps_opt_(1.0e-6),
+eps_e_(1.0e-6),
+eps_g_(1.0e-6),
+tau_min_(1.0e-6),
+tau_(1.0),
+upperbound_(1.0e+20),
+valueAtProx_(-1.0e+20),
+level_(0.0),
+gg_(0.0),
+isSolved_(false),
+nrows_(0),
+ncols_(0),
+nzcnt_(0),
+modelObjval_(0.0),
+bb_(0.0) {}
 
 DdMasterDsb::~DdMasterDsb()
 {

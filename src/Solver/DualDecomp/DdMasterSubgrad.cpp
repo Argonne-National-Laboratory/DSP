@@ -8,9 +8,17 @@
 #include "Model/DecTssModel.h"
 #include "Solver/DualDecomp/DdMasterSubgrad.h"
 
-DdMasterSubgrad::DdMasterSubgrad(DspParams * par, DecModel * model, DspMessage * message, int nworkers, int maxnumsubprobs):
-	DdMasterSync(par, model, message, nworkers, maxnumsubprobs),
-	nstalls_(0), stepscal_(2.0), stepsize_(0.0), gradient_(NULL), multipliers_(NULL) {}
+DdMasterSubgrad::DdMasterSubgrad(
+		DspParams *  par,     /**< parameter pointer */
+		DecModel *   model,   /**< model pointer */
+		DspMessage * message, /**< message pointer */
+		int nworkers          /**< number of workers */):
+DdMasterSync(par, model, message, nworkers),
+nstalls_(0),
+stepscal_(2.0),
+stepsize_(0.0),
+gradient_(NULL),
+multipliers_(NULL) {}
 
 DdMasterSubgrad::~DdMasterSubgrad()
 {

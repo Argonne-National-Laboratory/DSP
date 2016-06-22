@@ -33,17 +33,6 @@ public:
 	/** finalize */
 	virtual DSP_RTN_CODE finalize();
 
-public:
-
-	/** get pointer to master */
-	const DdMaster * getMasterPtr() {return master_;}
-
-	/** get pointer to worker */
-	vector<DdWorker*> getWorkerList() {return worker_;}
-
-	/** get number of infeasible solutions evaluated */
-	int getNumInfeasibleSolutions() {return num_infeasible_solutions_;}
-
 private:
 
 	MPI_Comm comm_;
@@ -51,13 +40,6 @@ private:
 	int comm_size_;
 
 	DdMW * mw_;
-	DdMaster *        master_; /**< master */
-	vector<DdWorker*> worker_; /**< worker place holder */
-//	DdWorker *   worker_;   /**< worker for lower bounds */
-//	DdWorkerUB * workerUB_; /**< worker for upper bounds */
-
-	int num_infeasible_solutions_; /**< number of infeasible solutions found in subproblems */
-
 };
 
 #endif /* SRC_SOLVER_DUALDECOMP_DDDRIVER_H_ */

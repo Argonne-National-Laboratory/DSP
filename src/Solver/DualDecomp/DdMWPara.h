@@ -16,13 +16,12 @@ public:
 
 	/** constructor */
 	DdMWPara(
-			MPI_Comm          comm,   /**< MPI communicator */
-			DdMaster *        master, /**< master problem */
-			vector<DdWorker*> worker  /**< worker for finding lower bounds */);
+			MPI_Comm     comm,   /**< MPI communicator */
+			DecModel *   model,  /**< model pointer */
+			DspParams *  par,    /**< parameters */
+			DspMessage * message /**< message pointer */);
 
 	virtual ~DdMWPara();
-
-protected:
 
 	/** initialize */
 	virtual DSP_RTN_CODE init();
@@ -32,33 +31,52 @@ protected:
 
 protected:
 
+	/** generate Benders cuts */
+	DSP_RTN_CODE generateBendersCuts(
+			MPI_Comm  comm,      /**< communicator */
+			int       comm_rank, /**< rank in comm */
+			Solutions solutions, /**< solutions at which cuts are generated */
+			OsiCuts & cuts       /**< cuts generated */);
+
+private:
+
+	/** create communication groups */
+	DSP_RTN_CODE createGroups();
+
+	/** set subproblem indices to the processors */
+	DSP_RTN_CODE setSubproblemIndices();
+
+	/** assign root key for each communication group */
+	DSP_RTN_CODE setRootKeys();
+
+protected:
+
 	/** Common member variables */
 	MPI_Comm comm_;
 	int comm_rank_;
 	int comm_size_;
 	bool sync_; /**< indicate whether parallelism is synchronous or asynchronous */
 
-	enum {
-		comm_color_main = 0, /**< color for a master and workers that solve the Lagrangian subproblems */
-		comm_color_cg,
-		comm_color_ub
-	};
+	/** Master-LB group */
+	MPI_Comm subcomm_;
+	MPI_Group subcomm_group_;
+	int subcomm_size_;
+	int subcomm_rank_;
 
-	MPI_Comm subcomm_;     /**< split communicator */
-	int subcomm_size_;     /**< number of processors in each subcommunicator */
-	int num_comm_colors_;  /**< number of rank colors */
-	int comm_color_;       /**< rank color for subcommunicator */
-	int comm_key_;         /**< rank in subcommunicator */
-	int * comm_root_keys_; /**< array of ranks for each root of subcomm_ */
+	/** LB worker group */
+	MPI_Comm  lb_comm_;
+	MPI_Group lb_group_;
+	int lb_comm_size_;
+	int lb_comm_rank_;
+	int lb_comm_root_;
 
-	MPI_Comm  lb_comm_;  /**< communicator for lower bounds */
-	MPI_Group lb_group_; /**< group for lower bounds */
-	MPI_Comm  cg_comm_;  /**< communicator for cut generators */
-	MPI_Group cg_group_; /**< group for cut generators */
-	int cg_comm_rank_;   /**< rank for cut generators */
-	MPI_Comm  ub_comm_;  /**< communicator for upper bounds */
-	MPI_Group ub_group_; /**< group for upper bounds */
-	int ub_comm_rank_;   /**< rank for upper bounds */
+	/** CG-UB worker group */
+	bool has_cgub_comm_;
+	MPI_Comm cgub_comm_;
+	MPI_Group cgub_group_;
+	int cgub_comm_size_;
+	int cgub_comm_rank_;
+	int cgub_comm_root_;
 
 	int * nsubprobs_;       /**< number of subproblems for each process */
 	int * subprob_indices_; /**< subproblem indices for each process */

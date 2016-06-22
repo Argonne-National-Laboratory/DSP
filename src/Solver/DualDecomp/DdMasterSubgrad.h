@@ -14,7 +14,11 @@ class DdMasterSubgrad: public DdMasterSync {
 public:
 
 	/** constructor */
-	DdMasterSubgrad(DspParams * par, DecModel * model, DspMessage * message, int nworkers, int maxnumsubprobs);
+	DdMasterSubgrad(
+			DspParams *  par,     /**< parameter pointer */
+			DecModel *   model,   /**< model pointer */
+			DspMessage * message, /**< message pointer */
+			int nworkers          /**< number of workers */);
 
 	/** destructor */
 	virtual ~DdMasterSubgrad();

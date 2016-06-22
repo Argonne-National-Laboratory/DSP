@@ -14,6 +14,9 @@ class DdMWSerial: public DdMW {
 public:
 
 	/** constructor */
+	DdMWSerial();
+
+	/** constructor */
 	DdMWSerial(
 			DdMaster *        master, /**< master problem */
 			vector<DdWorker*> worker  /**< worker for finding lower bounds */);
