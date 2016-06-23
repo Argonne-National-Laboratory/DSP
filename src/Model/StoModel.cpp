@@ -172,7 +172,7 @@ StoModel::~StoModel()
 //		FREE_PTR(branchingHyperplanes_[i].first);
 }
 
-STO_RTN_CODE StoModel::readSmps(const char * filename)
+DSP_RTN_CODE StoModel::readSmps(const char * filename)
 {
 	int i, j, s;
 	SmiScnModel smi;
@@ -339,9 +339,9 @@ STO_RTN_CODE StoModel::readSmps(const char * filename)
 	/** mark */
 	fromSMPS_ = true;
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 /** set branching priorities */

@@ -58,7 +58,7 @@ public:
 	virtual void solve();
 
 	/** solution status */
-	virtual STO_RTN_CODE getStatus();
+	virtual DSP_RTN_CODE getStatus();
 
 	/** get number of rows */
 	virtual int getNumRows() {return si_->getNumRows();}
@@ -156,10 +156,10 @@ public:
 protected:
 
 	/** initialize solver interface */
-	virtual STO_RTN_CODE initialize();
+	virtual DSP_RTN_CODE initialize();
 
 	/** finalize solver interface */
-	virtual STO_RTN_CODE finalize();
+	virtual DSP_RTN_CODE finalize();
 
 	OsiSolverInterface * si_; /**< OsiClp solver interface */
 	CoinWarmStart * ws_;         /**< warmstart information */

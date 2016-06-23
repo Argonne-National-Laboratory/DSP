@@ -9,10 +9,10 @@
 #define DECSOLVER_H_
 
 /** DSP */
+#include <Utility/DspMessage.h>
+#include <Utility/DspMpi.h>
+#include <Utility/DspRtnCodes.h>
 #include "Utility/StoConfig.h"
-#include "Utility/StoRtnCodes.h"
-#include "Utility/StoUtility.h"
-#include "Utility/StoMessage.h"
 #include "Utility/DspParams.h"
 #include "Model/DecModel.h"
 
@@ -20,24 +20,24 @@ class DecSolver {
 public:
 
 	/** constructor */
-	DecSolver(DspParams * par, DecModel * model, StoMessage * message);
+	DecSolver(DspParams * par, DecModel * model, DspMessage * message);
 
 	/** default destructor */
 	virtual ~DecSolver();
 
 	/** initialize */
-	virtual STO_RTN_CODE init() = 0;
+	virtual DSP_RTN_CODE init() = 0;
 
 	/** finalize */
-	virtual STO_RTN_CODE finalize() {return STO_RTN_OK;}
+	virtual DSP_RTN_CODE finalize() {return DSP_RTN_OK;}
 
 	/** solve */
-	virtual STO_RTN_CODE solve() = 0;
+	virtual DSP_RTN_CODE solve() = 0;
 
 public:
 
 	/** solver status */
-	virtual STO_RTN_CODE getStatus() {return status_;}
+	virtual DSP_RTN_CODE getStatus() {return status_;}
 
 	/** get primal solution */
 	virtual const double * getPrimalSolution() {return primsol_;}
@@ -58,20 +58,23 @@ public:
 	virtual DspParams * getParPtr() {return par_;}
 
 	/** get message pointer */
-	virtual StoMessage * getMessagePtr() {return message_;}
+	virtual DspMessage * getMessagePtr() {return message_;}
+
+	/** write output to a file */
+	virtual void write(const char * filename);
 
 protected:
 
 	/** update time stamp and time remains */
-	virtual STO_RTN_CODE ticToc();
+	virtual DSP_RTN_CODE ticToc();
 
 protected:
 
 	DecModel * model_;     /**< DecModel object */
 	DspParams * par_;      /**< parameters */
-	StoMessage * message_; /**< message */
+	DspMessage * message_; /**< message */
 
-	STO_RTN_CODE status_; /**< solution status */
+	DSP_RTN_CODE status_; /**< solution status */
 	double * primsol_;    /**< primal solution */
 	double * dualsol_;    /**< dual solution */
 	double primobj_;      /**< primal objective */
@@ -83,7 +86,7 @@ protected:
 public:
 
 	/** solver statistics */
-	vector<STO_RTN_CODE> s_statuses_;  /**< history of solution statuses */
+	vector<DSP_RTN_CODE> s_statuses_;  /**< history of solution statuses */
 	vector<double>       s_primobjs_;  /**< history of primal objective values */
 	vector<double>       s_dualobjs_;  /**< history of dual objective values */
 	vector<double*>      s_primsols_;  /**< history of primal solutions */

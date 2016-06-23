@@ -14,52 +14,32 @@
 class DdMaster: public DdSolver {
 
 	friend class DdMW;
+	friend class DdMWAsync;
+	friend class DdMWSync;
 
 public:
 
 	/** constructor */
-	DdMaster(DspParams * par, DecModel * model, StoMessage * message, int nworkers, int maxnumsubprobs);
+	DdMaster(
+			DspParams *  par,     /**< parameter pointer */
+			DecModel *   model,   /**< model pointer */
+			DspMessage * message, /**< message pointer */
+			int nworkers          /**< number of workers */);
 
 	/** destructor */
 	virtual ~DdMaster();
 
 	/** initialize */
-	virtual STO_RTN_CODE init();
-
-	/**
-	 * Messages to communicate with worker
-	 *
-	 * Structure of the message to send:
-	 *   1 signal to either continue or stop
-	 *   [for each subproblem]
-	 *   2 theta
-	 *   3 lambda
-	 *
-	 * Structure of the message to receive:
-	 *   1 number of subproblems
-	 *   [for each subproblem]
-	 *   2 subproblem index
-	 *   3 primal objective
-	 *   4 dual objective
-	 *   5 coupling column part of the solution
-	 */
-
-	/** receive message from worker (async) */
-	virtual STO_RTN_CODE recvMessage(int source, int size, double * message);
-
-	/** receive message from worker (sync) */
-	virtual STO_RTN_CODE recvMessage(int size, int * counts, int * displs, double * message);
+	virtual DSP_RTN_CODE init();
 
 	/** update problem */
-	virtual STO_RTN_CODE updateProblem() = 0;
+	virtual DSP_RTN_CODE updateProblem() = 0;
 
 	/** set init solution */
-	virtual STO_RTN_CODE setInitSolution(const double * sol);
+	virtual DSP_RTN_CODE setInitSolution(const double * sol);
 
-protected:
-
-	/** create message */
-	virtual STO_RTN_CODE createMessage();
+	/** termination test */
+	virtual DSP_RTN_CODE terminationTest() {return status_;}
 
 public:
 
@@ -67,6 +47,8 @@ public:
 
 	double getBestPrimalObjective() {return bestprimobj_;}
 	double getBestDualObjective() {return bestdualobj_;}
+	double getAbsDualityGap() {return fabs(bestprimobj_-bestdualobj_);}
+	double getRelDualityGap() {return fabs(bestprimobj_-bestdualobj_) / (1.0e-10 + fabs(bestprimobj_));}
 
 protected:
 
@@ -74,15 +56,7 @@ protected:
 
 	double bestprimobj_; /**< best primal objective value */
 	double bestdualobj_; /**< best dual objective value */
-
 	int nworkers_;          /**< number of workers */
-	int worker_;            /**< worker ID in communication */
-	int nsubprobs_;         /**< number of subproblems for the current worker */
-	int maxnumsubprobs_;    /**< maximum number of subproblems among workers */
-	int * subindex_;        /**< array of subproblem indices */
-	double * subprimobj_;   /**< subproblem primal objective values */
-	double * subdualobj_;   /**< subproblem dual objective values */
-	double ** subsolution_; /**< subproblem solution */
 };
 
 #endif /* SRC_SOLVER_DUALDECOMP_DDMASTER_H_ */

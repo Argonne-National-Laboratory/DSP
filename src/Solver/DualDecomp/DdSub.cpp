@@ -7,11 +7,12 @@
 
 //#define DSP_DEBUG
 
+#include <Utility/DspMacros.h>
+#include <Utility/DspMessage.h>
 #include "Solver/DualDecomp/DdSub.h"
-#include "Utility/StoMacros.h"
-#include "Utility/StoMessage.h"
 #include "SolverInterface/SolverInterfaceClp.h"
 #include "SolverInterface/SolverInterfaceScip.h"
+//#include "SolverInterface/SolverInterfaceCpx.h"
 #include "Solver/DualDecomp/SCIPconshdlrBendersDd.h"
 #include "SolverInterface/SCIPbranchruleLB.h"
 
@@ -30,7 +31,7 @@ DdSub::~DdSub()
 }
 
 /** create problem */
-STO_RTN_CODE DdSub::createProblem(DecModel * model)
+DSP_RTN_CODE DdSub::createProblem(DecModel * model)
 {
 #define FREE_MEMORY       \
 	FREE_PTR(mat)         \
@@ -68,12 +69,12 @@ STO_RTN_CODE DdSub::createProblem(DecModel * model)
 	obj_aux[0] = 0.0;
 
 	/** decompose model */
-	STO_RTN_CHECK_THROW(
+	DSP_RTN_CHECK_THROW(
 			model->decompose(1, augs, 1, clbd_aux, cubd_aux, obj_aux,
 					mat, clbd, cubd, ctype, obj_, rlbd, rubd),
 			"decompose", "DecModel");
 
-	STO_RTN_CHECK_THROW(
+	DSP_RTN_CHECK_THROW(
 			model->decomposeCoupling(1, augs, cpl_mat_, cpl_cols_, cpl_ncols),
 			"decomposeCoupling", "DecModel");
 
@@ -107,7 +108,7 @@ STO_RTN_CODE DdSub::createProblem(DecModel * model)
 		catch (const std::bad_cast& e)
 		{
 			printf("Error: Model claims to be stochastic when it is not\n");
-			return STO_RTN_ERR;
+			return DSP_RTN_ERR;
 		}
 
 		double probability = tssModel->getProbability()[sind_];
@@ -148,6 +149,7 @@ STO_RTN_CODE DdSub::createProblem(DecModel * model)
 	}
 
 	if (nIntegers > 0)
+//		si_ = new SolverInterfaceCpx(par_);
 		si_ = new SolverInterfaceScip(par_);
 	else
 		si_ = new SolverInterfaceClp(par_);
@@ -159,16 +161,16 @@ STO_RTN_CODE DdSub::createProblem(DecModel * model)
 	/** set solution gap tolerance */
 	si_->setGapTol(gapTol_);
 
-	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
 	FREE_MEMORY
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 #undef FREE_MEMORY
 }
 
 /** add cut generator */
-STO_RTN_CODE DdSub::addCutGenerator(BdSub * bdsub)
+DSP_RTN_CODE DdSub::addCutGenerator(BdSub * bdsub)
 {
 	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(si_);
 	if (si)
@@ -184,11 +186,11 @@ STO_RTN_CODE DdSub::addCutGenerator(BdSub * bdsub)
 		/** TODO */
 		printf("Warning: Cut generation supports only SCIP.\n");
 	}
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 /** add branch rule */
-STO_RTN_CODE DdSub::addBranchrule()
+DSP_RTN_CODE DdSub::addBranchrule()
 {
 	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(si_);
 	if (si)
@@ -201,11 +203,11 @@ STO_RTN_CODE DdSub::addBranchrule()
 		/** TODO */
 		printf("Warning: Branch rule supports only SCIP.\n");
 	}
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 /** change branch rule */
-STO_RTN_CODE DdSub::chgBranchrule(double lb)
+DSP_RTN_CODE DdSub::chgBranchrule(double lb)
 {
 	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(si_);
 	if (si)
@@ -216,11 +218,11 @@ STO_RTN_CODE DdSub::chgBranchrule(double lb)
 			branchrule->setLowerBound(lb);
 		}
 	}
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 /** update problem */
-STO_RTN_CODE DdSub::updateProblem(
+DSP_RTN_CODE DdSub::updateProblem(
 		double * lambda,
 		double primal_bound)
 {
@@ -267,41 +269,24 @@ STO_RTN_CODE DdSub::updateProblem(
 	if (primal_bound < COIN_DBL_MAX)
 		si_->setColUpper(ncols - 1, primal_bound);//si_->setColBounds(ncols - 1, primal_bound, primal_bound);
 
-	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
 	FREE_MEMORY
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 #undef FREE_MEMORY
 }
 
 /** solve problem */
-STO_RTN_CODE DdSub::solve()
+DSP_RTN_CODE DdSub::solve()
 {
 	si_->solve();
 
-	return STO_RTN_OK;
-}
-
-/** free solution process data */
-STO_RTN_CODE DdSub::freeSolve(bool restart)
-{
-	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(si_);
-	if (si) si->freeSolve(restart);
-
-	return STO_RTN_OK;
-}
-
-/** free all solution process data */
-STO_RTN_CODE DdSub::freeTransform()
-{
-	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(si_);
-	if (si) si->freeTransform();
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 /** collect cuts */
-STO_RTN_CODE DdSub::collectCuts(OsiCuts * cuts)
+DSP_RTN_CODE DdSub::collectCuts(OsiCuts * cuts)
 {
 	assert(cuts);
 	/** TODO only for SCIP */
@@ -322,11 +307,11 @@ STO_RTN_CODE DdSub::collectCuts(OsiCuts * cuts)
 		/** clear cuts added */
 		si->clearCuts();
 	}
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 /** push cuts */
-STO_RTN_CODE DdSub::pushCuts(OsiCuts * cuts)
+DSP_RTN_CODE DdSub::pushCuts(OsiCuts * cuts)
 {
 	/** TODO only for SCIP */
 	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(si_);
@@ -334,11 +319,11 @@ STO_RTN_CODE DdSub::pushCuts(OsiCuts * cuts)
 	{
 		si->setCuts(cuts);
 	}
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 /** collect solutions */
-STO_RTN_CODE DdSub::collectSolutions()
+DSP_RTN_CODE DdSub::collectSolutions()
 {
 	/** free memeory */
 	FREE_2D_ARRAY_PTR(nsols_, solutions_);
@@ -357,7 +342,7 @@ STO_RTN_CODE DdSub::collectSolutions()
 		CoinCopyN(si->getSolution(), si->getNumCols(), solutions_[0]);
 	}
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 /** set wall clock time limit */
@@ -394,7 +379,7 @@ double * DdSub::MPImsgbuf()
 }
 
 /** get MPI message buffer */
-STO_RTN_CODE DdSub::MPImsgbuf(double * msgbuf)
+DSP_RTN_CODE DdSub::MPImsgbuf(double * msgbuf)
 {
 	/** The first element in message buffer should be scenario index. */
 	msgbuf[0] = static_cast<double>(sind_);
@@ -414,5 +399,5 @@ STO_RTN_CODE DdSub::MPImsgbuf(double * msgbuf)
 		solution = NULL;
 	}
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }

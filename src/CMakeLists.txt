@@ -7,7 +7,6 @@ set(DSP_SRC_FILES
 	Model/DetModel.cpp
 	Model/StoModel.cpp
 	Model/TssModel.cpp
-	Solver/BaseMasterWorker.cpp
 	Solver/DecSolver.cpp
 	Solver/DspDriver.cpp
 	Solver/Benders/BdDriver.cpp
@@ -20,13 +19,22 @@ set(DSP_SRC_FILES
 	Solver/Deterministic/DeDriver.cpp
 	Solver/DualDecomp/DdDriver.cpp
 	Solver/DualDecomp/DdMaster.cpp
+	Solver/DualDecomp/DdMasterAtr.cpp
 	Solver/DualDecomp/DdMasterDsb.cpp
 	Solver/DualDecomp/DdMasterReg.cpp
 	Solver/DualDecomp/DdMasterSubgrad.cpp
+	Solver/DualDecomp/DdMasterSync.cpp
 	Solver/DualDecomp/DdMasterTr.cpp
 	Solver/DualDecomp/DdMW.cpp
+	Solver/DualDecomp/DdMWAsync.cpp
+	Solver/DualDecomp/DdMWPara.cpp
+	Solver/DualDecomp/DdMWSync.cpp
 	Solver/DualDecomp/DdSub.cpp
 	Solver/DualDecomp/DdWorker.cpp
+	Solver/DualDecomp/DdWorkerCG.cpp
+	Solver/DualDecomp/DdWorkerCGBd.cpp
+	Solver/DualDecomp/DdWorkerLB.cpp
+	Solver/DualDecomp/DdWorkerUB.cpp
 	Solver/DualDecomp/SCIPconshdlrBendersDd.cpp
 	SolverInterface/OoqpEps.cpp
 	SolverInterface/OoqpStatus.cpp
@@ -36,7 +44,8 @@ set(DSP_SRC_FILES
 	SolverInterface/SolverInterfaceOsi.cpp
 	SolverInterface/SolverInterfaceScip.cpp
 	SolverInterface/SolverInterfaceSpx.cpp
-	Utility/StoUtility.cpp
+#	SolverInterface/SolverInterfaceCpx.cpp
+	Utility/DspMpi.cpp
 	Utility/DspParams.cpp)
 
 add_library(Dsp SHARED
@@ -49,6 +58,7 @@ set(DSP_LIBS
 	${SMI_DIR}/lib/libClp.a
 	${SMI_DIR}/lib/libOsiClp.a
 	${SMI_DIR}/lib/libOsiSpx.a
+	${SMI_DIR}/lib/libOsiCpx.a
 	${SMI_DIR}/lib/libOsi.a
 	${SMI_DIR}/lib/libCoinUtils.a
 	${SCIP_DIR}/lib/libscip.a
@@ -62,6 +72,7 @@ set(DSP_LIBS
 	${OOQP_DIR}/lib/libooqpsparse.a
 	${OOQP_DIR}/lib/libooqpbase.a
 	${MA27_DIR}/lib/libma27.a
+#	/opt/ibm/ILOG/CPLEX_Studio1261/cplex/lib/x86-64_linux/static_pic/libcplex.a
 	${MPI_CXX_LIBRARIES}
 	${BLAS_LIBRARIES}
 	${LAPACK_LIBRARIES}

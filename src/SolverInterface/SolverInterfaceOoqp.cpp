@@ -8,9 +8,9 @@
 //#define DSP_DEBUG
 
 /** DSP */
+#include <Utility/DspMacros.h>
+#include <Utility/DspMpi.h>
 #include "SolverInterface/SolverInterfaceOoqp.h"
-#include "Utility/StoMacros.h"
-#include "Utility/StoUtility.h"
 
 
 /** copy constructor */
@@ -75,15 +75,15 @@ SolverInterface * SolverInterfaceOoqp::clone()
 
 SolverInterfaceOoqp::~SolverInterfaceOoqp()
 {
-	STO_RTN_CHECK_THROW(finalize(), "finalize", "SolverInterfaceOoqp");
+	DSP_RTN_CHECK_THROW(finalize(), "finalize", "SolverInterfaceOoqp");
 }
 
 /** finalize solver interface */
-STO_RTN_CODE SolverInterfaceOoqp::finalize()
+DSP_RTN_CODE SolverInterfaceOoqp::finalize()
 {
 	releaseOOQP();
 	release();
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 /** release OOQP objects */
@@ -539,16 +539,16 @@ void SolverInterfaceOoqp::solve()
 		gutsOfLoadProblem();
 
 //	prob_->print();
-	if (par_->getIntParam("LOG_LEVEL") >= 5)
+	if (par_->getIntParam("LOG_LEVEL") >= 10)
 		solver_->monitorSelf();
 	int status = solver_->solve(prob_, vars_, resid_);
-	if (par_->getIntParam("LOG_LEVEL") >= 5)
+	if (par_->getIntParam("LOG_LEVEL") >= 10)
 		printf("OOQP status: %d\n", status);
 	switch(status)
 	{
 	case 0:
 	{
-		status_ = STO_STAT_OPTIMAL;
+		status_ = DSP_STAT_OPTIMAL;
 //		double phi = fabs(resid_->residualNorm() - resid_->dualityGap()) / prob_->datanorm();
 //		if (phi < 1.0e-6)
 //			status_ = STO_STAT_OPTIMAL;
@@ -567,17 +567,17 @@ void SolverInterfaceOoqp::solve()
 		break;
 	}
 	case 1:
-		status_ = STO_STAT_STOPPED_UNKNOWN;
+		status_ = DSP_STAT_STOPPED_UNKNOWN;
 		break;
 	case 2:
-		status_ = STO_STAT_STOPPED_ITER;
+		status_ = DSP_STAT_STOPPED_ITER;
 		break;
 	case 3:
-		status_ = STO_STAT_PRIM_INFEASIBLE;
+		status_ = DSP_STAT_PRIM_INFEASIBLE;
 		break;
 	case 4:
 	default:
-		status_ = STO_STAT_UNKNOWN;
+		status_ = DSP_STAT_UNKNOWN;
 		break;
 	}
 }

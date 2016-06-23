@@ -1,12 +1,13 @@
 /*
- * StoMacros.h
+ * DspMacros.h
  *
- *  Created on: Sep 23, 2014
- *      Author: kibaekkim
+ *  Refactored on: Apr 8, 2016
+ *     Created on: Sep 23, 2014
+ *         Author: kibaekkim
  */
 
-#ifndef STOMACROS_H_
-#define STOMACROS_H_
+#ifndef DSPMACROS_H_
+#define DSPMACROS_H_
 
 /*
  * Some print function
@@ -110,4 +111,4 @@
 
 
 
-#endif /* STOMACROS_H_ */
+#endif /* DSPMACROS_H_ */

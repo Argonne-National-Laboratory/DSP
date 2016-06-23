@@ -9,10 +9,10 @@
 #define SRC_SOLVER_BENDERS_BDSUB_H_
 
 #include <assert.h>
+#include <Utility/DspMacros.h>
+#include <Utility/DspRtnCodes.h>
 
 /** DSP */
-#include "Utility/StoMacros.h"
-#include "Utility/StoRtnCodes.h"
 #include "Utility/DspParams.h"
 #include "Model/TssModel.h"
 
@@ -29,10 +29,10 @@ public:
 	virtual ~BdSub();
 
 	/** set subproblem indices */
-	STO_RTN_CODE setSubIndices(int size, int * indices);
+	DSP_RTN_CODE setSubIndices(int size, int * indices);
 
 	/** load problem */
-	STO_RTN_CODE loadProblem(TssModel * model);
+	DSP_RTN_CODE loadProblem(TssModel * model);
 
 	/** generate Benders cut in raw format (without constructing) */
 	int generateCuts(
@@ -50,7 +50,7 @@ public:
 	const double * getSolution(int i) {return solutions_[i];}
 
 	/** get status for subproblem subindices_[i] */
-	STO_RTN_CODE getStatus(int i) {return status_[i];}
+	DSP_RTN_CODE getStatus(int i) {return status_[i];}
 
 	/** get number of subproblems */
 	int getNumSubprobs() {return nsubprobs_;}
@@ -77,12 +77,12 @@ private:
 			int            enableOptCuts = 1 /**< whether to generate optimality cuts or not */);
 
 	/** solve feasibility problem */
-	static STO_RTN_CODE solveFeasProblem(
+	static DSP_RTN_CODE solveFeasProblem(
 			OsiSolverInterface * si, /**< [in] subproblem solver interface */
 			int & nAddedCols         /**< [out] number of columns added */);
 
 	/** change feasibility problem to original problem */
-	static STO_RTN_CODE chgToOrgProblem(
+	static DSP_RTN_CODE chgToOrgProblem(
 			OsiSolverInterface * si, /**< [in] subproblem solver interface */
 			const double * obj,      /**< [in] original objective function */
 			int & nAddedCols         /**< [out] number of columns added */);
@@ -113,7 +113,7 @@ private:
 	CoinWarmStart **      warm_start_; /**< warm start information for each subproblem */
 	double *              objvals_;    /**< subproblem objective values */
 	double **             solutions_;  /**< subproblem solutions */
-	STO_RTN_CODE *        status_;     /**< subproblem solution status */
+	DSP_RTN_CODE *        status_;     /**< subproblem solution status */
 };
 
 #endif /* SRC_SOLVER_BENDERS_BDSUB_H_ */

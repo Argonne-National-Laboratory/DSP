@@ -76,7 +76,7 @@ public:
 
 	bool isStochastic() {return true;}
 
-	STO_RTN_CODE decompose(
+	DSP_RTN_CODE decompose(
 		int size,                    /**< [in] size of subproblem subset */
 		int * subprobs,              /**< [in] subset of subproblems */
 		int naux,                    /**< [in] number of auxiliary columns */
@@ -95,14 +95,14 @@ public:
 			clbd, cubd, ctype, obj, rlbd, rubd);
 	}
 
-	STO_RTN_CODE decomposeCoupling(
+	DSP_RTN_CODE decomposeCoupling(
 		int size,                    /**< [in] size of subproblem subset */
 		int * subprobs,              /**< [in] subset of subproblems */
 		CoinPackedMatrix *& cpl_mat, /**< [out] coupling constraint matrix */
 		int *& cpl_cols,             /**< [out] columns of cpl_mat involved in coupling rows */
 		int & cpl_ncols              /**< [out] size of cpl_cols */);
 
-	STO_RTN_CODE getFullModel(
+	DSP_RTN_CODE getFullModel(
 		CoinPackedMatrix *& mat, /**< [out] constraint matrix */
 		double *& clbd,          /**< [out] column lower bounds */
 		double *& cubd,          /**< [out] column upper bounds */

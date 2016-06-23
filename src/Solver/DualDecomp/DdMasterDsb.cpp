@@ -8,18 +8,33 @@
 #include "Solver/DualDecomp/DdMasterDsb.h"
 #include "SolverInterface/SolverInterfaceOoqp.h"
 
-DdMasterDsb::DdMasterDsb(DspParams * par, DecModel * model, StoMessage * message, int nworkers, int maxnumsubprobs) :
-	DdMaster(par, model, message, nworkers, maxnumsubprobs),
-	prox_(NULL), lambda_(NULL),
-	phi_t_(10.0), phi_l_(1000.0),
-	alpha_t_(0.1), alpha_l_(0.1),
-	eps_opt_(1.0e-6), eps_e_(1.0e-6), eps_g_(1.0e-6),
-	tau_min_(1.0e-6), tau_(1.0),
-	upperbound_(1.0e+20), valueAtProx_(-1.0e+20), level_(0.0), gg_(0.0),
-	isSolved_(false),
-	nrows_(0), ncols_(0), nzcnt_(0),
-	modelObjval_(0.0),
-	bb_(0.0) {}
+DdMasterDsb::DdMasterDsb(
+		DspParams *  par,     /**< parameter pointer */
+		DecModel *   model,   /**< model pointer */
+		DspMessage * message, /**< message pointer */
+		int nworkers          /**< number of workers */) :
+DdMasterSync(par, model, message, nworkers),
+prox_(NULL),
+lambda_(NULL),
+phi_t_(10.0),
+phi_l_(1000.0),
+alpha_t_(0.1),
+alpha_l_(0.1),
+eps_opt_(1.0e-6),
+eps_e_(1.0e-6),
+eps_g_(1.0e-6),
+tau_min_(1.0e-6),
+tau_(1.0),
+upperbound_(1.0e+20),
+valueAtProx_(-1.0e+20),
+level_(0.0),
+gg_(0.0),
+isSolved_(false),
+nrows_(0),
+ncols_(0),
+nzcnt_(0),
+modelObjval_(0.0),
+bb_(0.0) {}
 
 DdMasterDsb::~DdMasterDsb()
 {
@@ -30,21 +45,21 @@ DdMasterDsb::~DdMasterDsb()
 }
 
 /** initialize */
-STO_RTN_CODE DdMasterDsb::init()
+DSP_RTN_CODE DdMasterDsb::init()
 {
 	BGN_TRY_CATCH
 
-	DdMaster::init();
+	DdMasterSync::init();
 
 	/** create problem */
 	createProblem();
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
-STO_RTN_CODE DdMasterDsb::solve()
+DSP_RTN_CODE DdMasterDsb::solve()
 {
 	BGN_TRY_CATCH
 
@@ -66,7 +81,7 @@ STO_RTN_CODE DdMasterDsb::solve()
 
 		switch(si_->getStatus())
 		{
-		case STO_STAT_OPTIMAL:
+		case DSP_STAT_OPTIMAL:
 		{
 			int ncols = si_->getNumCols() + ooqp->dynCols_->size();
 
@@ -179,12 +194,12 @@ STO_RTN_CODE DdMasterDsb::solve()
 	s_cputimes_.push_back(CoinCpuTime() - cputime);
 	s_walltimes_.push_back(CoinGetTimeOfDay() - walltime);
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
-STO_RTN_CODE DdMasterDsb::createProblem()
+DSP_RTN_CODE DdMasterDsb::createProblem()
 {
 #define FREE_MEMORY            \
 		FREE_ARRAY_PTR(ctype); \
@@ -403,15 +418,15 @@ STO_RTN_CODE DdMasterDsb::createProblem()
 	primsol_ = new double [ncols_];
 	CoinZeroN(primsol_, ncols_);
 
-	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
 	FREE_MEMORY;
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 #undef FREE_MEMORY
 }
 
-STO_RTN_CODE DdMasterDsb::updateProblem()
+DSP_RTN_CODE DdMasterDsb::updateProblem()
 {
 	BGN_TRY_CATCH
 
@@ -491,12 +506,12 @@ STO_RTN_CODE DdMasterDsb::updateProblem()
 	/** update objective function */
 	applyLevelChange();
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
-STO_RTN_CODE DdMasterDsb::manageBundle(double* objvals)
+DSP_RTN_CODE DdMasterDsb::manageBundle(double* objvals)
 {
 	BGN_TRY_CATCH
 
@@ -646,12 +661,12 @@ STO_RTN_CODE DdMasterDsb::manageBundle(double* objvals)
 	/** update Hessian */
 	ooqp->setHessian(irowQ.size(), &irowQ[0], &jcolQ[0], &dQ[0]);
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
-STO_RTN_CODE DdMasterDsb::applyLevelChange()
+DSP_RTN_CODE DdMasterDsb::applyLevelChange()
 {
 #define FREE_MEMORY \
 	FREE_ARRAY_PTR(obj);
@@ -668,15 +683,15 @@ STO_RTN_CODE DdMasterDsb::applyLevelChange()
 
 	si_->setObjCoef(obj);
 
-	END_TRY_CATCH_RTN(FREE_MEMORY,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
 	FREE_MEMORY;
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 #undef FREE_MEMORY
 }
 
-STO_RTN_CODE DdMasterDsb::updateDynObjs()
+DSP_RTN_CODE DdMasterDsb::updateDynObjs()
 {
 	BGN_TRY_CATCH
 
@@ -689,7 +704,7 @@ STO_RTN_CODE DdMasterDsb::updateDynObjs()
 		DSPdebugMessage("dynObjs_[%d] %e\n", k, dynObjs_[k]);
 	}
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }

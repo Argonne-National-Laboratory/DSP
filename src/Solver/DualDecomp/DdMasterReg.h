@@ -8,44 +8,48 @@
 #ifndef SRC_SOLVER_DUALDECOMP_DDMASTERREG_H_
 #define SRC_SOLVER_DUALDECOMP_DDMASTERREG_H_
 
-#include "Solver/DualDecomp/DdMaster.h"
+#include "Solver/DualDecomp/DdMasterSync.h"
 
 /**
  * Regularized bundle method
  */
-class DdMasterReg: public DdMaster {
+class DdMasterReg: public DdMasterSync {
 public:
 
 	/** constructor */
-	DdMasterReg(DspParams * par, DecModel * model, StoMessage * message, int nworkers, int maxnumsubprobs);
+	DdMasterReg(
+			DspParams *  par,     /**< parameter pointer */
+			DecModel *   model,   /**< model pointer */
+			DspMessage * message, /**< message pointer */
+			int nworkers          /**< number of workers */);
 
 	/** destructor */
 	virtual ~DdMasterReg();
 
 	/** initialize */
-	virtual STO_RTN_CODE init();
+	virtual DSP_RTN_CODE init();
 
 	/** solve */
-	virtual STO_RTN_CODE solve();
+	virtual DSP_RTN_CODE solve();
 
 	/** update problem */
-	virtual STO_RTN_CODE updateProblem();
+	virtual DSP_RTN_CODE updateProblem();
 
 	/** set init solution */
-	virtual STO_RTN_CODE setInitSolution(const double * sol);
+	virtual DSP_RTN_CODE setInitSolution(const double * sol);
 
 protected:
 
 	/** create problem */
-	virtual STO_RTN_CODE createProblem();
+	virtual DSP_RTN_CODE createProblem();
 
 private:
 
 	/** update objective */
-	STO_RTN_CODE refreshObjective();
+	DSP_RTN_CODE refreshObjective();
 
 	/** solve without regularization */
-	STO_RTN_CODE terminationTest();
+	DSP_RTN_CODE terminationTest();
 
 private:
 

@@ -30,10 +30,13 @@ public:
 	virtual ~BdDriver();
 
 	/** initialize */
-	virtual STO_RTN_CODE init();
+	virtual DSP_RTN_CODE init();
 
 	/** run */
-	virtual STO_RTN_CODE run();
+	virtual DSP_RTN_CODE run();
+
+	/** finalize */
+	virtual DSP_RTN_CODE finalize();
 
 public:
 
@@ -41,22 +44,22 @@ public:
 	virtual void setDualObjective(double dualobj) {dualobj_ = dualobj;}
 
 	/** set auxiliary variable data */
-	virtual STO_RTN_CODE setAuxVarData(int size, double* obj, double* clbd, double* cubd);
+	virtual DSP_RTN_CODE setAuxVarData(int size, double* obj, double* clbd, double* cubd);
 
 	/** set initial solution */
-	virtual STO_RTN_CODE setSolution(
+	virtual DSP_RTN_CODE setSolution(
 			int      size,    /**< size of array */
 			double * solution /**< solution */);
 
 	/** set branch priorities */
-	virtual STO_RTN_CODE setPriorities(
+	virtual DSP_RTN_CODE setPriorities(
 			int   size,      /**< size of array */
 			int * priorities /**< branch priority */);
 
 private:
 
 	/** find lower bound */
-	STO_RTN_CODE findLowerBound();
+	DSP_RTN_CODE findLowerBound();
 
 	/** constraint handler */
 	SCIPconshdlrBenders * constraintHandler();

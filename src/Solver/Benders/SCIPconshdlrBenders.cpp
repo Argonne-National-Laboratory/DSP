@@ -8,8 +8,8 @@
 //#define DSP_DEBUG
 
 /** DSP */
+#include <Utility/DspMessage.h>
 #include "Solver/Benders/SCIPconshdlrBenders.h"
-#include "Utility/StoMessage.h"
 
 /** constraint data for Benders cuts */
 struct SCIP_ConsData
@@ -466,7 +466,7 @@ void SCIPconshdlrBenders::aggregateCuts(
 	for (int i = 0; i < nsubprobs; ++i)
 	{
 		/** generate feasibility cut */
-		if (bdsub_->getStatus(i) == STO_STAT_PRIM_INFEASIBLE)
+		if (bdsub_->getStatus(i) == DSP_STAT_PRIM_INFEASIBLE)
 		{
 			/** set cut body */
 			for (int j = 0; j < nvars_; ++j)
@@ -483,7 +483,7 @@ void SCIPconshdlrBenders::aggregateCuts(
 			break;
 		}
 
-		if (bdsub_->getStatus(i) != STO_STAT_OPTIMAL)
+		if (bdsub_->getStatus(i) != DSP_STAT_OPTIMAL)
 		{
 			printf("Error: Subproblem %d returns unexpected status %d\n",
 					bdsub_->getSubprobIndex(i), bdsub_->getStatus(i));

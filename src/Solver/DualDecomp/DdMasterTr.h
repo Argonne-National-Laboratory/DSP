@@ -8,35 +8,37 @@
 #ifndef SRC_SOLVER_DUALDECOMP_DDMASTERTR_H_
 #define SRC_SOLVER_DUALDECOMP_DDMASTERTR_H_
 
-#include <Solver/DualDecomp/DdMaster.h>
+#include <Solver/DualDecomp/DdMasterSync.h>
 
-class DdMasterTr: public DdMaster {
+class DdMasterTr: public DdMasterSync {
 public:
 
 	/** constructor */
-	DdMasterTr(DspParams * par, DecModel * model, StoMessage * message, int nworkers, int maxnumsubprobs);
+	DdMasterTr(
+			DspParams *  par,     /**< parameter pointer */
+			DecModel *   model,   /**< model pointer */
+			DspMessage * message, /**< message pointer */
+			int nworkers          /**< number of workers */);
 
 	/** desctructor */
 	virtual ~DdMasterTr();
 
 	/** initialize */
-	virtual STO_RTN_CODE init();
+	virtual DSP_RTN_CODE init();
 
 	/** solve */
-	virtual STO_RTN_CODE solve();
+	virtual DSP_RTN_CODE solve();
 
 	/** update problem */
-	virtual STO_RTN_CODE updateProblem();
+	virtual DSP_RTN_CODE updateProblem();
 
-	/** solver status */
-	virtual STO_RTN_CODE getStatus();
+	/** termination test */
+	virtual DSP_RTN_CODE terminationTest();
 
 protected:
 
 	/** create problem */
-	virtual STO_RTN_CODE createProblem();
-
-private:
+	virtual DSP_RTN_CODE createProblem();
 
 	/** is solution trust region boundary? */
 	virtual bool isSolutionBoundary(double eps = 1.0e-6);
@@ -46,19 +48,19 @@ private:
 			bool possiblyDel = true /**< possibly delete cuts*/);
 
 	/** possibly delete cuts */
-	virtual STO_RTN_CODE possiblyDeleteCuts(
+	virtual DSP_RTN_CODE possiblyDeleteCuts(
 			double subobjval /**< sum of subproblem objective values */);
 
 	/** recruite cuts */
 	virtual int recruiteCuts();
 
 	/** remove all cuts */
-	virtual STO_RTN_CODE removeAllCuts();
+	virtual DSP_RTN_CODE removeAllCuts();
 
 	/** change trust region */
-	virtual STO_RTN_CODE setTrustRegion(double stability_param, double * stability_center);
+	virtual DSP_RTN_CODE setTrustRegion(double stability_param, double * stability_center);
 
-private:
+protected:
 
 	int nthetas_;  /**< number of thetas */
 	int nlambdas_; /**< number of lambdas */

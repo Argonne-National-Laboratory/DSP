@@ -9,13 +9,13 @@
 
 DspDriver::DspDriver(DspParams * par, DecModel * model):
 	par_(par), model_(model),
-	status_(STO_STAT_UNKNOWN),
+	status_(DSP_STAT_UNKNOWN),
 	primsol_(NULL), dualsol_(NULL),
 	primobj_(COIN_DBL_MAX), dualobj_(-COIN_DBL_MAX),
 	cputime_(0.0), walltime_(0.0), numIterations_(0), numNodes_(0)
 {
 	/** create message */
-	message_ = new StoMessage(par_->getIntParam("LOG_LEVEL"));
+	message_ = new DspMessage(par_->getIntParam("LOG_LEVEL"));
 }
 
 DspDriver::~DspDriver()

@@ -9,7 +9,8 @@
 #define SRC_SOLVER_DUALDECOMP_DDDRIVER_H_
 
 #include "Solver/DspDriver.h"
-#include "Solver/DualDecomp/DdMW.h"
+#include "Solver/DualDecomp/DdMWSync.h"
+#include "Solver/DualDecomp/DdMWAsync.h"
 
 class DdDriver: public DspDriver {
 public:
@@ -24,21 +25,13 @@ public:
 	virtual ~DdDriver();
 
 	/** initialize */
-	virtual STO_RTN_CODE init();
+	virtual DSP_RTN_CODE init();
 
 	/** run */
-	virtual STO_RTN_CODE run();
+	virtual DSP_RTN_CODE run();
 
-public:
-
-	/** get pointer to master */
-	const DdMaster * getMasterPtr() {return master_;}
-
-	/** get pointer to worker */
-	const DdWorker * getWorkerPtr() {return worker_;}
-
-	/** get number of infeasible solutions evaluated */
-	int getNumInfeasibleSolutions() {return num_infeasible_solutions_;}
+	/** finalize */
+	virtual DSP_RTN_CODE finalize();
 
 private:
 
@@ -47,11 +40,6 @@ private:
 	int comm_size_;
 
 	DdMW * mw_;
-	DdMaster * master_;
-	DdWorker * worker_;
-
-	int num_infeasible_solutions_; /**< number of infeasible solutions found in subproblems */
-
 };
 
 #endif /* SRC_SOLVER_DUALDECOMP_DDDRIVER_H_ */

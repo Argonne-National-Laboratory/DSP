@@ -24,10 +24,13 @@ public:
 	virtual ~DeDriver();
 
 	/** initilize */
-	virtual STO_RTN_CODE init();
+	virtual DSP_RTN_CODE init();
 
 	/** run */
-	virtual STO_RTN_CODE run();
+	virtual DSP_RTN_CODE run();
+
+	/** finalize */
+	virtual DSP_RTN_CODE finalize();
 
 private:
 

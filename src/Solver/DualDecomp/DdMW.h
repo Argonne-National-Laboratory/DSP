@@ -11,69 +11,85 @@
 #include "Solver/BaseMasterWorker.h"
 #include "Solver/DualDecomp/DdMaster.h"
 #include "Solver/DualDecomp/DdWorker.h"
+#include "Solver/DualDecomp/DdWorkerCGBd.h"
+#include "Solver/DualDecomp/DdWorkerLB.h"
+#include "Solver/DualDecomp/DdWorkerUB.h"
 
 /**
  * This defines a master-worker framework for dual decomposition.
  */
 class DdMW: public BaseMasterWorker {
+
+protected:
+
+	typedef vector<CoinPackedVector*> Solutions;
+
 public:
 
 	/** constructor */
 	DdMW(
-			MPI_Comm comm,
-			DdMaster * master,
-			DdWorker * worker);
+			DecModel *   model,  /**< model pointer */
+			DspParams *  par,    /**< parameters */
+			DspMessage * message /**< message pointer */);
 
 	/** destructor */
 	virtual ~DdMW();
 
-	/** run the framework */
-	virtual STO_RTN_CODE run();
-
-protected:
-
 	/** initialize */
-	virtual STO_RTN_CODE init();
+	virtual DSP_RTN_CODE init();
 
-	/** run master process */
-	virtual STO_RTN_CODE runMaster();
-
-	/** run worker processes */
-	virtual STO_RTN_CODE runWorker();
-
-	/** run Benders worker processes;
-	 * this generates feasiblity/optimality cuts and evaluates upper bound. */
-	virtual STO_RTN_CODE runBendersWorker();
+	/** run the framework */
+	virtual DSP_RTN_CODE run();
 
 	/** finalize */
-	virtual STO_RTN_CODE finalize();
-
-private:
-
-	/** run master process (SYNC) */
-	virtual STO_RTN_CODE runMasterSync();
-
-	/** run master process (ASYNC) */
-	virtual STO_RTN_CODE runMasterAsync();
-
-	/** run worker processes (SYNC) */
-	virtual STO_RTN_CODE runWorkerSync();
-
-	/** run worker processes (ASYNC) */
-	virtual STO_RTN_CODE runWorkerAsync();
+	virtual DSP_RTN_CODE finalize();
 
 protected:
 
-	DdMaster * master_; /**< master */
-	DdWorker * worker_; /**< worker */
+	/** run master process */
+	virtual DSP_RTN_CODE runMaster() {return DSP_RTN_OK;}
 
-private:
+	/** run worker processes */
+	virtual DSP_RTN_CODE runWorker() {return DSP_RTN_OK;}
 
-	int * nsubprobs_;       /**< number of subproblems for each process */
-	int * subprob_indices_; /**< subproblem indices for each process */
-	int * subprob_displs_;  /**< displacement of subproblem indices */
+	/** check whether solution is duplicate or not; return NULL if duplicate */
+	CoinPackedVector * duplicateSolution(
+			int size,           /**< size of array */
+			const double * x,   /**< current solution */
+			Solutions solutions /**< solution pool to check duplication */);
 
-	int iteration_limit_;   /**< limit on number of iterations */
+	/** print header info */
+	virtual void printHeaderInfo();
+
+	/** print iteration info */
+	virtual void printIterInfo();
+
+public:
+
+	DdMaster *        master_; /**< master */
+	vector<DdWorker*> worker_; /**< worker for lower bounds */
+
+protected:
+
+	DecModel * model_;     /**< DecModel object */
+	DspParams * par_;      /**< parameters */
+	DspMessage * message_; /**< message */
+
+	Solutions ubSolutions_; /**< saved solutions that were evaluated for upper bounds */
+
+	OsiCuts * cutsToAdd_; /**< cuts to add */
+
+protected:
+
+	/** parameters */
+	int parFeasCuts_; /**< Benders feasibility cuts */
+	int parOptCuts_;  /**< Benders optimality cuts */
+	int parEvalUb_;   /**< upper bounds */
+
+	/** iteration info */
+	char itercode_;
+	int itercnt_;
+	double iterstime_; /** start time */
 };
 
 #endif /* SRC_SOLVER_DECDDMW_H_ */

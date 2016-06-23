@@ -206,7 +206,7 @@ double DecData::evalLhsRowSubprob(int row, int subprob, double * subprobSolution
 	return val;
 }
 
-STO_RTN_CODE DecData::decompose(
+DSP_RTN_CODE DecData::decompose(
 	int size,                /**< [in] size of subproblem subset */
 	int * subprobs,          /**< [in] subset of subproblems */
 	CoinPackedMatrix *& mat, /**< [in/out] constraint matrix */
@@ -220,13 +220,13 @@ STO_RTN_CODE DecData::decompose(
 	if (ncols_ != mat->getNumCols())
 	{
 		printf("Error: Matrix supplied for decomposition does not match decomposition specifications\n");
-		return STO_RTN_ERR;
+		return DSP_RTN_ERR;
 	}
 
 	if (!checkPartitionConsistency(mat))
 	{
 		printf("Error: Partition is inconsistent: there cannot be two nonzero coefficients of different subproblems in the same (non-coupling) row.\n");
-		return STO_RTN_ERR;
+		return DSP_RTN_ERR;
 	}
 
 	int orig_nrows = mat->getNumRows();
@@ -257,10 +257,10 @@ STO_RTN_CODE DecData::decompose(
 		rubd[j] = rubd[j+i];
 	}
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
-STO_RTN_CODE DecData::decomposeCoupling(
+DSP_RTN_CODE DecData::decomposeCoupling(
 		int size,                    /**< [in] size of subproblem subset */
 		int * subprobs,              /**< [in] subset of subproblems */
 		CoinPackedMatrix *& cpl_mat, /**< [out] coupling constraint matrix */
@@ -306,7 +306,7 @@ STO_RTN_CODE DecData::decomposeCoupling(
 		k += ncols_subprob_coupling_[subprobs[s]];
 	assert(k == cpl_ncols);
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 bool DecData::columnInSubprobs(

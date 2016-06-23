@@ -6,9 +6,9 @@
  */
 
 /** DSP */
+#include <Utility/DspMacros.h>
 #include "SolverInterface/OoqpEps.h"
 #include "SolverInterface/OoqpStatus.h"
-#include "Utility/StoMacros.h"
 
 /** set my OOQP status */
 void OoqpEps::setOoqpStatus(double epsilon, double lowerBound, double upperBound)
@@ -39,7 +39,7 @@ void OoqpEps::solve()
 	{
 	case 0:
 	{
-		status_ = STO_STAT_OPTIMAL;
+		status_ = DSP_STAT_OPTIMAL;
 		objval_ = prob_->objectiveValue(vars_);
 
 		/** get variable values */
@@ -68,17 +68,17 @@ void OoqpEps::solve()
 		break;
 	}
 	case 1:
-		status_ = STO_STAT_STOPPED_UNKNOWN;
+		status_ = DSP_STAT_STOPPED_UNKNOWN;
 		break;
 	case 2:
-		status_ = STO_STAT_STOPPED_ITER;
+		status_ = DSP_STAT_STOPPED_ITER;
 		break;
 	case 3:
-		status_ = STO_STAT_PRIM_INFEASIBLE;
+		status_ = DSP_STAT_PRIM_INFEASIBLE;
 		break;
 	case 4:
 	default:
-		status_ = STO_STAT_UNKNOWN;
+		status_ = DSP_STAT_UNKNOWN;
 		break;
 	}
 }

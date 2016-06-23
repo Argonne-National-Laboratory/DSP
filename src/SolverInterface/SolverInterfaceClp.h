@@ -29,7 +29,7 @@ public:
 protected:
 
 	/** initialize solver interface */
-	virtual STO_RTN_CODE initialize();
+	virtual DSP_RTN_CODE initialize();
 };
 
 #endif /* SOLVERINTERFACECLP_H_ */

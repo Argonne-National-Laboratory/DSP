@@ -8,9 +8,17 @@
 #include "Model/DecTssModel.h"
 #include "Solver/DualDecomp/DdMasterSubgrad.h"
 
-DdMasterSubgrad::DdMasterSubgrad(DspParams * par, DecModel * model, StoMessage * message, int nworkers, int maxnumsubprobs):
-	DdMaster(par, model, message, nworkers, maxnumsubprobs),
-	nstalls_(0), stepscal_(2.0), stepsize_(0.0), gradient_(NULL), multipliers_(NULL) {}
+DdMasterSubgrad::DdMasterSubgrad(
+		DspParams *  par,     /**< parameter pointer */
+		DecModel *   model,   /**< model pointer */
+		DspMessage * message, /**< message pointer */
+		int nworkers          /**< number of workers */):
+DdMasterSync(par, model, message, nworkers),
+nstalls_(0),
+stepscal_(2.0),
+stepsize_(0.0),
+gradient_(NULL),
+multipliers_(NULL) {}
 
 DdMasterSubgrad::~DdMasterSubgrad()
 {
@@ -18,23 +26,23 @@ DdMasterSubgrad::~DdMasterSubgrad()
 	FREE_ARRAY_PTR(multipliers_);
 }
 
-STO_RTN_CODE DdMasterSubgrad::init()
+DSP_RTN_CODE DdMasterSubgrad::init()
 {
 	BGN_TRY_CATCH
 
-	DdMaster::init();
+	DdMasterSync::init();
 
-	status_ = STO_STAT_OPTIMAL;
+	status_ = DSP_STAT_OPTIMAL;
 
 	/** create problem */
 	createProblem();
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
-STO_RTN_CODE DdMasterSubgrad::solve()
+DSP_RTN_CODE DdMasterSubgrad::solve()
 {
 	BGN_TRY_CATCH
 
@@ -73,12 +81,12 @@ STO_RTN_CODE DdMasterSubgrad::solve()
 	s_cputimes_.push_back(CoinCpuTime() - cputime);
 	s_walltimes_.push_back(CoinGetTimeOfDay() - walltime);
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
-STO_RTN_CODE DdMasterSubgrad::createProblem()
+DSP_RTN_CODE DdMasterSubgrad::createProblem()
 {
 	BGN_TRY_CATCH
 
@@ -92,12 +100,12 @@ STO_RTN_CODE DdMasterSubgrad::createProblem()
 	CoinZeroN(gradient_, model_->getNumCouplingRows());
 	CoinZeroN(multipliers_, model_->getNumCouplingRows());
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
-STO_RTN_CODE DdMasterSubgrad::updateProblem()
+DSP_RTN_CODE DdMasterSubgrad::updateProblem()
 {
 	BGN_TRY_CATCH
 
@@ -150,7 +158,7 @@ STO_RTN_CODE DdMasterSubgrad::updateProblem()
 		stepsize_ = stepscal_;
 	DSPdebugMessage("-> step size %e\n", stepsize_);
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }

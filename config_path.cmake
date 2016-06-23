@@ -1,0 +1,7 @@
+OPTION (READ_CONF "Read configuration file" OFF)
+IF(READ_CONF)
+  set(MA27_DIR "")
+  set(OOQP_DIR "")
+  set(SCIPOPTSUITE_DIR "")
+  set(SMI_DIR "")
+ENDIF(READ_CONF)

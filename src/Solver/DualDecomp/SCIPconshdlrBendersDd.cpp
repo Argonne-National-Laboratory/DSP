@@ -7,8 +7,8 @@
 
 //#define DSP_DEBUG
 
+#include <Utility/DspMessage.h>
 #include "Solver/DualDecomp/SCIPconshdlrBendersDd.h"
-#include "Utility/StoMessage.h"
 
 /** constraint data for Benders cuts */
 struct SCIP_ConsData
