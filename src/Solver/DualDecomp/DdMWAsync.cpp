@@ -85,6 +85,8 @@ DSP_RTN_CODE DdMWAsync::finalize()
 	/** free master */
 	if (master_)
 	{
+		sprintf(filename, "%s%d-DD.out", output_prefix, comm_rank_);
+		writeIterInfo(filename);
 		sprintf(filename, "%s%d-Master.out", output_prefix, comm_rank_);
 		master_->write(filename);
 		master_->finalize();
