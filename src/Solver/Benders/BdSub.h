@@ -59,7 +59,7 @@ public:
 	int getSubprobIndex(int i) {return subindices_[i];}
 
 	/** get subproblem indices */
-	const int * getSubprobIndices() {return subindices_;}
+	int * getSubprobIndices() {return subindices_;}
 
 	/** get number of columns */
 	int getNumCols(int i) {return cglp_[i]->getNumCols();}

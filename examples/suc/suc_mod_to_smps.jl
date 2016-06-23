@@ -280,7 +280,7 @@ endCons11 = MathProgBase.numlinconstr(m);
         - sum{load_shift_factor[n,l] * demand[n,t], n=BUSES});
 
 # file name
-fname = "ieee118-$nScenarios";
+fname = "../smps/ieee118-$nScenarios";
 
 # write MPS file
 println("Writing $fname.cor ...");
