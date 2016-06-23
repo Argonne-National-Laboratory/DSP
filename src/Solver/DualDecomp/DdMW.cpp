@@ -121,4 +121,34 @@ void DdMW::printIterInfo() {
 	else
 		message_->print(1, "  %6.2f", master_->getRelDualityGap()*100);
 	message_->print(1, "  %6.1f\n", CoinGetTimeOfDay() - iterstime_);
+
+	s_itertime_.push_back(CoinGetTimeOfDay() - iterstime_);
+	s_masterobj_.push_back(master_->getPrimalObjective());
+	s_bestprimobj_.push_back(master_->getBestPrimalObjective());
+	s_bestdualobj_.push_back(master_->getBestDualObjective());
+}
+
+void DdMW::writeIterInfo(const char * filename)
+{
+	BGN_TRY_CATCH
+
+	ofstream myfile;
+	myfile.open(filename);
+	myfile << "Iteration";
+	myfile << ",MasterObj";
+	myfile << ",BestPrimalObj";
+	myfile << ",BestDualObj";
+	myfile << ",Time\n";
+	for (unsigned i = 0; i < s_itertime_.size(); ++i)
+	{
+		myfile << i;
+		myfile << "," << s_masterobj_[i];
+		myfile << "," << s_bestprimobj_[i];
+		myfile << "," << s_bestdualobj_[i];
+		myfile << "," << s_itertime_[i];
+		myfile << "\n";
+	}
+	myfile.close();
+
+	END_TRY_CATCH(;)
 }

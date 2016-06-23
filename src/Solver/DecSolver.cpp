@@ -46,23 +46,21 @@ void DecSolver::write(const char * filename)
 
 	ofstream myfile;
 	myfile.open(filename);
-	myfile << "Priaml Objective: " << primobj_ << "\n";
-	myfile << "Dual Objective: " << dualobj_ << "\n";
-	myfile << setw(6) << right << "Iter";
-	myfile << setw(10) << "Status";
-	myfile << setw(14) << "Prim";
-	myfile << setw(14) << "Dual";
-	myfile << setw(10) << "Cpu";
-	myfile << setw(10) << "Wall";
+	myfile << "Iter";
+	myfile << ",Status";
+	myfile << ",Prim";
+	myfile << ",Dual";
+	myfile << ",Cpu";
+	myfile << ",Wall";
 	myfile << "\n";
 	for (unsigned i = 0; i < s_statuses_.size(); ++i)
 	{
-		myfile << setw(6) << i;
-		myfile << setw(10) << s_statuses_[i];
-		myfile << setw(14) << scientific << setprecision(5) << s_primobjs_[i];
-		myfile << setw(14) << scientific << setprecision(5) << s_dualobjs_[i];
-		myfile << setw(10) << fixed << setprecision(2) << s_cputimes_[i];
-		myfile << setw(10) << fixed << setprecision(2) << s_walltimes_[i];
+		myfile << i;
+		myfile << "," << s_statuses_[i];
+		myfile << "," << scientific << setprecision(5) << s_primobjs_[i];
+		myfile << "," << scientific << setprecision(5) << s_dualobjs_[i];
+		myfile << "," << fixed << setprecision(2) << s_cputimes_[i];
+		myfile << "," << fixed << setprecision(2) << s_walltimes_[i];
 		myfile << "\n";
 	}
 	myfile.close();

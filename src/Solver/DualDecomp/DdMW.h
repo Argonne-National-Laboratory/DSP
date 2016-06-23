@@ -64,6 +64,9 @@ protected:
 	/** print iteration info */
 	virtual void printIterInfo();
 
+	/** write output */
+	virtual void writeIterInfo(const char * filename);
+
 public:
 
 	DdMaster *        master_; /**< master */
@@ -90,6 +93,13 @@ protected:
 	char itercode_;
 	int itercnt_;
 	double iterstime_; /** start time */
+
+protected:
+
+	vector<double> s_itertime_;    /**< per-iteration time */
+	vector<double> s_masterobj_;   /**< master objective */
+	vector<double> s_bestprimobj_; /**< best primal objective */
+	vector<double> s_bestdualobj_; /**< best dual objective */
 };
 
 #endif /* SRC_SOLVER_DECDDMW_H_ */
