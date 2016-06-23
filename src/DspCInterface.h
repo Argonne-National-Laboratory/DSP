@@ -112,6 +112,9 @@ void solveBd(
 		int         nauxvars,            /**< number of auxiliary variables (scenario clusters) */
 		MPI_Comm    comm = MPI_UNDEFINED /**< MPI communicator */);
 
+/** read parameter file */
+void readParamFile(DspApiEnv * env, const char * param_file);
+
 /** set boolean parameter */
 void setBoolParam(DspApiEnv * env, const char * name, bool value);
 

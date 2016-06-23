@@ -322,7 +322,7 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 	{
 		if (newdual >= bestdualobj_ + 1.0e-4 * (curprimobj - bestdualobj_))
 		{
-			message_->print(2, "TR -> %s STEP: dual objective %e", isSolved_ ? "SERIOUS" : "INITIAL", newdual);
+			message_->print(2, "TR  %s STEP: dual objective %e", isSolved_ ? "SERIOUS" : "INITIAL", newdual);
 
 			/** reset minor cut counter */
 			ncuts_minor_ = nCutsAdded;
@@ -366,7 +366,7 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 			ncuts_minor_ += nCutsAdded;
 
 			/** null step */
-			message_->print(3, "TR -> null step: dual objective %e", newdual);
+			message_->print(3, "TR  null step: dual objective %e", newdual);
 
 			if (curprimobj < bestdualobj_)
 			{
@@ -398,13 +398,13 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 	}
 	else
 	{
-		message_->print(3, "TR -> dual objective %e\n", newdual);
+		message_->print(3, "TR  dual objective %e\n", newdual);
 		if (newdual >= bestdualobj_ + 1.0e-4 * (curprimobj - bestdualobj_))
 			/** update dual bound */
 			bestdualobj_ = newdual;
 	}
 
-	message_->print(4, "TR -> master has %d rows and %d cols after adding %d cuts.\n",
+	message_->print(4, "TR  master has %d rows and %d cols after adding %d cuts.\n",
 				si_->getNumRows(), si_->getNumCols(), nCutsAdded);
 
 	OoqpEps * ooqp = dynamic_cast<OoqpEps*>(si_);
@@ -857,12 +857,12 @@ DSP_RTN_CODE DdMasterTr::terminationTest()
 	{
 		double time_elapsed = CoinGetTimeOfDay() - walltime_elapsed_;
 		double absgap = primobj_ - bestdualobj_;
-		double relgap = absgap / (1.e-10 + fabs(primobj_));
+		double relgap = fabs(absgap) / (1.e-10 + fabs(primobj_));
 		DSPdebugMessage("absgap %+e relgap %+e\n", absgap, relgap);
 		if (absgap > -1.0e-6 && relgap < par_->getDblParam("DD/STOP_TOL"))
 		{
 			status_ = DSP_STAT_MW_STOP;
-			message_->print(1, "DdMasterTr: STOP with gap tolerance %+e (%.2f%%).\n", absgap, relgap*100);
+			message_->print(1, "Tr  STOP with gap tolerance %+e (%.2f%%).\n", fabs(absgap), relgap*100);
 		}
 	}
 	else

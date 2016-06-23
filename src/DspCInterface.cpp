@@ -352,6 +352,13 @@ void solveBd(
 	env->solver_->finalize();
 }
 
+/** read parameter file */
+void readParamFile(DspApiEnv * env, const char * param_file)
+{
+	STO_API_CHECK_ENV();
+	env->par_->readParamFile(param_file);
+}
+
 /** set boolean parameter */
 void setBoolParam(DspApiEnv * env, const char * name, bool value)
 {

@@ -79,12 +79,13 @@ DSP_RTN_CODE DdMWAsync::finalize()
 {
 	BGN_TRY_CATCH
 
-	char filename[32];
+	char filename[64];
+	const char * output_prefix = par_->getStrParam("OUTPUT/PREFIX").c_str();
 
 	/** free master */
 	if (master_)
 	{
-		sprintf(filename, "proc%d-Master.out", comm_rank_);
+		sprintf(filename, "%s%d-Master.out", output_prefix, comm_rank_);
 		master_->write(filename);
 		master_->finalize();
 		FREE_PTR(master_);
@@ -96,13 +97,13 @@ DSP_RTN_CODE DdMWAsync::finalize()
 		switch (worker_[i]->getType())
 		{
 		case DdWorker::LB:
-			sprintf(filename, "proc%d-LB.out", comm_rank_);
+			sprintf(filename, "%s%d-LB.out", output_prefix, comm_rank_);
 			break;
 		case DdWorker::UB:
-			sprintf(filename, "proc%d-UB.out", comm_rank_);
+			sprintf(filename, "%s%d-UB.out", output_prefix, comm_rank_);
 			break;
 		case DdWorker::CGBd:
-			sprintf(filename, "proc%d-CG.out", comm_rank_);
+			sprintf(filename, "%s%d-CG.out", output_prefix, comm_rank_);
 			break;
 		}
 		worker_[i]->write(filename);
@@ -811,6 +812,9 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 			message_->print(5, "Added a new trial point to the queue (size %lu).\n", q_solution_.size());
 		}
 
+		/** display iteration info */
+		printIterInfo();
+
 		/** returns continue or stop signal */
 		if (itercnt_ > master_->getParPtr()->getIntParam("ITER_LIM"))
 		{
@@ -836,9 +840,6 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 			numLbWorkers -= master->worker_.size() + idle_worker.size();
 			break;
 		}
-
-		/** display iteration info */
-		printIterInfo();
 
 		/** increment iteration count */
 		itercnt_++;

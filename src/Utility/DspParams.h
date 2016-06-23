@@ -11,6 +11,8 @@
 #include <limits>
 #include <tr1/unordered_map>
 #include <string>
+#include <iostream>
+#include <fstream>
 
 using namespace std;
 using namespace tr1;
@@ -238,6 +240,9 @@ public:
 
 	/** default destructor */
 	virtual ~DspParams();
+
+	/** read parameter file */
+	void readParamFile(const char * param_file);
 
 private:
 	/** INITIALIZE */

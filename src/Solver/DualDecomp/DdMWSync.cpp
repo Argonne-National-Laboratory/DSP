@@ -90,12 +90,13 @@ DSP_RTN_CODE DdMWSync::finalize()
 {
 	BGN_TRY_CATCH
 
-	char filename[32];
+	char filename[64];
+	const char * output_prefix = par_->getStrParam("OUTPUT/PREFIX").c_str();
 
 	/** free master */
 	if (master_)
 	{
-		sprintf(filename, "proc%d.out", comm_rank_);
+		sprintf(filename, "%s%d-Master.out", output_prefix, comm_rank_);
 		master_->write(filename);
 		master_->finalize();
 		FREE_PTR(master_);
@@ -104,7 +105,18 @@ DSP_RTN_CODE DdMWSync::finalize()
 	/** free workers */
 	for (unsigned i = 0; i < worker_.size(); ++i)
 	{
-		sprintf(filename, "proc%d-%d.out", comm_rank_, i);
+		switch (worker_[i]->getType())
+		{
+		case DdWorker::LB:
+			sprintf(filename, "%s%d-LB.out", output_prefix, comm_rank_);
+			break;
+		case DdWorker::UB:
+			sprintf(filename, "%s%d-UB.out", output_prefix, comm_rank_);
+			break;
+		case DdWorker::CGBd:
+			sprintf(filename, "%s%d-CG.out", output_prefix, comm_rank_);
+			break;
+		}
 		worker_[i]->write(filename);
 		worker_[i]->finalize();
 		FREE_PTR(worker_[i]);
@@ -264,31 +276,13 @@ DSP_RTN_CODE DdMWSync::runMaster()
 		}
 		master->worker_ = subcomm_size_ - 1;
 
-		/** calculate dual objective */
-		double dualobj = 0.0;
-		for (int s = 0; s < master->nsubprobs_; ++s)
-			dualobj += master->subprimobj_[s];
-		if (dualobj > master_->bestdualobj_)
-		{
-			master_->bestdualobj_ = dualobj;
-			itercode_ = '*';
-		}
-
 		/** STOP with small gap */
 		if (itercnt_ > master_->getParPtr()->getIntParam("ITER_LIM"))
 		{
 			signal = DSP_STAT_MW_STOP;
-			message_->print(1, "STOP with iteration limit.\n");
+			message_->print(0, "The iteration limit is reached.\n");
 		}
-		else if (master_->getRelDualityGap() < master_->getParPtr()->getDblParam("DD/STOP_TOL"))
-		{
-			signal = DSP_STAT_MW_STOP;
-			message_->print(1, "STOP with gap %+e.\n", master_->getRelDualityGap());
-		}
-
 		/** broadcast signal */
-		DSPdebugMessage("Rank %d send signal %d.\n", comm_rank_, signal);
-		/** TODO This is a really bad synchronization. */
 		MPI_Bcast(&signal, 1, MPI_INT, 0, comm_);
 		if (signal == DSP_STAT_MW_STOP)
 		{
@@ -317,21 +311,29 @@ DSP_RTN_CODE DdMWSync::runMaster()
 		}
 
 		/** update problem */
+		double olddual = master_->bestdualobj_;
 		master_->updateProblem();
+		if (olddual < master_->bestdualobj_)
+			itercode_ = itercode_ == 'P' ? 'B' : 'D';
 
 		/** solve problem */
 		double tic = CoinGetTimeOfDay();
 		master_->solve();
 		DSPdebugMessage("Rank %d solved the master (%.2f sec).\n", comm_rank_, CoinGetTimeOfDay() - tic);
 
-		/** returns continue or stop signal */
+		/** termination test */
 		signal = master_->terminationTest();
+		/** check duality gap */
+		if (signal != DSP_STAT_MW_STOP &&
+				master_->getRelDualityGap() < master_->getParPtr()->getDblParam("DD/STOP_TOL"))
+		{
+			signal = DSP_STAT_MW_STOP;
+			message_->print(0, "The duality gap limit %+e is reached.\n", master_->getRelDualityGap());
+		}
 
 		printIterInfo();
 
 		/** broadcast signal */
-		DSPdebugMessage2("Rank %d send signal %d.\n", comm_rank_, signal);
-		/** TODO This is a really bad synchronization. */
 		MPI_Bcast(&signal, 1, MPI_INT, 0, comm_);
 		if (signal == DSP_STAT_MW_STOP) break;
 
@@ -830,6 +832,7 @@ DSP_RTN_CODE DdMWSync::syncUpperbound(
 
 	if (comm_rank_ == 0)
 	{
+		double oldprimobj = master_->bestprimobj_;
 		/** receive upper bounds */
 		MPI_Recv(primobjs, nsolutions, MPI_DOUBLE, lb_comm_root_, DSP_MPI_TAG_UB, comm_, &status);
 		/** calculate best primal objective */
@@ -838,6 +841,8 @@ DSP_RTN_CODE DdMWSync::syncUpperbound(
 			DSPdebugMessage("solution %d: primal objective %+e\n", i, primobjs[i]);
 			master_->bestprimobj_ = primobjs[i] < master_->bestprimobj_ ? primobjs[i] : master_->bestprimobj_;
 		}
+		if (oldprimobj > master_->bestprimobj_)
+			itercode_ = 'P';
 	}
 	else if (lb_comm_ != MPI_COMM_NULL)
 	{
