@@ -114,6 +114,9 @@ DSP_RTN_CODE DdMWAsync::finalize()
 	}
 	worker_.clear();
 
+	/** synchronize here */
+	MPI_Barrier(comm_);
+
 	/** finalize MPI settings */
 	DdMWPara::finalize();
 
@@ -832,10 +835,8 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 		{
 			DSPdebugMessage("Rank %d sent signal %d to rank %d (%d)\n", comm_rank_, signal, master->worker_[i], numLbWorkers);
 			MPI_Send(&signal, 1, MPI_INT, master->worker_[i], DSP_MPI_TAG_SIG, subcomm_);
-#ifdef DSP_DEBUG_STOP
 			if (signal == DSP_STAT_MW_STOP)
-				message_->print(0, "The master sent STOP signal to LB processor (rank %d).\n", master->worker_[i]);
-#endif
+				message_->print(1, "The master sent STOP signal to LB processor (rank %d).\n", master->worker_[i]);
 		}
 		if (signal == DSP_STAT_MW_STOP)
 		{
@@ -959,7 +960,7 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 		DSPdebugMessage("Rank %d sent STOP signal to rank %d (%d)\n", comm_rank_, msg_source, numLbWorkers);
 		signal = DSP_STAT_MW_STOP;
 		MPI_Send(&signal, 1, MPI_INT, msg_source, DSP_MPI_TAG_SIG, subcomm_);
-		message_->print(0, "The master sent STOP signal to LB processor (rank %d).\n", msg_source);
+		message_->print(1, "The master sent STOP signal to LB processor (rank %d).\n", msg_source);
 		numLbWorkers--;
 	}
 	for (unsigned k = 0; k < idle_worker.size(); ++k)
