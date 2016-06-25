@@ -58,7 +58,7 @@ set(DSP_LIBS
 	${SMI_DIR}/lib/libClp.a
 	${SMI_DIR}/lib/libOsiClp.a
 	${SMI_DIR}/lib/libOsiSpx.a
-	${SMI_DIR}/lib/libOsiCpx.a
+#	${SMI_DIR}/lib/libOsiCpx.a
 	${SMI_DIR}/lib/libOsi.a
 	${SMI_DIR}/lib/libCoinUtils.a
 	${SCIP_DIR}/lib/libscip.a

@@ -1,6 +1,6 @@
 # This file defines parameter values.
 
-bool  DD/ASYNC  true
+bool  DD/ASYNC  false
 
 int  DD/FEAS_CUTS  1
 int  DD/OPT_CUTS   1
