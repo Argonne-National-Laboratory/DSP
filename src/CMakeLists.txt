@@ -52,7 +52,6 @@ add_library(Dsp SHARED
 	DspApiEnv.cpp
 	DspCInterface.cpp
 	${DSP_SRC_FILES})
-
 set(DSP_LIBS
 	${SMI_DIR}/lib/libSmi.a
 	${SMI_DIR}/lib/libClp.a
@@ -70,18 +69,21 @@ set(DSP_LIBS
 	${OOQP_DIR}/lib/libooqpgondzio.a
 	${OOQP_DIR}/lib/libooqpgensparse.a
 	${OOQP_DIR}/lib/libooqpsparse.a
-	${OOQP_DIR}/lib/libooqpbase.a
-	${MA27_DIR}/lib/libma27.a
-#	/opt/ibm/ILOG/CPLEX_Studio1261/cplex/lib/x86-64_linux/static_pic/libcplex.a
+	${OOQP_DIR}/lib/libooqpbase.a)
+if (HAS_MA57)
+	set(DSP_LIBS ${DSP_LIBS} ${MA57_DIR}/lib/libma57.a ${METIS_DIR}/libmetis.a)
+	message(STATUS "Linking libma57.a and libmetis.a")
+else()
+	set(DSP_LIBS ${MA27_DIR}/lib/libma27.a)
+	message(STATUS "Linking libma27.a")
+endif()
+set(DSP_LIBS ${DSP_LIBS} 
+	gfortran 
 	${MPI_CXX_LIBRARIES}
 	${BLAS_LIBRARIES}
 	${LAPACK_LIBRARIES}
 	${ZLIB_LIBRARIES}
 	${BZIP2_LIBRARIES})
-
-if(APPLE)
-	set(DSP_LIBS ${DSP_LIBS} gfortran)
-endif()
 
 target_link_libraries(Dsp ${DSP_LIBS})
 

@@ -490,7 +490,7 @@ void SolverInterfaceOoqp::gutsOfLoadProblem()
 	phi_    = new double [nx];
 
 #ifdef DSP_HAS_MA57
-	qp_ = new QpGenSparseMa57(nx, my_, mz_, 0, nnzA, nnzC);
+	qp_ = new QpGenSparseMa57(nx, my_, mz_, nnzQ_, nnzA, nnzC);
 #else
 	qp_ = new QpGenSparseMa27(nx, my_, mz_, nnzQ_, nnzA, nnzC);
 #endif
@@ -511,7 +511,7 @@ void SolverInterfaceOoqp::gutsOfLoadProblem()
 			irowA, nnzA,   jcolA, dA,     b,
 			irowC, nnzC,   jcolC, dC,
 			clow,  iclow,  cupp,  icupp);
-	//prob_->print();
+//	prob_->print();
 
 	/** declare variables */
 	vars_ = (QpGenVars*)qp_->makeVariables(prob_);
@@ -520,8 +520,8 @@ void SolverInterfaceOoqp::gutsOfLoadProblem()
 	resid_ = (QpGenResiduals*)qp_->makeResiduals(prob_);
 
 	/** create solver */
-	//solver_ = new GondzioSolver(qp_, prob_);
-	solver_ = new MehrotraSolver(qp_, prob_);
+	solver_ = new GondzioSolver(qp_, prob_);
+	//solver_ = new MehrotraSolver(qp_, prob_);
 
 	released_ = false;
 
