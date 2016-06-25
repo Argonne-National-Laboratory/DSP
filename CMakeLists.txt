@@ -55,67 +55,90 @@ include(config_path.cmake)
 
 # Set path variables
 set(EXTRA_DIR ${CMAKE_SOURCE_DIR}/extra)
+OPTION(HAS_MA57 "HAS MA57" OFF)
 
 # Build and install external packages
 include(ExternalProject)
 
-if (MA27_DIR)
+if (READ_CONF)
 	message(STATUS "MA27_DIR is set at ${MA27_DIR}")
-else()
-	set(MA27_DIR ${EXTRA_DIR}/ma27-1.0.0)
-	# ma27-1.0.0
-	ExternalProject_Add(ma27-1.0.0
-		PREFIX ${MA27_DIR}
-		SOURCE_DIR ${MA27_DIR}
-		CONFIGURE_COMMAND ${MA27_DIR}/configure --prefix=${MA27_DIR} FFLAGS=-fPIC
-		BINARY_DIR ${MA27_DIR}
-		BUILD_COMMAND make
-		INSTALL_COMMAND make install
-	)
-endif()
-
-if (OOQP_DIR)
 	message(STATUS "OOQP_DIR is set at ${OOQP_DIR}")
-else()
-	set(OOQP_DIR ${EXTRA_DIR}/OOQP-0.99.25)
-	# OOQP-0.99.25
-	set(OOQP_BLAS "BLAS=${BLAS_LIBRARIES}")
-	string(REPLACE ";" "\ " OOQP_BLAS "${OOQP_BLAS}")
-	ExternalProject_Add(OOQP-0.99.25
-		DEPENDS ma27-1.0.0
-		PREFIX ${OOQP_DIR}
-		SOURCE_DIR ${OOQP_DIR}
-		CONFIGURE_COMMAND ${OOQP_DIR}/configure --prefix=${OOQP_DIR} CXXFLAGS=-fPIC FFLAGS=-fPIC MA27LIB=${MA27_DIR}/lib/libma27.a ${OOQP_BLAS} CXX=${CMAKE_CXX_COMPILER}
-		BINARY_DIR ${OOQP_DIR}
-		BUILD_COMMAND make
-		INSTALL_COMMAND make install_headers
-	)
-endif()
-
-if (SCIPOPTSUITE_DIR)
 	message(STATUS "SCIPOPTSUITE_DIR is set at ${SCIPOPTSUITE_DIR}")
 	set(SCIP_DIR ${SCIPOPTSUITE_DIR}/scip-3.1.1)
 	set(SOPLEX_DIR ${SCIPOPTSUITE_DIR}/soplex-2.0.1)
+	message(STATUS "SMI_DIR is set at ${SMI_DIR}")
 else()
+	# OOQP-0.99.25
+	set(OOQP_DIR ${EXTRA_DIR}/OOQP-0.99.25)
+	set(OOQP_BLAS "BLAS=${BLAS_LIBRARIES}")
+	string(REPLACE ";" "\ " OOQP_BLAS "${OOQP_BLAS}")
+
+	if (HAS_MA57)
+		# compile flags
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDSP_HAS_MA57")
+		# metis-4.0.3
+		set(METIS_DIR ${EXTRA_DIR}/metis-4.0.3)
+		add_custom_target(metis-4.0.3
+			COMMAND make COPTIONS=-fPIC
+			WORKING_DIRECTORY ${METIS_DIR})
+#		ExternalProject_Add(metis-4.0.3
+#			PREFIX ${METIS_DIR}
+#			SOURCE_DIR ${METIS_DIR}
+#			CONFIGURE_COMMAND make COPTIONS=-fPIC
+#			BUILD_COMMAND make COPTIONS=-fPIC
+#			INSTALL_COMMAND make install)
+		# ma57-3.9.0
+		set(MA57_DIR ${EXTRA_DIR}/ma57-3.9.0)
+		ExternalProject_Add(ma57-3.9.0
+			DEPENDS metis-4.0.3
+			PREFIX ${MA57_DIR}
+			SOURCE_DIR ${MA57_DIR}
+			CONFIGURE_COMMAND ${MA57_DIR}/configure --prefix=${MA57_DIR} --with-metis=${METIS_DIR}/libmetis.a FFLAGS=-fPIC
+			BINARY_DIR ${MA57_DIR}
+			BUILD_COMMAND make
+			INSTALL_COMMAND make install)
+		# OOQP
+		set(OOQP_DEPENDS "ma57-3.9.0")
+		set(OOQP_HSL_LIB "MA57LIB=${MA57_DIR}/lib/libma57.a")
+		execute_process(COMMAND cp ${OOQP_DIR}/src/QpGen/Makefile.inc.ma57 ${OOQP_DIR}/src/QpGen/Makefile.inc)
+	else()
+		# ma27-1.0.0
+		set(MA27_DIR ${EXTRA_DIR}/ma27-1.0.0)
+		ExternalProject_Add(ma27-1.0.0
+			PREFIX ${MA27_DIR}
+			SOURCE_DIR ${MA27_DIR}
+			CONFIGURE_COMMAND ${MA27_DIR}/configure --prefix=${MA27_DIR} FFLAGS=-fPIC
+			BINARY_DIR ${MA27_DIR}
+			BUILD_COMMAND make
+			INSTALL_COMMAND make install)
+		# OOQP
+		set(OOQP_DEPENDS "ma57-3.9.0")
+		set(OOQP_HSL_LIB "MA57LIB=${MA57_DIR}/lib/libma57.a")
+	endif()
+	# OOQP
+	ExternalProject_Add(OOQP-0.99.25
+		DEPENDS ${OOQP_DEPENDS}
+		PREFIX ${OOQP_DIR}
+		SOURCE_DIR ${OOQP_DIR}
+		CONFIGURE_COMMAND ${OOQP_DIR}/configure --prefix=${OOQP_DIR} CXXFLAGS=-fPIC FFLAGS=-fPIC ${OOQP_HSL_LIB} ${OOQP_BLAS} CXX=${CMAKE_CXX_COMPILER}
+		BINARY_DIR ${OOQP_DIR}
+		BUILD_COMMAND make all_libs
+		INSTALL_COMMAND make install_headers)
+
+	# SCIP Optimization Suite (3.1.1)
 	set(SCIPOPTSUITE_DIR ${EXTRA_DIR}/scipoptsuite-3.1.1)
 	set(SCIP_DIR ${SCIPOPTSUITE_DIR}/scip-3.1.1)
 	set(SOPLEX_DIR ${SCIPOPTSUITE_DIR}/soplex-2.0.1)
-	# SCIP Optimization Suite (3.1.1)
 	ExternalProject_Add(scipoptsuite-3.1.1
 		PREFIX ${SCIPOPTSUITE_DIR}
 		SOURCE_DIR ${SCIPOPTSUITE_DIR}
 		CONFIGURE_COMMAND ""
 		BINARY_DIR ${SCIPOPTSUITE_DIR}
 		BUILD_COMMAND make scipoptlib SHARED=true GMP=false ZLIB=false READLINE=false
-		INSTALL_COMMAND ""
-	)
-endif()
-
-if (SMI_DIR)
-	message(STATUS "SMI_DIR is set at ${SMI_DIR}")
-else()
-	set(SMI_DIR ${EXTRA_DIR}/Smi)
+		INSTALL_COMMAND "")
+	
 	# COIN-OR Smi (0.95)
+	set(SMI_DIR ${EXTRA_DIR}/Smi)
 	set(SMI_FLAGS "-L${SOPLEX_DIR}/lib -lsoplex")
 	ExternalProject_Add(Smi
 		DEPENDS scipoptsuite-3.1.1
@@ -128,8 +151,7 @@ else()
 		CONFIGURE_COMMAND ${SMI_DIR}/configure --enable-static --disable-shared --with-soplex-incdir=${SOPLEX_DIR}/src --with-soplex-lib=${SMI_FLAGS} ADD_CXXFLAGS=-fPIC CXX=${CMAKE_CXX_COMPILER}
 		BINARY_DIR ${SMI_DIR}
 		BUILD_COMMAND make
-		INSTALL_COMMAND make install
-	)
+		INSTALL_COMMAND make install)
 endif()
 
 #set(LAZYCPLEX_INCDIR "/opt/ibm/ILOG/CPLEX_Studio1261/cplex/include/ilcplex")

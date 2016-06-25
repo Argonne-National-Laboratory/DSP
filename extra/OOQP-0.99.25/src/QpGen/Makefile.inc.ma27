@@ -17,7 +17,7 @@ QPGENDENSEOBJ = $(QPGENDENSESRC:.C=.o)
 
 libooqpgensparse_OBJ = $(QPGENSPARSEOBJ) $(MPSREADEROBJ) \
 	$(CQPGENSPARSEOBJ) \
-	$(QPGENDIR)/QpGenSparseMa57.o $(MA57SOLVEROBJ) 
+	$(QPGENDIR)/QpGenSparseMa27.o $(MA27SOLVEROBJ) 
 libooqpgensparse_STATIC = $(locallibdir)/libooqpgensparse.a
 
 libooqpgendense_OBJ = $(QPGENDENSEOBJ) $(MPSREADEROBJ) \
