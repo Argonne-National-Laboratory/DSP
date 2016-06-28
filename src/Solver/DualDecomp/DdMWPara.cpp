@@ -146,7 +146,7 @@ DSP_RTN_CODE DdMWPara::createGroups() {
 		for (int i = 0; i < nranks; ++i)
 			ranks[i] = i;
 		MPI_Group_incl(world_group, nranks, ranks, &subcomm_group_);
-		MPI_Comm_create_group(comm_, subcomm_group_, 0, &subcomm_);
+		MPI_Comm_create_group(comm_, subcomm_group_, DSP_MPI_TAG_GROUP_SUB, &subcomm_);
 		if (subcomm_ != MPI_COMM_NULL)
 		{
 			MPI_Comm_size(subcomm_, &subcomm_size_);
@@ -154,7 +154,7 @@ DSP_RTN_CODE DdMWPara::createGroups() {
 		}
 		/** LB group */
 		MPI_Group_incl(world_group, nranks-1, ranks+1, &lb_group_);
-		MPI_Comm_create_group(comm_, lb_group_, 0, &lb_comm_);
+		MPI_Comm_create_group(comm_, lb_group_, DSP_MPI_TAG_GROUP_LB, &lb_comm_);
 		if (lb_comm_ != MPI_COMM_NULL)
 		{
 			MPI_Comm_rank(lb_comm_, &lb_comm_rank_);
@@ -169,7 +169,7 @@ DSP_RTN_CODE DdMWPara::createGroups() {
 			for (int i = 0; i < nranks; ++i)
 				ranks[i] = i+model_->getNumSubproblems()+1;
 			MPI_Group_incl(world_group, nranks, ranks, &cgub_group_);
-			MPI_Comm_create_group(comm_, cgub_group_, 0, &cgub_comm_);
+			MPI_Comm_create_group(comm_, cgub_group_, DSP_MPI_TAG_GROUP_CGUB, &cgub_comm_);
 			if (cgub_comm_ != MPI_COMM_NULL)
 			{
 				MPI_Comm_rank(cgub_comm_, &cgub_comm_rank_);
@@ -189,7 +189,7 @@ DSP_RTN_CODE DdMWPara::createGroups() {
 		for (int i = 0; i < nranks; ++i)
 			ranks[i] = i;
 		MPI_Group_incl(world_group, nranks, ranks, &subcomm_group_);
-		MPI_Comm_create_group(comm_, subcomm_group_, 0, &subcomm_);
+		MPI_Comm_create_group(comm_, subcomm_group_, DSP_MPI_TAG_GROUP_SUB, &subcomm_);
 		if (subcomm_ != MPI_COMM_NULL)
 		{
 			MPI_Comm_size(subcomm_, &subcomm_size_);
@@ -197,7 +197,7 @@ DSP_RTN_CODE DdMWPara::createGroups() {
 		}
 		/** LB group */
 		MPI_Group_incl(world_group, nranks-1, ranks+1, &lb_group_);
-		MPI_Comm_create_group(comm_, lb_group_, 0, &lb_comm_);
+		MPI_Comm_create_group(comm_, lb_group_, DSP_MPI_TAG_LB, &lb_comm_);
 		if (lb_comm_ != MPI_COMM_NULL)
 		{
 			MPI_Comm_rank(lb_comm_, &lb_comm_rank_);
@@ -207,7 +207,7 @@ DSP_RTN_CODE DdMWPara::createGroups() {
 		if (has_cgub_comm_)
 		{
 			MPI_Group_excl(world_group, nranks, ranks, &cgub_group_);
-			MPI_Comm_create_group(comm_, cgub_group_, 0, &cgub_comm_);
+			MPI_Comm_create_group(comm_, cgub_group_, DSP_MPI_TAG_CGUB, &cgub_comm_);
 			if (cgub_comm_ != MPI_COMM_NULL)
 			{
 				MPI_Comm_rank(cgub_comm_, &cgub_comm_rank_);

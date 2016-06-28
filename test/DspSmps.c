@@ -23,6 +23,9 @@ int main(int argc, char * argv[])
 
 	/** initialize MPI */
 	MPI_Init(&argc, &argv);
+	MPI_Comm comm_ = MPI_COMM_WORLD;
+	int comm_rank_;
+	MPI_Comm_rank(comm_, &comm_rank_);
 
 	int rc = 0;
 	const char * lib_file = "libDsp.so";

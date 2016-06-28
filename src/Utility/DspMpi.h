@@ -19,13 +19,16 @@
 
 using namespace std;
 
-#define DSP_MPI_TAG_LB        0
-#define DSP_MPI_TAG_CGBD      1
-#define DSP_MPI_TAG_UB        2
-#define DSP_MPI_TAG_SOLS      3
-#define DSP_MPI_TAG_ASK_SOLS  33
-#define DSP_MPI_TAG_SIG       4
-#define DSP_MPI_TAG_CGUB      5
+#define DSP_MPI_TAG_LB          0
+#define DSP_MPI_TAG_CGBD        1
+#define DSP_MPI_TAG_UB          2
+#define DSP_MPI_TAG_SOLS        3
+#define DSP_MPI_TAG_ASK_SOLS    33
+#define DSP_MPI_TAG_SIG         4
+#define DSP_MPI_TAG_CGUB        5
+#define DSP_MPI_TAG_GROUP_SUB   90
+#define DSP_MPI_TAG_GROUP_LB    91
+#define DSP_MPI_TAG_GROUP_CGUB  92
 
 /** check whether solution is duplicate or not; return NULL if duplicate */
 bool duplicateVector(
