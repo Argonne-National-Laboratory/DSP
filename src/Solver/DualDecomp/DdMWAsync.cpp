@@ -755,6 +755,7 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 			message_->print(0, "Primal solution from Q (dual obj %+e):\n", dualobj);
 			message_->printArray(master->getSiPtr()->getNumCols(), primsol_from_Q);
 #endif
+			message_->print(5, "best dual obj %e, current dual obj %e.\n", olddual, dualobj);
 			master->updateProblem(primsol_from_Q, dualobj);
 			FREE_ARRAY_PTR(primsol_from_Q);
 			if (olddual < master->bestdualobj_)
@@ -782,28 +783,10 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 		else
 		{
 			int ncuts = master->addCuts();
+			message_->print(5, "Added %d cuts to the master.\n", ncuts);
 			if (ncuts == 0 && allowIdleLbProcessors == false)
 				master->updateTrustRegion();
 		}
-
-		/** solve problem */
-		if (allowIdleLbProcessors == false ||
-				q_solution_.size() < max_queue_size_)
-			master->solve();
-
-		/** put solution to Q */
-		if (q_solution_.size() < max_queue_size_)
-		{
-			/** retrieve master solution */
-			double * master_primsol = const_cast<double*>(master_->getPrimalSolution());
-			/** queue lambda if it is a new one. */
-			pushSolutionToQueue(master_primsol);
-			master_primsol = NULL;
-			message_->print(5, "Added a new trial point to the queue (size %lu).\n", q_solution_.size());
-		}
-
-		/** display iteration info */
-		printIterInfo();
 
 		/** returns continue or stop signal */
 		if (itercnt_ > master_->getParPtr()->getIntParam("ITER_LIM"))
@@ -828,6 +811,25 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 			numLbWorkers -= master->worker_.size() + idle_worker.size();
 			break;
 		}
+
+		/** solve problem */
+		if (allowIdleLbProcessors == false ||
+				q_solution_.size() < max_queue_size_)
+			master->solve();
+
+		/** put solution to Q */
+		if (q_solution_.size() < max_queue_size_)
+		{
+			/** retrieve master solution */
+			double * master_primsol = const_cast<double*>(master_->getPrimalSolution());
+			/** queue lambda if it is a new one. */
+			pushSolutionToQueue(master_primsol);
+			master_primsol = NULL;
+			message_->print(5, "Added a new trial point to the queue (size %lu).\n", q_solution_.size());
+		}
+
+		/** display iteration info */
+		printIterInfo();
 
 		/** increment iteration count */
 		itercnt_++;

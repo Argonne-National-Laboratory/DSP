@@ -299,7 +299,6 @@ DSP_RTN_CODE DdMasterAtr::terminationTest()
 
 	if (isSolutionBoundary() == false)
 	{
-#if 1
 		if (is_updated_ == false)
 		{
 			for (unsigned i = 0; i < worker_.size(); ++i)
@@ -319,7 +318,9 @@ DSP_RTN_CODE DdMasterAtr::terminationTest()
 				message_->print(0, "The master proved the Lagrangian dual optimality at %+e.\n", primobj_);
 			}
 		}
-#else
+
+		if (status_ == DSP_STAT_MW_STOP) return status_;
+
 		double absgap = primobj_ - bestdualobj_;
 		double relgap = fabs(absgap) / (1.e-10 + fabs(primobj_));
 		if (absgap > -1.0e-6 && relgap < par_->getDblParam("DD/STOP_TOL"))
@@ -327,7 +328,6 @@ DSP_RTN_CODE DdMasterAtr::terminationTest()
 			status_ = DSP_STAT_MW_STOP;
 			message_->print(0, "TR  STOP with gap tolerance %+e (%.2f%%).\n", absgap, relgap*100);
 		}
-#endif
 	}
 
 

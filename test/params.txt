@@ -7,6 +7,6 @@ int  DD/FEAS_CUTS  1
 int  DD/OPT_CUTS   1
 int  DD/EVAL_UB    1
 int  LOG_LEVEL     1
-int  DD/MAX_QSIZE  0
+int  DD/MAX_QSIZE  1
 
 string  OUTPUT/PREFIX farmer
