@@ -39,7 +39,6 @@ DSP_RTN_CODE DdMasterAtr::solve()
 	BGN_TRY_CATCH
 
 	DdMasterTr::solve();
-	is_updated_ = false;
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -318,6 +317,8 @@ DSP_RTN_CODE DdMasterAtr::terminationTest()
 				message_->print(0, "The master proved the Lagrangian dual optimality at %+e.\n", primobj_);
 			}
 		}
+		else
+			is_updated_ = false;
 
 		if (status_ == DSP_STAT_MW_STOP) return status_;
 

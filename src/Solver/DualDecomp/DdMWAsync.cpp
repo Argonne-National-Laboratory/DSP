@@ -788,6 +788,25 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 				master->updateTrustRegion();
 		}
 
+		/** solve problem */
+		if (allowIdleLbProcessors == false ||
+				q_solution_.size() < max_queue_size_)
+			master->solve();
+
+		/** put solution to Q */
+		if (q_solution_.size() < max_queue_size_)
+		{
+			/** retrieve master solution */
+			double * master_primsol = const_cast<double*>(master_->getPrimalSolution());
+			/** queue lambda if it is a new one. */
+			pushSolutionToQueue(master_primsol);
+			master_primsol = NULL;
+			message_->print(5, "Added a new trial point to the queue (size %lu).\n", q_solution_.size());
+		}
+
+		/** display iteration info */
+		printIterInfo();
+
 		/** returns continue or stop signal */
 		if (itercnt_ > master_->getParPtr()->getIntParam("ITER_LIM"))
 		{
@@ -811,25 +830,6 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 			numLbWorkers -= master->worker_.size() + idle_worker.size();
 			break;
 		}
-
-		/** solve problem */
-		if (allowIdleLbProcessors == false ||
-				q_solution_.size() < max_queue_size_)
-			master->solve();
-
-		/** put solution to Q */
-		if (q_solution_.size() < max_queue_size_)
-		{
-			/** retrieve master solution */
-			double * master_primsol = const_cast<double*>(master_->getPrimalSolution());
-			/** queue lambda if it is a new one. */
-			pushSolutionToQueue(master_primsol);
-			master_primsol = NULL;
-			message_->print(5, "Added a new trial point to the queue (size %lu).\n", q_solution_.size());
-		}
-
-		/** display iteration info */
-		printIterInfo();
 
 		/** increment iteration count */
 		itercnt_++;
