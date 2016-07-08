@@ -128,6 +128,9 @@ void solveBdMpi(
 		int         nauxvars, /**< number of auxiliary variables (scenario clusters) */
 		MPI_Comm    comm      /**< MPI communicator */);
 
+/** read parameter file */
+void readParamFile(StoApiEnv * env, const char * param_file);
+
 /** set boolean parameter */
 void setBoolParam(StoApiEnv * env, const char * name, bool value);
 

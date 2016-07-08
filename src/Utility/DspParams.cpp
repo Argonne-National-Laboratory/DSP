@@ -27,6 +27,89 @@ DspParams::~DspParams()
 	IntPtrParams_.deleteParam("ARR_PROC_IDX");
 }
 
+/** read parameter file */
+void DspParams::readParamFile(const char * param_file)
+{
+	string line;
+	ifstream myfile(param_file);
+	if (myfile.is_open())
+	{
+		int pos = 0;
+		int col = 0;
+		string param_element[3];
+		size_t startpos, found;
+		while(getline(myfile, line))
+		{
+			//printf("Read line: %s\n", line.c_str());
+			/** comment out? */
+			startpos = line.find_first_of("#");
+			if(string::npos != startpos) line = line.substr(0, startpos);
+
+			/** empty line? */
+			startpos = line.find_first_not_of(" \t");
+			if(string::npos == startpos) continue;
+
+			bool is_valid = true;
+			for (int i = 0; i < 3; ++i)
+			{
+				/** ltrim */
+				startpos = line.find_first_not_of(" \t");
+				if(string::npos != startpos) line = line.substr(startpos);
+
+				/** read element */
+				found = line.find_first_of(" \t");
+				if(string::npos == found && i < 2)
+				{
+					printf("Invalid parameter format.\n");
+					is_valid = false;
+					break;
+				}
+				param_element[i] = line.substr(0, found);
+				if (string::npos != found)
+					line = line.substr(found);
+			}
+			if (!is_valid) break;
+
+			printf("Set parameter: [%s][%s][%s]\n", param_element[0].c_str(), param_element[1].c_str(), param_element[2].c_str());
+
+			if (param_element[0].compare("bool") == 0)
+			{
+				if (param_element[2].compare("true") == 0)
+					BoolParams_.setParam(param_element[1], true);
+				else if (param_element[2].compare("false") == 0)
+					BoolParams_.setParam(param_element[1], false);
+				else
+				{
+					printf("Invalid parameter type.\n");
+					is_valid = false;
+					break;
+				}
+			}
+			else if (param_element[0].compare("double") == 0)
+			{
+				DblParams_.setParam(param_element[1], atof(param_element[2].c_str()));
+			}
+			else if (param_element[0].compare("int") == 0)
+			{
+				IntParams_.setParam(param_element[1], atoi(param_element[2].c_str()));
+			}
+			else if (param_element[0].compare("string") == 0)
+			{
+				StrParams_.setParam(param_element[1], param_element[2]);
+			}
+			else
+			{
+				printf("Invalid parameter type.\n");
+				is_valid = false;
+				break;
+			}
+		}
+		myfile.close();
+	}
+	else
+		printf("Unable to open parameter file <%s>.\n", param_file);
+}
+
 void DspParams::initBoolParams()
 {
 	/** enable trust region */

@@ -425,6 +425,13 @@ void solveBdMpi(
 	env->solver_->solve();
 }
 
+/** read parameter file */
+void readParamFile(StoApiEnv * env, const char * param_file)
+{
+	STO_API_CHECK_ENV();
+	env->par_->readParamFile(param_file);
+}
+
 /** set boolean parameter */
 void setBoolParam(StoApiEnv * env, const char * name, bool value)
 {
