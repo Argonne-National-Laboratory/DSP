@@ -511,7 +511,7 @@ void SolverInterfaceOoqp::gutsOfLoadProblem()
 			irowA, nnzA,   jcolA, dA,     b,
 			irowC, nnzC,   jcolC, dC,
 			clow,  iclow,  cupp,  icupp);
-//	prob_->print();
+	//prob_->print();
 
 	/** declare variables */
 	vars_ = (QpGenVars*)qp_->makeVariables(prob_);
@@ -520,8 +520,8 @@ void SolverInterfaceOoqp::gutsOfLoadProblem()
 	resid_ = (QpGenResiduals*)qp_->makeResiduals(prob_);
 
 	/** create solver */
-	solver_ = new GondzioSolver(qp_, prob_);
-	//solver_ = new MehrotraSolver(qp_, prob_);
+	//solver_ = new GondzioSolver(qp_, prob_);
+	solver_ = new MehrotraSolver(qp_, prob_);
 
 	released_ = false;
 

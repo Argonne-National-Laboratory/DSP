@@ -48,6 +48,10 @@ set(DSP_SRC_FILES
 	Utility/DspMpi.cpp
 	Utility/DspParams.cpp)
 
+if (PYDSP_COMPILE)
+	set(DSP_SRC_FILES ${DSP_SRC_FILES} PyDsp.cpp)
+endif()
+
 add_library(Dsp SHARED
 	DspApiEnv.cpp
 	DspCInterface.cpp
@@ -72,10 +76,10 @@ set(DSP_LIBS
 	${OOQP_DIR}/lib/libooqpbase.a)
 if (HAS_MA57)
 	set(DSP_LIBS ${DSP_LIBS} ${MA57_DIR}/lib/libma57.a ${METIS_DIR}/libmetis.a)
-	message(STATUS "Linking libma57.a and libmetis.a")
+	message(STATUS "${Blue}DSP will be compiled with MA57 (libma57.a, libmetis.a)${ColourReset}")
 else()
-	set(DSP_LIBS ${MA27_DIR}/lib/libma27.a)
-	message(STATUS "Linking libma27.a")
+	set(DSP_LIBS ${DSP_LIBS} ${MA27_DIR}/lib/libma27.a)
+	message(STATUS "${Blue}DSP will be compiled with MA27. Note that DSP can be compiled with MA57 with flag -DHAS_MA57=ON.${ColourReset}")
 endif()
 set(DSP_LIBS ${DSP_LIBS} 
 	gfortran 
@@ -92,11 +96,20 @@ install(TARGETS Dsp LIBRARY DESTINATION ${CMAKE_SOURCE_DIR}/lib)
 
 # some message
 install(CODE "message(\"\")")
-install(CODE "message(\"** Please add the following line to the .bash_profile or .bashrc in your home directory:\")")
+install(CODE "message(\"${Blue}** Please add the following line to the .bash_profile or .bashrc in your home directory:${ColourReset}\")")
 if(APPLE)
-	install(CODE "message(\"    export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:${CMAKE_SOURCE_DIR}/lib\")")
+	install(CODE "message(\"${Red}    export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:${CMAKE_SOURCE_DIR}/lib${ColourReset}\")")
 else()
-	install(CODE "message(\"    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${CMAKE_SOURCE_DIR}/lib\")")
+	install(CODE "message(\"${Red}    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${CMAKE_SOURCE_DIR}/lib${ColourReset}\")")
+endif()
+if(PYDSP_COMPILE)
+	if(APPLE)
+		install(CODE "execute_process(COMMAND ln -s -f libDsp.dylib lib/_PyDsp.dylib)")
+	else()
+		install(CODE "execute_process(COMMAND ln -s -f libDsp.so lib/_PyDsp.so)")
+	endif()
+	install(CODE "execute_process(COMMAND mv src/PyDsp.py lib/PyDsp.py)")
+	install(CODE "message(\"${Red}    export PYTHONPATH=$PYTHONPATH:${CMAKE_SOURCE_DIR}/lib${ColourReset}\")")
 endif()
 install(CODE "message(\"\")")
 install(CODE "message(\"** Please install Julia from http://julialang.org/downloads/\")")
