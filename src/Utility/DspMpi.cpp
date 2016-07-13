@@ -17,40 +17,6 @@
 
 /** DSP */
 
-/** check whether solution is duplicate or not */
-bool duplicateVector(
-		CoinPackedVector * vec,
-		vector<CoinPackedVector*> vecs)
-{
-	bool dup = false;
-
-	/** number of saved solutions */
-	int num = vecs.size();
-	DSPdebugMessage("number of vectors %d\n", num);
-	for (int i = num - 1; i >= 0; --i)
-	{
-#ifdef DSP_DEBUG
-		DSPdebugMessage("vecs[%d]:\n", i);
-		DspMessage::printArray(vecs[i]);
-#endif
-		if (vec->getNumElements() != vecs[i]->getNumElements() ||
-			vec->getMinIndex() != vecs[i]->getMinIndex() ||
-			vec->getMaxIndex() != vecs[i]->getMaxIndex() ||
-			fabs(vec->infNorm() - vecs[i]->infNorm()) > 1.0e-8 ||
-			fabs(vec->oneNorm() - vecs[i]->oneNorm()) > 1.0e-8 ||
-			fabs(vec->sum() - vecs[i]->sum()) > 1.0e-8 ||
-			fabs(vec->twoNorm() - vecs[i]->twoNorm()) > 1.0e-8)
-			continue;
-		if (vec->isEquivalent(*vecs[i]))
-		{
-			dup = true;
-			break;
-		}
-	}
-
-	return dup;
-}
-
 /** get round-and-robin distribution of indices */
 DSP_RTN_CODE distIndices(
 		int num_indices,       /**< [in] number of indices */

@@ -30,11 +30,6 @@ using namespace std;
 #define DSP_MPI_TAG_GROUP_LB    91
 #define DSP_MPI_TAG_GROUP_CGUB  92
 
-/** check whether solution is duplicate or not; return NULL if duplicate */
-bool duplicateVector(
-		CoinPackedVector * vec,
-		vector<CoinPackedVector*> vecs);
-
 /** get round-and-robin distribution of indices */
 DSP_RTN_CODE distIndices(
 		int num_indices,       /**< [in] number of indices */

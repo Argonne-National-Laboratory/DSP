@@ -6,6 +6,7 @@
  */
 
 //#define DSP_DEBUG
+#include "Utility/DspUtility.h"
 #include "Solver/DualDecomp/DdMW.h"
 
 DdMW::DdMW(
