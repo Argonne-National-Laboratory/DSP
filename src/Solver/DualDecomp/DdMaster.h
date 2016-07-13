@@ -14,6 +14,7 @@
 class DdMaster: public DdSolver {
 
 	friend class DdMW;
+	friend class DdMWSerial;
 	friend class DdMWAsync;
 	friend class DdMWSync;
 
@@ -21,10 +22,10 @@ public:
 
 	/** constructor */
 	DdMaster(
-			DspParams *  par,     /**< parameter pointer */
-			DecModel *   model,   /**< model pointer */
-			DspMessage * message, /**< message pointer */
-			int nworkers          /**< number of workers */);
+			DspParams *  par,    /**< parameter pointer */
+			DecModel *   model,  /**< model pointer */
+			DspMessage * message /**< message pointer */);
+			//int nworkers          /**< number of workers */);
 
 	/** destructor */
 	virtual ~DdMaster();
@@ -49,6 +50,8 @@ public:
 	double getBestDualObjective() {return bestdualobj_;}
 	double getAbsDualityGap() {return fabs(bestprimobj_-bestdualobj_);}
 	double getRelDualityGap() {return fabs(bestprimobj_-bestdualobj_) / (1.0e-10 + fabs(bestprimobj_));}
+	double getAbsApproxGap() {return fabs(primobj_-bestdualobj_);}
+	double getRelApproxGap() {return fabs(primobj_-bestdualobj_) / (1.0e-10 + fabs(primobj_));}
 
 protected:
 
@@ -56,7 +59,13 @@ protected:
 
 	double bestprimobj_; /**< best primal objective value */
 	double bestdualobj_; /**< best dual objective value */
-	int nworkers_;          /**< number of workers */
+//	int nworkers_;       /**< number of workers */
+
+	//int nsubprobs_;         /**< number of subproblems for the current worker */
+	//int * subindex_;        /**< array of subproblem indices */
+	double * subprimobj_;   /**< subproblem primal objective values */
+	double * subdualobj_;   /**< subproblem dual objective values */
+	double ** subsolution_; /**< subproblem solution */
 };
 
 #endif /* SRC_SOLVER_DUALDECOMP_DDMASTER_H_ */

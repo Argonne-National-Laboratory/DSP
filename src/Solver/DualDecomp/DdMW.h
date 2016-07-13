@@ -22,8 +22,6 @@ class DdMW: public BaseMasterWorker {
 
 protected:
 
-	typedef vector<CoinPackedVector*> Solutions;
-
 public:
 
 	/** constructor */
@@ -51,6 +49,9 @@ protected:
 
 	/** run worker processes */
 	virtual DSP_RTN_CODE runWorker() {return DSP_RTN_OK;}
+
+	/** store coupling solution */
+	DSP_RTN_CODE storeCouplingSolutions(Solutions & stored);
 
 	/** check whether solution is duplicate or not; return NULL if duplicate */
 	CoinPackedVector * duplicateSolution(

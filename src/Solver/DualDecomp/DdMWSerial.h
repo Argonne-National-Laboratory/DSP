@@ -14,32 +14,31 @@ class DdMWSerial: public DdMW {
 public:
 
 	/** constructor */
-	DdMWSerial();
-
-	/** constructor */
 	DdMWSerial(
-			DdMaster *        master, /**< master problem */
-			vector<DdWorker*> worker  /**< worker for finding lower bounds */);
+			DecModel *   model,  /**< model pointer */
+			DspParams *  par,    /**< parameters */
+			DspMessage * message /**< message pointer */);
 
 	/** destructor */
 	virtual ~DdMWSerial();
 
-	/** run the framework */
-	virtual DSP_RTN_CODE run();
-
-protected:
-
 	/** initialize */
 	virtual DSP_RTN_CODE init();
 
-	/** run master process */
-	virtual DSP_RTN_CODE runMaster();
-
-	/** run worker processes */
-	virtual DSP_RTN_CODE runWorker();
+	/** run the framework */
+	virtual DSP_RTN_CODE run();
 
 	/** finalize */
 	virtual DSP_RTN_CODE finalize();
+
+protected:
+
+	/** generate Benders cuts */
+	DSP_RTN_CODE generateBendersCuts(
+			DdWorkerCGBd * workercg, /**< CG worker pointer */
+			Solutions solutions, /**< solutions at which cuts are generated */
+			OsiCuts & cuts       /**< cuts generated */);
+
 };
 
 #endif /* SRC_SOLVER_DUALDECOMP_DDMWSERIAL_H_ */

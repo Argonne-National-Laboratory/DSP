@@ -14,7 +14,9 @@
 SolverInterfaceCpx::SolverInterfaceCpx(DspParams * par):
 SolverInterfaceOsi(par), cpx_(NULL), useBarrier_(false)
 {
-	DSP_RTN_CHECK_THROW(initialize(), "initialize", "SolverInterfaceCpx");
+	BGN_TRY_CATCH
+	DSP_RTN_CHECK_THROW(initialize());
+	END_TRY_CATCH(;)
 }
 
 /** copy constructor */

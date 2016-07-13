@@ -19,6 +19,9 @@ public:
 	/** destructor */
 	virtual ~DdWorkerUB();
 
+	/** evaluate solution */
+	double evaluate(CoinPackedVector * solution);
+
 	/** solve */
 	virtual DSP_RTN_CODE solve();
 

@@ -1,2 +1,2 @@
 #!/bin/bash
-mpicc -Wall -g DspSmps.c -ldl -o DspSmps
+cc -Wall -g DspSmps.c -ldl -o DspSmps

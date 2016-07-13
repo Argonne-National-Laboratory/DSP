@@ -55,9 +55,6 @@ private:
 			Solutions solutions, /**< solutions to evaluate */
 			vector<double>&  upperbounds /**< list of upper bounds */);
 
-	/** store coupling solution */
-	DSP_RTN_CODE storeCouplingSolutions(Solutions & stored);
-
 	/** set coupling solutions */
 	DSP_RTN_CODE setCouplingSolutions(
 			Solutions &solutions /**< solution placeholder */);

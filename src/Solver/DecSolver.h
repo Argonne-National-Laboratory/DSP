@@ -60,6 +60,12 @@ public:
 	/** get message pointer */
 	virtual DspMessage * getMessagePtr() {return message_;}
 
+	/** set primal objective */
+	virtual void setPrimalObjective(double primobj) {primobj_=primobj;}
+
+	/** set dual objective */
+	virtual void setDualObjective(double dualobj) {dualobj_=dualobj;}
+
 	/** write output to a file */
 	virtual void write(const char * filename);
 

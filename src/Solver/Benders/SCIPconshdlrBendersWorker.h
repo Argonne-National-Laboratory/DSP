@@ -41,6 +41,12 @@ protected:
 			int where,     /**< [in] where to be called */
 			OsiCuts * cuts /**< [out] cuts generated */);
 
+	/** generate Benders cuts */
+	virtual void aggregateCuts(
+			double ** cutvec, /**< [in] cut vector */
+			double *  cutrhs, /**< [in] cut right-hand side */
+			OsiCuts * cuts    /**< [out] cuts generated */);
+
 private:
 
 	MPI_Comm comm_;
@@ -50,9 +56,8 @@ private:
 	/** cut communication */
 	int * recvcounts_;
 	int * displs_;
-
-	int * cut_indices_;          /**< scenario indices of cuts from MPI_Gather */
-	int * cut_status_;           /**< cut generation status from MPI_Gatherv */
+	int * cut_index_;  /**< subproblem index for which cut is generated */
+	int * cut_status_; /**< cut generation status from MPI_Gatherv */
 };
 
 #endif /* SRC_SOLVERINTERFACE_SCIPCONSHDLRBENDERSWORKER_H_ */

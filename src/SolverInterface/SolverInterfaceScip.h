@@ -151,10 +151,10 @@ public:
 	virtual const double * getRowUpper() {return rubd_;}
 
 	/** get linear objective function coefficient */
-	virtual const double * getObjCoef() {return NULL;}
+	virtual const double * getObjCoef() {return obj_;}
 
 	/** get variable objective function */
-	virtual double getObjCoeff(int j) {return SCIPvarGetObj(vars_[j]);}
+//	virtual double getObjCoeff(int j) {return SCIPvarGetObj(vars_[j]);}
 
 	/** get global primal bound (upper bound in minimization) */
 	virtual double getPrimalBound() {return SCIPgetPrimalbound(scip_);}
@@ -270,6 +270,7 @@ private:
 	/** store original variables */
 	int nvars_;
 	SCIP_Var ** vars_;
+	double * obj_;
 	double * clbd_;
 	double * cubd_;
 

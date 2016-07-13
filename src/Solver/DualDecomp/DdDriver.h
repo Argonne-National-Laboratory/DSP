@@ -9,35 +9,29 @@
 #define SRC_SOLVER_DUALDECOMP_DDDRIVER_H_
 
 #include "Solver/DspDriver.h"
-#include "Solver/DualDecomp/DdMWSync.h"
-#include "Solver/DualDecomp/DdMWAsync.h"
+#include "Solver/DualDecomp/DdMW.h"
 
 class DdDriver: public DspDriver {
 public:
 
 	/** constructor */
-	DdDriver(DspParams * par, DecModel * model);
-
-	/** constructor with MPI */
-	DdDriver(DspParams * par, DecModel * model, MPI_Comm comm);
+	DdDriver(
+			DspParams * par,
+			DecModel * model);
 
 	/** destructor */
 	virtual ~DdDriver();
 
 	/** initialize */
-	virtual DSP_RTN_CODE init();
+	virtual DSP_RTN_CODE init() {return DSP_RTN_OK;}
 
 	/** run */
-	virtual DSP_RTN_CODE run();
+	virtual DSP_RTN_CODE run() {return DSP_RTN_OK;}
 
 	/** finalize */
-	virtual DSP_RTN_CODE finalize();
+	virtual DSP_RTN_CODE finalize() {return DSP_RTN_OK;}
 
-private:
-
-	MPI_Comm comm_;
-	int comm_rank_;
-	int comm_size_;
+protected:
 
 	DdMW * mw_;
 };

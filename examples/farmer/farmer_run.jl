@@ -19,7 +19,7 @@ DSPsolver.loadProblem(m);
 
 # set parameters
 DSPsolver.setIntParam("LOG_LEVEL",1);
-DSPsolver.setIntParam("ITER_LIM",100);
+DSPsolver.setIntParam("DD/ITER_LIM",100);
 DSPsolver.setDblParam("SCIP/GAP_TOL",0.0);
 
 # solve problem

@@ -76,23 +76,23 @@ public:
 #define DSPdebug(x)        x
 #define DSPdebugMessage    printf("[%s:%d] debug: ", __FILE__, __LINE__), printf
 
-#else
+#else/* DSP_DEBUG */
 
 #define DSPdebug(x)        while (false) x
 #define DSPdebugMessage    while (false) printf
 
-#endif
+#endif/* DSP_DEBUG */
 
 #ifdef DSP_DEBUG2
 
 #define DSPdebug2(x)       x
 #define DSPdebugMessage2   printf("[%s:%d] debug: ", __FILE__, __LINE__), printf
 
-#else
+#else/* DSP_DEBUG2 */
 
 #define DSPdebug2(x)       while (false) x
 #define DSPdebugMessage2   while (false) printf
 
-#endif
+#endif/* DSP_DEBUG2 */
 
 #endif /* DSPMESSAGE_H_ */

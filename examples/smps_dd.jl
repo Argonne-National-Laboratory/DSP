@@ -33,7 +33,7 @@ DSPsolver.readSmps(smps_file);
 # Parameter setting
 DSPsolver.setIntParam("LOG_LEVEL",2);
 DSPsolver.setIntParam("DD/NUM_CUTS_PER_ITER",10000);
-DSPsolver.setIntParam("ITER_LIM",iterlim);
+DSPsolver.setIntParam("DD/ITER_LIM",iterlim);
 DSPsolver.setDblParam("WALL_LIM",wtime);
 DSPsolver.setIntParam("DD/MASTER_ALGO",solver_type);
 DSPsolver.setIntParam("DD/FEAS_CUTS",fcut);

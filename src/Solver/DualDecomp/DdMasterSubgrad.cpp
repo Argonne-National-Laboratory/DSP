@@ -9,11 +9,10 @@
 #include "Solver/DualDecomp/DdMasterSubgrad.h"
 
 DdMasterSubgrad::DdMasterSubgrad(
-		DspParams *  par,     /**< parameter pointer */
-		DecModel *   model,   /**< model pointer */
-		DspMessage * message, /**< message pointer */
-		int nworkers          /**< number of workers */):
-DdMasterSync(par, model, message, nworkers),
+		DspParams *  par,    /**< parameter pointer */
+		DecModel *   model,  /**< model pointer */
+		DspMessage * message /**< message pointer */):
+DdMaster(par, model, message),
 nstalls_(0),
 stepscal_(2.0),
 stepsize_(0.0),
@@ -30,7 +29,7 @@ DSP_RTN_CODE DdMasterSubgrad::init()
 {
 	BGN_TRY_CATCH
 
-	DdMasterSync::init();
+	DdMaster::init();
 
 	status_ = DSP_STAT_OPTIMAL;
 
@@ -125,7 +124,7 @@ DSP_RTN_CODE DdMasterSubgrad::updateProblem()
 
 	/** Lagrangian value */
 	double newobj = 0.0;
-	for (int s = 0; s < nsubprobs_; ++s)
+	for (int s = 0; s < model_->getNumSubproblems(); ++s)
 		newobj += subdualobj_[s];
 
 	/** update dual bound */

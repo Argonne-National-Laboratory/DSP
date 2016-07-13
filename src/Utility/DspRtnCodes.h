@@ -41,40 +41,40 @@ typedef int DSP_RTN_CODE;
 #define DSP_STAT_NOT_SOLVED         3998
 #define DSP_STAT_UNKNOWN            3999
 
-#define DSP_RTN_MSG_BODY "Error code %d in %s::%s"
+#define DSP_RTN_MSG_BODY "Error code %d in %s:%d"
 
-#define DSP_RTN_CHECK(__Rtn,__Func,__Class)                       \
+#define DSP_RTN_CHECK(__Rtn)                       \
 	{                                                             \
 		DSP_RTN_CODE __rtn = __Rtn;                               \
 		if (__rtn != DSP_RTN_OK) {                                \
-			printf(DSP_RTN_MSG_BODY"\n", __rtn, __Func, __Class); \
+			printf(DSP_RTN_MSG_BODY"\n", __rtn, __FILE__, __LINE__); \
 		}                                                         \
 	}
 
-#define DSP_RTN_CHECK_RTN(__Rtn,__Func,__Class)                   \
+#define DSP_RTN_CHECK_RTN(__Rtn)                   \
 	{                                                             \
 		DSP_RTN_CODE __rtn = __Rtn;                               \
 		if (__rtn != DSP_RTN_OK) {                                \
-			printf(DSP_RTN_MSG_BODY"\n", __rtn, __Func, __Class); \
+			printf(DSP_RTN_MSG_BODY"\n", __rtn, __FILE__, __LINE__); \
 			return;                                               \
 		}                                                         \
 	}
 
-#define DSP_RTN_CHECK_RTN_CODE(__Rtn,__Func,__Class)              \
+#define DSP_RTN_CHECK_RTN_CODE(__Rtn)              \
 	{                                                             \
 		DSP_RTN_CODE __rtn = __Rtn;                               \
 		if (__rtn != DSP_RTN_OK) {                                \
-			printf(DSP_RTN_MSG_BODY"\n", __rtn, __Func, __Class); \
+			printf(DSP_RTN_MSG_BODY"\n", __rtn, __FILE__, __LINE__); \
 			return __rtn;                                         \
 		}                                                         \
 	}
 
-#define DSP_RTN_CHECK_THROW(__Rtn,__Func,__Class)                        \
+#define DSP_RTN_CHECK_THROW(__Rtn)                        \
 	{                                                                    \
 		DSP_RTN_CODE __rtn = __Rtn;                                      \
 		if (__rtn != DSP_RTN_OK) {                                       \
 			char __tmpstr[128];                                          \
-			sprintf(__tmpstr, DSP_RTN_MSG_BODY, __rtn, __Func, __Class); \
+			sprintf(__tmpstr, DSP_RTN_MSG_BODY, __rtn, __FILE__, __LINE__); \
 			throw __tmpstr;                                              \
 		}                                                                \
 	}

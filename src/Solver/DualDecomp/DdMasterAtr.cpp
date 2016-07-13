@@ -14,7 +14,8 @@ DdMasterAtr::DdMasterAtr(
 		DecModel *   model,   /**< model pointer */
 		DspMessage * message, /**< message pointer */
 		int nworkers          /**< number of workers */):
-DdMasterTr(par, model, message, nworkers),
+DdMasterTr(par, model, message),
+nworkers_(nworkers),
 is_updated_(false)
 {
 	/** number of cuts generated at the last iteration for each worker */

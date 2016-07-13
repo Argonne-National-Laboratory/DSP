@@ -140,7 +140,7 @@ void DspParams::initIntParams()
 	IntParams_.createParam("NODE_LIM", MAX_INT_NUM);
 
 	/** iteration limit */
-	IntParams_.createParam("ITER_LIM", MAX_INT_NUM);
+	IntParams_.createParam("DD/ITER_LIM", MAX_INT_NUM);
 
 	/** number of cuts to the master per iteration */
 	IntParams_.createParam("BD/NUM_CUTS_PER_ITER", 1);
@@ -163,13 +163,13 @@ void DspParams::initIntParams()
 	IntParams_.createParam("DD/NUM_CUTS_PER_ITER", 1);
 
 	/** add feasibility cuts */
-	IntParams_.createParam("DD/FEAS_CUTS", -1);
+	IntParams_.createParam("DD/FEAS_CUTS", 1);
 
 	/** add optimality cuts */
-	IntParams_.createParam("DD/OPT_CUTS", -1);
+	IntParams_.createParam("DD/OPT_CUTS", 1);
 
 	/** evaluate upper bound */
-	IntParams_.createParam("DD/EVAL_UB", -1);
+	IntParams_.createParam("DD/EVAL_UB", 1);
 
 	/** maximum queue size for asynchronous one */
 	IntParams_.createParam("DD/MAX_QSIZE", 5);
@@ -181,7 +181,13 @@ void DspParams::initIntParams()
 void DspParams::initDblParams()
 {
 	/** wall clock limit */
-	DblParams_.createParam("WALL_LIM", MAX_DBL_NUM);
+	DblParams_.createParam("DE/WALL_LIM", MAX_DBL_NUM);
+
+	/** wall clock limit */
+	DblParams_.createParam("BD/WALL_LIM", MAX_DBL_NUM);
+
+	/** wall clock limit */
+	DblParams_.createParam("DD/WALL_LIM", MAX_DBL_NUM);
 
 	/** initial trust region size */
 	DblParams_.createParam("DD/TR/SIZE", 10);

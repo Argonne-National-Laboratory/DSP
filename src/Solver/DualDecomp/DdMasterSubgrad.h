@@ -8,17 +8,16 @@
 #ifndef SRC_SOLVER_DUALDECOMP_DDMASTERSUBGRAD_H_
 #define SRC_SOLVER_DUALDECOMP_DDMASTERSUBGRAD_H_
 
-#include "Solver/DualDecomp/DdMasterSync.h"
+#include "Solver/DualDecomp/DdMaster.h"
 
-class DdMasterSubgrad: public DdMasterSync {
+class DdMasterSubgrad: public DdMaster {
 public:
 
 	/** constructor */
 	DdMasterSubgrad(
-			DspParams *  par,     /**< parameter pointer */
-			DecModel *   model,   /**< model pointer */
-			DspMessage * message, /**< message pointer */
-			int nworkers          /**< number of workers */);
+			DspParams *  par,    /**< parameter pointer */
+			DecModel *   model,  /**< model pointer */
+			DspMessage * message /**< message pointer */);
 
 	/** destructor */
 	virtual ~DdMasterSubgrad();

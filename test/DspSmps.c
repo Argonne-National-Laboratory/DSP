@@ -6,55 +6,59 @@
  */
 
 #include <stdio.h>
-#include "dbg.h"
 #include <dlfcn.h>
-#include "mpi.h"
 
 #define ccall(lib, func_to_run, return_type, input_type, ...) \
 	((return_type(*)input_type)dlsym(lib, func_to_run))(__VA_ARGS__)
 
 int main(int argc, char * argv[])
 {
-	if (argc != 3)
+	if (argc != 2)
 	{
-		printf("USAGE: DspSmps smps_file output_file\n");
+		printf("USAGE: DspSmps smps_file\n");
 		goto error;
 	}
-
-	/** initialize MPI */
-	MPI_Init(&argc, &argv);
-	MPI_Comm comm_ = MPI_COMM_WORLD;
-	int comm_rank_;
-	MPI_Comm_rank(comm_, &comm_rank_);
 
 	int rc = 0;
 	const char * lib_file = "libDsp.so";
 	const char * smps_file = argv[1];
-	const char * param_file = argv[2];
+	void * lib = NULL;
+	void * dsp = NULL;
 
-	void * lib = dlopen(lib_file, RTLD_LAZY);
-	check(lib != NULL, "Failed to open the library %s: %s", lib_file, dlerror());
+	lib = dlopen(lib_file, RTLD_LAZY);
+	if (lib == NULL)
+	{
+		//printf("Error: Failed to open library <%s>\n", lib_file);
+		fprintf(stderr, "dlopen failed: %s\n", dlerror());
+		goto error;
+	}
 
 	/** create DSP environment */
-	void * dsp = ccall(lib, "createEnv", void*, ());
+	dsp = ccall(lib, "createEnv", void*, ());
+	if (dsp == NULL)
+	{
+		printf("Error: Failed to create DSP environment\n");
+		goto error;
+	}
 
 	/** read SMPS file */
 	ccall(lib, "readSmps", void, (void*,const char*), dsp, smps_file);
 
 	/** set parameters */
-	ccall(lib, "readParamFile", void, (void*,const char*), dsp, param_file);
+	ccall(lib, "readParamFile", void, (void*,const char*), dsp, "params.txt");
 
 	/** solve */
-	ccall(lib, "solveDd", void, (void*,MPI_Comm), dsp, MPI_COMM_WORLD);
+	ccall(lib, "solveDd", void, (void*), dsp);
 
 	/** finalize DSP */
 	ccall(lib, "freeEnv", void, (void*), dsp);
 
 	rc = dlclose(lib);
-	check(rc == 0, "Failed to close %s", lib_file);
-
-	/** finalize MPI */
-	MPI_Finalize();
+	if (rc != 0)
+	{
+		printf("Error: Failed to close library <%s>\n", lib_file);
+		goto error;
+	}
 
 	return 0;
 

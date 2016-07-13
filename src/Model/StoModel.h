@@ -8,9 +8,10 @@
 #ifndef STOMODEL_H_
 #define STOMODEL_H_
 
-#include <Utility/DspMacros.h>
-#include <Utility/DspRtnCodes.h>
 #include <map>
+#include "Utility/DspTypes.h"
+#include "Utility/DspMacros.h"
+#include "Utility/DspRtnCodes.h"
 #include "CoinTime.hpp"
 #include "SmiScnModel.hpp"
 
@@ -81,7 +82,7 @@ public:
 	const int * getPriorities() {return priorities_;}
 
 	/** get initial solutions */
-	const vector<CoinPackedVector*> getInitialSolutions() {return init_solutions_;}
+	const Solutions getInitialSolutions() {return init_solutions_;}
 
 	/** set branch priorities */
 	void setPriorities(
@@ -207,7 +208,7 @@ protected:
 	int numPriorities_; /**< length of branch priorities */
 	int * priorities_;  /**< branch priority */
 
-	vector<CoinPackedVector*> init_solutions_; /**< initial solutions */
+	Solutions init_solutions_; /**< initial solutions */
 
 	bool fromSMPS_; /**< problem was read from SMPS files? */
 

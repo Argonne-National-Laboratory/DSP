@@ -17,7 +17,9 @@ SolverInterfaceOsi::SolverInterfaceOsi(DspParams * par) :
 	si_(NULL),
 	ws_(NULL)
 {
-	DSP_RTN_CHECK_THROW(initialize(), "initialize", "SolverInterfaceOsi");
+	BGN_TRY_CATCH
+	DSP_RTN_CHECK_THROW(initialize());
+	END_TRY_CATCH(;)
 }
 
 /** copy constructor */
@@ -38,7 +40,9 @@ SolverInterfaceOsi::SolverInterfaceOsi(DspParams * par, OsiSolverInterface * si)
 
 SolverInterfaceOsi::~SolverInterfaceOsi()
 {
-	DSP_RTN_CHECK_THROW(finalize(), "finalize", "SolverInterfaceOsi");
+	BGN_TRY_CATCH
+	DSP_RTN_CHECK_THROW(finalize());
+	END_TRY_CATCH(;)
 }
 
 /** clone */

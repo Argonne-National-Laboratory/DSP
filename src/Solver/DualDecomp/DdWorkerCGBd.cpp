@@ -29,8 +29,8 @@ DSP_RTN_CODE DdWorkerCGBd::init() {
 	if (!tssmodel) throw "Invalid model type cast";
 
 	bdsub_ = new BdSub(par_);
-	DSP_RTN_CHECK_THROW(bdsub_->setSubIndices(parProcIdxSize_, parProcIdx_), "setSubIndices", "BdSub");
-	DSP_RTN_CHECK_THROW(bdsub_->loadProblem(tssmodel), "loadProblem", "BdSub");
+	DSP_RTN_CHECK_THROW(bdsub_->setSubIndices(parProcIdxSize_, parProcIdx_));
+	DSP_RTN_CHECK_THROW(bdsub_->loadProblem(tssmodel));
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 

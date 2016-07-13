@@ -17,19 +17,22 @@
 #include "../examples/Queens/src/scip_exception.hpp"
 
 SolverInterfaceScip::SolverInterfaceScip(DspParams * par) :
-	SolverInterface(par),
-	scip_(NULL),
-	solution_(NULL),
-	nvars_(0),
-	vars_(NULL),
-	clbd_(NULL),
-	cubd_(NULL),
-	nconss_(0),
-	conss_(NULL),
-	rlbd_(NULL),
-	rubd_(NULL)
+SolverInterface(par),
+scip_(NULL),
+solution_(NULL),
+nvars_(0),
+vars_(NULL),
+obj_(NULL),
+clbd_(NULL),
+cubd_(NULL),
+nconss_(0),
+conss_(NULL),
+rlbd_(NULL),
+rubd_(NULL)
 {
-	DSP_RTN_CHECK_THROW(initialize(), "initialize", "SolverInterfaceScip");
+	BGN_TRY_CATCH
+	DSP_RTN_CHECK_THROW(initialize());
+	END_TRY_CATCH(;)
 }
 
 /** copy constructor */
@@ -37,7 +40,8 @@ SolverInterfaceScip::SolverInterfaceScip(SolverInterfaceScip * si) :
 	SolverInterface(si->par_),
 	scip_(NULL)
 {
-	DSP_RTN_CHECK_THROW(initialize(), "initialize", "SolverInterfaceScip");
+	BGN_TRY_CATCH
+	DSP_RTN_CHECK_THROW(initialize());
 
 	SCIP * source = si->getSCIP();
 
@@ -58,6 +62,7 @@ SolverInterfaceScip::SolverInterfaceScip(SolverInterfaceScip * si) :
 	/** copy variables */
 	SCIP_VAR ** vars = SCIPgetOrigVars(scip_);
 	vars_ = new SCIP_VAR * [ncols];
+	obj_  = new double [ncols];
 	clbd_ = new double [ncols];
 	cubd_ = new double [ncols];
 	for (int j = 0; j < ncols; ++j)
@@ -65,6 +70,7 @@ SolverInterfaceScip::SolverInterfaceScip(SolverInterfaceScip * si) :
 		SCIP_CALL_ABORT(SCIPcaptureVar(scip_, vars[j]));
 		vars_[j] = vars[j];
 	}
+	CoinCopyN(si->getObjCoef(), ncols, obj_);
 	CoinCopyN(si->getColLower(), ncols, clbd_);
 	CoinCopyN(si->getColUpper(), ncols, cubd_);
 
@@ -80,6 +86,7 @@ SolverInterfaceScip::SolverInterfaceScip(SolverInterfaceScip * si) :
 	}
 	CoinCopyN(si->getRowLower(), ncols, rlbd_);
 	CoinCopyN(si->getRowUpper(), ncols, rubd_);
+	END_TRY_CATCH(;)
 }
 
 /** clone */
@@ -90,14 +97,17 @@ SolverInterface * SolverInterfaceScip::clone()
 
 SolverInterfaceScip::~SolverInterfaceScip()
 {
-	DSP_RTN_CHECK_THROW(finalize(), "finalize", "SolverInterfaceScip");
+	BGN_TRY_CATCH
+	DSP_RTN_CHECK_THROW(finalize());
 	FREE_ARRAY_PTR(solution_);
 	FREE_ARRAY_PTR(vars_);
+	FREE_ARRAY_PTR(obj_);
 	FREE_ARRAY_PTR(clbd_);
 	FREE_ARRAY_PTR(cubd_);
 	FREE_ARRAY_PTR(conss_);
 	FREE_ARRAY_PTR(rlbd_);
 	FREE_ARRAY_PTR(rubd_);
+	END_TRY_CATCH(;)
 }
 
 /** create SCIP */
@@ -176,6 +186,7 @@ void SolverInterfaceScip::loadProblem(
 
 	/** allocate memory */
 	vars_ = new SCIP_Var * [mat->getNumCols()];
+	obj_ = new double [mat->getNumCols()];
 	clbd_ = new double [mat->getNumCols()];
 	cubd_ = new double [mat->getNumCols()];
 	conss_ = new SCIP_CONS * [mat->getNumRows()];
@@ -199,6 +210,7 @@ void SolverInterfaceScip::loadProblem(
 		SCIP_CALL_ABORT(SCIPaddVar(scip_, var));
 		vars_[j] = var;
 		nvars_++;
+		obj_[j] = obj[j];
 		clbd_[j] = collb[j];
 		cubd_[j] = colub[j];
 	}
@@ -613,6 +625,7 @@ void SolverInterfaceScip::setObjCoef(double * obj)
 	int nvars = SCIPgetNOrigVars(scip_);
 	for (int j = 0; j < nvars; ++j)
 		SCIP_CALL_ABORT(SCIPchgVarObj(scip_, vars_[j], obj[j]));
+	CoinCopyN(obj, nvars, obj_);
 }
 
 /** set objective coefficients */

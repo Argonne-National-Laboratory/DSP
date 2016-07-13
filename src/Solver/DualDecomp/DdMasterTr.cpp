@@ -20,9 +20,8 @@
 DdMasterTr::DdMasterTr(
 		DspParams *  par,     /**< parameter pointer */
 		DecModel *   model,   /**< model pointer */
-		DspMessage * message, /**< message pointer */
-		int nworkers          /**< number of workers */):
-DdMasterSync(par, model, message, nworkers),
+		DspMessage * message /**< message pointer */):
+DdMaster(par, model, message),
 nthetas_(0),
 nlambdas_(0),
 stability_param_(0.0),
@@ -54,7 +53,7 @@ DSP_RTN_CODE DdMasterTr::init()
 {
 	BGN_TRY_CATCH
 
-	DdMasterSync::init();
+	DdMaster::init();
 
 	/** read parameters */
 	parTr_ = par_->getBoolParam("DD/TR");
@@ -82,7 +81,7 @@ DSP_RTN_CODE DdMasterTr::solve()
 
 	double cputime  = CoinCpuTime();
 	double walltime = CoinGetTimeOfDay();
-
+DSPdebugMessage("SOLVE\n");
 	/** solve */
 	si_->solve();
 
@@ -254,6 +253,7 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 	//mat->verifyMtx(4);
 
 	/** create solver interface */
+	DSPdebugMessage("parMasterAlgo_ %d\n", parMasterAlgo_);
 	switch (parMasterAlgo_)
 	{
 	case Simplex:
@@ -272,12 +272,14 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 		si_ = new OoqpEps(par_);
 		break;
 	}
+	DSPdebugMessage("Created master algorithm\n");
 
 	/** [MAX]imization */
 	si_->setObjSense(-1);
 
 	/** copy problem data */
 	si_->loadProblem(mat, clbd, cubd, obj, ctype, rlbd, rubd);
+	DSPdebugMessage("Loaded problem data\n");
 
 	/** allocate memory for solution */
 	primsol_ = new double [ncols];
@@ -303,7 +305,10 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 	BGN_TRY_CATCH
 
 	int nCutsAdded = 0;
-	double curprimobj = si_->getPrimalBound(); /** current primal objective value */
+	/** current primal objective value */
+	double curprimobj = 0.0;
+	if (isSolved_)
+		curprimobj = si_->getPrimalBound();
 
 	/** calculate primal/dual objectives */
 	double newprimal = 0.0;
@@ -320,6 +325,7 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 	/** update trust region FIRST, because this does not change problem. */
 	if (parTr_)
 	{
+		DSPdebugMessage("newdual %+e, bestdualobj %+e, curprimobj %+e\n", newdual, bestdualobj_, curprimobj);
 		if (newdual >= bestdualobj_ + 1.0e-4 * (curprimobj - bestdualobj_))
 		{
 			message_->print(2, "TR  %s STEP: dual objective %e", isSolved_ ? "SERIOUS" : "INITIAL", newdual);
@@ -480,19 +486,19 @@ int DdMasterTr::addCuts(
 	}
 
 	/** add row cuts by looping over each scenario */
-	for (int s = 0; s < nsubprobs_; ++s)
+	for (int s = 0; s < model_->getNumSubproblems(); ++s)
 	{
 		assert(fabs(subprimobj_[s]) < 1.0e+20);
 
 		/** cut index */
-		int cutidx = subindex_[s] % nthetas_;
+		int cutidx = s % nthetas_;
 
 		/** construct cut */
  		aggrhs[cutidx] += subprimobj_[s];
 		for (int i = 0; i < nlambdas_; i++)
 		{
 			/** evaluate solution on coupling constraints (if they are Hx = d, this is (Hx - d)_i) */
-			double hx_d = model_->evalLhsCouplingRowSubprob(i, subindex_[s], subsolution_[s]) - model_->getRhsCouplingRow(i);
+			double hx_d = model_->evalLhsCouplingRowSubprob(i, s, subsolution_[s]) - model_->getRhsCouplingRow(i);
 			aggvec[cutidx][nthetas_ + i] -= hx_d; /** coefficients for lambda */
 			if (isSolved_)
 				aggrhs[cutidx] -= hx_d * primsol_[nthetas_ + i];
@@ -516,6 +522,12 @@ int DdMasterTr::addCuts(
 		cutrhs = aggrhs[s];
 		if (fabs(cutrhs) < 1E-10)
 			cutrhs = 0.0;
+
+		/** scale the cut */
+//		double sc = cutvec.infNorm();
+//		if (fabs(cutrhs) > sc) sc = fabs(cutrhs);
+//		cutvec /= sc;
+//		cutrhs /= sc;
 
 		OsiRowCut * rc = new OsiRowCut;
 		rc->setRow(cutvec);
@@ -546,7 +558,7 @@ int DdMasterTr::addCuts(
 	}
 
 	nCutsAdded = cuts.sizeCuts();
-	DSPdebug(cuts.printCuts());
+	//DSPdebug(cuts.printCuts());
 	if (nCutsAdded > 0)
 		/** apply cuts */
 		si_->addCuts(cuts);

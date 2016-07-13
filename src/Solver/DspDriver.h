@@ -65,15 +65,11 @@ protected:
 	DecModel * model_;
 	DspMessage * message_; /**< message handler */
 
-protected:
-
 	DSP_RTN_CODE status_; /**< solution status */
 	double * primsol_;    /**< primal solution in extensive form */
 	double * dualsol_;    /**< dual solution in extensive form */
 	double   primobj_;    /**< primal objective bound */
 	double   dualobj_;    /**< dual objective bound */
-
-protected:
 
 	double cputime_;    /**< cpu time */
 	double walltime_;   /**< wall time */

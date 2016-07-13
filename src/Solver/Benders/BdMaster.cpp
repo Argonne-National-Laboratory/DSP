@@ -5,17 +5,22 @@
  *      Author: kibaekkim
  */
 
-#define DSP_DEBUG
-
+//#define DSP_DEBUG
 #include "Solver/Benders/BdMaster.h"
 #include "SolverInterface/SolverInterfaceScip.h"
-#include "SolverInterface/SolverInterfaceSpx.h"
+#include "SolverInterface/SolverInterfaceClp.h"
 #include "Solver/Benders/SCIPconshdlrBendersWorker.h"
 
-BdMaster::BdMaster(DspParams* par, DecModel* model, DspMessage * message):
-	DecSolver(par, model, message),
-	si_(NULL),
-	naux_(1), obj_aux_(NULL), clbd_aux_(NULL), cubd_aux_(NULL)
+BdMaster::BdMaster(
+		DspParams* par,
+		DecModel* model,
+		DspMessage * message):
+DecSolver(par, model, message),
+si_(NULL),
+naux_(1),
+obj_aux_(NULL),
+clbd_aux_(NULL),
+cubd_aux_(NULL)
 {
 	obj_aux_  = new double [naux_];
 	clbd_aux_ = new double [naux_];
@@ -55,6 +60,8 @@ DSP_RTN_CODE BdMaster::init()
 DSP_RTN_CODE BdMaster::solve()
 {
 	BGN_TRY_CATCH
+
+	DSPdebugMessage("Start solving...\n");
 
 	/** set time limit */
 	time_remains_ = par_->getDblParam("SCIP/TIME_LIM");
@@ -130,16 +137,14 @@ DSP_RTN_CODE BdMaster::setBranchingPriority(
 
 DSP_RTN_CODE BdMaster::setConshdlr(SCIPconshdlrBenders* conshdlr)
 {
-	if (si_->getNumIntegers() == 0)
-		return DSP_RTN_OK;
-
 	BGN_TRY_CATCH
 
 	/** retrieve solver interface for SCIP */
 	SolverInterfaceScip * SiScip = dynamic_cast<SolverInterfaceScip*>(si_);
 
 	/** add constraint handler */
-	SiScip->addConstraintHandler(conshdlr, true);
+	SiScip->addConstraintHandler(conshdlr, false);
+	DSPdebugMessage("Added constraint handler %p\n", conshdlr);
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -185,8 +190,7 @@ DSP_RTN_CODE BdMaster::createProblem()
 	/** decompose model */
 	DSP_RTN_CHECK_THROW(model_->decompose(
 			0, NULL, naux_, clbd_aux_, cubd_aux_, obj_aux_,
-			mat, clbd, cubd, ctype, obj, rlbd, rubd),
-			"decompose", "TssModel");
+			mat, clbd, cubd, ctype, obj, rlbd, rubd));
 	DSPdebugMessage("Decomposed the model.\n");
 
 	/** convert column types */
@@ -228,23 +232,26 @@ DSP_RTN_CODE BdMaster::createProblem()
 		}
 	}
 
-	if (nIntegers > 0)
-	{
+//	if (nIntegers > 0)
+//	{
 		assert(si_==NULL);
 		si_ = new SolverInterfaceScip(par_);
-		si_->setPrintLevel(CoinMin(par_->getIntParam("LOG_LEVEL") + 1, 5));
+		si_->setPrintLevel(CoinMin(par_->getIntParam("LOG_LEVEL"), 5));
 		DSPdebugMessage("Successfully created SCIP interface \n");
-	}
-	else
-	{
-		si_ = new SolverInterfaceSpx(par_);
-		si_->setPrintLevel(CoinMax(par_->getIntParam("LOG_LEVEL") - 1, 0));
-		DSPdebugMessage("Successfully created Soplex interface \n");
-	}
+//	}
+//	else
+//	{
+//		si_ = new SolverInterfaceClp(par_);
+//		si_->setPrintLevel(CoinMax(par_->getIntParam("LOG_LEVEL") - 1, 0));
+//		DSPdebugMessage("Successfully created Soplex interface \n");
+//	}
 
 	/** load problem data */
 	si_->loadProblem(mat, clbd, cubd, obj, ctype, rlbd, rubd, "BdMaster");
 	DSPdebugMessage("Successfully load the problem.\n");
+
+	/** allocate memory for primal solution */
+	primsol_ = new double [si_->getNumCols()];
 
 	/** save memory */
 	FREE_MEMORY
@@ -256,7 +263,7 @@ DSP_RTN_CODE BdMaster::createProblem()
 #undef FREE_MEMORY
 }
 
-DSP_RTN_CODE BdMaster::setDualObjective(double dualobj)
+DSP_RTN_CODE BdMaster::setObjectiveBounds(double upper, double lower)
 {
 #define FREE_MEMORY         \
 	FREE_ARRAY_PTR(auxind)  \
@@ -275,13 +282,16 @@ DSP_RTN_CODE BdMaster::setDualObjective(double dualobj)
 	auxind = new int [ncols];
 	auxcoef = new double [ncols];
 
-	/** update dual bound */
-	dualobj_ = dualobj;
+	/** update bounds */
+	primobj_ = upper;
+	dualobj_ = lower;
 
 	for (int j = 0; j < ncols; ++j)
+	{
 		auxind[j] = j;
-	CoinCopyN(si_->getObjCoef(), ncols, auxcoef);
-	si_->addRow(ncols, auxind, auxcoef, dualobj_, COIN_DBL_MAX);
+		auxcoef[j] = si_->getObjCoef()[j];
+	}
+	si_->addRow(ncols, auxind, auxcoef, dualobj_, primobj_);
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 

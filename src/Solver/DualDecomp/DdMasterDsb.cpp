@@ -11,9 +11,8 @@
 DdMasterDsb::DdMasterDsb(
 		DspParams *  par,     /**< parameter pointer */
 		DecModel *   model,   /**< model pointer */
-		DspMessage * message, /**< message pointer */
-		int nworkers          /**< number of workers */) :
-DdMasterSync(par, model, message, nworkers),
+		DspMessage * message /**< message pointer */) :
+DdMaster(par, model, message),
 prox_(NULL),
 lambda_(NULL),
 phi_t_(10.0),
@@ -49,7 +48,7 @@ DSP_RTN_CODE DdMasterDsb::init()
 {
 	BGN_TRY_CATCH
 
-	DdMasterSync::init();
+	DdMaster::init();
 
 	/** create problem */
 	createProblem();
@@ -436,13 +435,13 @@ DSP_RTN_CODE DdMasterDsb::updateProblem()
 
 	/** current objective value */
 	double curObjval = 0.0;
-	for (int i = 0; i < nsubprobs_; ++i)
+	for (int i = 0; i < model_->getNumSubproblems(); ++i)
 		curObjval += subdualobj_[i];
 	message_->print(3, "Current objective value: %f\n", curObjval);
 
 	/** update LHS of coupling rows
 	 * and dynamic objective coefficients */
-	for (int s = 0; s < nsubprobs_; ++s)
+	for (int s = 0; s < model_->getNumSubproblems(); ++s)
 	{
 		double obj = subprimobj_[s];
 		double * lhs = new double [model_->getNumCouplingRows()];
@@ -546,7 +545,7 @@ DSP_RTN_CODE DdMasterDsb::manageBundle(double* objvals)
 				{
 					if (fabs(lhsCouplingRows_[j][i]) < 1.0e-10)
 						continue;
-					indices.push_back(nsubprobs_ + 1 + i);
+					indices.push_back(model_->getNumSubproblems() + 1 + i);
 					vals.push_back(lhsCouplingRows_[j][i]);
 				}
 			}
@@ -565,14 +564,14 @@ DSP_RTN_CODE DdMasterDsb::manageBundle(double* objvals)
 		{
 			irowQ.push_back(2 + j);
 			jcolQ.push_back(2 + j);
-			dQ.push_back(tau_ * nsubprobs_);
+			dQ.push_back(tau_ * model_->getNumSubproblems());
 		}
 	}
 	else if (fabs(bb_) > 1.0e-10)
 	{
 		irowQ.push_back(0);
 		jcolQ.push_back(0);
-		dQ.push_back(tau_ * nsubprobs_ * bb_);
+		dQ.push_back(tau_ * model_->getNumSubproblems() * bb_);
 	}
 
 	posi = si_->getNumCols();

@@ -15,8 +15,6 @@
 
 class BdMaster: public DecSolver {
 
-	typedef vector<CoinPackedVector*> Solutions;
-
 public:
 
 	/** constructor */
@@ -38,8 +36,8 @@ public:
 
 public:
 
-	/** set dual objective value */
-	virtual DSP_RTN_CODE setDualObjective(double dualobj);
+	/** set objective bounds */
+	virtual DSP_RTN_CODE setObjectiveBounds(double upper, double lower);
 
 	/** set constraint handler for Benders cut generation */
 	virtual DSP_RTN_CODE setConshdlr(SCIPconshdlrBenders * conshdlr);

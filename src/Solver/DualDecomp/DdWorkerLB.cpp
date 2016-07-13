@@ -121,8 +121,7 @@ DSP_RTN_CODE DdWorkerLB::createProblem() {
 
 	for (int s = 0; s < par_->getIntPtrParamSize("ARR_PROC_IDX"); ++s) {
 		/** create subproblem instance */
-		DdSub * subprob = new DdSub(par_->getIntPtrParam("ARR_PROC_IDX")[s],
-				par_);
+		DdSub * subprob = new DdSub(par_->getIntPtrParam("ARR_PROC_IDX")[s], par_);
 		subprobs_.push_back(subprob);
 
 		/** create subproblem */

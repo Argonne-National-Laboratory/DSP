@@ -40,7 +40,8 @@ subprob_displs_(NULL)
 	MPI_Comm_size(comm, &comm_size_);
 }
 
-DdMWPara::~DdMWPara() {
+DdMWPara::~DdMWPara()
+{
 	FREE_ARRAY_PTR(nsubprobs_);
 	FREE_ARRAY_PTR(subprob_indices_);
 	FREE_ARRAY_PTR(subprob_displs_);
@@ -188,14 +189,17 @@ DSP_RTN_CODE DdMWPara::createGroups() {
 		ranks = new int [nranks];
 		for (int i = 0; i < nranks; ++i)
 			ranks[i] = i;
-		MPI_Group_incl(world_group, nranks, ranks, &subcomm_group_);
-		MPI_Comm_create_group(comm_, subcomm_group_, DSP_MPI_TAG_GROUP_SUB, &subcomm_);
+		int ierr = MPI_Group_incl(world_group, nranks, ranks, &subcomm_group_);
+		ierr = MPI_Comm_create_group(comm_, subcomm_group_, DSP_MPI_TAG_GROUP_SUB, &subcomm_);
 		if (subcomm_ != MPI_COMM_NULL)
 		{
 			MPI_Comm_size(subcomm_, &subcomm_size_);
 			MPI_Comm_rank(subcomm_, &subcomm_rank_);
+			DSPdebugMessage("Rank %d: subcomm_size_ %d, subcomm_rank_ %d\n",
+					comm_rank_, subcomm_size_, subcomm_rank_);
 		}
 		/** LB group */
+		DSPdebug(DspMessage::printArray(nranks-1, ranks+1));
 		MPI_Group_incl(world_group, nranks-1, ranks+1, &lb_group_);
 		MPI_Comm_create_group(comm_, lb_group_, DSP_MPI_TAG_LB, &lb_comm_);
 		if (lb_comm_ != MPI_COMM_NULL)
@@ -296,8 +300,7 @@ DSP_RTN_CODE DdMWPara::generateBendersCuts(
 		OsiCuts localcuts, allcuts;
 
 		/** generate cuts at a solution */
-		DSP_RTN_CHECK_THROW(workercg->generateCuts(solutions[i], &localcuts, cuttype),
-				"generateCuts", "DdWorkerCGBd");
+		DSP_RTN_CHECK_THROW(workercg->generateCuts(solutions[i], &localcuts, cuttype));
 		DSPdebugMessage("Rank %d: Benders cut generator generated %d cuts for solution %d.\n",
 				comm_rank_, localcuts.sizeCuts(), i);
 

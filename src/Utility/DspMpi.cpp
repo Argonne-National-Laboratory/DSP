@@ -8,11 +8,12 @@
 
 //#define DSP_DEBUG
 
-#include <Utility/DspMacros.h>
-#include <Utility/DspMessage.h>
-#include <Utility/DspMpi.h>
 #include "math.h"
 #include "assert.h"
+
+#include "Utility/DspMacros.h"
+#include "Utility/DspMessage.h"
+#include "Utility/DspMpi.h"
 
 /** DSP */
 
@@ -48,6 +49,25 @@ bool duplicateVector(
 	}
 
 	return dup;
+}
+
+/** get round-and-robin distribution of indices */
+DSP_RTN_CODE distIndices(
+		int num_indices,       /**< [in] number of indices */
+		int comm_size,         /**< [in] number of processors */
+		int comm_rank,         /**< [in] processor id */
+		int comm_rank_start,   /**< [in] smallest processor id */
+		vector<int> & assigned /**< [out] assigned indices */)
+{
+	BGN_TRY_CATCH
+
+	assigned.clear();
+	for (int s = comm_rank - comm_rank_start; s < num_indices; s += comm_size)
+		assigned.push_back(s);
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
 }
 
 DSP_RTN_CODE MPIgatherCoinPackedVectors(

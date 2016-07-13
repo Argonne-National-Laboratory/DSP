@@ -99,7 +99,7 @@ DSP_RTN_CODE BdSub::loadProblem(TssModel* model)
 		/** copy recourse problem */
 		DSP_RTN_CHECK_THROW(model->copyRecoProb(subindices_[i],
 				mat_mp_[i], mat_reco, clbd_reco, cubd_reco, ctype_reco,
-				obj_reco, rlbd_reco, rubd_reco), "copyRecoProb", "TssModel");
+				obj_reco, rlbd_reco, rubd_reco));
 
 		/** creating solver interface */
 		cglp_[i] = new COIN_OSI;

@@ -8,17 +8,16 @@
 #ifndef SRC_SOLVER_DUALDECOMP_DDMASTERTR_H_
 #define SRC_SOLVER_DUALDECOMP_DDMASTERTR_H_
 
-#include <Solver/DualDecomp/DdMasterSync.h>
+#include <Solver/DualDecomp/DdMaster.h>
 
-class DdMasterTr: public DdMasterSync {
+class DdMasterTr: public DdMaster {
 public:
 
 	/** constructor */
 	DdMasterTr(
 			DspParams *  par,     /**< parameter pointer */
 			DecModel *   model,   /**< model pointer */
-			DspMessage * message, /**< message pointer */
-			int nworkers          /**< number of workers */);
+			DspMessage * message /**< message pointer */);
 
 	/** desctructor */
 	virtual ~DdMasterTr();

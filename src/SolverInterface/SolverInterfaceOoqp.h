@@ -13,16 +13,14 @@
 /** DSP */
 #include <Utility/DspMessage.h>
 #include "SolverInterface/SolverInterface.h"
+#include "QpGen.h"
 #include "QpGenData.h"
 #include "QpGenVars.h"
 #include "QpGenResiduals.h"
-#include "GondzioSolver.h"
-#include "MehrotraSolver.h"
-#ifdef DSP_HAS_MA57
-#include "QpGenSparseMa57.h"
-#else
-#include "QpGenSparseMa27.h"
-#endif
+#include "Solver.h"
+
+#define GUTS_OF_LOAD_PROBLEM gutsOfLoadSparseProblem
+#define SET_HESSIAN          setSparseHessian
 
 /** columns dynamically added */
 class dynColumns
@@ -95,14 +93,19 @@ public:
 		resid_(NULL),
 		solver_(NULL),
 		released_(true),
-		my_(0), mz_(0),
+		nx_(0), my_(0), mz_(0),
 		nrows_(0), ncols_(0),
+		xlow_(NULL), ixlow_(NULL), xupp_(NULL), ixupp_(NULL),
+		c_(NULL),
 		mat_(NULL),
 		clbd_(NULL), cubd_(NULL),
 		obj_(NULL),
 		rlbd_(NULL), rubd_(NULL),
+		nnzA_(0), irowA_(NULL), jcolA_(NULL), dA_(NULL), b_(NULL),
+		nnzC_(0), irowC_(NULL), jcolC_(NULL), dC_(NULL),
+		clow_(NULL), iclow_(NULL), cupp_(NULL), icupp_(NULL),
 		nnzQ_(0), irowQ_(NULL), jcolQ_(NULL), dQ_(NULL),
-		objval_(0),
+		objval_(COIN_DBL_MAX),
 		x_(NULL),
 		y_(NULL),
 		lambda_(NULL),
@@ -138,7 +141,10 @@ public:
 			const char * probname = "null");
 
 	/** core part for load problem */
-	virtual void gutsOfLoadProblem();
+	virtual void gutsOfLoadSparseProblem();
+
+	/** core part for load problem */
+	virtual void gutsOfLoadDenseProblem();
 
 	/** add row */
 	virtual void addRow(int size, const int * indices, const double * vals, double lb, double ub);
@@ -283,6 +289,12 @@ public:
 
 protected:
 
+	/** set lower triangular Hessian matrix */
+	virtual void setSparseHessian(int nnzQ, int * irowQ, int * jcolQ, double * dQ);
+
+	/** set lower triangular Hessian matrix */
+	virtual void setDenseHessian(int nnzQ, int * irowQ, int * jcolQ, double * dQ);
+
 	/** initialize solver interface */
 	virtual DSP_RTN_CODE initialize() {return DSP_RTN_OK;}
 
@@ -308,7 +320,7 @@ protected:
 	int print_level_;
 
 	/** OOQP objects */
-	QpGenSparseSeq * qp_;
+	QpGen * qp_;
 	QpGenData * prob_;
 	QpGenVars * vars_;
 	QpGenResiduals * resid_;
@@ -316,16 +328,35 @@ protected:
 	bool released_;
 
 	/** original data */
+	int nx_;
 	int my_;
 	int mz_;
 	int nrows_;
 	int ncols_;
+	double * xlow_;
+	char * ixlow_;
+	double * xupp_;
+	char * ixupp_;
+	double * c_;
 	CoinPackedMatrix * mat_;
 	double * clbd_;
 	double * cubd_;
 	double * obj_;
 	double * rlbd_;
 	double * rubd_;
+	int nnzA_;
+	int * irowA_;
+	int * jcolA_;
+	double * dA_;
+	double * b_;
+	int nnzC_;
+	int * irowC_;
+	int * jcolC_;
+	double * dC_;
+	double * clow_;
+	char * iclow_;
+	double * cupp_;
+	char * icupp_;
 	int nnzQ_;
 	int * irowQ_;
 	int * jcolQ_;

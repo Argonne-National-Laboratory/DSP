@@ -71,12 +71,10 @@ DSP_RTN_CODE DdSub::createProblem(DecModel * model)
 	/** decompose model */
 	DSP_RTN_CHECK_THROW(
 			model->decompose(1, augs, 1, clbd_aux, cubd_aux, obj_aux,
-					mat, clbd, cubd, ctype, obj_, rlbd, rubd),
-			"decompose", "DecModel");
+					mat, clbd, cubd, ctype, obj_, rlbd, rubd));
 
 	DSP_RTN_CHECK_THROW(
-			model->decomposeCoupling(1, augs, cpl_mat_, cpl_cols_, cpl_ncols),
-			"decomposeCoupling", "DecModel");
+			model->decomposeCoupling(1, augs, cpl_mat_, cpl_cols_, cpl_ncols));
 
 	/** number of coupling variables and constraints for this subproblem */
 	ncols_coupling_ = model->getNumSubproblemCouplingCols(sind_);

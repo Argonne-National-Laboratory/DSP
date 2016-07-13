@@ -12,7 +12,9 @@
 SolverInterfaceSpx::SolverInterfaceSpx(DspParams * par) :
 SolverInterfaceOsi(par)
 {
-	DSP_RTN_CHECK_THROW(initialize(), "initialize", "SolverInterfaceSpx");
+	BGN_TRY_CATCH
+	DSP_RTN_CHECK_THROW(initialize());
+	END_TRY_CATCH(;)
 }
 
 /** copy constructor */

@@ -8,7 +8,7 @@
 #ifndef SRC_SOLVER_DUALDECOMP_DDMASTERDSB_H_
 #define SRC_SOLVER_DUALDECOMP_DDMASTERDSB_H_
 
-#include "Solver/DualDecomp/DdMasterSync.h"
+#include "Solver/DualDecomp/DdMaster.h"
 
 /** Implementation of Doubly Stabilized Bundle Method
  *
@@ -51,15 +51,14 @@
  *              0.0, 0.0, x_1^2, (x_1^2)^T x_1^1, 0.0             , |x_1^2|^2 ,           ; (y_1^2)
  *              0.0, 0.0, x_2^2, 0.0            , (x_2^2)^T x_2^1 , 0.0       , |x_2^2|^2 ] (y_2^2)
  */
-class DdMasterDsb: public DdMasterSync {
+class DdMasterDsb: public DdMaster {
 public:
 
 	/** constructor */
 	DdMasterDsb(
-			DspParams *  par,     /**< parameter pointer */
-			DecModel *   model,   /**< model pointer */
-			DspMessage * message, /**< message pointer */
-			int nworkers          /**< number of workers */);
+			DspParams *  par,    /**< parameter pointer */
+			DecModel *   model,  /**< model pointer */
+			DspMessage * message /**< message pointer */);
 
 	/** destructor */
 	virtual ~DdMasterDsb();

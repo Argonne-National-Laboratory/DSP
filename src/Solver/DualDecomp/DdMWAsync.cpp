@@ -78,6 +78,7 @@ DSP_RTN_CODE DdMWAsync::finalize()
 {
 	BGN_TRY_CATCH
 
+#if 0
 	char filename[64];
 	const char * output_prefix = par_->getStrParam("OUTPUT/PREFIX").c_str();
 
@@ -112,6 +113,22 @@ DSP_RTN_CODE DdMWAsync::finalize()
 		FREE_PTR(worker_[i]);
 	}
 	worker_.clear();
+#else
+	/** free master */
+	if (master_)
+	{
+		master_->finalize();
+		FREE_PTR(master_);
+	}
+
+	/** free workers */
+	for (unsigned i = 0; i < worker_.size(); ++i)
+	{
+		worker_[i]->finalize();
+		FREE_PTR(worker_[i]);
+	}
+	worker_.clear();
+#endif
 
 	/** synchronize here */
 	MPI_Barrier(comm_);
@@ -808,10 +825,10 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 		printIterInfo();
 
 		/** returns continue or stop signal */
-		if (itercnt_ > master_->getParPtr()->getIntParam("ITER_LIM"))
+		if (itercnt_ > master_->getParPtr()->getIntParam("DD/ITER_LIM"))
 		{
 			signal = DSP_STAT_MW_STOP;
-			message_->print(0, "Iteration limit (%d) has been reached.\n", master_->getParPtr()->getIntParam("ITER_LIM"));
+			message_->print(0, "Iteration limit (%d) has been reached.\n", master_->getParPtr()->getIntParam("DD/ITER_LIM"));
 		}
 		else
 		{
@@ -1336,14 +1353,8 @@ DSP_RTN_CODE DdMWAsync::runWorkerUb(
 		upperbounds.clear();
 		for (unsigned i = 0; i < solutions.size(); ++i)
 		{
-			/** fix coupling solutions */
-			workerub->fixCouplingVariableValues(solutions[i]);
-			/** solve */
-			workerub->solve();
-			/** take minimum objective */
-			double sumprimobj = 0.0;
-			for (unsigned s = 0; s < workerub->subprobs_.size(); ++s)
-				sumprimobj += workerub->subprobs_[s]->getPrimalBound();
+			/** evaluate upper bounds */
+			double sumprimobj = workerub->evaluate(solutions[i]);
 			DSPdebugMessage("Rank %d: sumprimobj %e\n", comm_rank_, sumprimobj);
 			upperbounds.push_back(sumprimobj);
 		}

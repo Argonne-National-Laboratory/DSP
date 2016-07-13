@@ -10,8 +10,12 @@
 #include <Utility/DspMacros.h>
 #include "DspCInterface.h"
 #include "Solver/Deterministic/DeDriver.h"
-#include "Solver/Benders/BdDriver.h"
-#include "Solver/DualDecomp/DdDriver.h"
+#include "Solver/Benders/BdDriverSerial.h"
+#include "Solver/DualDecomp/DdDriverSerial.h"
+#ifdef DSP_HAS_MPI
+#include "Solver/Benders/BdDriverMpi.h"
+#include "Solver/DualDecomp/DdDriverMpi.h"
+#endif
 #include "Model/DecTssModel.h"
 #include "Model/DecDetModel.h"
 
@@ -95,6 +99,7 @@ TssModel * getTssModel(DspApiEnv * env)
 /** prepare decomposition model to be solved; returns false if there is an error */
 bool prepareDecModel(DspApiEnv * env)
 {
+	BGN_TRY_CATCH
 	if (!env->model_->isStochastic() && env->decdata_ == NULL)
 	{
 		printf("Error: General decomposition models must be accompanied by coupling constraints\n");
@@ -107,23 +112,13 @@ bool prepareDecModel(DspApiEnv * env)
 		{
 			printf("Decomposition data for a stochastic model supplied: converting model to extensive form\n");
 			DetModel * det;
-			DSP_RTN_CHECK_THROW(getTssModel(env)->copyDeterministicEquivalent(det),
-					"copyDeterministicEquivalent", "TssModel");
+			DSP_RTN_CHECK_THROW(getTssModel(env)->copyDeterministicEquivalent(det));
 			env->model_ = new DecDetModel(det, env->decdata_);
 		}
 		else
 		{
 			/** deterministic case with decdata: update model with decdata */
-			DecDetModel * decDet;
-			try
-			{
-				decDet = dynamic_cast<DecDetModel *>(env->model_);
-			}
-			catch (const std::bad_cast& e)
-			{
-				printf("Error: Deterministic model not of proper type");
-				return false;
-			}
+			DecDetModel * decDet = dynamic_cast<DecDetModel *>(env->model_);
 			decDet->setDecData(env->decdata_);
 		}
 
@@ -133,6 +128,9 @@ bool prepareDecModel(DspApiEnv * env)
 			printf("Warning: Relaxing stage integrality only supported in stochastic model; feature disabled\n");
 		}
 	}
+
+	END_TRY_CATCH_RTN(;,false)
+
 	return true;
 }
 
@@ -282,7 +280,7 @@ void solveDe(DspApiEnv * env)
 }
 
 /** solve dual decomposition */
-void solveDd(DspApiEnv * env, MPI_Comm comm)
+void solveDd(DspApiEnv * env)
 {
 	STO_API_CHECK_MODEL();
 	freeSolver(env);
@@ -290,17 +288,16 @@ void solveDd(DspApiEnv * env, MPI_Comm comm)
 	if (!prepareDecModel(env))
 		return;
 
-	env->solver_ = new DdDriver(env->par_, env->model_, comm);
+	env->solver_ = new DdDriverSerial(env->par_, env->model_);
 	env->solver_->init();
 	env->solver_->run();
 	env->solver_->finalize();
 }
 
-/** solve Benders decomposition using MPI */
+/** solve serial Benders decomposition */
 void solveBd(
-		DspApiEnv * env,      /**< pointer to API object */
-		int         nauxvars, /**< number of auxiliary variables (scenario clusters) */
-		MPI_Comm    comm      /**< MPI communicator */)
+		DspApiEnv * env,     /**< pointer to API object */
+		int         nauxvars /**< number of auxiliary variables (scenario clusters) */)
 {
 	STO_API_CHECK_MODEL();
 	freeSolver(env);
@@ -311,17 +308,9 @@ void solveBd(
 		return;
 	}
 
-	if (comm == MPI_UNDEFINED)
-	{
-		DSPdebugMessage("Creating a serial Benders object (comm %d)\n", comm);
-		env->solver_ = new BdDriver(env->par_, new DecTssModel(*getTssModel(env)));
-	}
-	else
-	{
-		DSPdebugMessage("Creating a MPI Benders object (comm %d)\n", comm);
-		env->solver_ = new BdDriver(env->par_, new DecTssModel(*getTssModel(env)), comm);
-	}
-	BdDriver * bd = dynamic_cast<BdDriver*>(env->solver_);
+	DSPdebugMessage("Creating a serial Benders object\n");
+	BdDriverSerial * bd = new BdDriverSerial(env->par_, new DecTssModel(*getTssModel(env)));
+	env->solver_ = bd;
 
 	double * obj_aux  = NULL;
 	double * clbd_aux = NULL;
@@ -351,6 +340,71 @@ void solveBd(
 	env->solver_->run();
 	env->solver_->finalize();
 }
+
+#ifdef DSP_HAS_MPI
+/** solve dual decomposition */
+void solveDdMpi(DspApiEnv * env, MPI_Comm comm)
+{
+	STO_API_CHECK_MODEL();
+	freeSolver(env);
+
+	if (!prepareDecModel(env))
+		return;
+
+	env->solver_ = new DdDriverMpi(env->par_, env->model_, comm);
+	env->solver_->init();
+	env->solver_->run();
+	env->solver_->finalize();
+}
+
+/** solve parallel Benders decomposition */
+void solveBdMpi(
+		DspApiEnv * env,      /**< pointer to API object */
+		int         nauxvars, /**< number of auxiliary variables (scenario clusters) */
+		MPI_Comm    comm      /**< MPI communicator */)
+{
+	STO_API_CHECK_MODEL();
+	freeSolver(env);
+
+	if (!env->model_->isStochastic())
+	{
+		printf("Error: Benders decomposition is currently only supported by stochastic models\n");
+		return;
+	}
+
+	DSPdebugMessage("Creating a MPI Benders object (comm %d)\n", comm);
+	BdDriverMpi * bd = new BdDriverMpi(env->par_, new DecTssModel(*getTssModel(env)), comm);
+	env->solver_ = bd;
+
+	double * obj_aux  = NULL;
+	double * clbd_aux = NULL;
+	double * cubd_aux = NULL;
+
+	if (nauxvars > 0)
+	{
+		/** set auxiliary variables */
+		obj_aux  = new double [nauxvars];
+		clbd_aux = new double [nauxvars];
+		cubd_aux = new double [nauxvars];
+		CoinFillN(obj_aux, nauxvars, 1.0);
+		CoinFillN(clbd_aux, nauxvars, -COIN_DBL_MAX);
+		CoinFillN(cubd_aux, nauxvars, +COIN_DBL_MAX);
+
+		bd->setAuxVarData(nauxvars, obj_aux, clbd_aux, cubd_aux);
+
+		FREE_ARRAY_PTR(obj_aux);
+		FREE_ARRAY_PTR(clbd_aux);
+		FREE_ARRAY_PTR(cubd_aux);
+	}
+
+	/** relax second-stage integrality */
+	env->par_->setBoolPtrParam("RELAX_INTEGRALITY", 1, true);
+
+	env->solver_->init();
+	env->solver_->run();
+	env->solver_->finalize();
+}
+#endif
 
 /** read parameter file */
 void readParamFile(DspApiEnv * env, const char * param_file)

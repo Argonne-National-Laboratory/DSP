@@ -62,6 +62,8 @@ protected:
 
 private:
 
+	int nworkers_; /**< number of workers */
+
 	vector<int> worker_;
 	vector<int> solution_key_;    /**< unique ID for master solution to be evaluated */
 	vector<int> nsubprobs_;    /**< number of subproblems for the current worker */

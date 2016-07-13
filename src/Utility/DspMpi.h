@@ -35,6 +35,14 @@ bool duplicateVector(
 		CoinPackedVector * vec,
 		vector<CoinPackedVector*> vecs);
 
+/** get round-and-robin distribution of indices */
+DSP_RTN_CODE distIndices(
+		int num_indices,       /**< [in] number of indices */
+		int comm_size,         /**< [in] number of processors */
+		int comm_rank,         /**< [in] processor id */
+		int comm_rank_start,   /**< [in] smallest processor id */
+		vector<int> & assigned /**< [out] assigned indices */);
+
 /** MPI_Send for vector<CoinPackedVectors*> */
 DSP_RTN_CODE MPIsendCoinPackedVectors(
 		MPI::Intracomm comm,

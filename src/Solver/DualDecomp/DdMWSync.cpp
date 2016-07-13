@@ -7,11 +7,9 @@
 
 //#define DSP_DEBUG
 #include "Solver/DualDecomp/DdMWSync.h"
-#include "Solver/DualDecomp/DdMasterSync.h"
 #include "Solver/DualDecomp/DdMasterTr.h"
 #include "Solver/DualDecomp/DdMasterDsb.h"
 #include "Solver/DualDecomp/DdMasterSubgrad.h"
-#include "Solver/DualDecomp/DdMasterReg.h"
 
 DdMWSync::DdMWSync(
 		MPI_Comm     comm,   /**< MPI communicator */
@@ -40,16 +38,13 @@ DSP_RTN_CODE DdMWSync::init()
 		case Simplex:
 		case IPM:
 		case IPM_Feasible:
-			master_ = new DdMasterTr(par_, model_, message_, comm_size_);
+			master_ = new DdMasterTr(par_, model_, message_);
 			break;
 		case DSBM:
-			master_ = new DdMasterDsb(par_, model_, message_, comm_size_);
+			master_ = new DdMasterDsb(par_, model_, message_);
 			break;
 		case Subgradient:
-			master_ = new DdMasterSubgrad(par_, model_, message_, comm_size_);
-			break;
-		case Regularize_Bundle:
-			master_ = new DdMasterReg(par_, model_, message_, comm_size_);
+			master_ = new DdMasterSubgrad(par_, model_, message_);
 			break;
 		}
 		/** initialize master */
@@ -90,6 +85,7 @@ DSP_RTN_CODE DdMWSync::finalize()
 {
 	BGN_TRY_CATCH
 
+#if 0
 	char filename[64];
 	const char * output_prefix = par_->getStrParam("OUTPUT/PREFIX").c_str();
 
@@ -124,6 +120,22 @@ DSP_RTN_CODE DdMWSync::finalize()
 		FREE_PTR(worker_[i]);
 	}
 	worker_.clear();
+#else
+	/** free master */
+	if (master_)
+	{
+		master_->finalize();
+		FREE_PTR(master_);
+	}
+
+	/** free workers */
+	for (unsigned i = 0; i < worker_.size(); ++i)
+	{
+		worker_[i]->finalize();
+		FREE_PTR(worker_[i]);
+	}
+	worker_.clear();
+#endif
 
 	/** finalize MPI settings */
 	DdMWPara::finalize();
@@ -185,7 +197,7 @@ DSP_RTN_CODE DdMWSync::runMaster()
 	BGN_TRY_CATCH
 
 	int signal = DSP_STAT_MW_CONTINUE;   /**< signal to communicate with workers */
-	DdMasterSync * master = dynamic_cast<DdMasterSync*>(master_);
+	DdMaster * master = dynamic_cast<DdMaster*>(master_);
 
 	/** allocate memory for buffer sizes and displacements */
 	scounts = new int [subcomm_size_];
@@ -226,13 +238,7 @@ DSP_RTN_CODE DdMWSync::runMaster()
 	/** allocate memory for lambdas */
 	lambdas = new double * [model_->getNumSubproblems()];
 
-	/**
-	 * 0123456789012345678901234567890123456789
-	 * iter      curobj     primobj dualobj gap time
-	 *  %4d  %+10e  %+10e  %+10e  %6.2f  %6.1f
-	 */
-	message_->print(1, "  %4s  %13s  %13s  %13s  %6s  %6s\n",
-			"iter", "curobj", "primobj", "dualobj", "gap(%)", "times");
+	printHeaderInfo();
 
 	/** reset iteration info */
 	itercnt_   = 0;
@@ -260,42 +266,27 @@ DSP_RTN_CODE DdMWSync::runMaster()
 		});
 
 		/** apply receive message */
-		master->nsubprobs_ = 0;
-		for (int i = 0, j = 0, pos = 0; i < subcomm_size_; ++i)
+		for (int i = 0, pos = 0; i < subcomm_size_; ++i)
 		{
 			message_->print(5, "message count for rank %d: %d\n", i, rcounts[i]);
 			for (int s = 0; s < nsubprobs_[i]; ++s)
 			{
-				master->subindex_[j] = static_cast<int>(recvbuf[pos++]);
-				master->subprimobj_[j] = recvbuf[pos++];
-				master->subdualobj_[j] = recvbuf[pos++];
-				CoinCopyN(recvbuf + pos, model_->getNumSubproblemCouplingCols(master->subindex_[j]), master->subsolution_[j]);
-				pos += model_->getNumSubproblemCouplingCols(master->subindex_[j]);
-				message_->print(5, "-> master, subprob %d primobj %+e\n", master->subindex_[j], master->subprimobj_[j]);
-				j++;
+				int sindex = static_cast<int>(recvbuf[pos++]);
+				master->subprimobj_[sindex] = recvbuf[pos++];
+				master->subdualobj_[sindex] = recvbuf[pos++];
+				CoinCopyN(recvbuf + pos,
+						model_->getNumSubproblemCouplingCols(sindex), master->subsolution_[sindex]);
+				pos += model_->getNumSubproblemCouplingCols(sindex);
+				message_->print(5, "-> master, subprob %d primobj %+e\n",
+						sindex, master->subprimobj_[sindex]);
 			}
-			master->nsubprobs_ += nsubprobs_[i];
 		}
-		master->worker_ = subcomm_size_ - 1;
-
-		/** STOP with small gap */
-		if (itercnt_ > master_->getParPtr()->getIntParam("ITER_LIM"))
-		{
-			signal = DSP_STAT_MW_STOP;
-			message_->print(0, "The iteration limit is reached.\n");
-		}
-		/** broadcast signal */
-		MPI_Bcast(&signal, 1, MPI_INT, 0, comm_);
-		if (signal == DSP_STAT_MW_STOP)
-		{
-			printIterInfo();
-			break;
-		}
+		//master->worker_ = subcomm_size_ - 1;
 
 		if (parEvalUb_ >= 0 || parFeasCuts_ >= 0 || parOptCuts_ >= 0)
 		{
 			/** set coupling solutions */
-			setCouplingSolutions(stored);
+			DSP_RTN_CHECK_THROW(setCouplingSolutions(stored));
 			/** clear stored solutions */
 			stored.clear();
 			/** sync Benders cut information */
@@ -318,21 +309,30 @@ DSP_RTN_CODE DdMWSync::runMaster()
 		if (olddual < master_->bestdualobj_)
 			itercode_ = itercode_ == 'P' ? 'B' : 'D';
 
-		/** solve problem */
-		double tic = CoinGetTimeOfDay();
-		master_->solve();
-		DSPdebugMessage("Rank %d solved the master (%.2f sec).\n", comm_rank_, CoinGetTimeOfDay() - tic);
-
-		/** termination test */
-		signal = master_->terminationTest();
-		/** check duality gap */
-		if (signal != DSP_STAT_MW_STOP &&
-				master_->getRelDualityGap() < master_->getParPtr()->getDblParam("DD/STOP_TOL"))
+		/** STOP with small gap */
+		if (itercnt_ > master_->getParPtr()->getIntParam("DD/ITER_LIM"))
 		{
 			signal = DSP_STAT_MW_STOP;
-			message_->print(0, "The duality gap limit %+e is reached.\n", master_->getRelDualityGap());
+			message_->print(1, "The iteration limit is reached.\n");
 		}
 
+		if (signal != DSP_STAT_MW_STOP)
+		{
+			/** solve problem */
+			double tic = CoinGetTimeOfDay();
+			master_->solve();
+			DSPdebugMessage("Rank %d solved the master (%.2f sec).\n", comm_rank_, CoinGetTimeOfDay() - tic);
+
+			/** termination test */
+			signal = master_->terminationTest();
+			/** check duality gap */
+			if (signal != DSP_STAT_MW_STOP &&
+					master_->getRelDualityGap() < master_->getParPtr()->getDblParam("DD/STOP_TOL"))
+			{
+				signal = DSP_STAT_MW_STOP;
+				message_->print(1, "The duality gap limit %+e is reached.\n", master_->getRelDualityGap());
+			}
+		}
 		printIterInfo();
 
 		/** broadcast signal */
@@ -360,7 +360,8 @@ DSP_RTN_CODE DdMWSync::runMaster()
 			{
 				int subprob_index = subprob_indices_[subprob_displs_[i]+j];
 				sendbuf[pos++] = thetas[subprob_index];
-				CoinCopyN(lambdas[subprob_index], model_->getNumSubproblemCouplingRows(subprob_index), sendbuf + pos);
+				CoinCopyN(lambdas[subprob_index],
+						model_->getNumSubproblemCouplingRows(subprob_index), sendbuf + pos);
 				pos += model_->getNumSubproblemCouplingRows(subprob_index);
 			}
 		}
@@ -378,7 +379,7 @@ DSP_RTN_CODE DdMWSync::runMaster()
 	}
 
 	/** set best dual objective */
-	master_->bestdualobj_ = master_->primobj_;
+	//master_->bestdualobj_ = master_->primobj_;
 
 	DSPdebugMessage2("primsol_:\n");
 	DSPdebug2(message_->printArray(master_->getSiPtr()->getNumCols(), master_->getPrimalSolution()));
@@ -492,17 +493,11 @@ DSP_RTN_CODE DdMWSync::runWorker()
 			MPI_Gatherv(sendbuf, scount, MPI_DOUBLE, NULL, NULL, NULL, MPI_DOUBLE, 0, subcomm_);
 		}
 
-		/** receive signal from the master */
-		MPI_Bcast(&signal, 1, MPI_INT, 0, comm_);
-		DSPdebugMessage("Rank %d received signal %d.\n", comm_rank_, signal);
-		SIG_BREAK;
-
 		/** We may generate Benders-type cuts and find upper bounds */
 		if (parEvalUb_ >= 0 || parFeasCuts_ >= 0 || parOptCuts_ >= 0)
 		{
 			/** get coupling solutions */
-			signal = bcastCouplingSolutions(solutions);
-			SIG_BREAK;
+			DSP_RTN_CHECK_THROW(bcastCouplingSolutions(solutions));
 
 			/** sync Benders cut information */
 			cg_status = syncBendersInfo(solutions, cuts);
@@ -511,8 +506,8 @@ DSP_RTN_CODE DdMWSync::runWorker()
 			if (cg_status == DSP_STAT_MW_CONTINUE)
 			{
 				vector<double> upperbounds;
-				calculateUpperbound(solutions, upperbounds);
-				syncUpperbound(solutions.size(), upperbounds);
+				DSP_RTN_CHECK_THROW(calculateUpperbound(solutions, upperbounds));
+				DSP_RTN_CHECK_THROW(syncUpperbound(solutions.size(), upperbounds));
 			}
 
 			/** free solutions */
@@ -589,9 +584,6 @@ DSP_RTN_CODE DdMWSync::bcastCouplingSolutions(
 	int * indices            = NULL; /**< indices of solution vectors */
 	double * elements        = NULL; /**< elements of solution vectors */
 
-	/** return signal */
-	int signal = DSP_STAT_MW_CONTINUE;
-
 	MPI_Status status;
 	int number_of_solutions; /** number of solutions to receive */
 
@@ -654,11 +646,11 @@ DSP_RTN_CODE DdMWSync::bcastCouplingSolutions(
 		DSPdebugMessage("Rank %d received solutions.size() %lu\n", comm_rank_, solutions.size());
 	}
 
-	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_STAT_MW_STOP)
+	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
 	FREE_MEMORY
 
-	return signal;
+	return DSP_RTN_OK;
 #undef FREE_MEMORY
 }
 
@@ -697,16 +689,8 @@ DSP_RTN_CODE DdMWSync::calculateUpperbound(
 	/** calculate upper bound for each solution */
 	for (unsigned i = 0; i < solutions.size(); ++i)
 	{
-		/** fix coupling solutions */
-		workerub->fixCouplingVariableValues(solutions[i]);
-
-		/** solve */
-		workerub->solve();
-
-		/** take minimum objective */
-		double sumprimobj = 0.0;
-		for (unsigned s = 0; s < workerub->subprobs_.size(); ++s)
-			sumprimobj += workerub->subprobs_[s]->getPrimalBound();
+		/** evaluate upper bounds */
+		double sumprimobj = workerub->evaluate(solutions[i]);
 		DSPdebugMessage("Rank %d: solution index %d sumprimobj %e\n", comm_rank_, i, sumprimobj);
 		upperbounds.push_back(sumprimobj);
 	}
@@ -716,44 +700,18 @@ DSP_RTN_CODE DdMWSync::calculateUpperbound(
 	return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE DdMWSync::storeCouplingSolutions(Solutions & stored) {
-
+DSP_RTN_CODE DdMWSync::setCouplingSolutions(Solutions& solutions)
+{
 	BGN_TRY_CATCH
 
-	DdMasterSync * master  = dynamic_cast<DdMasterSync*>(master_);
-
-	/** store solutions to distribute */
-	for (int s = 0; s < master->nsubprobs_; ++s)
-	{
-		int nx = model_->getNumSubproblemCouplingCols(master->subindex_[s]);
-
-		DSPdebugMessage2("ubSolutions_ %lu\n", ubSolutions_.size());
-		DSPdebugMessage2("solution[%d] nx %d:\n", s, nx);
-		DSPdebug2(message_->printArray(nx, master->subsolution_[s]));
-
-		CoinPackedVector * x = duplicateSolution(
-				nx, master->subsolution_[s], ubSolutions_);
-		if (x != NULL)
-		{
-			DSPdebugMessage2("Coupling solution:\n");
-			DSPdebug2(DspMessage::printArray(nx, master->subsolution_[s]));
-
-			/** store solution */
-			ubSolutions_.push_back(x);
-			stored.push_back(x);
-		}
-	}
+	/** store coupling solutions */
+	DSP_RTN_CHECK_THROW(storeCouplingSolutions(solutions));
+	/** scatter/send coupling solutions */
+	DSP_RTN_CHECK_THROW(bcastCouplingSolutions(solutions));
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
-}
-
-DSP_RTN_CODE DdMWSync::setCouplingSolutions(Solutions& solutions) {
-	/** store coupling solutions */
-	storeCouplingSolutions(solutions);
-	/** scatter/send coupling solutions */
-	return bcastCouplingSolutions(solutions);
 }
 
 DSP_RTN_CODE DdMWSync::syncBendersInfo(

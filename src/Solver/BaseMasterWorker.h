@@ -9,8 +9,9 @@
 #define SRC_SOLVER_BASEMASTERWORKER_H_
 
 /** DSP headers */
-#include <Utility/DspMacros.h>
-#include <Utility/DspRtnCodes.h>
+#include "Utility/DspMacros.h"
+#include "Utility/DspRtnCodes.h"
+#include "Utility/DspTypes.h"
 
 /**
  * This abstract class defines a basic master-worker framework.
@@ -24,22 +25,22 @@ public:
 	/** destructor */
 	virtual ~BaseMasterWorker() {}
 
+	/** initialize */
+	virtual DSP_RTN_CODE init() = 0;
+
 	/** run the framework */
 	virtual DSP_RTN_CODE run() = 0;
 
-protected:
+	/** finalize */
+	virtual DSP_RTN_CODE finalize() = 0;
 
-	/** initialize */
-	virtual DSP_RTN_CODE init() = 0;
+protected:
 
 	/** run master process */
 	virtual DSP_RTN_CODE runMaster() = 0;
 
 	/** run worker processes */
 	virtual DSP_RTN_CODE runWorker() = 0;
-
-	/** finalize */
-	virtual DSP_RTN_CODE finalize() = 0;
 };
 
 #endif /* SRC_SOLVER_BASEMASTERWORKER_H_ */

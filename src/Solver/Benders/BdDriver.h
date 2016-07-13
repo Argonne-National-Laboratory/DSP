@@ -10,33 +10,35 @@
 
 #include "Solver/DspDriver.h"
 #include "Solver/Benders/BdMW.h"
-#include "Solver/Benders/BdMaster.h"
-#include "Solver/Benders/BdWorker.h"
-#include "Solver/Benders/SCIPconshdlrBenders.h"
 
 class BdDriver: public DspDriver {
-
-	typedef vector<CoinPackedVector*> Solutions;
 
 public:
 
 	/** constructor */
-	BdDriver(DspParams * par, DecModel * model);
-
-	/** constructor */
-	BdDriver(DspParams * par, DecModel * model, MPI_Comm comm);
+	BdDriver(
+			DspParams * par, /**< parameter pointer */
+			DecModel * model /**< model pointer */);
 
 	/** destructor */
 	virtual ~BdDriver();
 
 	/** initialize */
-	virtual DSP_RTN_CODE init();
+	virtual DSP_RTN_CODE init() {return DSP_RTN_OK;}
 
 	/** run */
-	virtual DSP_RTN_CODE run();
+	virtual DSP_RTN_CODE run() {return DSP_RTN_OK;}
 
 	/** finalize */
-	virtual DSP_RTN_CODE finalize();
+	virtual DSP_RTN_CODE finalize() {return DSP_RTN_OK;}
+
+protected:
+
+	/** find lower bound */
+	virtual DSP_RTN_CODE findLowerBound() {return DSP_RTN_OK;}
+
+	/** collect second-stage solutions */
+	virtual DSP_RTN_CODE collectSolution() {return DSP_RTN_OK;}
 
 public:
 
@@ -44,7 +46,11 @@ public:
 	virtual void setDualObjective(double dualobj) {dualobj_ = dualobj;}
 
 	/** set auxiliary variable data */
-	virtual DSP_RTN_CODE setAuxVarData(int size, double* obj, double* clbd, double* cubd);
+	virtual DSP_RTN_CODE setAuxVarData(
+			int      size, /**< size of arrays */
+			double * obj,  /**< objective function coefficients */
+			double * clbd, /**< column lower bounds */
+			double * cubd  /**< column upper bounds */);
 
 	/** set initial solution */
 	virtual DSP_RTN_CODE setSolution(
@@ -56,27 +62,14 @@ public:
 			int   size,      /**< size of array */
 			int * priorities /**< branch priority */);
 
-private:
+protected:
 
-	/** find lower bound */
-	DSP_RTN_CODE findLowerBound();
+	BdMW * mw_; /**< master-worker manager */
 
-	/** constraint handler */
-	SCIPconshdlrBenders * constraintHandler();
-
-private:
-
-	bool useMPI_; /**< indicating whether to use MPI library or not */
-
-	MPI_Comm comm_;
-	int comm_rank_;
-	int comm_size_;
-
-	BdMW * mw_;
-	BdMaster * master_;
-	BdWorker * worker_;
-
-private:
+	int      aux_size_; /**< number of auxiliary variables */
+	double * aux_obj_;  /**< objective coefficients */
+	double * aux_clbd_; /**< column lower bound */
+	double * aux_cubd_; /**< column upper bound */
 
 	Solutions initsols_; /**< set of initial solutions */
 	int numPriorities_;  /**< length of branch priorities */

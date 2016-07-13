@@ -10,7 +10,9 @@
 
 #include <cstdlib>
 #include <cstdio>
+#ifdef DSP_HAS_MPI
 #include "mpi.h"
+#endif
 #include "CoinTypes.hpp"
 
 /** DSP */
@@ -101,16 +103,28 @@ void setBranchPriorities(
 		int *       priorities /**< depending on solver */);
 
 /** solve deterministic equivalent model */
-void solveDe(DspApiEnv * env);
+void solveDe(DspApiEnv * env /**< pointer to API object */);
 
 /** solve dual decomposition */
-void solveDd(DspApiEnv * env, MPI_Comm comm);
+void solveDd(DspApiEnv * env /**< pointer to API object */);
 
-/** solve Benders decomposition using MPI */
+/** solve serial Benders decomposition */
 void solveBd(
+		DspApiEnv * env,     /**< pointer to API object */
+		int         nauxvars /**< number of auxiliary variables (scenario clusters) */);
+
+#ifdef DSP_HAS_MPI
+/** solve parallel dual decomposition */
+void solveDdMpi(
+		DspApiEnv * env,                 /**< pointer to API object */
+		MPI_Comm    comm = MPI_UNDEFINED /**< MPI communicator */);
+
+/** solve parallel Benders decomposition */
+void solveBdMpi(
 		DspApiEnv * env,                 /**< pointer to API object */
 		int         nauxvars,            /**< number of auxiliary variables (scenario clusters) */
 		MPI_Comm    comm = MPI_UNDEFINED /**< MPI communicator */);
+#endif
 
 /** read parameter file */
 void readParamFile(DspApiEnv * env, const char * param_file);

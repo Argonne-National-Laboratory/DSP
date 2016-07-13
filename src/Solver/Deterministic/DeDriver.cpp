@@ -59,9 +59,7 @@ DSP_RTN_CODE DeDriver::run()
 	double stime;
 
 	/** get DE model */
-	DSP_RTN_CHECK_THROW(
-			model_->getFullModel(mat, clbd, cubd, ctype, obj, rlbd, rubd),
-			"getFullModel", "DeDriver");
+	DSP_RTN_CHECK_THROW(model_->getFullModel(mat, clbd, cubd, ctype, obj, rlbd, rubd));
 
 	int nIntegers = model_->getNumIntegers();
 
@@ -132,9 +130,6 @@ DSP_RTN_CODE DeDriver::run()
 
 	/** time limit */
 	si_->setTimeLimit(par_->getDblParam("SCIP/TIME_LIM"));
-
-	/** set iteration limit */
-	si_->setIterLimit(par_->getIntParam("ITER_LIM"));
 
 	/** set node limit */
 	si_->setNodeLimit(par_->getIntParam("NODE_LIM"));

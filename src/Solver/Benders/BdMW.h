@@ -11,8 +11,10 @@
 #include "Solver/BaseMasterWorker.h"
 #include "Solver/Benders/BdMaster.h"
 #include "Solver/Benders/BdWorker.h"
+#include "Solver/Benders/SCIPconshdlrBenders.h"
 
 class BdMW: public BaseMasterWorker {
+
 public:
 
 	enum
@@ -22,46 +24,50 @@ public:
 	};
 
 	/** constructor */
-	BdMW(MPI_Comm comm, BdMaster * master, BdWorker * worker);
+	BdMW(
+			DecModel *   model,  /**< model pointer */
+			DspParams *  par,    /**< parameters */
+			DspMessage * message /**< message pointer */);
 
 	/** destructor */
 	virtual ~BdMW();
 
+	/** initialize */
+	virtual DSP_RTN_CODE init() {return DSP_RTN_OK;}
+
 	/** run the framework */
-	virtual DSP_RTN_CODE run();
+	virtual DSP_RTN_CODE run() {return DSP_RTN_OK;}
+
+	/** finalize */
+	virtual DSP_RTN_CODE finalize() {return DSP_RTN_OK;}
 
 protected:
 
-	/** initialize */
-	virtual DSP_RTN_CODE init();
-
 	/** run master process */
-	virtual DSP_RTN_CODE runMaster();
+	virtual DSP_RTN_CODE runMaster() {return DSP_RTN_OK;}
 
 	/** run worker processes */
-	virtual DSP_RTN_CODE runWorker();
+	virtual DSP_RTN_CODE runWorker() {return DSP_RTN_OK;}
 
-	/** finalize */
-	virtual DSP_RTN_CODE finalize();
+	/** constraint handler */
+	virtual SCIPconshdlrBenders * constraintHandler() {return NULL;}
 
 public:
 
-	/** get priaml solution */
-	const double * getPrimalSolution() {return primsol_;}
+	/** master pointer */
+	BdMaster * getMasterPtr() {return master_;}
+
+	/** Worker pointer */
+	BdWorker * getWorkerPtr() {return worker_;}
 
 protected:
 
-	/** Common member variables */
-	MPI_Comm comm_;
-	int comm_rank_;
-	int comm_size_;
+	DecModel * model_;     /**< DecModel object */
+	DspParams * par_;      /**< parameters */
+	DspMessage * message_; /**< message */
 
 	BdMaster * master_; /**< master */
 	BdWorker * worker_; /**< worker */
-
-private:
-
-	double * primsol_;
 };
 
 #endif /* SRC_SOLVER_BENDERS_BDMW_H_ */

@@ -7,27 +7,44 @@ if(UNIX)
 	set(CMAKE_Fortran_COMPILER "gfortran")
 endif()
 
+##################################################
 # Project name
+##################################################
 project(DSP)
 message(STATUS "The system information: ${CMAKE_SYSTEM}.${CMAKE_SYSTEM_PROCESSOR}")
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-	message(WARNING "We currently do not support Clang compiler")
-elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-	message(WARNING "We currently do not support Intel compiler")
-elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-	message(WARNING "We currently do not support MSVC compiler")
-endif()
-
+##################################################
 # REQUIRED PACKAGES
-find_package(MPI REQUIRED)
+##################################################
 find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(BZip2 REQUIRED)
+find_package(MPI)
 find_package(PythonLibs)
 
+##################################################
+# Build and install external packages
+##################################################
+include(ExternalProject)
+
+##################################################
+# My include files
+##################################################
 include(color_scheme.cmake)
+include(config_path.cmake)
+
+##################################################
+# Compiler settings
+##################################################
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+	message(FATAL_ERROR "We currently do not support Clang compiler")
+elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+	message(FATAL_ERROR "We currently do not support Intel compiler")
+elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+	message(FATAL_ERROR "We currently do not support MSVC compiler")
+endif()
 
 # Check gcc version
 if (CMAKE_COMPILER_IS_GNUCC)
@@ -37,37 +54,43 @@ if (CMAKE_COMPILER_IS_GNUCC)
 	list(GET GCC_VERSION_COMPONENTS 1 GCC_MINOR)
 endif()
 
-# debug mode?
-set(DSP_NDEBUG "")
-if (DSP_ASSERT EQUAL ON)
-	set(DSP_NDEBUG "-DNDEBUG")
-endif()
-
+# Set flags
 if (${GCC_MAJOR} LESS 5 AND ${GCC_MINOR} LESS 7)
-	set(CMAKE_CXX_FLAGS "${MPI_CXX_COMPILE_FLAGS} -O3 -fopenmp -std=c++0x ${DSP_NDEBUG} -DUSE_OMP")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 else()
-	set(CMAKE_CXX_FLAGS "${MPI_CXX_COMPILE_FLAGS} -O3 -fopenmp -std=c++11 ${DSP_NDEBUG} -DUSE_OMP")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 endif()
+if(MPI_CXX_FOUND)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MPI_CXX_COMPILE_FLAGS} -O3 -DNDEBUG -DDSP_HAS_MPI")
+else()
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -DNDEBUG")
+endif()
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -DUSE_OMP")
 
 if(APPLE)
 	set(CMAKE_MACOSX_RPATH OFF)
 endif()
 
-# compile python interface (PyDsp)?
+##################################################
+# PYTHON INTERFACE
+##################################################
 set(PYDSP_COMPILE OFF)
 if (PYTHONLIBS_FOUND)
 	find_package(SWIG)
 	if (SWIG_FOUND)
-		execute_process(COMMAND python get_mpi4py_include.py
-			RESULT_VARIABLE MPI4PY_NOT_FOUND
-			OUTPUT_VARIABLE MPI4PY_INCLUDE)
-		string(REPLACE "\n" "" MPI4PY_INCLUDE ${MPI4PY_INCLUDE})
-		#message("${Red}${MPI4PY_INCLUDE}${ColourReset}")
-		#message("${Red}${MPI4PY_NOT_FOUND}${ColourReset}")
-		if (MPI4PY_NOT_FOUND EQUAL 0)
-			set(PYDSP_COMPILE ON)
+		if (MPI_CXX_FOUND)
+			execute_process(COMMAND python get_mpi4py_include.py
+				RESULT_VARIABLE MPI4PY_NOT_FOUND
+				OUTPUT_VARIABLE MPI4PY_INCLUDE)
+			if (MPI4PY_NOT_FOUND EQUAL 0)
+				set(PYDSP_COMPILE ON)
+				set(PYDSP_I "src/PyDsp/PyDspMpi.i")
+				string(REPLACE "\n" "" MPI4PY_INCLUDE ${MPI4PY_INCLUDE})
+			else()
+				message(WARNING "${Red}Python interface requires mpi4py python module.${ColourReset}")
+			endif()
 		else()
-			message(WARNING "${Red}Python interface requires mpi4py python module.${ColourReset}")
+			set(PYDSP_I "src/PyDsp/PyDsp.i")
 		endif()
 	else()
 		message(WARNING "${Red}Python interface requires SWIG.${ColourReset}")
@@ -77,21 +100,20 @@ else()
 endif()
 if (PYDSP_COMPILE)
 	message(STATUS "${Blue}Python interface will be compiled.${ColourReset}")
-	execute_process(COMMAND swig -python -c++ -I${MPI4PY_INCLUDE} -includeall -o src/PyDsp.cpp src/PyDsp.i)
+	execute_process(COMMAND swig -python -c++ -I${MPI4PY_INCLUDE} -includeall -o src/PyDsp/PyDsp.cpp ${PYDSP_I})
 else()
 	message(WARNING "${Red}Python interface will not be compiled.${ColourReset}")
 endif()
 
-# includes
-include(config_path.cmake)
-
-# Set path variables
-set(EXTRA_DIR ${CMAKE_SOURCE_DIR}/extra)
+##################################################
+# option for enabling ma57 (not working well)
+##################################################
 OPTION(HAS_MA57 "HAS MA57" OFF)
 
-# Build and install external packages
-include(ExternalProject)
-
+##################################################
+# BUILD EXTERNAL PACKAGES
+##################################################
+set(EXTRA_DIR ${CMAKE_SOURCE_DIR}/extra)
 if (READ_CONF)
 	message(STATUS "MA27_DIR is set at ${MA27_DIR}")
 	message(STATUS "OOQP_DIR is set at ${OOQP_DIR}")
@@ -99,7 +121,7 @@ if (READ_CONF)
 	set(SCIP_DIR ${SCIPOPTSUITE_DIR}/scip-3.1.1)
 	set(SOPLEX_DIR ${SCIPOPTSUITE_DIR}/soplex-2.0.1)
 	message(STATUS "SMI_DIR is set at ${SMI_DIR}")
-else()
+else(READ_CONF)
 	# OOQP-0.99.25
 	set(OOQP_DIR ${EXTRA_DIR}/OOQP-0.99.25)
 	set(OOQP_BLAS "BLAS=${BLAS_LIBRARIES}")
@@ -108,15 +130,6 @@ else()
 	if (HAS_MA57)
 		# compile flags
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDSP_HAS_MA57")
-		# metis-4.0.3
-		set(METIS_DIR ${EXTRA_DIR}/metis-4.0.3)
-#		add_custom_target(metis
-#			COMMAND make COPTIONS=-fPIC
-#			WORKING_DIRECTORY ${METIS_DIR})
-#		ExternalProject_Add(metis-4.0.3
-#			PREFIX ${METIS_DIR}
-#			SOURCE_DIR ${METIS_DIR}
-#			BUILD_COMMAND make COPTIONS=-fPIC)
 		# ma57-3.9.0
 		set(MA57_DIR ${EXTRA_DIR}/ma57-3.9.0)
 		ExternalProject_Add(ma57
@@ -127,6 +140,8 @@ else()
 			BINARY_DIR ${MA57_DIR}
 			BUILD_COMMAND make
 			INSTALL_COMMAND make install)
+		# metis-4.0.3
+		set(METIS_DIR ${EXTRA_DIR}/metis-4.0.3)
 		add_custom_command(TARGET ma57 PRE_BUILD
 			COMMAND make COPTIONS=-fPIC
 			WORKING_DIRECTORY ${METIS_DIR})
@@ -134,10 +149,10 @@ else()
 		set(OOQP_DEPENDS "ma57")
 		set(OOQP_HSL_LIB "MA57LIB=${MA57_DIR}/lib/libma57.a")
 		execute_process(COMMAND cp ${OOQP_DIR}/src/QpGen/Makefile.inc.ma57 ${OOQP_DIR}/src/QpGen/Makefile.inc)
-	else()
+	else(HAS_MA57)
 		# ma27-1.0.0
 		set(MA27_DIR ${EXTRA_DIR}/ma27-1.0.0)
-		ExternalProject_Add(ma27-1.0.0
+		ExternalProject_Add(ma27
 			PREFIX ${MA27_DIR}
 			SOURCE_DIR ${MA27_DIR}
 			CONFIGURE_COMMAND ${MA27_DIR}/configure --prefix=${MA27_DIR} FFLAGS=-fPIC
@@ -145,7 +160,7 @@ else()
 			BUILD_COMMAND make
 			INSTALL_COMMAND make install)
 		# OOQP
-		set(OOQP_DEPENDS "ma27-1.0.0")
+		set(OOQP_DEPENDS "ma27")
 		set(OOQP_HSL_LIB "MA27LIB=${MA27_DIR}/lib/libma27.a")
 		execute_process(COMMAND cp ${OOQP_DIR}/src/QpGen/Makefile.inc.ma27 ${OOQP_DIR}/src/QpGen/Makefile.inc)
 	endif()
@@ -163,7 +178,7 @@ else()
 	set(SCIPOPTSUITE_DIR ${EXTRA_DIR}/scipoptsuite-3.1.1)
 	set(SCIP_DIR ${SCIPOPTSUITE_DIR}/scip-3.1.1)
 	set(SOPLEX_DIR ${SCIPOPTSUITE_DIR}/soplex-2.0.1)
-	ExternalProject_Add(scipoptsuite-3.1.1
+	ExternalProject_Add(scipoptsuite
 		PREFIX ${SCIPOPTSUITE_DIR}
 		SOURCE_DIR ${SCIPOPTSUITE_DIR}
 		CONFIGURE_COMMAND ""
@@ -175,7 +190,7 @@ else()
 	set(SMI_DIR ${EXTRA_DIR}/Smi)
 	set(SMI_FLAGS "-L${SOPLEX_DIR}/lib -lsoplex")
 	ExternalProject_Add(Smi
-		DEPENDS scipoptsuite-3.1.1
+		DEPENDS scipoptsuite
 		PREFIX ${SMI_DIR}
 		DOWNLOAD_DIR ${EXTRA_DIR}
 		SVN_REPOSITORY https://projects.coin-or.org/svn/Smi/stable/0.95
@@ -186,6 +201,8 @@ else()
 		BINARY_DIR ${SMI_DIR}
 		BUILD_COMMAND make
 		INSTALL_COMMAND make install)
+	# SMI installation script does not copy SmiQuadratic.hpp. (their bug)
+	add_custom_command(TARGET Smi POST_BUILD COMMAND cp ${SMI_DIR}/Smi/src/SmiQuadratic.hpp ${SMI_DIR}/include/coin/)
 endif()
 
 #set(LAZYCPLEX_INCDIR "/opt/ibm/ILOG/CPLEX_Studio1261/cplex/include/ilcplex")
@@ -205,10 +222,10 @@ endif()
 #	INSTALL_COMMAND make install
 #)
 
-# SMI installation script does not copy SmiQuadratic.hpp. (their bug)
-add_custom_command(TARGET Smi POST_BUILD COMMAND cp ${SMI_DIR}/Smi/src/SmiQuadratic.hpp ${SMI_DIR}/include/coin/)
 
+##################################################
 # add include directories
+##################################################
 set(DSP_INCLUDE_DIRS
 	src
 	src/Model
@@ -221,13 +238,19 @@ set(DSP_INCLUDE_DIRS
 	${SCIP_DIR}/src/scip
 	${SOPLEX_DIR}/src
 	${SMI_DIR}/include/coin
-	${MPI_CXX_INCLUDE_PATH}
-	${MPI4PY_INCLUDE}
-)
+	${MPI_CXX_INCLUDE_PATH})
+if (MPI_CXX_FOUND)
+	set(DSP_INCLUDE_DIRS ${DSP_INCLUDE_DIRS} ${MPI_CXX_INCLUDE_PATH})
+endif()
 if (PYTHONLIBS_FOUND)
-	set(DSP_INCLUDE_DIRS ${DSP_INCLUDE_DIRS} ${PYTHON_INCLUDE_DIRS})
+	set(DSP_INCLUDE_DIRS ${DSP_INCLUDE_DIRS} ${PYTHON_INCLUDE_DIRS} ${MPI4PY_INCLUDE})
+	if (MPI_CXX_FOUND)
+		set(DSP_INCLUDE_DIRS ${DSP_INCLUDE_DIRS} ${MPI4PY_INCLUDE})
+	endif()
 endif()
 include_directories(${DSP_INCLUDE_DIRS})
 
-# compile DSP source code
+##################################################
+# SUBDIRECTORY
+##################################################
 add_subdirectory(src)

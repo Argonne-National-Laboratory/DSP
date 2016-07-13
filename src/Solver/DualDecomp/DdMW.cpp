@@ -25,6 +25,14 @@ DdMW::~DdMW() {
 	model_   = NULL;
 	par_     = NULL;
 	message_ = NULL;
+
+	/** free master */
+	FREE_PTR(master_);
+
+	/** free workers */
+	for (unsigned i = 0; i < worker_.size(); ++i)
+		FREE_PTR(worker_[i]);
+	worker_.clear();
 }
 
 DSP_RTN_CODE DdMW::run()
@@ -68,6 +76,37 @@ DSP_RTN_CODE DdMW::finalize() {
 	return DSP_RTN_OK;
 }
 
+DSP_RTN_CODE DdMW::storeCouplingSolutions(Solutions& stored)
+{
+	BGN_TRY_CATCH
+
+	/** store solutions to distribute */
+	for (int s = 0; s < model_->getNumSubproblems(); ++s)
+	{
+		int nx = model_->getNumSubproblemCouplingCols(s);
+
+		DSPdebugMessage2("ubSolutions_ %lu\n", ubSolutions_.size());
+		DSPdebugMessage2("solution[%d] nx %d:\n", s, nx);
+		DSPdebug2(message_->printArray(nx, master_->subsolution_[s]));
+
+		CoinPackedVector * x = duplicateSolution(
+				nx, master_->subsolution_[s], ubSolutions_);
+		if (x != NULL)
+		{
+			DSPdebugMessage2("Coupling solution:\n");
+			DSPdebug2(DspMessage::printArray(nx, master_->subsolution_[s]));
+
+			/** store solution */
+			ubSolutions_.push_back(x);
+			stored.push_back(x);
+		}
+	}
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
+}
+
 CoinPackedVector * DdMW::duplicateSolution(
 		int size,           /**< size of array */
 		const double * x,   /**< current solution */
@@ -102,30 +141,42 @@ void DdMW::printHeaderInfo() {
 	 * iter      curobj     primobj dualobj gap time
 	 *  %4d  %+10e  %+10e  %+10e  %6.2f  %6.1f
 	 */
-	message_->print(1, "  %4s  %13s  %13s  %13s  %6s  %6s\n",
-			"iter", "curobj", "primobj", "dualobj", "gap(%)", "times");
+	message_->print(1, "\nDUAL DECOMPOSITION ITERATION INFORMATION:\n");
+	message_->print(1, "* master   = objective function value of the master problem.\n");
+	message_->print(1, "* primobj  = best primal objective function value.\n");
+	message_->print(1, "* dualobj  = best dual objective function value.\n");
+	message_->print(1, "* a.gap(%) = Approximate gap between master and dualobj.\n");
+	message_->print(1, "* d.gap(%) = Duality gap between primobj and dualobj.\n");
+	message_->print(1, "* times    = wall clock time in seconds.\n\n");
+	message_->print(1, "  %4s  %13s  %13s  %13s  %8s  %8s  %6s\n",
+			"iter", "master", "primobj", "dualobj", "a.gap(%)", "d.gap(%)", "time");
 }
 
-void DdMW::printIterInfo() {
-	message_->print(1, " %c%4d  %+10e", itercode_, itercnt_, master_->getPrimalObjective());
-	if (master_->getBestPrimalObjective() < 1.0e+20)
-		message_->print(1, "  %+10e", master_->getBestPrimalObjective());
+void DdMW::printIterInfo()
+{
+	double primobj = master_->getPrimalObjective();
+	double bestprimobj = master_->getBestPrimalObjective();
+	double bestdualobj = master_->getBestDualObjective();
+	double approxgap = master_->getRelApproxGap();
+	double dualitygap = master_->getRelDualityGap();
+
+	message_->print(1, " %c%4d  %+10e", itercode_, itercnt_, primobj);
+	if (bestprimobj < 1.0e+20)
+		message_->print(1, "  %+10e", bestprimobj);
 	else
 		message_->print(1, "  %+13s", "Large");
-	if (master_->getBestDualObjective() > -1.0e+20)
-		message_->print(1, "  %+10e", master_->getBestDualObjective());
+	if (bestdualobj > -1.0e+20)
+		message_->print(1, "  %+10e", bestdualobj);
 	else
 		message_->print(1, "  %+13s", "Large");
-	if (master_->getRelDualityGap() >= 10)
-		message_->print(1, "  %6s", "Large");
-	else
-		message_->print(1, "  %6.2f", master_->getRelDualityGap()*100);
+	message_->print(1, "  %8.2f", approxgap*100);
+	message_->print(1, "  %8.2f", dualitygap*100);
 	message_->print(1, "  %6.1f\n", CoinGetTimeOfDay() - iterstime_);
 
 	s_itertime_.push_back(CoinGetTimeOfDay() - iterstime_);
-	s_masterobj_.push_back(master_->getPrimalObjective());
-	s_bestprimobj_.push_back(master_->getBestPrimalObjective());
-	s_bestdualobj_.push_back(master_->getBestDualObjective());
+	s_masterobj_.push_back(primobj);
+	s_bestprimobj_.push_back(bestprimobj);
+	s_bestdualobj_.push_back(bestdualobj);
 }
 
 void DdMW::writeIterInfo(const char * filename)

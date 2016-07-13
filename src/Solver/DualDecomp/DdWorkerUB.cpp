@@ -19,6 +19,21 @@ DdWorkerUB::~DdWorkerUB() {
 	// TODO Auto-generated destructor stub
 }
 
+double DdWorkerUB::evaluate(CoinPackedVector* solution)
+{
+	double ub = 0.0;
+	BGN_TRY_CATCH
+
+	fixCouplingVariableValues(solution);
+	solve();
+	for (unsigned s = 0; s < subprobs_.size(); ++s)
+		ub += subprobs_[s]->getPrimalBound();
+
+	END_TRY_CATCH_RTN(;,COIN_DBL_MAX)
+
+	return ub;
+}
+
 DSP_RTN_CODE DdWorkerUB::fixCouplingVariableValues(CoinPackedVector * val)
 {
 	BGN_TRY_CATCH
@@ -49,8 +64,8 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 	double total_walltime = 0.0;
 	double pargaptol = par_->getDblParam("DD/STOP_TOL");
 
-	for (unsigned s = 0; s < subprobs_.size(); ++s) {
-
+	for (unsigned s = 0; s < subprobs_.size(); ++s)
+	{
 		cputime = CoinCpuTime();
 		walltime = CoinGetTimeOfDay();
 
