@@ -282,6 +282,8 @@ void solveDe(DspApiEnv * env)
 /** solve dual decomposition */
 void solveDd(DspApiEnv * env)
 {
+	BGN_TRY_CATCH
+
 	STO_API_CHECK_MODEL();
 	freeSolver(env);
 
@@ -289,9 +291,11 @@ void solveDd(DspApiEnv * env)
 		return;
 
 	env->solver_ = new DdDriverSerial(env->par_, env->model_);
-	env->solver_->init();
-	env->solver_->run();
-	env->solver_->finalize();
+	DSP_RTN_CHECK_THROW(env->solver_->init());
+	DSP_RTN_CHECK_THROW(env->solver_->run());
+	DSP_RTN_CHECK_THROW(env->solver_->finalize());
+
+	END_TRY_CATCH(;)
 }
 
 /** solve serial Benders decomposition */

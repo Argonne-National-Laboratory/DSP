@@ -53,7 +53,7 @@ public:
 
 protected:
 
-	double epsilon_;
+	double epsilon_; /**< duality gap tolerance */
 	double lowerBound_;
 	double upperBound_;
 	double dualityGap_; /** duality gap */

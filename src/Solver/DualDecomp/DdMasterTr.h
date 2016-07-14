@@ -50,6 +50,14 @@ protected:
 	virtual DSP_RTN_CODE possiblyDeleteCuts(
 			double subobjval /**< sum of subproblem objective values */);
 
+	/** possibly delete cuts */
+	virtual DSP_RTN_CODE possiblyDeleteCutsOsi(
+			double subobjval /**< sum of subproblem objective values */);
+
+	/** possibly delete cuts */
+	virtual DSP_RTN_CODE possiblyDeleteCutsOoqp(
+			double subobjval /**< sum of subproblem objective values */);
+
 	/** recruite cuts */
 	virtual int recruiteCuts();
 

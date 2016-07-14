@@ -41,7 +41,7 @@ DSP_RTN_CODE DdDriverSerial::run()
 	walltime_ = CoinGetTimeOfDay();
 
 	/** run */
-	mw_->run();
+	DSP_RTN_CHECK_THROW(mw_->run());
 
 	/** toc */
 	cputime_  = CoinCpuTime() - cputime_;
@@ -72,7 +72,7 @@ DSP_RTN_CODE DdDriverSerial::finalize()
 	BGN_TRY_CATCH
 
 	/** finalize master-worker framework */
-	mw_->finalize();
+	DSP_RTN_CHECK_THROW(mw_->finalize());
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 

@@ -186,7 +186,7 @@ DSP_RTN_CODE DdMWSerial::run()
 		itercode_ = ' ';
 
 		/** Solve subproblems */
-		workerlb->solve();
+		DSP_RTN_CHECK_THROW(workerlb->solve());
 
 		/** update master */
 		double subprimobj = 0.0;
@@ -211,7 +211,7 @@ DSP_RTN_CODE DdMWSerial::run()
 		if (parEvalUb_ >= 0 || parFeasCuts_ >= 0 || parOptCuts_ >= 0)
 		{
 			/** store coupling solutions */
-			storeCouplingSolutions(coupling_solutions);
+			DSP_RTN_CHECK_THROW(storeCouplingSolutions(coupling_solutions));
 			/** generate cuts */
 			if (parFeasCuts_ >= 0 || parOptCuts_ >= 0)
 			{
