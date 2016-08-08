@@ -3937,6 +3937,39 @@ fail:
 }
 
 
+SWIGINTERN PyObject *_wrap_writeMps(PyObject *SWIGUNUSEDPARM(self), PyObject *args) {
+  PyObject *resultobj = 0;
+  DspApiEnv *arg1 = (DspApiEnv *) 0 ;
+  char *arg2 = (char *) 0 ;
+  void *argp1 = 0 ;
+  int res1 = 0 ;
+  int res2 ;
+  char *buf2 = 0 ;
+  int alloc2 = 0 ;
+  PyObject * obj0 = 0 ;
+  PyObject * obj1 = 0 ;
+  
+  if (!PyArg_ParseTuple(args,(char *)"OO:writeMps",&obj0,&obj1)) SWIG_fail;
+  res1 = SWIG_ConvertPtr(obj0, &argp1,SWIGTYPE_p_DspApiEnv, 0 |  0 );
+  if (!SWIG_IsOK(res1)) {
+    SWIG_exception_fail(SWIG_ArgError(res1), "in method '" "writeMps" "', argument " "1"" of type '" "DspApiEnv *""'"); 
+  }
+  arg1 = reinterpret_cast< DspApiEnv * >(argp1);
+  res2 = SWIG_AsCharPtrAndSize(obj1, &buf2, NULL, &alloc2);
+  if (!SWIG_IsOK(res2)) {
+    SWIG_exception_fail(SWIG_ArgError(res2), "in method '" "writeMps" "', argument " "2"" of type '" "char const *""'");
+  }
+  arg2 = reinterpret_cast< char * >(buf2);
+  writeMps(arg1,(char const *)arg2);
+  resultobj = SWIG_Py_Void();
+  if (alloc2 == SWIG_NEWOBJ) delete[] buf2;
+  return resultobj;
+fail:
+  if (alloc2 == SWIG_NEWOBJ) delete[] buf2;
+  return NULL;
+}
+
+
 static PyMethodDef SwigMethods[] = {
 	 { (char *)"SWIG_PyInstanceMethod_New", (PyCFunction)SWIG_PyInstanceMethod_New, METH_O, NULL},
 	 { (char *)"new_doubleArray", _wrap_new_doubleArray, METH_VARARGS, NULL},
@@ -3960,6 +3993,7 @@ static PyMethodDef SwigMethods[] = {
 	 { (char *)"getPrimalBound", _wrap_getPrimalBound, METH_VARARGS, NULL},
 	 { (char *)"getDualBound", _wrap_getDualBound, METH_VARARGS, NULL},
 	 { (char *)"getSolution", _wrap_getSolution, METH_VARARGS, NULL},
+	 { (char *)"writeMps", _wrap_writeMps, METH_VARARGS, NULL},
 	 { NULL, NULL, 0, NULL }
 };
 

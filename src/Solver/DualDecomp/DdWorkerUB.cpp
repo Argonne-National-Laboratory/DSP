@@ -9,7 +9,7 @@
 #include <Solver/DualDecomp/DdWorkerUB.h>
 
 DdWorkerUB::DdWorkerUB(DspParams * par, DecModel * model, DspMessage * message):
-DdWorkerLB(par, model, message)
+DdWorkerLB(par, model, message), ub_(0.0)
 {
 	// TODO Auto-generated constructor stub
 
@@ -21,17 +21,14 @@ DdWorkerUB::~DdWorkerUB() {
 
 double DdWorkerUB::evaluate(CoinPackedVector* solution)
 {
-	double ub = 0.0;
 	BGN_TRY_CATCH
 
 	fixCouplingVariableValues(solution);
 	solve();
-	for (unsigned s = 0; s < subprobs_.size(); ++s)
-		ub += subprobs_[s]->getPrimalBound();
 
 	END_TRY_CATCH_RTN(;,COIN_DBL_MAX)
 
-	return ub;
+	return ub_;
 }
 
 DSP_RTN_CODE DdWorkerUB::fixCouplingVariableValues(CoinPackedVector * val)
@@ -69,12 +66,9 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 		cputime = CoinCpuTime();
 		walltime = CoinGetTimeOfDay();
 
-		/** update time stamp */
-		ticToc();
-
 		/** set time limit */
 		subprobs_[s]->setTimeLimit(
-				CoinMin(time_remains_,
+				CoinMin(CoinMax(0.01, time_remains_),
 						par_->getDblParam("SCIP/TIME_LIM")));
 		/** solve */
 		subprobs_[s]->solve();
@@ -101,7 +95,13 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 		dualobj += subprobs_[s]->si_->getDualBound();
 		total_cputime += CoinCpuTime() - cputime;
 		total_walltime += CoinGetTimeOfDay() - walltime;
+
+		/** consume time */
+		time_remains_ -= CoinGetTimeOfDay() - walltime;
 	}
+
+	/** get primal objective */
+	ub_ = primobj;
 
 	/** update statistics */
 	s_statuses_.push_back(status_);

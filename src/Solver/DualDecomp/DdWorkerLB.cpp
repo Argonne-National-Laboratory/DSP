@@ -25,9 +25,6 @@ DSP_RTN_CODE DdWorkerLB::init() {
 	/** create problem */
 	createProblem();
 
-	/** time stamp */
-	ticToc();
-
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
@@ -53,11 +50,9 @@ DSP_RTN_CODE DdWorkerLB::solve() {
 		while (resolve) {
 			resolve = false;
 
-			/** update time stamp */
-			ticToc();
 			/** set time limit */
 			subprobs_[s]->setTimeLimit(
-					CoinMin(time_remains_,
+					CoinMin(CoinMax(0.01,time_remains_),
 							par_->getDblParam("SCIP/TIME_LIM")));
 			/** solve */
 			subprobs_[s]->solve();
@@ -102,6 +97,9 @@ DSP_RTN_CODE DdWorkerLB::solve() {
 		dualobj += subprobs_[s]->si_->getDualBound();
 		total_cputime += CoinCpuTime() - cputime;
 		total_walltime += CoinGetTimeOfDay() - walltime;
+
+		/** consume time */
+		time_remains_ -= CoinGetTimeOfDay() - walltime;
 	}
 
 	/** update statistics */

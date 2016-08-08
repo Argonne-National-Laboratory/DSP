@@ -151,6 +151,10 @@ DSP_RTN_CODE DdMWAsync::runMaster()
 
 	BGN_TRY_CATCH
 
+	/** send start time */
+	iterstime_ = CoinGetTimeOfDay();
+	MPI_Bcast(&iterstime_, 1, MPI_DOUBLE, 0, comm_);
+
 	runMasterInit();
 	runMasterCore();
 
@@ -187,6 +191,9 @@ DSP_RTN_CODE DdMWAsync::runWorker()
 	BGN_TRY_CATCH
 
 	int signal = DSP_STAT_MW_CONTINUE;
+
+	/** receive start time */
+	MPI_Bcast(&iterstime_, 1, MPI_DOUBLE, 0, comm_);
 	
 	if (lb_comm_ != MPI_COMM_NULL)
 	{
@@ -606,7 +613,6 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 
 	/** print display header */
 	printHeaderInfo();
-	iterstime_ = CoinGetTimeOfDay();
 
 	/** idle processors */
 	vector<int> idle_solution_key;
@@ -700,6 +706,10 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 
 			/** The master received messages from all the LB workers? */
 			if (master->worker_.size() == numLbWorkers)
+				break;
+
+			/** time limit */
+			if (remainingTime() < 1.0)
 				break;
 		}
 		DSPdebugMessage("################# time stamp 2: %.2f\n", CoinGetTimeOfDay() - iterstime_);
@@ -825,10 +835,15 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 		printIterInfo();
 
 		/** returns continue or stop signal */
-		if (itercnt_ > master_->getParPtr()->getIntParam("DD/ITER_LIM"))
+		if (remainingTime() < 1.0)
 		{
 			signal = DSP_STAT_MW_STOP;
-			message_->print(0, "Iteration limit (%d) has been reached.\n", master_->getParPtr()->getIntParam("DD/ITER_LIM"));
+			message_->print(1, "Time limit (%.2f) has been reached.\n", parTimeLimit_);
+		}
+		else if (itercnt_ > master_->getParPtr()->getIntParam("DD/ITER_LIM"))
+		{
+			signal = DSP_STAT_MW_STOP;
+			message_->print(1, "Iteration limit (%d) has been reached.\n", master_->getParPtr()->getIntParam("DD/ITER_LIM"));
 		}
 		else
 		{
@@ -1031,6 +1046,8 @@ DSP_RTN_CODE DdMWAsync::runWorkerInit()
 	sendbuf = new double [scount];
 	recvbuf = new double [rcount];
 
+	/** set time limit */
+	workerlb->setTimeLimit(remainingTime());
 	/** Solve subproblems assigned to each process  */
 	workerlb->solve();
 
@@ -1137,6 +1154,8 @@ DSP_RTN_CODE DdMWAsync::runWorkerCore()
 			workerlb->subprobs_[i]->setGapTol(gaptol);
 #endif
 
+		/** set time limit */
+		workerlb->setTimeLimit(remainingTime());
 		/** Solve subproblems assigned to each process  */
 		workerlb->solve();
 
@@ -1353,6 +1372,8 @@ DSP_RTN_CODE DdMWAsync::runWorkerUb(
 		upperbounds.clear();
 		for (unsigned i = 0; i < solutions.size(); ++i)
 		{
+			/** set time limit */
+			workerub->setTimeLimit(remainingTime());
 			/** evaluate upper bounds */
 			double sumprimobj = workerub->evaluate(solutions[i]);
 			DSPdebugMessage("Rank %d: sumprimobj %e\n", comm_rank_, sumprimobj);

@@ -575,6 +575,20 @@ int getNumNodes(DspApiEnv * env)
  * Misc
  */
 
+void writeMps(DspApiEnv * env, const char * name)
+{
+	STO_API_CHECK_MODEL();
+	freeSolver(env);
+
+	if (!prepareDecModel(env))
+		return;
+
+	env->solver_ = new DeDriver(env->par_, env->model_);
+	env->solver_->init();
+	dynamic_cast<DeDriver*>(env->solver_)->writeExtMps(name);
+	env->solver_->finalize();
+}
+
 /** print model */
 void printModel(DspApiEnv * env)
 {

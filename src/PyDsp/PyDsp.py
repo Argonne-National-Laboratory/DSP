@@ -149,6 +149,10 @@ getDualBound = _PyDsp.getDualBound
 def getSolution(*args):
   return _PyDsp.getSolution(*args)
 getSolution = _PyDsp.getSolution
+
+def writeMps(*args):
+  return _PyDsp.writeMps(*args)
+writeMps = _PyDsp.writeMps
 # This file is compatible with both classic and new-style classes.
 
 

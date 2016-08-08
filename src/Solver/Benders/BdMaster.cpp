@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+#define DSP_DEBUG
 #include "Solver/Benders/BdMaster.h"
 #include "SolverInterface/SolverInterfaceScip.h"
 #include "SolverInterface/SolverInterfaceClp.h"
@@ -64,9 +64,7 @@ DSP_RTN_CODE BdMaster::solve()
 	DSPdebugMessage("Start solving...\n");
 
 	/** set time limit */
-	time_remains_ = par_->getDblParam("SCIP/TIME_LIM");
-	time_remains_ -= CoinGetTimeOfDay() - tic_;
-	si_->setTimeLimit(time_remains_);
+	si_->setTimeLimit(CoinMax(0.01, time_remains_));
 	tic_ = CoinGetTimeOfDay();
 
 	/** solve */
@@ -74,6 +72,7 @@ DSP_RTN_CODE BdMaster::solve()
 
 	/** solver status */
 	status_ = si_->getStatus();
+	DSPdebugMessage("Benders status %d\n", status_);
 	switch(status_)
 	{
 	case DSP_STAT_OPTIMAL:
@@ -82,7 +81,8 @@ DSP_RTN_CODE BdMaster::solve()
 	case DSP_STAT_STOPPED_NODE:
 	case DSP_STAT_STOPPED_TIME:
 		/** get solution */
-		CoinCopyN(si_->getSolution(), si_->getNumCols(), primsol_);
+		if (si_->getSolution() != NULL)
+			CoinCopyN(si_->getSolution(), si_->getNumCols(), primsol_);
 		/** primal objective value */
 		primobj_ = si_->getPrimalBound();
 		/** dual objective value */

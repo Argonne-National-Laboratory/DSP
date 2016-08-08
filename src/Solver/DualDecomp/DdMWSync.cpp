@@ -244,6 +244,9 @@ DSP_RTN_CODE DdMWSync::runMaster()
 	itercnt_   = 0;
 	iterstime_ = CoinGetTimeOfDay();
 
+	/** send start time */
+	MPI_Bcast(&iterstime_, 1, MPI_DOUBLE, 0, subcomm_);
+
 	/**
 	 * This is the main loop to iteratively solve master problem.
 	 */
@@ -268,7 +271,7 @@ DSP_RTN_CODE DdMWSync::runMaster()
 		/** apply receive message */
 		for (int i = 0, pos = 0; i < subcomm_size_; ++i)
 		{
-			message_->print(5, "message count for rank %d: %d\n", i, rcounts[i]);
+			DSPdebugMessage("message count for rank %d: %d\n", i, rcounts[i]);
 			for (int s = 0; s < nsubprobs_[i]; ++s)
 			{
 				int sindex = static_cast<int>(recvbuf[pos++]);
@@ -277,8 +280,7 @@ DSP_RTN_CODE DdMWSync::runMaster()
 				CoinCopyN(recvbuf + pos,
 						model_->getNumSubproblemCouplingCols(sindex), master->subsolution_[sindex]);
 				pos += model_->getNumSubproblemCouplingCols(sindex);
-				message_->print(5, "-> master, subprob %d primobj %+e\n",
-						sindex, master->subprimobj_[sindex]);
+				DSPdebugMessage("-> master, subprob %d primobj %+e\n", sindex, master->subprimobj_[sindex]);
 			}
 		}
 		//master->worker_ = subcomm_size_ - 1;
@@ -309,7 +311,14 @@ DSP_RTN_CODE DdMWSync::runMaster()
 		if (olddual < master_->bestdualobj_)
 			itercode_ = itercode_ == 'P' ? 'B' : 'D';
 
-		/** STOP with small gap */
+		/** STOP with time limit */
+		if (remainingTime() < 1.0)
+		{
+			signal = DSP_STAT_MW_STOP;
+			message_->print(1, "The time limit (%.2f) is reached.\n", parTimeLimit_);
+		}
+
+		/** STOP with iteration limit */
 		if (itercnt_ > master_->getParPtr()->getIntParam("DD/ITER_LIM"))
 		{
 			signal = DSP_STAT_MW_STOP;
@@ -459,11 +468,16 @@ DSP_RTN_CODE DdMWSync::runWorker()
 	/** solutions to derive Benders cuts and evaluate upper bounds */
 	Solutions solutions;
 
+	/** receive start time */
+	MPI_Bcast(&iterstime_, 1, MPI_DOUBLE, 0, subcomm_);
+
 	/** loop until when the master signals stop */
 	while (1)
 	{
 		if (lb_comm_ != MPI_COMM_NULL)
 		{
+			/** set time limit */
+			workerlb->setTimeLimit(remainingTime());
 			/** Solve subproblems assigned to each process  */
 			workerlb->solve();
 			/** create send buffer */
@@ -689,6 +703,8 @@ DSP_RTN_CODE DdMWSync::calculateUpperbound(
 	/** calculate upper bound for each solution */
 	for (unsigned i = 0; i < solutions.size(); ++i)
 	{
+		/** set time limit */
+		workerub->setTimeLimit(remainingTime());
 		/** evaluate upper bounds */
 		double sumprimobj = workerub->evaluate(solutions[i]);
 		DSPdebugMessage("Rank %d: solution index %d sumprimobj %e\n", comm_rank_, i, sumprimobj);

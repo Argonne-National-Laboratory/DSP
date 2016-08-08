@@ -32,6 +32,9 @@ public:
 	/** finalize */
 	virtual DSP_RTN_CODE finalize();
 
+	/** write extensive form in MPS */
+	virtual void writeExtMps(const char * name);
+
 private:
 
 	SolverInterface * si_; /**< my solver interface */

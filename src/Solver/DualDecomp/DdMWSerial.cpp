@@ -185,6 +185,9 @@ DSP_RTN_CODE DdMWSerial::run()
 		/** reset iteration code */
 		itercode_ = ' ';
 
+		/** set time limit */
+		workerlb->setTimeLimit(remainingTime());
+
 		/** Solve subproblems */
 		DSP_RTN_CHECK_THROW(workerlb->solve());
 
@@ -237,6 +240,9 @@ DSP_RTN_CODE DdMWSerial::run()
 				double oldub = master_->bestprimobj_;
 				for (unsigned i = 0; i < coupling_solutions.size(); ++i)
 				{
+					/** set time limit */
+					workerub->setTimeLimit(remainingTime());
+					/** evaluate upper bounds */
 					double newub = workerub->evaluate(coupling_solutions[i]);
 					DSPdebugMessage("Current upper bound %+e\n", newub);
 					if (newub < master_->bestprimobj_)
@@ -255,10 +261,17 @@ DSP_RTN_CODE DdMWSerial::run()
 		if (olddual < master_->bestdualobj_)
 			itercode_ = itercode_ == 'P' ? 'B' : 'D';
 
-		/** STOP with small gap */
+		/** STOP with iteration limit */
 		if (itercnt_ >= master_->getParPtr()->getIntParam("DD/ITER_LIM"))
 		{
 			message_->print(1, "The iteration limit is reached.\n");
+			break;
+		}
+
+		/** STOP with time limit */
+		if (remainingTime() < 1.0)
+		{
+			message_->print(1, "The time limit (%.2f) is reached.\n", parTimeLimit_);
 			break;
 		}
 
@@ -306,9 +319,6 @@ DSP_RTN_CODE DdMWSerial::run()
 			}
 		}
 	}
-
-	/** set best dual objective */
-	//master_->bestdualobj_ = master_->primobj_;
 
 	DSPdebugMessage2("primsol_:\n");
 	DSPdebug2(message_->printArray(master_->getSiPtr()->getNumCols(), master_->getPrimalSolution()));

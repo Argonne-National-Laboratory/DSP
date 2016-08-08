@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+#define DSP_DEBUG
 #include "Solver/Benders/BdMWMpi.h"
 #include "Solver/Benders/SCIPconshdlrBendersWorker.h"
 #include "SolverInterface/SolverInterfaceScip.h"
@@ -156,6 +156,8 @@ DSP_RTN_CODE BdMWMpi::runWorker()
 
 	if (!worker_)
 		return DSP_RTN_OK;
+
+	DSPdebugMessage("Beginning of runWorker()\n");
 
 	OsiCuts cuts, tempcuts;
 	int message;

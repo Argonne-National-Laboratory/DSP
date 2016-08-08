@@ -196,6 +196,9 @@ int getNumNodes(DspApiEnv * env);
  * Misc.
  */
 
+/** write extensive form MPS */
+void writeMps(DspApiEnv * env, const char * name);
+
 /** print model */
 void printModel(DspApiEnv *env);
 

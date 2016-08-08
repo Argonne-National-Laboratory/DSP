@@ -15,7 +15,7 @@ DdMW::DdMW(
 		DspMessage * message /**< message pointer */):
 BaseMasterWorker(),
 master_(NULL), model_(model), par_(par), message_(message),
-parFeasCuts_(-1), parOptCuts_(-1), parEvalUb_(-1),
+parFeasCuts_(-1), parOptCuts_(-1), parEvalUb_(-1), parTimeLimit_(0),
 itercode_(' '), itercnt_(0), iterstime_(0.0)
 {
 	cutsToAdd_ = new OsiCuts;
@@ -56,9 +56,10 @@ DSP_RTN_CODE DdMW::init()
 {
 	BGN_TRY_CATCH
 
-	parFeasCuts_ = par_->getIntParam("DD/FEAS_CUTS");
-	parOptCuts_  = par_->getIntParam("DD/OPT_CUTS");
-	parEvalUb_   = par_->getIntParam("DD/EVAL_UB");
+	parFeasCuts_  = par_->getIntParam("DD/FEAS_CUTS");
+	parOptCuts_   = par_->getIntParam("DD/OPT_CUTS");
+	parEvalUb_    = par_->getIntParam("DD/EVAL_UB");
+	parTimeLimit_ = par_->getDblParam("DD/WALL_LIM");
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
