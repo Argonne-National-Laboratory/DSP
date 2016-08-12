@@ -156,3 +156,63 @@ printf("status %d\n", status_);
 
 #undef FREE_MEMORY
 }
+
+void TssDe::writeMps(const char* filename)
+{
+#define FREE_MEMORY       \
+	FREE_PTR(mat)         \
+	FREE_ARRAY_PTR(clbd)  \
+	FREE_ARRAY_PTR(cubd)  \
+	FREE_ARRAY_PTR(ctype) \
+	FREE_ARRAY_PTR(obj)   \
+	FREE_ARRAY_PTR(rlbd)  \
+	FREE_ARRAY_PTR(rubd)
+
+	assert(model_);
+
+	/** model info */
+	CoinPackedMatrix * mat = NULL;
+	double * clbd   = NULL;
+	double * cubd   = NULL;
+	double * obj    = NULL;
+	char *   ctype  = NULL;
+	double * rlbd   = NULL;
+	double * rubd   = NULL;
+
+	BGN_TRY_CATCH
+
+	double stime;
+
+	/** get De model */
+	STO_RTN_CHECK_THROW(
+			model_->copyDeterministicEquivalent(mat, clbd, cubd, ctype, obj, rlbd, rubd),
+			"copyDeterministicEquivalent", "TssModel");
+
+	int nIntegers = model_->getNumCoreIntegers();
+
+	if (nIntegers > 0)
+	{
+		si_ = new SolverInterfaceScip(par_);
+		/** print level */
+		si_->setPrintLevel(CoinMin(par_->logLevel_ + 2, 5));
+	}
+	else
+	{
+		si_ = new SolverInterfaceClp(par_);
+		/** print level */
+		si_->setPrintLevel(par_->logLevel_);
+	}
+
+	/** load problem */
+	si_->loadProblem(mat, clbd, cubd, obj, ctype, rlbd, rubd, "TssDe");
+
+	/** write Mps file  */
+	si_->writeMps(filename);
+
+	/** save memory */
+	FREE_MEMORY
+
+	END_TRY_CATCH_RTN(FREE_MEMORY,;)
+
+#undef FREE_MEMORY
+}

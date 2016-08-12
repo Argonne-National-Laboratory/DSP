@@ -100,6 +100,16 @@ void readSmps(StoApiEnv * env, const char * smps)
 	env->tss_->readSmps(smps);
 }
 
+/** write the extensive form in Mps file */
+void writeMps(StoApiEnv * env, const char * mps)
+{
+	STO_API_CHECK_MODEL();
+	freeTssSolver(env);
+	env->solver_ = new TssDe;
+	env->solver_->loadModel(env->par_, env->tss_);
+	dynamic_cast<TssDe*>(env->solver_)->writeMps(mps);
+}
+
 /** load first-stage problem */
 void loadFirstStage(
 		StoApiEnv *          env,   /**< pointer to API object */
@@ -687,6 +697,54 @@ void getDdChangesOfMultiplier(StoApiEnv * env, double * changes)
 		for (unsigned int i = 0; i < dd->changesOfMultiplier_.size(); ++i)
 			changes[i] = dd->changesOfMultiplier_[i];
 	}
+}
+
+/** get DD master time */
+double getDdMasterTotalTime(StoApiEnv * env)
+{
+	STO_API_CHECK_SOLVER(0.);
+	TssDdMpi * dd = dynamic_cast<TssDdMpi*>(env->solver_);
+	if (dd)
+	{
+		return dd->total_time_master_;
+	}
+	return 0;
+}
+
+/** get DD lower bounding time */
+double getDdLbTotalTime(StoApiEnv * env)
+{
+	STO_API_CHECK_SOLVER(0.);
+	TssDdMpi * dd = dynamic_cast<TssDdMpi*>(env->solver_);
+	if (dd)
+	{
+		return dd->total_time_lb_;
+	}
+	return 0;
+}
+
+/** get DD upper bounding time */
+double getDdUbTotalTime(StoApiEnv * env)
+{
+	STO_API_CHECK_SOLVER(0.);
+	TssDdMpi * dd = dynamic_cast<TssDdMpi*>(env->solver_);
+	if (dd)
+	{
+		return dd->total_time_ub_;
+	}
+	return 0;
+}
+
+/** get DD cut generation time */
+double getDdCgTotalTime(StoApiEnv * env)
+{
+	STO_API_CHECK_SOLVER(0.);
+	TssDdMpi * dd = dynamic_cast<TssDdMpi*>(env->solver_);
+	if (dd)
+	{
+		return dd->total_time_cg_;
+	}
+	return 0;
 }
 
 /**

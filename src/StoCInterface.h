@@ -51,6 +51,9 @@ void setDimensions(
 /** read smps files */
 void readSmps(StoApiEnv * env, const char * smps);
 
+/** write the extensive form in Mps file */
+void writeMps(StoApiEnv * env, const char * mps);
+
 /** load first-stage problem */
 void loadFirstStage(
 		StoApiEnv *          env,   /**< pointer to API object */
@@ -261,6 +264,18 @@ int getDdNumChangesOfMultiplier(StoApiEnv * env);
 
 /** get changes of multiplier */
 void getDdChangesOfMultiplier(StoApiEnv * env, double * changes);
+
+/** get DD master time */
+double getDdMasterTotalTime(StoApiEnv * env);
+
+/** get DD lower bounding time */
+double getDdLbTotalTime(StoApiEnv * env);
+
+/** get DD upper bounding time */
+double getDdUbTotalTime(StoApiEnv * env);
+
+/** get DD cut generation time */
+double getDdCgTotalTime(StoApiEnv * env);
 
 /**
  * Misc.

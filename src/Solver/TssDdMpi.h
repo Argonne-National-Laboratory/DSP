@@ -159,6 +159,11 @@ public:
 	vector<double> dualBounds_;     /**< dual bounds per iteration */
 	vector<double> changesOfMultiplier_; /**< changes of multipliers */
 
+	double total_time_master_; /**< total time spent on the master */
+	double total_time_lb_;     /**< total time spent on the lower bounding */
+	double total_time_ub_;     /**< total time spent on the upper bounding */
+	double total_time_cg_;     /**< total time spent on the cut generation */
+
 	string logfile_prefix_; /**< prefix of logfile name */
 };
 

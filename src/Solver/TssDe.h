@@ -24,6 +24,9 @@ public:
 	/** solve */
 	virtual STO_RTN_CODE solve();
 
+	/** write extensive form */
+	void writeMps(const char * filename);
+
 private:
 
 	SolverInterface * si_; /**< my solver interface */

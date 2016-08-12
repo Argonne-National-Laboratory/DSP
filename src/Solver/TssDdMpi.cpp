@@ -41,11 +41,15 @@ TssDdMpi::TssDdMpi(
 	nsubprobs_(NULL),
 	scenarioSpecs_(NULL),
 	multipliers_(NULL),
-	tic_(MPI::Wtime()),
+	tic_(MPI_Wtime()),
 	iterCnt_(0),
 	nInfeasible_(0),
 	ctime_start_(0.),
 	wtime_start_(0.),
+	total_time_master_(0.0),
+	total_time_lb_(0.0),
+	total_time_ub_(0.0),
+	total_time_cg_(0.0),
 	logfile_prefix_(logfile_prefix)
 {
 	MPI_Comm_rank(comm, &comm_rank_);
@@ -136,7 +140,7 @@ STO_RTN_CODE TssDdMpi::solve()
 		ticToc(); /**< update wall clock */
 
 		/** timestamp per iteration */
-		wtime_elapsed_.push_back(MPI::Wtime() - wtime_start_);
+		wtime_elapsed_.push_back(MPI_Wtime() - wtime_start_);
 
 		/** terminate? */
 		if (doTerminate() || time_remains_ < 0.)
@@ -150,7 +154,7 @@ STO_RTN_CODE TssDdMpi::solve()
 
 #ifdef DSP_DEBUG
 		if (comm_rank_ == 0)
-			DSPdebugMessage("Sychronized subproblems (%.2f seconds)\n", MPI::Wtime() - tic_);
+			DSPdebugMessage("Sychronized subproblems (%.2f seconds)\n", MPI_Wtime() - tic_);
 #endif
 	}
 
@@ -233,7 +237,7 @@ STO_RTN_CODE TssDdMpi::createSubproblem()
 
 	/** Let the root know how many scenarios each process use. */
 	int nsubprobs = subprobs_.size();
-	MPI_Gather(&nsubprobs, 1, MPI::INT, nsubprobs_, 1, MPI::INT, 0, comm_);
+	MPI_Gather(&nsubprobs, 1, MPI_INT, nsubprobs_, 1, MPI_INT, 0, comm_);
 
 	if (comm_rank_ == 0)
 	{
@@ -245,8 +249,8 @@ STO_RTN_CODE TssDdMpi::createSubproblem()
 	}
 
 	/** Let the root know which scenarios each process take care of. */
-	MPI_Gatherv(par_->TssDdProcIdxSet_, nsubprobs, MPI::INT,
-			scenarioSpecs_, nsubprobs_, displs, MPI::INT, 0, comm_);
+	MPI_Gatherv(par_->TssDdProcIdxSet_, nsubprobs, MPI_INT,
+			scenarioSpecs_, nsubprobs_, displs, MPI_INT, 0, comm_);
 
 	/** free memory */
 	FREE_ARRAY_PTR(displs);
@@ -259,7 +263,8 @@ STO_RTN_CODE TssDdMpi::solveSubproblem()
 {
 	int doContinue = 1;
 	Solutions solutions;
-	double stime = MPI::Wtime();
+	double stime = MPI_Wtime();
+	double tic;
 
 	/** indicators */
 	bool doAddFeasCuts = false;
@@ -340,10 +345,12 @@ STO_RTN_CODE TssDdMpi::solveSubproblem()
 					subprobs_[s]->setTimeLimit(CoinMin(time_remains_, par_->ScipLimitsTime_));
 
 					/** solve subproblem */
+					tic = MPI_Wtime();
 					subprobs_[s]->solve();
+					total_time_lb_ += MPI_Wtime() - tic;
 
 					DSPdebugMessage("Rank %d: solved scenario %d status %d objective %e (%.2f seconds)\n",
-							comm_rank_, subprobs_[s]->sind_, subprobs_[s]->si_->getStatus(), subprobs_[s]->si_->getPrimalBound(), MPI::Wtime() - tic_);
+							comm_rank_, subprobs_[s]->sind_, subprobs_[s]->si_->getStatus(), subprobs_[s]->si_->getPrimalBound(), MPI_Wtime() - tic_);
 
 					/** update wall clock */
 					ticToc();
@@ -377,7 +384,7 @@ STO_RTN_CODE TssDdMpi::solveSubproblem()
 #endif
 
 		/** MPI reduce for solution status */
-		MPI_Allreduce(&doContinueLocal, &doContinue, 1, MPI::INT, MPI::MIN, comm_);
+		MPI_Allreduce(&doContinueLocal, &doContinue, 1, MPI_INT, MPI_MIN, comm_);
 
 		/** terminate? */
 		if (doContinue == 0)
@@ -395,7 +402,9 @@ STO_RTN_CODE TssDdMpi::solveSubproblem()
 		if (doAddFeasCuts)
 		{
 			int ncuts = cuts_->sizeCuts();
+			tic = MPI_Wtime();
 			int violated = addFeasCuts(solutions);
+			total_time_cg_ += MPI_Wtime() - tic;
 			if (violated)
 			{
 #ifdef DO_SERIALIZE
@@ -439,7 +448,9 @@ STO_RTN_CODE TssDdMpi::solveSubproblem()
 		if (doEvalUb)
 		{
 			/** update wall clock */
+			tic = MPI_Wtime();
 			obtainUpperBounds(nsync);
+			total_time_ub_ += MPI_Wtime() - tic;
 		}
 
 		/** update wall clock */
@@ -450,7 +461,7 @@ STO_RTN_CODE TssDdMpi::solveSubproblem()
 			doContinueLocal = 0;
 
 		/** MPI reduce for solution status */
-		MPI_Allreduce(&doContinueLocal, &doContinue, 1, MPI::INT, MPI::MIN, comm_);
+		MPI_Allreduce(&doContinueLocal, &doContinue, 1, MPI_INT, MPI_MIN, comm_);
 
 		/** terminate? */
 		if (doContinue == 0)
@@ -458,7 +469,11 @@ STO_RTN_CODE TssDdMpi::solveSubproblem()
 
 		/** 6. generate optimality cuts; synchronize cuts; go to 1 if violated. */
 		if (doAddOptCuts)
+		{
+			tic = MPI_Wtime();
 			addOptCuts(nsync);
+			total_time_cg_ += MPI_Wtime() - tic;
+		}
 		break;
 	}
 
@@ -468,7 +483,7 @@ STO_RTN_CODE TssDdMpi::solveSubproblem()
 	solutions.clear();
 
 	/** subproblem solution time */
-	wtime_subprob_.push_back(MPI::Wtime() - stime);
+	wtime_subprob_.push_back(MPI_Wtime() - stime);
 
 	/** terminate? */
 	if (doContinue == 0)
@@ -531,11 +546,11 @@ STO_RTN_CODE TssDdMpi::syncSubproblem()
 	}
 
 	/** scatter lambda */
-	double stime = MPI::Wtime();
-	MPI_Scatterv(sendbuf, scounts, displs, MPI::DOUBLE, recvbuf, rcount, MPI::DOUBLE, 0, comm_);
-	DSPdebugMessage("MPI_Scatterv %.2f seconds\n", MPI::Wtime() - stime);
+	double stime = MPI_Wtime();
+	MPI_Scatterv(sendbuf, scounts, displs, MPI_DOUBLE, recvbuf, rcount, MPI_DOUBLE, 0, comm_);
+	DSPdebugMessage("MPI_Scatterv %.2f seconds\n", MPI_Wtime() - stime);
 
-	stime = MPI::Wtime();
+	stime = MPI_Wtime();
 #if USE_ROOT_PROCESSOR == 0
 	if (comm_rank_ != 0)
 #endif
@@ -576,7 +591,7 @@ STO_RTN_CODE TssDdMpi::syncSubproblem()
 		}
 #endif
 	}
-	DSPdebugMessage("Update subproblems %.2f seconds\n", MPI::Wtime() - stime);
+	DSPdebugMessage("Update subproblems %.2f seconds\n", MPI_Wtime() - stime);
 
 	FREE_MEMORY;
 
@@ -619,6 +634,7 @@ STO_RTN_CODE TssDdMpi::solveMaster()
 	master_->solve();
 
 	wtime_master_.push_back(MPI_Wtime() - stime);
+	total_time_master_ += MPI_Wtime() - stime;
 
 	if (par_->TssDdDualVarsLog_)
 	{
@@ -701,8 +717,8 @@ STO_RTN_CODE TssDdMpi::syncMaster()
 	}
 
 	/** gather subproblem solutions from all processes */
-	MPI_Gatherv(sendbuf, slenPerProcess, MPI::DOUBLE,
-			recvbuf, rcounts, displs, MPI::DOUBLE, 0, comm_);
+	MPI_Gatherv(sendbuf, slenPerProcess, MPI_DOUBLE,
+			recvbuf, rcounts, displs, MPI_DOUBLE, 0, comm_);
 
 	if (comm_rank_ == 0)
 	{
@@ -788,7 +804,7 @@ bool TssDdMpi::doTerminate()
 					printf("(gap %.2f %%)", gapPrimal * 100);
 			}
 			printf(", time elapsed %.2f sec. (master %.2f)\n",
-					MPI::Wtime() - wtime_start_, wtime_master_[wtime_master_.size() - 1]);
+					MPI_Wtime() - wtime_start_, wtime_master_[wtime_master_.size() - 1]);
 		}
 
 		/** If master is not optimal, terminate. */
@@ -1160,7 +1176,7 @@ void TssDdMpi::obtainUpperBounds(
 	}
 #endif
 	
-	MPI_Allreduce(&timeExceededLocal, &timeExceeded, 1, MPI::INT, MPI::MAX, comm_);
+	MPI_Allreduce(&timeExceededLocal, &timeExceeded, 1, MPI_INT, MPI_MAX, comm_);
 	if (timeExceeded == 1)
 	{
 		FREE_ARRAY_PTR(ub);
@@ -1198,7 +1214,7 @@ void TssDdMpi::collectObjValues(
 	double * sumvals = new double [num];
 
 	/** MPI_Allreduce */
-	MPI_Allreduce(vals, sumvals, num, MPI::DOUBLE, MPI::SUM, comm_);
+	MPI_Allreduce(vals, sumvals, num, MPI_DOUBLE, MPI_SUM, comm_);
 
 	/** copy values */
 	CoinCopyN(sumvals, num, vals);
@@ -1431,7 +1447,7 @@ void TssDdMpi::syncCuts(
 /** update wall clock time remains */
 void TssDdMpi::ticToc()
 {
-	time_remains_ -= MPI::Wtime() - tic_;
-	tic_ = MPI::Wtime();
+	time_remains_ -= MPI_Wtime() - tic_;
+	tic_ = MPI_Wtime();
 }
 
