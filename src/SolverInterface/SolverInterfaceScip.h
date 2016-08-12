@@ -242,9 +242,6 @@ public:
 	/** set cuts */
 	virtual void setCuts(OsiCuts * cuts);
 
-	/** clear cuts */
-	virtual void clearCuts();
-
 	/**
 	 * SCIP specific functions
 	 */
