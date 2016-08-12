@@ -31,6 +31,9 @@ public:
 	/** update problem */
 	virtual DSP_RTN_CODE updateProblem();
 
+	/** get number of lambdas */
+	virtual int getNumLambdas() {return model_->getNumCouplingRows();}
+
 protected:
 
 	/** create problem */
