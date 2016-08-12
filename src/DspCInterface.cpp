@@ -495,24 +495,38 @@ int getNumScenarios(DspApiEnv * env)
 	return getTssModel(env)->getNumScenarios();
 }
 
-/** get number of columns */
+/** get number of coupling rows */
+int getNumCouplingRows(DspApiEnv * env)
+{
+	STO_API_CHECK_MODEL(-1);
+	return getModelPtr(env)->getNumCouplingRows();
+}
+
+/** get total number of rows */
+int getTotalNumRows(DspApiEnv * env)
+{
+	STO_API_CHECK_MODEL(-1);
+	return getNumRows(env,0)+getNumRows(env,1);
+}
+
+/** get total number of columns */
 int getTotalNumCols(DspApiEnv * env)
 {
 	STO_API_CHECK_MODEL(-1);
-	return env->model_->getFullModelNumCols();
+	return getModelPtr(env)->getFullModelNumCols();
 }
 
 /** get number of subproblems */
 int getNumSubproblems(DspApiEnv * env)
 {
 	STO_API_CHECK_MODEL(-1);
-	return env->model_->getNumSubproblems();
+	return getModelPtr(env)->getNumSubproblems();
 }
 
 void getObjCoef(DspApiEnv * env, double * obj)
 {
 	STO_API_CHECK_SOLVER();
-	return env->model_->getObjCoef(obj);
+	return getModelPtr(env)->getObjCoef(obj);
 }
 
 /** get total cpu time */
@@ -551,10 +565,17 @@ double getDualBound(DspApiEnv * env)
 }
 
 /** get solution */
-void getSolution(DspApiEnv * env, int num, double * solution)
+void getPrimalSolution(DspApiEnv * env, int num, double * solution)
 {
 	STO_API_CHECK_SOLVER();
 	CoinCopyN(env->solver_->getPrimalSolution(), num, solution);
+}
+
+/** get dual solution */
+void getDualSolution(DspApiEnv * env, int num, double * solution)
+{
+	STO_API_CHECK_SOLVER();
+	CoinCopyN(env->solver_->getDualSolution(), num, solution);
 }
 
 /** get number of iterations */
