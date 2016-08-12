@@ -1055,12 +1055,12 @@ DSP_RTN_CODE DdMWAsync::runWorkerInit()
 	for (int s = 0, pos = 0; s < narrprocidx; ++s)
 	{
 		sendbuf[pos++] = static_cast<double>(workerlb->subprobs_[s]->sind_);
-		sendbuf[pos++] = workerlb->subprobs_[s]->getPrimalBound();
-		sendbuf[pos++] = workerlb->subprobs_[s]->getDualBound();
+		sendbuf[pos++] = workerlb->subprobs_[s]->getPrimalObjective();
+		sendbuf[pos++] = workerlb->subprobs_[s]->getDualObjective();
 		CoinCopyN(workerlb->subprobs_[s]->si_->getSolution(), workerlb->subprobs_[s]->ncols_coupling_, sendbuf + pos);
 		pos += model_->getNumSubproblemCouplingCols(workerlb->subprobs_[s]->sind_);
 		message_->print(5, "MW -> worker %d, subprob %d primobj %+e dualobj %+e\n",
-				comm_rank_, workerlb->subprobs_[s]->sind_, workerlb->subprobs_[s]->getPrimalBound(), workerlb->subprobs_[s]->getDualBound());
+				comm_rank_, workerlb->subprobs_[s]->sind_, workerlb->subprobs_[s]->getPrimalObjective(), workerlb->subprobs_[s]->getDualObjective());
 	}
 
 //	DSPdebugMessage("Worker send message (%d):\n", scount);
@@ -1169,12 +1169,12 @@ DSP_RTN_CODE DdMWAsync::runWorkerCore()
 		for (int s = 0, pos = 0; s < narrprocidx; ++s)
 		{
 			sendbuf[pos++] = static_cast<double>(workerlb->subprobs_[s]->sind_);
-			sendbuf[pos++] = workerlb->subprobs_[s]->getPrimalBound();
-			sendbuf[pos++] = workerlb->subprobs_[s]->getDualBound();
+			sendbuf[pos++] = workerlb->subprobs_[s]->getPrimalObjective();
+			sendbuf[pos++] = workerlb->subprobs_[s]->getDualObjective();
 			CoinCopyN(workerlb->subprobs_[s]->si_->getSolution(), workerlb->subprobs_[s]->ncols_coupling_, sendbuf + pos);
 			pos += workerlb->subprobs_[s]->ncols_coupling_;
 			DSPdebugMessage("worker %d, subprob %d primobj %+e dualobj %+e\n",
-					comm_rank_, workerlb->subprobs_[s]->sind_, workerlb->subprobs_[s]->getPrimalBound(), workerlb->subprobs_[s]->getDualBound());
+					comm_rank_, workerlb->subprobs_[s]->sind_, workerlb->subprobs_[s]->getPrimalObjective(), workerlb->subprobs_[s]->getDualObjective());
 		}
 #ifdef DSP_DEBUG_QUEUE1
 		message_->print(0, "LB processor (rank %d) send message (%d):\n", comm_rank_, scount);

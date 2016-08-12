@@ -309,7 +309,11 @@ DSP_RTN_CODE DdMWSync::runMaster()
 		double olddual = master_->bestdualobj_;
 		master_->updateProblem();
 		if (olddual < master_->bestdualobj_)
+		{
 			itercode_ = itercode_ == 'P' ? 'B' : 'D';
+			if (master_->getLambda())
+				CoinCopyN(master_->getLambda(), model_->getNumCouplingRows(), master_->bestdualsol_);
+		}
 
 		/** STOP with time limit */
 		if (remainingTime() < 1.0)
@@ -484,13 +488,13 @@ DSP_RTN_CODE DdMWSync::runWorker()
 			for (int s = 0, pos = 0; s < narrprocidx; ++s)
 			{
 				sendbuf[pos++] = static_cast<double>(workerlb->subprobs_[s]->sind_);
-				sendbuf[pos++] = workerlb->subprobs_[s]->getPrimalBound();
-				sendbuf[pos++] = workerlb->subprobs_[s]->getDualBound();
+				sendbuf[pos++] = workerlb->subprobs_[s]->getPrimalObjective();
+				sendbuf[pos++] = workerlb->subprobs_[s]->getDualObjective();
 				CoinCopyN(workerlb->subprobs_[s]->si_->getSolution(), workerlb->subprobs_[s]->ncols_coupling_, sendbuf + pos);
 				pos += model_->getNumSubproblemCouplingCols(workerlb->subprobs_[s]->sind_);
 				message_->print(5, "MW -> worker %d, subprob %d primobj %+e dualobj %+e\n",
 						comm_rank_, workerlb->subprobs_[s]->sind_,
-						workerlb->subprobs_[s]->getPrimalBound(), workerlb->subprobs_[s]->getDualBound());
+						workerlb->subprobs_[s]->getPrimalObjective(), workerlb->subprobs_[s]->getDualObjective());
 			}
 #ifdef DSP_DEBUG2
 			for (int i = 0; i < lb_comm_size_; ++i)
@@ -521,7 +525,7 @@ DSP_RTN_CODE DdMWSync::runWorker()
 			{
 				vector<double> upperbounds;
 				DSP_RTN_CHECK_THROW(calculateUpperbound(solutions, upperbounds));
-				DSP_RTN_CHECK_THROW(syncUpperbound(solutions.size(), upperbounds));
+				DSP_RTN_CHECK_THROW(syncUpperbound(solutions, upperbounds));
 			}
 
 			/** free solutions */
@@ -769,7 +773,7 @@ DSP_RTN_CODE DdMWSync::syncBendersInfo(
 }
 
 DSP_RTN_CODE DdMWSync::syncUpperbound(
-		int nsolutions, /**< number of solutions */
+		Solutions      solutions,  /**< number of solutions */
 		vector<double> upperbounds /**< list of upper bounds */) {
 #define FREE_MEMORY              \
 	FREE_ARRAY_PTR(primobjzeros) \
@@ -778,6 +782,7 @@ DSP_RTN_CODE DdMWSync::syncUpperbound(
 
 	if (parEvalUb_ < 0) return DSP_RTN_OK;
 
+	int nsolutions;
 	double * primobjzeros = NULL; /**< primal objectives filled with zeros */
 	double * primobjs     = NULL; /**< primal objectives from subproblems */
 	double * sumub        = NULL; /**< the sum of primal objectives */
@@ -788,6 +793,7 @@ DSP_RTN_CODE DdMWSync::syncUpperbound(
 
 	if (comm_rank_ == 0)
 	{
+		nsolutions = solutions.size();
 		/** receive the number of solutions */
 		MPI_Recv(&nsolutions, 1, MPI_INT, lb_comm_root_, DSP_MPI_TAG_UB, comm_, &status);
 		DSPdebugMessage("Rank %d nsolutions %d\n", comm_rank_, nsolutions);
@@ -808,6 +814,7 @@ DSP_RTN_CODE DdMWSync::syncUpperbound(
 
 	if (comm_rank_ == 0)
 	{
+		int bestprimsol = -1;
 		double oldprimobj = master_->bestprimobj_;
 		/** receive upper bounds */
 		MPI_Recv(primobjs, nsolutions, MPI_DOUBLE, lb_comm_root_, DSP_MPI_TAG_UB, comm_, &status);
@@ -815,10 +822,19 @@ DSP_RTN_CODE DdMWSync::syncUpperbound(
 		for (int i = 0; i < nsolutions; ++i)
 		{
 			DSPdebugMessage("solution %d: primal objective %+e\n", i, primobjs[i]);
-			master_->bestprimobj_ = primobjs[i] < master_->bestprimobj_ ? primobjs[i] : master_->bestprimobj_;
+			if (primobjs[i] < master_->bestprimobj_)
+			{
+				master_->bestprimobj_ = primobjs[i];
+				bestprimsol = i;
+			}
 		}
 		if (oldprimobj > master_->bestprimobj_)
+		{
 			itercode_ = 'P';
+//			CoinCopyN(solutions[bestprimsol]->denseVector(model_->getNumCouplingCols()),
+//					model_->getNumCouplingCols(),
+//					master_->bestprimsol_);
+		}
 	}
 	else if (lb_comm_ != MPI_COMM_NULL)
 	{
