@@ -79,18 +79,18 @@ if (PYTHONLIBS_FOUND)
 	find_package(SWIG)
 	if (SWIG_FOUND)
 		if (MPI_CXX_FOUND)
-			execute_process(COMMAND python get_mpi4py_include.py
+			execute_process(COMMAND python ${CMAKE_SOURCE_DIR}/get_mpi4py_include.py
 				RESULT_VARIABLE MPI4PY_NOT_FOUND
 				OUTPUT_VARIABLE MPI4PY_INCLUDE)
 			if (MPI4PY_NOT_FOUND EQUAL 0)
 				set(PYDSP_COMPILE ON)
-				set(PYDSP_I "src/PyDsp/PyDspMpi.i")
+				set(PYDSP_I "${CMAKE_SOURCE_DIR}/src/PyDsp/PyDspMpi.i")
 				string(REPLACE "\n" "" MPI4PY_INCLUDE ${MPI4PY_INCLUDE})
 			else()
 				message(WARNING "${Red}Python interface requires mpi4py python module.${ColourReset}")
 			endif()
 		else()
-			set(PYDSP_I "src/PyDsp/PyDsp.i")
+			set(PYDSP_I "${CMAKE_SOURCE_DIR}/src/PyDsp/PyDsp.i")
 		endif()
 	else()
 		message(WARNING "${Red}Python interface requires SWIG.${ColourReset}")
@@ -175,9 +175,9 @@ else(READ_CONF)
 		INSTALL_COMMAND make install_headers)
 
 	# SCIP Optimization Suite (3.1.1)
-	set(SCIPOPTSUITE_DIR ${EXTRA_DIR}/scipoptsuite-3.1.1)
-	set(SCIP_DIR ${SCIPOPTSUITE_DIR}/scip-3.1.1)
-	set(SOPLEX_DIR ${SCIPOPTSUITE_DIR}/soplex-2.0.1)
+	set(SCIPOPTSUITE_DIR ${EXTRA_DIR}/scipoptsuite-3.2.1)
+	set(SCIP_DIR ${SCIPOPTSUITE_DIR}/scip-3.2.1)
+	set(SOPLEX_DIR ${SCIPOPTSUITE_DIR}/soplex-2.2.1)
 	ExternalProject_Add(scipoptsuite
 		PREFIX ${SCIPOPTSUITE_DIR}
 		SOURCE_DIR ${SCIPOPTSUITE_DIR}
