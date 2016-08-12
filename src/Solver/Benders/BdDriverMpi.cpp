@@ -29,8 +29,8 @@ DSP_RTN_CODE BdDriverMpi::init()
 {
 	BGN_TRY_CATCH
 
-	if (comm_rank_ == 0)
-		primsol_ = new double [model_->getFullModelNumCols()];
+	/** allocate memory for primal solution */
+	primsol_ = new double [model_->getFullModelNumCols()];
 
 	/** create and initialize master-worker */
 	mw_ = new BdMWMpi(comm_, model_, par_, message_);

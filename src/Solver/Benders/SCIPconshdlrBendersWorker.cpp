@@ -14,7 +14,7 @@ SCIPconshdlrBendersWorker::SCIPconshdlrBendersWorker(
 		SCIP * scip,
 		int sepapriority,
 		MPI_Comm comm):
-SCIPconshdlrBenders(scip, sepapriority),
+SCIPconshdlrBenders(scip, "Benders", sepapriority),
 comm_(comm),
 recvcounts_(NULL),
 displs_(NULL),
@@ -53,13 +53,14 @@ SCIP_DECL_CONSHDLRCLONE(scip::ObjProbCloneable* SCIPconshdlrBendersWorker::clone
 	return conshdlrclone;
 }
 
-void SCIPconshdlrBendersWorker::setNumSubprobs(int nsubprobs)
+void SCIPconshdlrBendersWorker::setDecModel(DecModel * model)
 {
-	nsubprobs_   = nsubprobs;
-	recvcounts_  = new int [comm_size_];
-	displs_      = new int [comm_size_];
-	cut_index_   = new int [nsubprobs_];
-	cut_status_  = new int [nsubprobs_];
+	model_        = model;
+	int nsubprobs = model_->getNumSubproblems();
+	recvcounts_   = new int [comm_size_];
+	displs_       = new int [comm_size_];
+	cut_index_    = new int [nsubprobs];
+	cut_status_   = new int [nsubprobs];
 
 	/** The master does not solve subproblem. */
 	recvcounts_[0] = 0;
@@ -69,14 +70,14 @@ void SCIPconshdlrBendersWorker::setNumSubprobs(int nsubprobs)
 	for (int i = 1; i < comm_size_; ++i)
 	{
 		recvcounts_[i] = 0;
-		for (int s = i - 1; s < nsubprobs_; s += comm_size_-1)
+		for (int s = i - 1; s < nsubprobs; s += comm_size_-1)
 		{
 			recvcounts_[i]++;
 			cut_index_[s] = i;
 		}
 		displs_[i] = i == 0 ? 0 : displs_[i-1] + recvcounts_[i-1];
 		DSPdebugMessage("recvcounts_[%d] %d displs_[%d] %d\n", i, recvcounts_[i], i, displs_[i]);
-		DSPdebug(DspMessage::printArray(nsubprobs_, cut_index_));
+		DSPdebug(DspMessage::printArray(nsubprobs, cut_index_));
 	}
 }
 
@@ -87,12 +88,13 @@ void SCIPconshdlrBendersWorker::generateCuts(
 		OsiCuts * cuts /**< [out] cuts generated */)
 {
 #define FREE_MEMORY                      \
-	FREE_2D_ARRAY_PTR(nsubprobs_, cutval) \
+	FREE_2D_ARRAY_PTR(nsubprobs, cutval) \
 	FREE_ARRAY_PTR(cutrhs)
 
 	OsiCuts cuts_collected;
 	double ** cutval = NULL;   /** dense cut coefficients for each subproblem */
 	double *  cutrhs = NULL;   /** cut rhs for each subproblem */
+	int nsubprobs = model_->getNumSubproblems();
 
 	BGN_TRY_CATCH
 
@@ -111,8 +113,8 @@ void SCIPconshdlrBendersWorker::generateCuts(
 	DSPdebugMessage("[%d]: Collected %d cuts\n", comm_rank_, cuts_collected.sizeCuts());
 
 	/** allocate memory */
-	cutval = new double * [nsubprobs_];
-	cutrhs = new double [nsubprobs_];
+	cutval = new double * [nsubprobs];
+	cutrhs = new double [nsubprobs];
 
 	for (int i = 0; i < cuts_collected.sizeCuts(); ++i)
 	{
@@ -158,7 +160,7 @@ void SCIPconshdlrBendersWorker::aggregateCuts(
 	aggrhs = new double [naux_];
 	CoinZeroN(aggrhs, naux_);
 
-	for (int i = 0; i < nsubprobs_; ++i)
+	for (int i = 0; i < model_->getNumSubproblems(); ++i)
 	{
 		/** generate feasibility cut */
 		if (cut_status_[i] == DSP_STAT_PRIM_INFEASIBLE)

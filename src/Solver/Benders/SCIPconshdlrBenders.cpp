@@ -8,7 +8,8 @@
 //#define DSP_DEBUG
 
 /** DSP */
-#include <Utility/DspMessage.h>
+#include "Utility/DspMessage.h"
+#include "Model/TssModel.h"
 #include "Solver/Benders/SCIPconshdlrBenders.h"
 
 /** constraint data for Benders cuts */
@@ -298,6 +299,7 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 				SCIPgetCutEfficacy(scip, sol, row),
 				SCIPgetRowMinCoef(scip, row), SCIPgetRowMaxCoef(scip, row),
 				SCIPgetRowMaxCoef(scip, row)/SCIPgetRowMinCoef(scip, row));
+			DSPdebug(rc->print());
 
 			/** flush all changes before adding cut */
 			SCIP_CALL(SCIPflushRowExtensions(scip, row));
@@ -363,7 +365,7 @@ SCIP_RETCODE SCIPconshdlrBenders::setOriginalVariables(
 SCIP_DECL_CONSHDLRCLONE(scip::ObjProbCloneable* SCIPconshdlrBenders::clone)
 {
 	*valid = true;
-	SCIPconshdlrBenders * conshdlrclone = new SCIPconshdlrBenders(scip, scip_sepapriority_);
+	SCIPconshdlrBenders * conshdlrclone = new SCIPconshdlrBenders(scip, "Benders", scip_sepapriority_);
 	conshdlrclone->setBdSub(bdsub_);
 	conshdlrclone->setOriginalVariables(nvars_, vars_, naux_);
 	return conshdlrclone;

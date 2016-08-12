@@ -138,7 +138,7 @@ SCIPconshdlrBenders* BdMWMpi::constraintHandler()
 
 	/** MPI Benders */
 	conshdlr = new SCIPconshdlrBendersWorker(si->getSCIP(), par_->getIntParam("BD/CUT_PRIORITY"), comm_);
-	conshdlr->setNumSubprobs(model_->getNumSubproblems());
+	conshdlr->setDecModel(model_);
 	conshdlr->setOriginalVariables(si->getNumCols(), si->getSCIPvars(), par_->getIntParam("BD/NUM_CUTS_PER_ITER"));
 
 	END_TRY_CATCH_RTN(;,NULL)
