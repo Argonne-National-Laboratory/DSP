@@ -112,24 +112,29 @@ endif()
 ##################################################
 # INSTALL
 ##################################################
-install(TARGETS Dsp LIBRARY DESTINATION ${CMAKE_SOURCE_DIR}/lib)
+install(TARGETS Dsp LIBRARY DESTINATION $ENV{PWD}/lib)
+if(PYDSP_COMPILE)
+	install(TARGETS PyDsp LIBRARY DESTINATION $ENV{PWD}/lib)
+endif()
 
-# some message
+##################################################
+# Messages
+##################################################
 install(CODE "message(\"\")")
 install(CODE "message(\"${Blue}** Please add the following line to the .bash_profile or .bashrc in your home directory:${ColourReset}\")")
 if(APPLE)
-	install(CODE "message(\"${Red}    export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:${CMAKE_SOURCE_DIR}/lib${ColourReset}\")")
+	install(CODE "message(\"${Red}    export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$ENV{PWD}/lib${ColourReset}\")")
 else()
-	install(CODE "message(\"${Red}    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${CMAKE_SOURCE_DIR}/lib${ColourReset}\")")
+	install(CODE "message(\"${Red}    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ENV{PWD}/lib${ColourReset}\")")
 endif()
 if(PYDSP_COMPILE)
 	if(APPLE)
-		install(CODE "execute_process(COMMAND cp src/PyDsp/libPyDsp.dylib lib/_PyDsp.dylib)")
+		install(CODE "execute_process(COMMAND ln -s $ENV{PWD}/src/PyDsp/libPyDsp.dylib $ENV{PWD}/lib/_PyDsp.dylib)")
 	else()
-		install(CODE "execute_process(COMMAND cp src/PyDsp/libPyDsp.so lib/_PyDsp.so)")
+		install(CODE "execute_process(COMMAND ln -s $ENV{PWD}/src/PyDsp/libPyDsp.so $ENV{PWD}/lib/_PyDsp.so)")
 	endif()
-	install(CODE "execute_process(COMMAND cp src/PyDsp/PyDsp.py lib/PyDsp.py)")
-	install(CODE "message(\"${Red}    export PYTHONPATH=$PYTHONPATH:${CMAKE_SOURCE_DIR}/lib${ColourReset}\")")
+	install(CODE "execute_process(COMMAND cp $ENV{PWD}/src/PyDsp/PyDsp.py $ENV{PWD}/lib/PyDsp.py)")
+	install(CODE "message(\"${Red}    export PYTHONPATH=$PYTHONPATH:$ENV{PWD}/lib${ColourReset}\")")
 endif()
 install(CODE "message(\"\")")
 install(CODE "message(\"** Please install Julia from http://julialang.org/downloads/\")")
