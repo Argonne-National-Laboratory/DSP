@@ -176,9 +176,9 @@ else(READ_CONF)
 		INSTALL_COMMAND make install_headers)
 
 	# SCIP Optimization Suite (3.1.1)
-	set(SCIPOPTSUITE_DIR ${EXTRA_DIR}/scipoptsuite-3.2.1)
-	set(SCIP_DIR ${SCIPOPTSUITE_DIR}/scip-3.2.1)
-	set(SOPLEX_DIR ${SCIPOPTSUITE_DIR}/soplex-2.2.1)
+	set(SCIPOPTSUITE_DIR ${EXTRA_DIR}/scipoptsuite-3.1.1)
+	set(SCIP_DIR ${SCIPOPTSUITE_DIR}/scip-3.1.1)
+	set(SOPLEX_DIR ${SCIPOPTSUITE_DIR}/soplex-2.0.1)
 	ExternalProject_Add(scipoptsuite
 		PREFIX ${SCIPOPTSUITE_DIR}
 		SOURCE_DIR ${SCIPOPTSUITE_DIR}

@@ -102,19 +102,17 @@ if (MPI_CXX_FOUND)
 endif()
 target_link_libraries(Dsp ${DSP_LIBS})
 
-##################################################
-# SUBDIRECTORY
-##################################################
-if (PYDSP_COMPILE)
-	add_subdirectory(PyDsp)
-endif()
 
 ##################################################
 # INSTALL
 ##################################################
 install(TARGETS Dsp LIBRARY DESTINATION $ENV{PWD}/lib)
-if(PYDSP_COMPILE)
-	install(TARGETS PyDsp LIBRARY DESTINATION $ENV{PWD}/lib)
+
+##################################################
+# SUBDIRECTORY
+##################################################
+if (PYDSP_COMPILE)
+	add_subdirectory(PyDsp)
 endif()
 
 ##################################################
