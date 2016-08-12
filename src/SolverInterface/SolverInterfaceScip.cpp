@@ -502,18 +502,6 @@ void SolverInterfaceScip::setCuts(OsiCuts * cuts)
 	conshdlrDd->setCutsToAdd(cuts);
 }
 
-/** clear cuts */
-void SolverInterfaceScip::clearCuts()
-{
-	scip::ObjConshdlr * conshdlr = SCIPfindObjConshdlr(scip_, "BendersDd");
-	if (!conshdlr) return;
-
-	SCIPconshdlrBendersDd * conshdlrDd = dynamic_cast<SCIPconshdlrBendersDd*>(conshdlr);
-	if (!conshdlrDd) return;
-
-	conshdlrDd->clearCutsAdded();
-}
-
 /** solution status */
 DSP_RTN_CODE SolverInterfaceScip::getStatus()
 {

@@ -73,6 +73,8 @@ DSP_RTN_CODE BdDriverSerial::run()
 		mw_->getMasterPtr()->setSolutions(initsols_);
 
 	/** run */
+	mw_->getMasterPtr()->setTimeLimit(
+			par_->getDblParam("BD/WALL_LIM") - CoinGetTimeOfDay() + walltime_);
 	DSPdebugMessage("Solve Benders\n");
 	mw_->run();
 

@@ -47,7 +47,7 @@ private:
 
 	/** sync upper bound */
 	DSP_RTN_CODE syncUpperbound(
-			int nsolutions = 0, /**< number of solutions */
+			Solutions      solutions   = Solutions(),     /**< number of solutions */
 			vector<double> upperbounds = vector<double>() /**< list of upper bounds */);
 
 	/** calculate upper bound */

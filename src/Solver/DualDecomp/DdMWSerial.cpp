@@ -185,6 +185,9 @@ DSP_RTN_CODE DdMWSerial::run()
 		/** reset iteration code */
 		itercode_ = ' ';
 
+		/** set time limit */
+		workerlb->setTimeLimit(remainingTime());
+
 		/** Solve subproblems */
 		DSP_RTN_CHECK_THROW(workerlb->solve());
 
@@ -194,18 +197,18 @@ DSP_RTN_CODE DdMWSerial::run()
 		for (int s = 0; s < model_->getNumSubproblems(); ++s)
 		{
 			int sindex = workerlb->subprobs_[s]->sind_;
-			master_->subprimobj_[sindex] = workerlb->subprobs_[s]->getPrimalBound();
-			master_->subdualobj_[sindex] = workerlb->subprobs_[s]->getDualBound();
-			CoinCopyN(workerlb->subprobs_[s]->si_->getSolution(),
+			master_->subprimobj_[sindex] = workerlb->subprobs_[s]->getPrimalObjective();
+			master_->subdualobj_[sindex] = workerlb->subprobs_[s]->getDualObjective();
+			CoinCopyN(workerlb->subprobs_[s]->getPrimalSolution(),
 					workerlb->subprobs_[s]->ncols_coupling_,
 					master_->subsolution_[sindex]);
-			subprimobj += workerlb->subprobs_[s]->getPrimalBound();
-			subdualobj += workerlb->subprobs_[s]->getDualBound();
-			/*DSPdebugMessage("Scenario %d, primobj %+e, dualobj %+e, primobj_sum %+e, dualobj_sum %+e\n",
+			subprimobj += workerlb->subprobs_[s]->getPrimalObjective();
+			subdualobj += workerlb->subprobs_[s]->getDualObjective();
+			DSPdebugMessage("Scenario %d, primobj %+e, dualobj %+e, primobj_sum %+e, dualobj_sum %+e\n",
 					workerlb->subprobs_[s]->sind_,
-					workerlb->subprobs_[s]->getPrimalBound(),
-					workerlb->subprobs_[s]->getDualBound(),
-					subprimobj, subdualobj);*/
+					workerlb->subprobs_[s]->getPrimalObjective(),
+					workerlb->subprobs_[s]->getDualObjective(),
+					subprimobj, subdualobj);
 		}
 
 		if (parEvalUb_ >= 0 || parFeasCuts_ >= 0 || parOptCuts_ >= 0)
@@ -230,20 +233,34 @@ DSP_RTN_CODE DdMWSerial::run()
 					cutsToAdd_->insert(rc);
 				}
 				cuts.dumpCuts();
+				DSPdebugMessage("Benders cuts %d\n", cutsToAdd_->sizeCuts());
+				DSPdebug(cutsToAdd_->printCuts());
 			}
 			/** evaluate coupling solutions */
 			if (parEvalUb_ >= 0)
 			{
+				int bestprimsol = -1;
 				double oldub = master_->bestprimobj_;
 				for (unsigned i = 0; i < coupling_solutions.size(); ++i)
 				{
+					/** set time limit */
+					workerub->setTimeLimit(remainingTime());
+					/** evaluate upper bounds */
 					double newub = workerub->evaluate(coupling_solutions[i]);
 					DSPdebugMessage("Current upper bound %+e\n", newub);
 					if (newub < master_->bestprimobj_)
+					{
 						master_->bestprimobj_ = newub;
+						bestprimsol = i;
+					}
 				}
 				if (oldub > master_->bestprimobj_)
+				{
 					itercode_ = 'P';
+//					CoinCopyN(coupling_solutions[bestprimsol]->denseVector(model_->getNumCouplingCols()),
+//							model_->getNumCouplingCols(),
+//							master_->bestprimsol_);
+				}
 			}
 			/** clear stored solutions */
 			coupling_solutions.clear();
@@ -253,12 +270,27 @@ DSP_RTN_CODE DdMWSerial::run()
 		double olddual = master_->bestdualobj_;
 		master_->updateProblem();
 		if (olddual < master_->bestdualobj_)
+		{
 			itercode_ = itercode_ == 'P' ? 'B' : 'D';
+			if (master_->getLambda())
+				CoinCopyN(master_->getLambda(), model_->getNumCouplingRows(), master_->bestdualsol_);
+		}
 
-		/** STOP with small gap */
+		/** STOP with iteration limit */
+		DSPdebugMessage("Check iteration limit\n");
 		if (itercnt_ >= master_->getParPtr()->getIntParam("DD/ITER_LIM"))
 		{
 			message_->print(1, "The iteration limit is reached.\n");
+			master_->status_ = DSP_STAT_LIM_ITERorTIME;
+			break;
+		}
+
+		/** STOP with time limit */
+		DSPdebugMessage("Check time limit\n");
+		if (remainingTime() < 1.0)
+		{
+			message_->print(1, "The time limit (%.2f) is reached.\n", parTimeLimit_);
+			master_->status_ = DSP_STAT_LIM_ITERorTIME;
 			break;
 		}
 
@@ -270,11 +302,16 @@ DSP_RTN_CODE DdMWSerial::run()
 		printIterInfo();
 
 		/** termination test */
-		if (master_->terminationTest() == DSP_STAT_MW_STOP) break;
+		if (master_->terminationTest() == DSP_STAT_MW_STOP)
+		{
+			master_->status_ = DSP_STAT_OPTIMAL;
+			break;
+		}
 		/** check duality gap */
 		if (master_->getRelDualityGap() < master_->getParPtr()->getDblParam("DD/STOP_TOL"))
 		{
 			message_->print(1, "The duality gap limit %+e is reached.\n", master_->getRelDualityGap());
+			master_->status_ = DSP_STAT_STOPPED_GAP;
 			break;
 		}
 
@@ -306,9 +343,6 @@ DSP_RTN_CODE DdMWSerial::run()
 			}
 		}
 	}
-
-	/** set best dual objective */
-	//master_->bestdualobj_ = master_->primobj_;
 
 	DSPdebugMessage2("primsol_:\n");
 	DSPdebug2(message_->printArray(master_->getSiPtr()->getNumCols(), master_->getPrimalSolution()));
@@ -371,6 +405,7 @@ DSP_RTN_CODE DdMWSerial::generateBendersCuts(
 		DSP_RTN_CHECK_THROW(workercg->generateCuts(solutions[i], &localcuts, cuttype));
 		DSPdebugMessage("Benders cut generator generated %d cuts for solution %d.\n",
 				localcuts.sizeCuts(), i);
+		DSPdebug(message_->printArray(solutions[i]));
 
 		/** check if there exists a feasibility cut */
 		bool hasFeasibilityCuts = false;
@@ -405,10 +440,10 @@ DSP_RTN_CODE DdMWSerial::generateBendersCuts(
 					for (int k = 0; k < cutrow.getNumElements(); ++k)
 						aggcut[cutrow.getIndices()[k]] += cutrow.getElements()[k];
 					aggrhs += rc->lb();
-					DSPdebugMessage2("localcuts[%d]:\n", j);
-					DSPdebug2(rc->print());
+					DSPdebugMessage("localcuts[%d]:\n", j);
+					DSPdebug(rc->print());
 				}
-				DSPdebug2(message_->printArray(tssmodel->getNumCols(0) + 1, aggcut));
+//				DSPdebug(message_->printArray(tssmodel->getNumCols(0) + 1, aggcut));
 
 				CoinPackedVector orow;
 				for (int j = 0; j < tssmodel->getNumCols(0); ++j)
@@ -421,7 +456,7 @@ DSP_RTN_CODE DdMWSerial::generateBendersCuts(
 				ocut.setUb(COIN_DBL_MAX);
 				ocut.setLb(aggrhs);
 
-				DSPdebug2(ocut.print());
+				DSPdebug(ocut.print());
 				cuts.insertIfNotDuplicate(ocut);
 			}
 

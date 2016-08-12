@@ -29,8 +29,8 @@ public:
 	/** clone method which will be used to copy constraint handler and variable pricer objects */
 	virtual SCIP_DECL_CONSHDLRCLONE(ObjProbCloneable* clone);
 
-	/** set number of subproblems */
-	virtual void setNumSubprobs(int nsubprobs);
+	/** set model pointer */
+	virtual void setDecModel(DecModel * model);
 
 protected:
 

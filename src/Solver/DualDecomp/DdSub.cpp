@@ -16,22 +16,83 @@
 #include "Solver/DualDecomp/SCIPconshdlrBendersDd.h"
 #include "SolverInterface/SCIPbranchruleLB.h"
 
+
+
+/** default constructor */
+DdSub::DdSub(int s, DspParams * par, DecModel * model, DspMessage * message) :
+	DecSolver(par, model, message),
+	si_(NULL),
+	sind_(s),
+	nrows_coupling_(0),
+	ncols_coupling_(0),
+	theta_(-COIN_DBL_MAX),
+	gapTol_(0.0001),
+	obj_(NULL),
+	lambda_(NULL),
+	cpl_mat_(NULL),
+	cpl_cols_(NULL),
+	cpl_rhs_(NULL),
+	obj_offset_(0),
+	parRelaxIntegrality_(NULL)
+{
+	/** nothing to do */
+}
+
 DdSub::~DdSub()
 {
 	FREE_PTR(si_);
 	FREE_PTR(obj_);
 	FREE_ARRAY_PTR(lambda_);
 	FREE_ARRAY_PTR(cpl_rhs_);
-	FREE_2D_ARRAY_PTR(nsols_, solutions_);
-//	for (unsigned i = 0; i < s_primsols_.size(); ++i)
-//		FREE_ARRAY_PTR(s_primsols_[i]);
-	nsols_ = 0;
 	obj_offset_ = 0;
 	parRelaxIntegrality_ = NULL;
 }
 
+DSP_RTN_CODE DdSub::init()
+{
+	BGN_TRY_CATCH
+
+	/** create problem */
+	createProblem();
+
+	/** add cut generator (lazycuts) */
+	addCutGenerator();
+
+	/** allocate memory */
+	primsol_ = new double [si_->getNumCols()];
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
+}
+
+/** solve problem */
+DSP_RTN_CODE DdSub::solve()
+{
+	si_->solve();
+
+	/** check status. there might be unexpected results. */
+	status_ = si_->getStatus();
+	switch (status_) {
+	case DSP_STAT_OPTIMAL:
+	case DSP_STAT_LIM_ITERorTIME:
+	case DSP_STAT_STOPPED_GAP:
+	case DSP_STAT_STOPPED_NODE:
+	case DSP_STAT_STOPPED_TIME:
+		primobj_ = si_->getPrimalBound();
+		dualobj_ = si_->getDualBound();
+		CoinCopyN(si_->getSolution(), si_->getNumCols(), primsol_);
+		DSPdebugMessage("primal objective %+e\n", primobj_);
+		break;
+	default:
+		break;
+	}
+
+	return DSP_RTN_OK;
+}
+
 /** create problem */
-DSP_RTN_CODE DdSub::createProblem(DecModel * model)
+DSP_RTN_CODE DdSub::createProblem()
 {
 #define FREE_MEMORY       \
 	FREE_PTR(mat)         \
@@ -70,15 +131,15 @@ DSP_RTN_CODE DdSub::createProblem(DecModel * model)
 
 	/** decompose model */
 	DSP_RTN_CHECK_THROW(
-			model->decompose(1, augs, 1, clbd_aux, cubd_aux, obj_aux,
+			model_->decompose(1, augs, 1, clbd_aux, cubd_aux, obj_aux,
 					mat, clbd, cubd, ctype, obj_, rlbd, rubd));
 
 	DSP_RTN_CHECK_THROW(
-			model->decomposeCoupling(1, augs, cpl_mat_, cpl_cols_, cpl_ncols));
+			model_->decomposeCoupling(1, augs, cpl_mat_, cpl_cols_, cpl_ncols));
 
 	/** number of coupling variables and constraints for this subproblem */
-	ncols_coupling_ = model->getNumSubproblemCouplingCols(sind_);
-	nrows_coupling_ = model->getNumSubproblemCouplingRows(sind_);
+	ncols_coupling_ = model_->getNumSubproblemCouplingCols(sind_);
+	nrows_coupling_ = model_->getNumSubproblemCouplingRows(sind_);
 	assert(ncols_coupling_ == cpl_ncols);
 	assert(nrows_coupling_ == cpl_mat_->getNumRows());
 
@@ -89,19 +150,19 @@ DSP_RTN_CODE DdSub::createProblem(DecModel * model)
 	/** copy right-hand side of coupling rows */
 	cpl_rhs_ = new double [nrows_coupling_];
 	for (int i = 0; i < nrows_coupling_; i++)
-		cpl_rhs_[i] = model->getRhsCouplingRow(i);
+		cpl_rhs_[i] = model_->getRhsCouplingRow(i);
 	obj_offset_ = 0;
 
 	/** number of integer variables */
-	int nIntegers = model->getNumIntegers();
+	int nIntegers = model_->getNumIntegers();
 
 	/** adjust first-stage cost */
-	if (model->isStochastic())
+	if (model_->isStochastic())
 	{
 		TssModel * tssModel;
 		try
 		{
-			tssModel = dynamic_cast<TssModel *>(model);
+			tssModel = dynamic_cast<TssModel *>(model_);
 		}
 		catch (const std::bad_cast& e)
 		{
@@ -152,6 +213,9 @@ DSP_RTN_CODE DdSub::createProblem(DecModel * model)
 	else
 		si_ = new SolverInterfaceClp(par_);
 
+	/** no display */
+	si_->setPrintLevel(0);
+
 	/** load problem */
 	si_->loadProblem(mat, clbd, cubd, obj_, ctype, rlbd, rubd, "DdSub");
 	DSPdebug(mat->verifyMtx(4));
@@ -168,13 +232,14 @@ DSP_RTN_CODE DdSub::createProblem(DecModel * model)
 }
 
 /** add cut generator */
-DSP_RTN_CODE DdSub::addCutGenerator(BdSub * bdsub)
+DSP_RTN_CODE DdSub::addCutGenerator()
 {
 	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(si_);
 	if (si)
 	{
 		SCIPconshdlrBendersDd * conshdlr = new SCIPconshdlrBendersDd(si->getSCIP());
 		conshdlr->setOriginalVariables(si->getNumCols(), si->getSCIPvars(), 1);
+		DSPdebugMessage("numcols %d, conshdlr %p\n", si->getNumCols(), conshdlr);
 
 		/** add constraint handler */
 		si->addConstraintHandler(conshdlr, true, true);
@@ -183,38 +248,6 @@ DSP_RTN_CODE DdSub::addCutGenerator(BdSub * bdsub)
 	{
 		/** TODO */
 		printf("Warning: Cut generation supports only SCIP.\n");
-	}
-	return DSP_RTN_OK;
-}
-
-/** add branch rule */
-DSP_RTN_CODE DdSub::addBranchrule()
-{
-	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(si_);
-	if (si)
-	{
-		/** add branch rule */
-		si->addBranchrule(new SCIPbranchruleLB(si->getSCIP()), true);
-	}
-	else
-	{
-		/** TODO */
-		printf("Warning: Branch rule supports only SCIP.\n");
-	}
-	return DSP_RTN_OK;
-}
-
-/** change branch rule */
-DSP_RTN_CODE DdSub::chgBranchrule(double lb)
-{
-	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(si_);
-	if (si)
-	{
-		SCIPbranchruleLB * branchrule = dynamic_cast<SCIPbranchruleLB*>(si->findObjBranchrule("knownLB"));
-		if (branchrule)
-		{
-			branchrule->setLowerBound(lb);
-		}
 	}
 	return DSP_RTN_OK;
 }
@@ -275,39 +308,6 @@ DSP_RTN_CODE DdSub::updateProblem(
 #undef FREE_MEMORY
 }
 
-/** solve problem */
-DSP_RTN_CODE DdSub::solve()
-{
-	si_->solve();
-
-	return DSP_RTN_OK;
-}
-
-/** collect cuts */
-DSP_RTN_CODE DdSub::collectCuts(OsiCuts * cuts)
-{
-	assert(cuts);
-	/** TODO only for SCIP */
-	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(si_);
-	if (si)
-	{
-		const OsiCuts * cutsAdded = si->getCuts();
-		assert(cutsAdded);
-
-		DSPdebugMessage("cutsAdded %d\n", cutsAdded->sizeCuts());
-		for (int i = 0; i < cutsAdded->sizeCuts(); ++i)
-		{
-			OsiRowCut rc = cutsAdded->rowCut(i);
-			//rc.print();
-			cuts->insertIfNotDuplicate(rc);
-		}
-
-		/** clear cuts added */
-		si->clearCuts();
-	}
-	return DSP_RTN_OK;
-}
-
 /** push cuts */
 DSP_RTN_CODE DdSub::pushCuts(OsiCuts * cuts)
 {
@@ -317,29 +317,6 @@ DSP_RTN_CODE DdSub::pushCuts(OsiCuts * cuts)
 	{
 		si->setCuts(cuts);
 	}
-	return DSP_RTN_OK;
-}
-
-/** collect solutions */
-DSP_RTN_CODE DdSub::collectSolutions()
-{
-	/** free memeory */
-	FREE_2D_ARRAY_PTR(nsols_, solutions_);
-
-	/** TODO only for SCIP */
-	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(si_);
-	if (si)
-	{
-		/** get solutions */
-		nsols_ = si->getSolutions(&solutions_);
-	}
-	else
-	{
-		nsols_ = 1;
-		solutions_ = new double * [nsols_];
-		CoinCopyN(si->getSolution(), si->getNumCols(), solutions_[0]);
-	}
-
 	return DSP_RTN_OK;
 }
 
@@ -366,36 +343,4 @@ void DdSub::setPrintLevel(int level)
 		si_->setPrintLevel(level);
 	else
 		si_->setPrintLevel(CoinMax(0, level - 2));
-}
-
-/** get MPI message buffer: [scenario index, objval, coupling solution] */
-double * DdSub::MPImsgbuf()
-{
-	double * msgbuf = new double [ncols_coupling_ + 2];
-	MPImsgbuf(msgbuf);
-	return msgbuf;
-}
-
-/** get MPI message buffer */
-DSP_RTN_CODE DdSub::MPImsgbuf(double * msgbuf)
-{
-	/** The first element in message buffer should be scenario index. */
-	msgbuf[0] = static_cast<double>(sind_);
-
-	/** The second element should be primal objective value. */
-	msgbuf[1] = si_->getPrimalBound() + obj_offset_;
-
-	/** The second element should be dual objective value. */
-	msgbuf[2] = si_->getDualBound() + obj_offset_;
-
-	/** The following elements are for the coupling solution. */
-	const double * solution = si_->getSolution();
-	if (solution != NULL)
-	{
-		for (int i = 0; i < ncols_coupling_; i++)
-			msgbuf[3+i] = solution[cpl_cols_[i]];
-		solution = NULL;
-	}
-
-	return DSP_RTN_OK;
 }

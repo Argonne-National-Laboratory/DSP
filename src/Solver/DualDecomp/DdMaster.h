@@ -44,10 +44,14 @@ public:
 
 public:
 
+	const double * getLambda() {return lambda_;}
+
 	SolverInterface * getSiPtr() {return si_;}
 
-	double getBestPrimalObjective() {return bestprimobj_;}
-	double getBestDualObjective() {return bestdualobj_;}
+	double   getBestPrimalObjective() {return bestprimobj_;}
+	double   getBestDualObjective()   {return bestdualobj_;}
+	double * getBestPrimalSolution()  {return bestprimsol_;}
+	double * getBestDualSolution()    {return bestdualsol_;}
 	double getAbsDualityGap() {return fabs(bestprimobj_-bestdualobj_);}
 	double getRelDualityGap() {return fabs(bestprimobj_-bestdualobj_) / (1.0e-10 + fabs(bestprimobj_));}
 	double getAbsApproxGap() {return fabs(primobj_-bestdualobj_);}
@@ -57,8 +61,11 @@ protected:
 
 	SolverInterface * si_; /**< solver interface */
 
-	double bestprimobj_; /**< best primal objective value */
-	double bestdualobj_; /**< best dual objective value */
+	double bestprimobj_;   /**< best primal objective value */
+	double bestdualobj_;   /**< best dual objective value */
+	double * bestprimsol_; /** best primal solution */
+	double * bestdualsol_; /** best dual solution */
+	double * lambda_; /**< lambda part of the solution */
 //	int nworkers_;       /**< number of workers */
 
 	//int nsubprobs_;         /**< number of subproblems for the current worker */

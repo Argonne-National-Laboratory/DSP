@@ -8,6 +8,7 @@
 #ifndef SRC_SOLVER_BASEMASTERWORKER_H_
 #define SRC_SOLVER_BASEMASTERWORKER_H_
 
+#include "CoinFinite.hpp"
 /** DSP headers */
 #include "Utility/DspMacros.h"
 #include "Utility/DspRtnCodes.h"

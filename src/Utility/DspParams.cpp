@@ -70,7 +70,7 @@ void DspParams::readParamFile(const char * param_file)
 			}
 			if (!is_valid) break;
 
-			printf("Set parameter: [%s][%s][%s]\n", param_element[0].c_str(), param_element[1].c_str(), param_element[2].c_str());
+			//printf("Set parameter: [%s][%s][%s]\n", param_element[0].c_str(), param_element[1].c_str(), param_element[2].c_str());
 
 			if (param_element[0].compare("bool") == 0)
 			{
@@ -199,7 +199,7 @@ void DspParams::initDblParams()
 	DblParams_.createParam("SCIP/GAP_TOL", 0.0001);
 
 	/** time limit */
-	DblParams_.createParam("SCIP/TIME_LIM", MAX_DBL_NUM);
+	DblParams_.createParam("SCIP/TIME_LIM", 300);
 }
 
 void DspParams::initStrParams()

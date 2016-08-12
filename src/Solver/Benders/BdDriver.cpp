@@ -19,6 +19,7 @@ aux_cubd_(NULL),
 numPriorities_(0),
 priorities_(NULL)
 {
+	par_->setDblParam("DD/WALL_LIM", par_->getDblParam("BD/WALL_LIM"));
 }
 
 BdDriver::~BdDriver()

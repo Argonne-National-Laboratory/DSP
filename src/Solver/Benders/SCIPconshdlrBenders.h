@@ -12,6 +12,7 @@
 #include "objscip/objconshdlr.h"
 
 /** DSP */
+#include "Model/DecModel.h"
 #include "Solver/Benders/BdSub.h"
 
 class SCIPconshdlrBenders : public scip::ObjConshdlr
@@ -28,8 +29,8 @@ public:
 	};
 
 	/** default constructor */
-	SCIPconshdlrBenders(SCIP * scip, int sepapriority) :
-		ObjConshdlr(scip, "Benders", "Benders cuts",
+	SCIPconshdlrBenders(SCIP * scip, const char * name, int sepapriority) :
+		ObjConshdlr(scip, name, "Benders cuts",
 				sepapriority, /**< priority of the constraint handler for separation */
 				sepapriority, /**< priority of the constraint handler for constraint enforcing */
 				sepapriority, /**< priority of the constraint handler for checking infeasibility (and propagation) */
@@ -42,7 +43,11 @@ public:
 				FALSE,    /**< do not delay presolving method */
 				TRUE,     /**< skip constraint handler even if no constraints are available. */
 				SCIP_PROPTIMING_BEFORELP /**< propagation method is called before solving LP */),
-	nsubprobs_(0), bdsub_(NULL), nvars_(0), vars_(NULL), naux_(0)
+	model_(NULL),
+	bdsub_(NULL),
+	nvars_(0),
+	vars_(NULL),
+	naux_(0)
 	{
 		/** nothing to do */
 	}
@@ -85,9 +90,6 @@ public:
 
 public:
 
-	/** get number of subproblems */
-	virtual int getNumSubprobs() {return nsubprobs_;}
-
 	/** get pointer to cut generator */
 	virtual const BdSub * getBdSub() {return bdsub_;}
 
@@ -102,8 +104,8 @@ public:
 
 public:
 
-	/** set number of subproblems */
-	virtual void setNumSubprobs(int nsubprobs) {nsubprobs_ = nsubprobs;}
+	/** set model pointer */
+	virtual void setDecModel(DecModel * model) {model_ = model;}
 
 	/** set pointer to cut generator */
 	virtual void setBdSub(BdSub * bdsub)
@@ -141,7 +143,7 @@ protected:
 
 protected:
 
-	int         nsubprobs_; /**< number of subproblems */
+	DecModel *  model_;     /**< DecModel object */
 	BdSub *     bdsub_;     /**< pointer to cut generator */
 	int         nvars_;     /**< number of original variables */
 	SCIP_Var ** vars_;      /**< pointer array to original variables */

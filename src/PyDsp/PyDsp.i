@@ -22,3 +22,5 @@ int getTotalNumCols(DspApiEnv * env);
 double getPrimalBound(DspApiEnv * env);
 double getDualBound(DspApiEnv * env);
 void getSolution(DspApiEnv * env, int num, double * solution);
+
+void writeMps(DspApiEnv * env, const char * name);

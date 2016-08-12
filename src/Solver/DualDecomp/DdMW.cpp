@@ -15,7 +15,7 @@ DdMW::DdMW(
 		DspMessage * message /**< message pointer */):
 BaseMasterWorker(),
 master_(NULL), model_(model), par_(par), message_(message),
-parFeasCuts_(-1), parOptCuts_(-1), parEvalUb_(-1),
+parFeasCuts_(-1), parOptCuts_(-1), parEvalUb_(-1), parTimeLimit_(0),
 itercode_(' '), itercnt_(0), iterstime_(0.0)
 {
 	cutsToAdd_ = new OsiCuts;
@@ -56,9 +56,10 @@ DSP_RTN_CODE DdMW::init()
 {
 	BGN_TRY_CATCH
 
-	parFeasCuts_ = par_->getIntParam("DD/FEAS_CUTS");
-	parOptCuts_  = par_->getIntParam("DD/OPT_CUTS");
-	parEvalUb_   = par_->getIntParam("DD/EVAL_UB");
+	parFeasCuts_  = par_->getIntParam("DD/FEAS_CUTS");
+	parOptCuts_   = par_->getIntParam("DD/OPT_CUTS");
+	parEvalUb_    = par_->getIntParam("DD/EVAL_UB");
+	parTimeLimit_ = par_->getDblParam("DD/WALL_LIM");
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -161,7 +162,11 @@ void DdMW::printIterInfo()
 	double approxgap = master_->getRelApproxGap();
 	double dualitygap = master_->getRelDualityGap();
 
-	message_->print(1, " %c%4d  %+10e", itercode_, itercnt_, primobj);
+	message_->print(1, " %c%4d", itercode_, itercnt_);
+	if (primobj < 1.0e+20)
+		message_->print(1, "  %+10e", primobj);
+	else
+		message_->print(1, "  %+13s", "Large");
 	if (bestprimobj < 1.0e+20)
 		message_->print(1, "  %+10e", bestprimobj);
 	else
@@ -171,7 +176,10 @@ void DdMW::printIterInfo()
 	else
 		message_->print(1, "  %+13s", "Large");
 	message_->print(1, "  %8.2f", approxgap*100);
-	message_->print(1, "  %8.2f", dualitygap*100);
+	if (dualitygap < 10.0)
+		message_->print(1, "  %8.2f", dualitygap*100);
+	else
+		message_->print(1, "  %8s", "Large");
 	message_->print(1, "  %6.1f\n", CoinGetTimeOfDay() - iterstime_);
 
 	s_itertime_.push_back(CoinGetTimeOfDay() - iterstime_);

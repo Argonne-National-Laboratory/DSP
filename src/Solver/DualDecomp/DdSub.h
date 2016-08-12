@@ -11,85 +11,49 @@
 #include <typeinfo>
 
 /** DSP */
-#include "SolverInterface/SolverInterface.h"
-#include "Solver/Benders/BdSub.h"
 #include "Model/DecModel.h"
+#include "Solver/DecSolver.h"
+#include "SolverInterface/SolverInterface.h"
 
 /**
  * This defines a class for solving a dual decomposition subproblem.
  */
-class DdSub
+class DdSub : public DecSolver
 {
 public:
 
 	/** default constructor */
-	DdSub(int s, DspParams * par) :
-		par_(par),
-		si_(NULL),
-		sind_(s),
-		nrows_coupling_(0),
-		ncols_coupling_(0),
-		theta_(-COIN_DBL_MAX),
-		gapTol_(0.0001),
-		obj_(NULL),
-		lambda_(NULL),
-		nsols_(0),
-		solutions_(NULL),
-		cpl_mat_(NULL),
-		cpl_cols_(NULL),
-		cpl_rhs_(NULL),
-		obj_offset_(0),
-		parRelaxIntegrality_(NULL)
-	{
-		/** nothing to do */
-	}
+	DdSub(int s, DspParams * par, DecModel * model, DspMessage * message);
 
 	/** default destructor */
 	virtual ~DdSub();
 
+	/** initialize */
+	virtual DSP_RTN_CODE init();
+
+	/** finalize */
+	virtual DSP_RTN_CODE finalize() {return DSP_RTN_OK;}
+
+	/** solve */
+	virtual DSP_RTN_CODE solve();
+
+private:
+
 	/** create problem */
-	DSP_RTN_CODE createProblem(DecModel * model);
+	DSP_RTN_CODE createProblem();
 
 	/** add cut generator */
-	DSP_RTN_CODE addCutGenerator(BdSub * bdsub);
+	DSP_RTN_CODE addCutGenerator();
 
-	/** add branch rule */
-	DSP_RTN_CODE addBranchrule();
-
-	/** change branch rule */
-	DSP_RTN_CODE chgBranchrule(double lb);
+public:
 
 	/** update problem */
 	DSP_RTN_CODE updateProblem(
 			double * lambda,
 			double primal_bound = COIN_DBL_MAX);
 
-	/** solve problem */
-	DSP_RTN_CODE solve();
-
-	/** collect cuts */
-	DSP_RTN_CODE collectCuts(OsiCuts * cuts);
-
 	/** push cuts */
 	DSP_RTN_CODE pushCuts(OsiCuts * cuts);
-
-	/** collect solutions */
-	DSP_RTN_CODE collectSolutions();
-
-	/** get number of solutions */
-	int getNumSolutions() {return nsols_;}
-
-	/** get solutions */
-	double ** getSolutions() {return solutions_;}
-
-	/** get primal bound of the objective value */
-	double getPrimalBound() {return si_->getPrimalBound() + obj_offset_;}
-
-	/** get dual bound of the objective value */
-	double getDualBound() {return si_->getDualBound() + obj_offset_;}
-
-	/** set solutions */
-	void setSolutions(double * solution);
 
 	/** set wall clock time limit */
 	void setTimeLimit(double sec);
@@ -100,15 +64,8 @@ public:
 	/** set print level */
 	void setPrintLevel(int level);
 
-	/** get MPI message buffer */
-	double * MPImsgbuf();
-
-	/** get MPI message buffer */
-	DSP_RTN_CODE MPImsgbuf(double * msgbuf);
-
 public:
 
-	DspParams * par_;
 	SolverInterface * si_; /**< solver interface */
 
 	int sind_;           /**< scenario index */
@@ -124,24 +81,10 @@ private:
 	double * obj_;    /**< original objective coefficients */
 	double * lambda_; /**< lambda */
 
-	/** solution pool */
-	int nsols_; /**< number of solutions */
-	double ** solutions_; /**< solutions */
-
 	CoinPackedMatrix * cpl_mat_; /**< coupling constraint matrix */
-	int * cpl_cols_;             /**< coupling columns */
+	int *    cpl_cols_;          /**< coupling columns */
 	double * cpl_rhs_;           /**< right-hand sides of coupling rows */
-	double obj_offset_;          /**< constant offset in subproblem objective */
-
-public:
-
-	/** solver statistics */
-	vector<DSP_RTN_CODE> s_statuses_;  /**< history of solution statuses */
-	vector<double>       s_primobjs_;  /**< history of primal objective values */
-	vector<double>       s_dualobjs_;  /**< history of dual objective values */
-//	vector<double*>      s_primsols_;  /**< history of primal solutions */
-	vector<double>       s_cputimes_;  /**< history of cpu times */
-	vector<double>       s_walltimes_; /**< history of wall times */
+	double   obj_offset_;        /**< constant offset in subproblem objective */
 
 protected:
 

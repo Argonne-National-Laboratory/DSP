@@ -72,6 +72,9 @@ DSP_RTN_CODE DdMasterSubgrad::solve()
 			primsol_[j] = multipliers_[j];
 	}
 
+	/** retrieve lambda */
+	lambda_ = primsol_;
+
 	/** update statistics */
 	double * s_primsol = new double [model_->getNumCouplingRows()];
 	CoinCopyN(primsol_, model_->getNumCouplingRows(), s_primsol);

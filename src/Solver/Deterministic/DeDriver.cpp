@@ -129,7 +129,10 @@ DSP_RTN_CODE DeDriver::run()
 	si_->loadProblem(mat, clbd, cubd, obj, ctype, rlbd, rubd, "DeDriver");
 
 	/** time limit */
-	si_->setTimeLimit(par_->getDblParam("SCIP/TIME_LIM"));
+	double time_limit = CoinMin(
+			par_->getDblParam("DE/WALL_LIM"),
+			par_->getDblParam("SCIP/TIME_LIM"));
+	si_->setTimeLimit(time_limit);
 
 	/** set node limit */
 	si_->setNodeLimit(par_->getIntParam("NODE_LIM"));
@@ -179,4 +182,52 @@ DSP_RTN_CODE DeDriver::run()
 
 DSP_RTN_CODE DeDriver::finalize() {
 	return DSP_RTN_OK;
+}
+
+void DeDriver::writeExtMps(const char * name)
+{
+#define FREE_MEMORY       \
+	FREE_PTR(si)          \
+	FREE_PTR(mat)         \
+	FREE_ARRAY_PTR(clbd)  \
+	FREE_ARRAY_PTR(cubd)  \
+	FREE_ARRAY_PTR(ctype) \
+	FREE_ARRAY_PTR(obj)   \
+	FREE_ARRAY_PTR(rlbd)  \
+	FREE_ARRAY_PTR(rubd)
+
+	assert(model_);
+
+	/** model info */
+	SolverInterface * si = NULL;
+	CoinPackedMatrix * mat = NULL;
+	double * clbd   = NULL;
+	double * cubd   = NULL;
+	double * obj    = NULL;
+	char *   ctype  = NULL;
+	double * rlbd   = NULL;
+	double * rubd   = NULL;
+
+	BGN_TRY_CATCH
+
+	double stime;
+
+	/** get DE model */
+	DSP_RTN_CHECK_THROW(model_->getFullModel(mat, clbd, cubd, ctype, obj, rlbd, rubd));
+
+	int nIntegers = model_->getNumIntegers();
+
+	si = new SolverInterfaceScip(par_);
+
+	/** load problem */
+	si->loadProblem(mat, clbd, cubd, obj, ctype, rlbd, rubd, "writeMps");
+
+	/** write mps */
+	si->writeMps(name);
+
+	/** save memory */
+	FREE_MEMORY
+
+	END_TRY_CATCH_RTN(FREE_MEMORY,;)
+#undef FREE_MEMORY
 }
