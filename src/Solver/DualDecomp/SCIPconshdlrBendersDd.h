@@ -23,7 +23,7 @@ public:
 
 	/** default constructor */
 	SCIPconshdlrBendersDd(SCIP * scip):
-		SCIPconshdlrBenders(scip, -2000000), nCutsReused_(0)
+		SCIPconshdlrBenders(scip, "BendersDd", -2000000), nCutsReused_(0)
 	{
 		cutsToAdd_ = new OsiCuts;
 		cutsAdded_ = new OsiCuts;
@@ -31,7 +31,7 @@ public:
 
 	/** copy constructor */
 	SCIPconshdlrBendersDd(SCIPconshdlrBendersDd * rhs):
-		SCIPconshdlrBenders(rhs->scip_, -2000000)
+		SCIPconshdlrBenders(rhs->scip_, "BendersDd", -2000000)
 	{
 		nCutsReused_ = rhs->getNumCutsReused();
 		cutsToAdd_ = new OsiCuts(*rhs->getCutsToAdd());
@@ -64,8 +64,8 @@ public:
 	/** set cutsToAdd_ */
 	void setCutsToAdd(OsiCuts * cuts);
 
-	/** clean cutsAdded */
-	void clearCutsAdded();
+	/** clean cuts */
+	void clearCuts(OsiCuts * cuts);
 
 protected:
 
