@@ -42,6 +42,9 @@ public:
 	/** finalize */
 	virtual DSP_RTN_CODE finalize();
 
+	/** get remaining time */
+	virtual double remainingTime() {return parTimeLimit_ - (CoinGetTimeOfDay() - iterstime_);}
+
 protected:
 
 	/** run master process */
@@ -86,13 +89,14 @@ protected:
 protected:
 
 	/** parameters */
-	int parFeasCuts_; /**< Benders feasibility cuts */
-	int parOptCuts_;  /**< Benders optimality cuts */
-	int parEvalUb_;   /**< upper bounds */
+	int parFeasCuts_;     /**< Benders feasibility cuts */
+	int parOptCuts_;      /**< Benders optimality cuts */
+	int parEvalUb_;       /**< upper bounds */
+	double parTimeLimit_; /**< time limit */
 
 	/** iteration info */
-	char itercode_;
-	int itercnt_;
+	char   itercode_;
+	int    itercnt_;
 	double iterstime_; /** start time */
 
 protected:

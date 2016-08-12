@@ -29,6 +29,10 @@ public:
 
 	/** fix coupling variable values */
 	DSP_RTN_CODE fixCouplingVariableValues(CoinPackedVector * val);
+
+private:
+
+	double ub_; /**< upper bound */
 };
 
 #endif /* SRC_SOLVER_DUALDECOMP_DDWORKERUB_H_ */

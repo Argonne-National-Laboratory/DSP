@@ -244,6 +244,9 @@ DSP_RTN_CODE DdMWSync::runMaster()
 	itercnt_   = 0;
 	iterstime_ = CoinGetTimeOfDay();
 
+	/** send start time */
+	MPI_Bcast(&iterstime_, 1, MPI_DOUBLE, 0, subcomm_);
+
 	/**
 	 * This is the main loop to iteratively solve master problem.
 	 */
@@ -268,7 +271,7 @@ DSP_RTN_CODE DdMWSync::runMaster()
 		/** apply receive message */
 		for (int i = 0, pos = 0; i < subcomm_size_; ++i)
 		{
-			message_->print(5, "message count for rank %d: %d\n", i, rcounts[i]);
+			DSPdebugMessage("message count for rank %d: %d\n", i, rcounts[i]);
 			for (int s = 0; s < nsubprobs_[i]; ++s)
 			{
 				int sindex = static_cast<int>(recvbuf[pos++]);
@@ -277,8 +280,7 @@ DSP_RTN_CODE DdMWSync::runMaster()
 				CoinCopyN(recvbuf + pos,
 						model_->getNumSubproblemCouplingCols(sindex), master->subsolution_[sindex]);
 				pos += model_->getNumSubproblemCouplingCols(sindex);
-				message_->print(5, "-> master, subprob %d primobj %+e\n",
-						sindex, master->subprimobj_[sindex]);
+				DSPdebugMessage("-> master, subprob %d primobj %+e\n", sindex, master->subprimobj_[sindex]);
 			}
 		}
 		//master->worker_ = subcomm_size_ - 1;
@@ -307,9 +309,20 @@ DSP_RTN_CODE DdMWSync::runMaster()
 		double olddual = master_->bestdualobj_;
 		master_->updateProblem();
 		if (olddual < master_->bestdualobj_)
+		{
 			itercode_ = itercode_ == 'P' ? 'B' : 'D';
+			if (master_->getLambda())
+				CoinCopyN(master_->getLambda(), model_->getNumCouplingRows(), master_->bestdualsol_);
+		}
 
-		/** STOP with small gap */
+		/** STOP with time limit */
+		if (remainingTime() < 1.0)
+		{
+			signal = DSP_STAT_MW_STOP;
+			message_->print(1, "The time limit (%.2f) is reached.\n", parTimeLimit_);
+		}
+
+		/** STOP with iteration limit */
 		if (itercnt_ > master_->getParPtr()->getIntParam("DD/ITER_LIM"))
 		{
 			signal = DSP_STAT_MW_STOP;
@@ -459,24 +472,29 @@ DSP_RTN_CODE DdMWSync::runWorker()
 	/** solutions to derive Benders cuts and evaluate upper bounds */
 	Solutions solutions;
 
+	/** receive start time */
+	MPI_Bcast(&iterstime_, 1, MPI_DOUBLE, 0, subcomm_);
+
 	/** loop until when the master signals stop */
 	while (1)
 	{
 		if (lb_comm_ != MPI_COMM_NULL)
 		{
+			/** set time limit */
+			workerlb->setTimeLimit(remainingTime());
 			/** Solve subproblems assigned to each process  */
 			workerlb->solve();
 			/** create send buffer */
 			for (int s = 0, pos = 0; s < narrprocidx; ++s)
 			{
 				sendbuf[pos++] = static_cast<double>(workerlb->subprobs_[s]->sind_);
-				sendbuf[pos++] = workerlb->subprobs_[s]->getPrimalBound();
-				sendbuf[pos++] = workerlb->subprobs_[s]->getDualBound();
+				sendbuf[pos++] = workerlb->subprobs_[s]->getPrimalObjective();
+				sendbuf[pos++] = workerlb->subprobs_[s]->getDualObjective();
 				CoinCopyN(workerlb->subprobs_[s]->si_->getSolution(), workerlb->subprobs_[s]->ncols_coupling_, sendbuf + pos);
 				pos += model_->getNumSubproblemCouplingCols(workerlb->subprobs_[s]->sind_);
 				message_->print(5, "MW -> worker %d, subprob %d primobj %+e dualobj %+e\n",
 						comm_rank_, workerlb->subprobs_[s]->sind_,
-						workerlb->subprobs_[s]->getPrimalBound(), workerlb->subprobs_[s]->getDualBound());
+						workerlb->subprobs_[s]->getPrimalObjective(), workerlb->subprobs_[s]->getDualObjective());
 			}
 #ifdef DSP_DEBUG2
 			for (int i = 0; i < lb_comm_size_; ++i)
@@ -507,7 +525,7 @@ DSP_RTN_CODE DdMWSync::runWorker()
 			{
 				vector<double> upperbounds;
 				DSP_RTN_CHECK_THROW(calculateUpperbound(solutions, upperbounds));
-				DSP_RTN_CHECK_THROW(syncUpperbound(solutions.size(), upperbounds));
+				DSP_RTN_CHECK_THROW(syncUpperbound(solutions, upperbounds));
 			}
 
 			/** free solutions */
@@ -689,6 +707,8 @@ DSP_RTN_CODE DdMWSync::calculateUpperbound(
 	/** calculate upper bound for each solution */
 	for (unsigned i = 0; i < solutions.size(); ++i)
 	{
+		/** set time limit */
+		workerub->setTimeLimit(remainingTime());
 		/** evaluate upper bounds */
 		double sumprimobj = workerub->evaluate(solutions[i]);
 		DSPdebugMessage("Rank %d: solution index %d sumprimobj %e\n", comm_rank_, i, sumprimobj);
@@ -753,7 +773,7 @@ DSP_RTN_CODE DdMWSync::syncBendersInfo(
 }
 
 DSP_RTN_CODE DdMWSync::syncUpperbound(
-		int nsolutions, /**< number of solutions */
+		Solutions      solutions,  /**< number of solutions */
 		vector<double> upperbounds /**< list of upper bounds */) {
 #define FREE_MEMORY              \
 	FREE_ARRAY_PTR(primobjzeros) \
@@ -762,6 +782,7 @@ DSP_RTN_CODE DdMWSync::syncUpperbound(
 
 	if (parEvalUb_ < 0) return DSP_RTN_OK;
 
+	int nsolutions;
 	double * primobjzeros = NULL; /**< primal objectives filled with zeros */
 	double * primobjs     = NULL; /**< primal objectives from subproblems */
 	double * sumub        = NULL; /**< the sum of primal objectives */
@@ -772,6 +793,7 @@ DSP_RTN_CODE DdMWSync::syncUpperbound(
 
 	if (comm_rank_ == 0)
 	{
+		nsolutions = solutions.size();
 		/** receive the number of solutions */
 		MPI_Recv(&nsolutions, 1, MPI_INT, lb_comm_root_, DSP_MPI_TAG_UB, comm_, &status);
 		DSPdebugMessage("Rank %d nsolutions %d\n", comm_rank_, nsolutions);
@@ -792,6 +814,7 @@ DSP_RTN_CODE DdMWSync::syncUpperbound(
 
 	if (comm_rank_ == 0)
 	{
+		int bestprimsol = -1;
 		double oldprimobj = master_->bestprimobj_;
 		/** receive upper bounds */
 		MPI_Recv(primobjs, nsolutions, MPI_DOUBLE, lb_comm_root_, DSP_MPI_TAG_UB, comm_, &status);
@@ -799,10 +822,19 @@ DSP_RTN_CODE DdMWSync::syncUpperbound(
 		for (int i = 0; i < nsolutions; ++i)
 		{
 			DSPdebugMessage("solution %d: primal objective %+e\n", i, primobjs[i]);
-			master_->bestprimobj_ = primobjs[i] < master_->bestprimobj_ ? primobjs[i] : master_->bestprimobj_;
+			if (primobjs[i] < master_->bestprimobj_)
+			{
+				master_->bestprimobj_ = primobjs[i];
+				bestprimsol = i;
+			}
 		}
 		if (oldprimobj > master_->bestprimobj_)
+		{
 			itercode_ = 'P';
+//			CoinCopyN(solutions[bestprimsol]->denseVector(model_->getNumCouplingCols()),
+//					model_->getNumCouplingCols(),
+//					master_->bestprimsol_);
+		}
 	}
 	else if (lb_comm_ != MPI_COMM_NULL)
 	{

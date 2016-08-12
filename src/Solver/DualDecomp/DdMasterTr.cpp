@@ -99,9 +99,12 @@ DSP_RTN_CODE DdMasterTr::solve()
 	case DSP_STAT_STOPPED_NODE:
 	case DSP_STAT_STOPPED_TIME:
 	{
+		/** objective value */
+		primobj_ = si_->getPrimalBound();
 		/** get solution */
 		CoinCopyN(si_->getSolution(), si_->getNumCols(), primsol_);
-		primobj_ = si_->getPrimalBound();
+		/** retrieve lambda */
+		lambda_ = primsol_ + nthetas_;
 //		for (int j = 0, k = 0; j < si_->getNumCols(); ++j)
 //		{
 //			if (fabs(primsol_[j]) < 1.0e-10) continue;

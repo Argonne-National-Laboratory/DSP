@@ -27,13 +27,8 @@ SCIP_DECL_CONSFREE(SCIPconshdlrBendersDd::scip_free)
 	SCIPfreeMemoryArray(scip_, &vars_);
 
 	/** release cut pool */
-	cutsToAdd_->dumpCuts();
-	for (int i = 0; i < cutsAdded_->sizeCuts(); ++i)
-	{
-		OsiRowCut * rc = cutsAdded_->rowCutPtr(i);
-		FREE_PTR(rc);
-	}
-	cutsAdded_->dumpCuts();
+	clearCuts(cutsToAdd_);
+	clearCuts(cutsAdded_);
 
 	nvars_ = 0;
 
@@ -52,26 +47,24 @@ SCIP_DECL_CONSHDLRCLONE(scip::ObjProbCloneable* SCIPconshdlrBendersDd::clone)
 /** set cutsToAdd_ */
 void SCIPconshdlrBendersDd::setCutsToAdd(OsiCuts * cuts)
 {
-	cutsToAdd_->dumpCuts();
+	/** cleaning */
+	clearCuts(cutsToAdd_);
 	for (int i = 0; i < cuts->sizeCuts(); ++i)
 	{
-		OsiRowCut * rc = cuts->rowCutPtr(i);
-		if (!rc) continue;
-
-		/** shallow copy */
-		cutsToAdd_->insert(rc);
+		/** deep copy */
+		cutsToAdd_->insert(cuts->rowCut(i));
 	}
 }
 
 /** clean cutsAdded */
-void SCIPconshdlrBendersDd::clearCutsAdded()
+void SCIPconshdlrBendersDd::clearCuts(OsiCuts * cuts)
 {
-	for (int i = 0; i < cutsAdded_->sizeCuts(); ++i)
+	for (int i = 0; i < cuts->sizeCuts(); ++i)
 	{
-		OsiRowCut * rc = cutsAdded_->rowCutPtr(i);
+		OsiRowCut * rc = cuts->rowCutPtr(i);
 		FREE_PTR(rc);
 	}
-	cutsAdded_->dumpCuts();
+	cuts->dumpCuts();
 }
 
 void SCIPconshdlrBendersDd::generateCuts(
@@ -80,7 +73,10 @@ void SCIPconshdlrBendersDd::generateCuts(
 		int where,     /**< [in] where to be called */
 		OsiCuts * cuts /**< [out] cuts generated */)
 {
+	if (cutsToAdd_->sizeCuts() <= 0) return;
+
 	BGN_TRY_CATCH
+	DSPdebugMessage("where %d\n", where);
 
 	/** update cut efficacy in cutsToAdd_ */
 	bool isCutFromPool = false;
@@ -94,10 +90,12 @@ void SCIPconshdlrBendersDd::generateCuts(
 		const CoinPackedVector row = rc->row();
 
 		/** is optimality cut? */
+		DSPdebug(rc->print());
 		DSPdebugMessage("row.getNumElements() %d\n", row.getNumElements());
 		bool isOptimalityCut = row.getIndices()[row.getNumElements() - 1] == nvars_ - 1;
 
 		/** calculate efficacy */
+//		DspMessage::printArray(size, x);
 		double efficacy = rc->violated(x);
 		if (isOptimalityCut) efficacy /= row.twoNorm();
 
@@ -115,12 +113,7 @@ void SCIPconshdlrBendersDd::generateCuts(
 	if (maxEfficaciousCut >= 0)
 	{
 		/** move one from cut pool */
-		OsiRowCut * rc = NULL;
-		if (where == from_scip_check)
-			rc = cutsToAdd_->rowCutPtr(maxEfficaciousCut);
-		else
-			rc = cutsToAdd_->rowCutPtrAndZap(maxEfficaciousCut);
-		cuts->insert(rc);
+		cuts->insert(cutsToAdd_->rowCut(maxEfficaciousCut));
 
 		/** mark as cut from pool */
 		isCutFromPool = true;

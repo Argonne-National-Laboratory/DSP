@@ -29,8 +29,8 @@ DSP_RTN_CODE BdDriverMpi::init()
 {
 	BGN_TRY_CATCH
 
-	if (comm_rank_ == 0)
-		primsol_ = new double [model_->getFullModelNumCols()];
+	/** allocate memory for primal solution */
+	primsol_ = new double [model_->getFullModelNumCols()];
 
 	/** create and initialize master-worker */
 	mw_ = new BdMWMpi(comm_, model_, par_, message_);
@@ -68,6 +68,8 @@ DSP_RTN_CODE BdDriverMpi::run()
 	}
 
 	/** run */
+	mw_->getMasterPtr()->setTimeLimit(
+			par_->getDblParam("BD/WALL_LIM") - CoinGetTimeOfDay() + walltime_);
 	DSP_RTN_CHECK_THROW(mw_->run());
 	for (int i = 0; i < comm_size_; ++i)
 	{

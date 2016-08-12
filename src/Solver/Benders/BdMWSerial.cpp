@@ -91,8 +91,8 @@ SCIPconshdlrBenders* BdMWSerial::constraintHandler()
 	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(master_->getSiPtr());
 
 	/** Benders constraint handler */
-	conshdlr = new SCIPconshdlrBenders(si->getSCIP(), par_->getIntParam("BD/CUT_PRIORITY"));
-	conshdlr->setNumSubprobs(model_->getNumSubproblems());
+	conshdlr = new SCIPconshdlrBenders(si->getSCIP(), "Benders", par_->getIntParam("BD/CUT_PRIORITY"));
+	conshdlr->setDecModel(model_);
 	conshdlr->setBdSub(worker_->getBdSubPtr());
 	conshdlr->setOriginalVariables(si->getNumCols(),
 			si->getSCIPvars(), par_->getIntParam("BD/NUM_CUTS_PER_ITER"));

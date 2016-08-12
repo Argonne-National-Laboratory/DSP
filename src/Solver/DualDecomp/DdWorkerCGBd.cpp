@@ -52,9 +52,6 @@ DSP_RTN_CODE DdWorkerCGBd::generateCuts(
 
 	CoinPackedVector vec;
 
-	/** subproblems */
-	TssModel * tssmodel = NULL;
-
 	BGN_TRY_CATCH
 
 	/** allocate memory */
@@ -63,18 +60,16 @@ DSP_RTN_CODE DdWorkerCGBd::generateCuts(
 
 	int ncols = model_->getNumCouplingCols();
 
-	/** retrieve tssmodel */
-	tssmodel = dynamic_cast<TssModel*>(model_);
-	if (!tssmodel) throw "Invalid model type cast";
-
-	/** retrieve probability */
-	const double * probability = tssmodel->getProbability();
-
 	/** retrieve dense vector of solution */
 	x = solution->denseVector(ncols);
+	DSPdebug(DspMessage::printArray(ncols, x));
 
 	/** generate cut at the solution */
 	bdsub_->generateCuts(ncols, x, cutval, cutrhs);
+
+	/***********************************************************
+	 * Probability is already applied to the recourse problems.
+	 ***********************************************************/
 
 	for (int j = 0; j < bdsub_->getNumSubprobs(); ++j)
 	{
@@ -88,27 +83,25 @@ DSP_RTN_CODE DdWorkerCGBd::generateCuts(
 			DSPdebugMessage("Generating optimality cut.\n");
 			cuttype.push_back(Opt);
 			break;
-		case DSP_STAT_FEASIBLE:
-			cuttype.push_back(None);
-			break;
 		default:
 			throw "Unexpected return from Benders cut generation.";
 			break;
 		}
 
-		DSPdebugMessage("Subproblem index %d probability %e\n", parProcIdx_[j], probability[parProcIdx_[j]]);
+		int s = bdsub_->getSubprobIndex(j);
+		DSPdebugMessage("Subproblem index %d\n", s);
 		if (bdsub_->getStatus(j) == DSP_STAT_PRIM_INFEASIBLE ||
 			bdsub_->getStatus(j) == DSP_STAT_OPTIMAL)
 		{
 			vec.clear();
 			for (int k = 0; k < ncols; ++k)
 				if (fabs(cutval[j][k]) > 1.0e-8)
-					vec.insert(k, cutval[j][k] * probability[parProcIdx_[j]]);
+					vec.insert(k, cutval[j][k]);
 
 			OsiRowCut cut;
 			cut.setRow(vec);
 			cut.setUb(COIN_DBL_MAX);
-			cut.setLb(cutrhs[j] * probability[parProcIdx_[j]]);
+			cut.setLb(cutrhs[j]);
 			DSPdebug(cut.print());
 			cuts->insert(cut);
 		}

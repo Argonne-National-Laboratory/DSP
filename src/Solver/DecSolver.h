@@ -66,6 +66,9 @@ public:
 	/** set dual objective */
 	virtual void setDualObjective(double dualobj) {dualobj_=dualobj;}
 
+	/** set time limit*/
+	virtual void setTimeLimit(double t) {time_remains_ = t;}
+
 	/** write output to a file */
 	virtual void write(const char * filename);
 

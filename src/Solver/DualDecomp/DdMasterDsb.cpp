@@ -14,7 +14,6 @@ DdMasterDsb::DdMasterDsb(
 		DspMessage * message /**< message pointer */) :
 DdMaster(par, model, message),
 prox_(NULL),
-lambda_(NULL),
 phi_t_(10.0),
 phi_l_(1000.0),
 alpha_t_(0.1),

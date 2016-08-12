@@ -23,10 +23,10 @@ bool duplicateVector(
 
 	/** number of saved solutions */
 	int num = vecs.size();
-	DSPdebugMessage("number of vectors %d\n", num);
+	DSPdebugMessage2("number of vectors %d\n", num);
 	for (int i = num - 1; i >= 0; --i)
 	{
-#ifdef DSP_DEBUG
+#ifdef DSP_DEBUG2
 		DSPdebugMessage("vecs[%d]:\n", i);
 		DspMessage::printArray(vecs[i]);
 #endif

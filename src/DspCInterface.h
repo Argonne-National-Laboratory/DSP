@@ -157,11 +157,17 @@ int getNumRows(DspApiEnv * env, int stage);
 /** get number of columns */
 int getNumCols(DspApiEnv * env, int stage);
 
+/** get Total number of row */
+int getTotalNumRows(DspApiEnv * env);
+
 /** get number of columns */
 int getTotalNumCols(DspApiEnv * env);
 
 /** get number of scenarios */
 int getNumScenarios(DspApiEnv * env);
+
+/** get number of coupling rows */
+int getNumCouplingRows(DspApiEnv * env);
 
 /** get number of subproblems */
 int getNumSubproblems(DspApiEnv * env);
@@ -184,7 +190,10 @@ double getPrimalBound(DspApiEnv * env);
 double getDualBound(DspApiEnv * env);
 
 /** get solution */
-void getSolution(DspApiEnv * env, int num, double * solution);
+void getPrimalSolution(DspApiEnv * env, int num, double * solution);
+
+/** get dual solution */
+void getDualSolution(DspApiEnv * env, int num, double * solution);
 
 /** get number of iterations */
 int getNumIterations(DspApiEnv * env);
@@ -195,6 +204,9 @@ int getNumNodes(DspApiEnv * env);
 /**
  * Misc.
  */
+
+/** write extensive form MPS */
+void writeMps(DspApiEnv * env, const char * name);
 
 /** print model */
 void printModel(DspApiEnv *env);

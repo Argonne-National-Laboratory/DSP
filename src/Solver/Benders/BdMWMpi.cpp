@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+#define DSP_DEBUG
 #include "Solver/Benders/BdMWMpi.h"
 #include "Solver/Benders/SCIPconshdlrBendersWorker.h"
 #include "SolverInterface/SolverInterfaceScip.h"
@@ -138,7 +138,7 @@ SCIPconshdlrBenders* BdMWMpi::constraintHandler()
 
 	/** MPI Benders */
 	conshdlr = new SCIPconshdlrBendersWorker(si->getSCIP(), par_->getIntParam("BD/CUT_PRIORITY"), comm_);
-	conshdlr->setNumSubprobs(model_->getNumSubproblems());
+	conshdlr->setDecModel(model_);
 	conshdlr->setOriginalVariables(si->getNumCols(), si->getSCIPvars(), par_->getIntParam("BD/NUM_CUTS_PER_ITER"));
 
 	END_TRY_CATCH_RTN(;,NULL)
@@ -156,6 +156,8 @@ DSP_RTN_CODE BdMWMpi::runWorker()
 
 	if (!worker_)
 		return DSP_RTN_OK;
+
+	DSPdebugMessage("Beginning of runWorker()\n");
 
 	OsiCuts cuts, tempcuts;
 	int message;

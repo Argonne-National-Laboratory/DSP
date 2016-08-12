@@ -92,7 +92,6 @@ private:
 private:
 
 	double * prox_;      /**< proximal point */
-	double * lambda_;    /**< dual variable */
 	double phi_t_;       /**< predicted increase from bundle */
 	double phi_l_;       /**< target increase from level */
 	double alpha_t_;     /**< bundle test parameter */

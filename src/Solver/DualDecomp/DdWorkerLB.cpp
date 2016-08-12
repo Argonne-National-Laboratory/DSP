@@ -25,9 +25,6 @@ DSP_RTN_CODE DdWorkerLB::init() {
 	/** create problem */
 	createProblem();
 
-	/** time stamp */
-	ticToc();
-
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
@@ -53,11 +50,9 @@ DSP_RTN_CODE DdWorkerLB::solve() {
 		while (resolve) {
 			resolve = false;
 
-			/** update time stamp */
-			ticToc();
 			/** set time limit */
 			subprobs_[s]->setTimeLimit(
-					CoinMin(time_remains_,
+					CoinMin(CoinMax(0.01,time_remains_),
 							par_->getDblParam("SCIP/TIME_LIM")));
 			/** solve */
 			subprobs_[s]->solve();
@@ -81,7 +76,7 @@ DSP_RTN_CODE DdWorkerLB::solve() {
 				break;
 
 			/** set solution gap tolerance */
-			if (subprobs_[s]->getPrimalBound() >= subprobs_[s]->theta_
+			if (subprobs_[s]->getPrimalObjective() >= subprobs_[s]->theta_
 					&& subprobs_[s]->gapTol_ > pargaptol) {
 				/** TODO parameterize this */
 				double gapTol = subprobs_[s]->gapTol_ * 0.5;
@@ -102,6 +97,9 @@ DSP_RTN_CODE DdWorkerLB::solve() {
 		dualobj += subprobs_[s]->si_->getDualBound();
 		total_cputime += CoinCpuTime() - cputime;
 		total_walltime += CoinGetTimeOfDay() - walltime;
+
+		/** consume time */
+		time_remains_ -= CoinGetTimeOfDay() - walltime;
 	}
 
 	/** update statistics */
@@ -116,26 +114,20 @@ DSP_RTN_CODE DdWorkerLB::solve() {
 	return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE DdWorkerLB::createProblem() {
+DSP_RTN_CODE DdWorkerLB::createProblem()
+{
 	BGN_TRY_CATCH
 
-	for (int s = 0; s < par_->getIntPtrParamSize("ARR_PROC_IDX"); ++s) {
+	for (int s = 0; s < par_->getIntPtrParamSize("ARR_PROC_IDX"); ++s)
+	{
 		/** create subproblem instance */
-		DdSub * subprob = new DdSub(par_->getIntPtrParam("ARR_PROC_IDX")[s], par_);
-		subprobs_.push_back(subprob);
-
-		/** create subproblem */
-		subprob->createProblem(model_);
+		DdSub * subprob = new DdSub(par_->getIntPtrParam("ARR_PROC_IDX")[s],
+				par_, model_, message_);
+		/** initialize */
+		subprob->init();
 		assert(subprob->si_);
-
-		/** TODO general solver */
-//		/** set display level */
-//		SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(subprob->si_);
-//		int loglevel = CoinMax(0, par_->getIntParam("LOG_LEVEL") - 3);
-//		if (si)
-//		 	subprob->si_->setPrintLevel(CoinMin(loglevel, 5));
-//		else
-			subprob->si_->setPrintLevel(0);
+		/** store */
+		subprobs_.push_back(subprob);
 	}
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
