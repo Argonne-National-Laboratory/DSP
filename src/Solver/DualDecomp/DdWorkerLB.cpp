@@ -76,7 +76,7 @@ DSP_RTN_CODE DdWorkerLB::solve() {
 				break;
 
 			/** set solution gap tolerance */
-			if (subprobs_[s]->getPrimalBound() >= subprobs_[s]->theta_
+			if (subprobs_[s]->getPrimalObjective() >= subprobs_[s]->theta_
 					&& subprobs_[s]->gapTol_ > pargaptol) {
 				/** TODO parameterize this */
 				double gapTol = subprobs_[s]->gapTol_ * 0.5;
@@ -114,26 +114,20 @@ DSP_RTN_CODE DdWorkerLB::solve() {
 	return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE DdWorkerLB::createProblem() {
+DSP_RTN_CODE DdWorkerLB::createProblem()
+{
 	BGN_TRY_CATCH
 
-	for (int s = 0; s < par_->getIntPtrParamSize("ARR_PROC_IDX"); ++s) {
+	for (int s = 0; s < par_->getIntPtrParamSize("ARR_PROC_IDX"); ++s)
+	{
 		/** create subproblem instance */
-		DdSub * subprob = new DdSub(par_->getIntPtrParam("ARR_PROC_IDX")[s], par_);
-		subprobs_.push_back(subprob);
-
-		/** create subproblem */
-		subprob->createProblem(model_);
+		DdSub * subprob = new DdSub(par_->getIntPtrParam("ARR_PROC_IDX")[s],
+				par_, model_, message_);
+		/** initialize */
+		subprob->init();
 		assert(subprob->si_);
-
-		/** TODO general solver */
-//		/** set display level */
-//		SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(subprob->si_);
-//		int loglevel = CoinMax(0, par_->getIntParam("LOG_LEVEL") - 3);
-//		if (si)
-//		 	subprob->si_->setPrintLevel(CoinMin(loglevel, 5));
-//		else
-			subprob->si_->setPrintLevel(0);
+		/** store */
+		subprobs_.push_back(subprob);
 	}
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
