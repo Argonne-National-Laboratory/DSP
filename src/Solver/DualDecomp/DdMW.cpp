@@ -162,7 +162,11 @@ void DdMW::printIterInfo()
 	double approxgap = master_->getRelApproxGap();
 	double dualitygap = master_->getRelDualityGap();
 
-	message_->print(1, " %c%4d  %+10e", itercode_, itercnt_, primobj);
+	message_->print(1, " %c%4d", itercode_, itercnt_);
+	if (primobj < 1.0e+20)
+		message_->print(1, "  %+10e", primobj);
+	else
+		message_->print(1, "  %+13s", "Large");
 	if (bestprimobj < 1.0e+20)
 		message_->print(1, "  %+10e", bestprimobj);
 	else
@@ -172,7 +176,10 @@ void DdMW::printIterInfo()
 	else
 		message_->print(1, "  %+13s", "Large");
 	message_->print(1, "  %8.2f", approxgap*100);
-	message_->print(1, "  %8.2f", dualitygap*100);
+	if (dualitygap < 10.0)
+		message_->print(1, "  %8.2f", dualitygap*100);
+	else
+		message_->print(1, "  %8s", "Large");
 	message_->print(1, "  %6.1f\n", CoinGetTimeOfDay() - iterstime_);
 
 	s_itertime_.push_back(CoinGetTimeOfDay() - iterstime_);
