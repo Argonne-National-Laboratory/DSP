@@ -821,7 +821,7 @@ DSP_RTN_CODE DdMWSync::syncUpperbound(
 		/** calculate best primal objective */
 		for (int i = 0; i < nsolutions; ++i)
 		{
-			DSPdebugMessage("solution %d: primal objective %+e\n", i, primobjs[i]);
+			//DSPdebugMessage("solution %d: primal objective %+e\n", i, primobjs[i]);
 			if (primobjs[i] < master_->bestprimobj_)
 			{
 				master_->bestprimobj_ = primobjs[i];

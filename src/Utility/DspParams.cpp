@@ -5,7 +5,9 @@
  *      Author: kibaekkim
  */
 
-#include <Utility/DspParams.h>
+//#define DSP_DEBUG
+#include "Utility/DspMessage.h"
+#include "Utility/DspParams.h"
 
 #define MAX_INT_NUM numeric_limits<int>::max()
 #define MAX_DBL_NUM numeric_limits<double>::max()
@@ -219,6 +221,7 @@ void DspParams::initBoolPtrParams()
 
 void DspParams::initIntPtrParams()
 {
+	DSPdebugMessage("creating integer array parameters\n");
 	/** array of scenarios for the current process */
 	IntPtrParams_.createParam("ARR_PROC_IDX");
 
