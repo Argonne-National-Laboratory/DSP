@@ -39,6 +39,7 @@ public:
 		TssDdAddOptCuts_(-1),
 		TssDdEvalUb_(1),
 		TssDdDualVarsLog_(0),
+		TssDdMaxPrimSolEval_(100),
 		TssDdStoppingTol_(1.e-5),
 		ScipDisplayFreq_(100),
 		ScipLimitsGap_(0.0),
@@ -147,6 +148,9 @@ public:
 
 	/** Store changes of distance of dual variables (only for experiments) */
 	int TssDdDualVarsLog_;
+
+	/** Maximum number of primal solutions to evaluate */
+	int TssDdMaxPrimSolEval_;
 
 	/** Stopping gap tolerance
 	 *   - relative gap between master objective and dual bound

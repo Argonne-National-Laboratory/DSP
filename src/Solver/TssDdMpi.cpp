@@ -1093,7 +1093,8 @@ void TssDdMpi::syncSolutions(
 	MPIscatterCoinPackedVectors(comm_, solutionsToSync, solutionsGathered);
 
 	/** move solutions */
-	for (unsigned i = 0; i < solutionsGathered.size(); ++i)
+	int nsols = CoinMin(par_->TssDdMaxPrimSolEval_, (int) solutionsGathered.size());
+	for (unsigned i = 0; i < nsols; ++i)
 		solutions.push_back(solutionsGathered[i]);
 
 #if 0
