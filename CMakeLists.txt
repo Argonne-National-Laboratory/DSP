@@ -73,7 +73,7 @@ ExternalProject_Add(scipoptsuite-3.1.1
 	SOURCE_DIR ${SCIPOPTSUITE_DIR}
 	CONFIGURE_COMMAND ""
 	BINARY_DIR ${SCIPOPTSUITE_DIR}
-	BUILD_COMMAND make scipoptlib SHARED=true GMP=false ZLIB=false READLINE=false
+	BUILD_COMMAND make scipoptlib SHARED=true GMP=false READLINE=false
 	INSTALL_COMMAND ""
 )
 
