@@ -22,6 +22,7 @@ optimize(solve_type = solve_types[1], comm = MPI.COMM_WORLD)
 if MPI.Comm_rank(MPI.COMM_WORLD) == 0
     @show getprimobjval() # Dsp.model.primVal
     @show getdualobjval() # Dsp.model.dualVal
+    @show Dsp.model.colVal
     @show Dsp.model.rowVal
 end
 

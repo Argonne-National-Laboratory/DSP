@@ -18,4 +18,5 @@ optimize(solve_type = solve_types[1])
 
 @show getprimobjval() # Dsp.model.primVal
 @show getdualobjval() # Dsp.model.dualVal
+@show Dsp.model.colVal
 @show Dsp.model.rowVal
