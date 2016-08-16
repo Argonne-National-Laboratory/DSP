@@ -315,18 +315,20 @@ DSP_RTN_CODE DdMWSync::runMaster()
 				CoinCopyN(master_->getLambda(), model_->getNumCouplingRows(), master_->bestdualsol_);
 		}
 
-		/** STOP with time limit */
-		if (remainingTime() < 1.0)
-		{
-			signal = DSP_STAT_MW_STOP;
-			message_->print(1, "The time limit (%.2f) is reached.\n", parTimeLimit_);
-		}
-
 		/** STOP with iteration limit */
 		if (itercnt_ > master_->getParPtr()->getIntParam("DD/ITER_LIM"))
 		{
 			signal = DSP_STAT_MW_STOP;
 			message_->print(1, "The iteration limit is reached.\n");
+			master_->status_ = DSP_STAT_LIM_ITERorTIME;
+		}
+
+		/** STOP with time limit */
+		if (remainingTime() < 1.0)
+		{
+			signal = DSP_STAT_MW_STOP;
+			message_->print(1, "The time limit (%.2f) is reached.\n", parTimeLimit_);
+			master_->status_ = DSP_STAT_LIM_ITERorTIME;
 		}
 
 		if (signal != DSP_STAT_MW_STOP)
@@ -338,12 +340,15 @@ DSP_RTN_CODE DdMWSync::runMaster()
 
 			/** termination test */
 			signal = master_->terminationTest();
-			/** check duality gap */
-			if (signal != DSP_STAT_MW_STOP &&
-					master_->getRelDualityGap() < master_->getParPtr()->getDblParam("DD/STOP_TOL"))
+			if (signal == DSP_STAT_MW_STOP)
+			{
+				master_->status_ = DSP_STAT_OPTIMAL;
+			}
+			else if (master_->getRelDualityGap() < master_->getParPtr()->getDblParam("DD/STOP_TOL"))
 			{
 				signal = DSP_STAT_MW_STOP;
 				message_->print(1, "The duality gap limit %+e is reached.\n", master_->getRelDualityGap());
+				master_->status_ = DSP_STAT_STOPPED_GAP;
 			}
 		}
 		printIterInfo();
@@ -473,7 +478,8 @@ DSP_RTN_CODE DdMWSync::runWorker()
 	Solutions solutions;
 
 	/** receive start time */
-	MPI_Bcast(&iterstime_, 1, MPI_DOUBLE, 0, subcomm_);
+	if (subcomm_ != MPI_COMM_NULL)
+		MPI_Bcast(&iterstime_, 1, MPI_DOUBLE, 0, subcomm_);
 
 	/** loop until when the master signals stop */
 	while (1)
@@ -547,6 +553,7 @@ DSP_RTN_CODE DdMWSync::runWorker()
 				OsiRowCut * rc = cuts.rowCutPtr(i);
 				cutsToAdd_->insert(rc);
 			}
+			DSPdebug(cuts.printCuts());
 			cuts.dumpCuts();
 
 			/** update subproblems */
@@ -765,6 +772,15 @@ DSP_RTN_CODE DdMWSync::syncBendersInfo(
 			MPI_Send(&cg_status, 1, MPI_INT, 0, DSP_MPI_TAG_CGBD, comm_);
 		/** broadcast cuts */
 		MPIbcastOsiCuts(lb_comm_, &cuts);
+		for (int i = 0; i < lb_comm_size_; ++i)
+		{
+			if (i == lb_comm_rank_)
+			{
+				DSPdebugMessage("Rank %d prints cuts:\n", comm_rank_);
+				DSPdebug(cuts.printCuts());
+			}
+			MPI_Barrier(lb_comm_);
+		}
 	}
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
@@ -793,7 +809,6 @@ DSP_RTN_CODE DdMWSync::syncUpperbound(
 
 	if (comm_rank_ == 0)
 	{
-		nsolutions = solutions.size();
 		/** receive the number of solutions */
 		MPI_Recv(&nsolutions, 1, MPI_INT, lb_comm_root_, DSP_MPI_TAG_UB, comm_, &status);
 		DSPdebugMessage("Rank %d nsolutions %d\n", comm_rank_, nsolutions);
@@ -804,6 +819,7 @@ DSP_RTN_CODE DdMWSync::syncUpperbound(
 	}
 	else
 	{
+		nsolutions = solutions.size();
 		/** send the number of solutions */
 		if (lb_comm_rank_ == 0)
 			MPI_Send(&nsolutions, 1, MPI_INT, 0, DSP_MPI_TAG_UB, comm_);
