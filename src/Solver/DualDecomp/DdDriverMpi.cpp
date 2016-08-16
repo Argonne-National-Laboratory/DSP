@@ -63,27 +63,37 @@ DSP_RTN_CODE DdDriverMpi::run()
 	walltime_ = CoinGetTimeOfDay() - walltime_;
 
 	/** collect solutions */
-	int ncols;
+	int nprimsol, ndualsol;
 	if (comm_rank_ == 0)
 	{
-		DdMaster * master = mw_->master_;
-		if (master)
-		{
-			status_ = master->getStatus();
-			primobj_ = master->getBestPrimalObjective();
-			dualobj_ = master->getBestDualObjective();
-			ncols = master->getSiPtr()->getNumCols();
-			primsol_ = new double [ncols];
-			CoinCopyN(master->getPrimalSolution(), ncols, primsol_);
-			numNodes_ = master->getSiPtr()->getNumNodes();
-			numIterations_ = master->getSiPtr()->getIterationCount();
-		}
-		master = NULL;
+		status_ = mw_->master_->getStatus();
+		primobj_ = mw_->master_->getBestPrimalObjective();
+		dualobj_ = mw_->master_->getBestDualObjective();
+
+		/** primal solution */
+		nprimsol = model_->getNumCouplingCols();
+		primsol_ = new double [model_->getNumCouplingCols()];
+		CoinCopyN(mw_->master_->getBestPrimalSolution(), nprimsol, primsol_);
+
+		/** dual solution */
+		ndualsol = model_->getNumCouplingRows();
+		dualsol_ = new double [model_->getNumCouplingRows()];
+		CoinCopyN(mw_->master_->getBestDualSolution(), ndualsol, dualsol_);
+
+		numNodes_ = mw_->master_->getSiPtr()->getNumNodes();
+		numIterations_ = mw_->master_->getSiPtr()->getIterationCount();
+
+		/** communicate */
 		MPI_Bcast(&status_, 1, MPI_INT, 0, comm_);
 		MPI_Bcast(&primobj_, 1, MPI_DOUBLE, 0, comm_);
 		MPI_Bcast(&dualobj_, 1, MPI_DOUBLE, 0, comm_);
-		MPI_Bcast(&ncols, 1, MPI_INT, 0, comm_);
-		MPI_Bcast(primsol_, ncols, MPI_DOUBLE, 0, comm_);
+
+		MPI_Bcast(&nprimsol, 1, MPI_INT, 0, comm_);
+		MPI_Bcast(primsol_, nprimsol, MPI_DOUBLE, 0, comm_);
+
+		MPI_Bcast(&ndualsol, 1, MPI_INT, 0, comm_);
+		MPI_Bcast(dualsol_, ndualsol, MPI_DOUBLE, 0, comm_);
+
 		MPI_Bcast(&numNodes_, 1, MPI_INT, 0, comm_);
 		MPI_Bcast(&numIterations_, 1, MPI_INT, 0, comm_);
 	}
@@ -92,9 +102,15 @@ DSP_RTN_CODE DdDriverMpi::run()
 		MPI_Bcast(&status_, 1, MPI_INT, 0, comm_);
 		MPI_Bcast(&primobj_, 1, MPI_DOUBLE, 0, comm_);
 		MPI_Bcast(&dualobj_, 1, MPI_DOUBLE, 0, comm_);
-		MPI_Bcast(&ncols, 1, MPI_INT, 0, comm_);
-		primsol_ = new double [ncols];
-		MPI_Bcast(primsol_, ncols, MPI_DOUBLE, 0, comm_);
+
+		MPI_Bcast(&nprimsol, 1, MPI_INT, 0, comm_);
+		primsol_ = new double [nprimsol];
+		MPI_Bcast(primsol_, nprimsol, MPI_DOUBLE, 0, comm_);
+
+		MPI_Bcast(&ndualsol, 1, MPI_INT, 0, comm_);
+		dualsol_ = new double [ndualsol];
+		MPI_Bcast(dualsol_, ndualsol, MPI_DOUBLE, 0, comm_);
+
 		MPI_Bcast(&numNodes_, 1, MPI_INT, 0, comm_);
 		MPI_Bcast(&numIterations_, 1, MPI_INT, 0, comm_);
 	}
