@@ -1110,7 +1110,7 @@ DSP_RTN_CODE MPIbcastOsiCuts(
 		for (int i = 0; i < ncuts; ++i)
 		{
 			OsiRowCut rc;
-			rc.setRow(rows[i]);
+			rc.setRow(*rows[i]);
 			rc.setLb(lhs[i]);
 			rc.setUb(rhs[i]);
 			cuts->insert(rc);
