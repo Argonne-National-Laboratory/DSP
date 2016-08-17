@@ -96,12 +96,6 @@ void setSolution(
 		int         size,    /**< size of solution array */
 		double *    solution /**< solution to set */);
 
-/** set branching priorities */
-void setBranchPriorities(
-		DspApiEnv * env,       /**< pointer to API object */
-		int         size,      /**< number of priorities */
-		int *       priorities /**< depending on solver */);
-
 /** solve deterministic equivalent model */
 void solveDe(DspApiEnv * env /**< pointer to API object */);
 

@@ -255,15 +255,6 @@ void setSolution(
 	getTssModel(env)->setSolution(size, solution);
 }
 
-/** set branching priority */
-void setBranchPriorities(
-		DspApiEnv * env,       /**< pointer to API object */
-		int         size,      /**< number of priorities */
-		int *       priorities /**< A smaller number has more priority. */)
-{
-	getTssModel(env)->setPriorities(size, priorities);
-}
-
 /** solve deterministic equivalent model */
 void solveDe(DspApiEnv * env)
 {

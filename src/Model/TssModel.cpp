@@ -74,6 +74,7 @@ DSP_RTN_CODE TssModel::setNumberOfScenarios(int nscen)
 		rlbd_scen_[s] = NULL;
 		rubd_scen_[s] = NULL;
 	}
+	CoinZeroN(prob_, nscen_);
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -92,7 +93,7 @@ DSP_RTN_CODE TssModel::setDimensions(
 	/** core problem dimension */
 	nrows_core_ = nrows1 + nrows2;
 	ncols_core_ = ncols1 + ncols2;
-	//printf("nrows_core_ %d ncols_core_ %d\n", nrows_core_, ncols_core_);
+	DSPdebugMessage("nrows_core_ %d ncols_core_ %d\n", nrows_core_, ncols_core_);
 
 	/** stage information */
 	nrows_[0]  = nrows1;
@@ -160,7 +161,6 @@ DSP_RTN_CODE TssModel::loadFirstStage(
 	CoinCopyN(obj,   ncols_[0], obj_core_[0]);
 	CoinCopyN(rlbd,  nrows_[0], rlbd_core_[0]);
 	CoinCopyN(rubd,  nrows_[0], rubd_core_[0]);
-	//PRINT_ARRAY_MSG(ncols_[0], ctype_core_[0], "ctype_core_[0]");
 
 	/** count number of integer variables */
 	nints_core_ = 0;
@@ -294,12 +294,13 @@ DSP_RTN_CODE TssModel::loadSecondStage(
 	CoinIotaN(rind, nrows_[1], rstart_[1]);
 
 	/** allocate memory */
-	mat_scen_[s]  = new CoinPackedMatrix(false, ncols_[1], nrows_[1], start[nrows_[1]], value, index, start, len);
+	mat_scen_[s]  = new CoinPackedMatrix(false, ncols_[0] + ncols_[1], nrows_[1], start[nrows_[1]], value, index, start, len);
 	clbd_scen_[s] = new CoinPackedVector(ncols_[1], cind, clbd);
 	cubd_scen_[s] = new CoinPackedVector(ncols_[1], cind, cubd);
 	obj_scen_[s]  = new CoinPackedVector(ncols_[1], cind, obj);
 	rlbd_scen_[s] = new CoinPackedVector(nrows_[1], rind, rlbd);
 	rubd_scen_[s] = new CoinPackedVector(nrows_[1], rind, rubd);
+	DSPdebug(mat_scen_[s]->verifyMtx(4));
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
@@ -383,10 +384,11 @@ DSP_RTN_CODE TssModel::decompose(
 	int ncols = ncols_[0] + size * ncols_[1] + naux;
 	DSPdebugMessage("nrows %d ncols %d\n", nrows, ncols);
 
-	for (s = 0; s < size; ++s)
-		assert(mat_scen_[scen[s]] != NULL);
-
 	BGN_TRY_CATCH
+
+	for (s = 0; s < size; ++s)
+		if (mat_scen_[scen[s]] == NULL)
+			throw "Invalid model data (mat_scen_)";
 
 	/** allocate memory */
 	clbd = new double [ncols];
@@ -406,10 +408,11 @@ DSP_RTN_CODE TssModel::decompose(
 	double * elements = NULL;
 	double * denserow = NULL;
 
-	/** count non-zero elements */
 	int nzcnt = 0;
+	/** # of nonzeros in the first-stage matrix A */
 	for (i = 0; i < nrows_[0]; ++i)
 		nzcnt += rows_core_[i]->getNumElements();
+	/** # of nonzeros in the technology and recourse matrices */
 	for (s = 0; s < size; ++s)
 	{
 		if (fromSMPS_)

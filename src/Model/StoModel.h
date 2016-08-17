@@ -75,19 +75,8 @@ public:
 	/** get column type for a given stage */
 	const char * getCtypeCore(int stage) {return ctype_core_[stage];}
 
-	/** get number of branch priorities */
-	int getNumPriorities() {return numPriorities_;}
-
-	/** get branch priorities */
-	const int * getPriorities() {return priorities_;}
-
 	/** get initial solutions */
 	const Solutions getInitialSolutions() {return init_solutions_;}
-
-	/** set branch priorities */
-	void setPriorities(
-			int   size,      /**< size of array */
-			int * priorities /**< branch priority */);
 
 	/** set initial solutions */
 	void setSolution(
@@ -204,9 +193,6 @@ protected:
 	CoinPackedVector ** rubd_scen_; /**< row upper bounds for each scenario */
 
 	StoScenMap scen2stg_; /** map from scenario to stage */
-
-	int numPriorities_; /**< length of branch priorities */
-	int * priorities_;  /**< branch priority */
 
 	Solutions init_solutions_; /**< initial solutions */
 

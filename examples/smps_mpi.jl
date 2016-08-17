@@ -10,7 +10,7 @@ end
 smps = ARGS[1]
 
 # type of solution methods
-solve_types = [:Dual, :Benders, :Extensive]
+solve_types = [:Dual, :Benders]
 
 # initialize MPI
 MPI.Init()

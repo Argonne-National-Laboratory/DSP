@@ -32,8 +32,6 @@ StoModel::StoModel() :
 		obj_scen_(NULL),
 		rlbd_scen_(NULL),
 		rubd_scen_(NULL),
-		numPriorities_(0),
-		priorities_(NULL),
 		fromSMPS_(false)
 {
 	/** nothing to do */
@@ -125,14 +123,6 @@ StoModel::StoModel(const StoModel & rhs) :
 		else
 			rubd_scen_[i] = new CoinPackedVector;
 	}
-	numPriorities_ = 0;
-	priorities_ = NULL;
-	if (rhs.priorities_ != NULL)
-	{
-		numPriorities_ = rhs.numPriorities_;
-		priorities_ = new int [numPriorities_];
-		CoinCopyN(rhs.priorities_, numPriorities_, priorities_);
-	}
 
 	/** copy initial solutions */
 	for (unsigned i = 0; i < rhs.init_solutions_.size(); ++i)
@@ -146,14 +136,14 @@ StoModel::~StoModel()
 	FREE_ARRAY_PTR(nints_);
 	FREE_ARRAY_PTR(rstart_);
 	FREE_ARRAY_PTR(cstart_);
-	FREE_2D_PTR(nstgs_, rows_core_);
+	FREE_ARRAY_PTR(prob_);
+	FREE_2D_PTR(nrows_core_, rows_core_);
 	FREE_2D_ARRAY_PTR(nstgs_, clbd_core_);
 	FREE_2D_ARRAY_PTR(nstgs_, cubd_core_);
 	FREE_2D_ARRAY_PTR(nstgs_, obj_core_);
 	FREE_2D_ARRAY_PTR(nstgs_, rlbd_core_);
 	FREE_2D_ARRAY_PTR(nstgs_, rubd_core_);
 	FREE_2D_ARRAY_PTR(nstgs_, ctype_core_);
-	FREE_ARRAY_PTR(prob_);
 	FREE_2D_PTR(nscen_, mat_scen_);
 	FREE_2D_PTR(nscen_, clbd_scen_);
 	FREE_2D_PTR(nscen_, cubd_scen_);
@@ -165,11 +155,8 @@ StoModel::~StoModel()
 	nstgs_ = 0;
 	nrows_core_ = 0;
 	ncols_core_ = 0;
-	FREE_ARRAY_PTR(priorities_);
 	for (unsigned i = 0; i < init_solutions_.size(); ++i)
 		FREE_PTR(init_solutions_[i]);
-//	for (unsigned int i = 0; i < branchingHyperplanes_.size(); ++i)
-//		FREE_PTR(branchingHyperplanes_[i].first);
 }
 
 DSP_RTN_CODE StoModel::readSmps(const char * filename)
@@ -342,20 +329,6 @@ DSP_RTN_CODE StoModel::readSmps(const char * filename)
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
-}
-
-/** set branching priorities */
-void StoModel::setPriorities(
-		int   size,      /**< size of array */
-		int * priorities /**< branch priority */)
-{
-	if (size > 0)
-	{
-		numPriorities_ = size;
-		if (priorities_ == NULL)
-			priorities_ = new int [numPriorities_];
-		CoinCopyN(priorities, numPriorities_, priorities_);
-	}
 }
 
 void StoModel::setSolution(int size, double * solution)
@@ -641,20 +614,23 @@ void StoModel::__printData()
 		printf("stage map %d\n", scen2stg_[s]);
 #if 1
 		printf("=== BEGINNING of CoinPackedMatrix mat_scen_[%d] ===\n", s);
-		printf("isColOrdered %d\n", mat_scen_[s]->isColOrdered());
-		PRINT_ARRAY_MSG(mat_scen_[s]->getMajorDim(), mat_scen_[s]->getVectorStarts(), "VectorStarts")
-		PRINT_SPARSE_ARRAY_MSG(
-				mat_scen_[s]->getNumElements(),
-				mat_scen_[s]->getIndices(),
-				mat_scen_[s]->getElements(),
-				"Elements")
+		if (mat_scen_[s])
+		{
+			printf("isColOrdered %d\n", mat_scen_[s]->isColOrdered());
+			PRINT_ARRAY_MSG(mat_scen_[s]->getMajorDim(), mat_scen_[s]->getVectorStarts(), "VectorStarts")
+			PRINT_SPARSE_ARRAY_MSG(
+					mat_scen_[s]->getNumElements(),
+					mat_scen_[s]->getIndices(),
+					mat_scen_[s]->getElements(),
+					"Elements")
+		}
 		printf("=== END of CoinPackedMatrix mat_scen_[%d] ===\n", s);
 #endif
-		PRINT_COIN_PACKED_VECTOR_MSG((*clbd_scen_[s]), "clbd_scen_")
-		PRINT_COIN_PACKED_VECTOR_MSG((*cubd_scen_[s]), "cubd_scen_")
-		PRINT_COIN_PACKED_VECTOR_MSG((*obj_scen_[s]), "obj_scen_")
-		PRINT_COIN_PACKED_VECTOR_MSG((*rlbd_scen_[s]), "rlbd_scen_")
-		PRINT_COIN_PACKED_VECTOR_MSG((*rubd_scen_[s]), "rubd_scen_")
+//		PRINT_COIN_PACKED_VECTOR_MSG((*clbd_scen_[s]), "clbd_scen_")
+//		PRINT_COIN_PACKED_VECTOR_MSG((*cubd_scen_[s]), "cubd_scen_")
+//		PRINT_COIN_PACKED_VECTOR_MSG((*obj_scen_[s]), "obj_scen_")
+//		PRINT_COIN_PACKED_VECTOR_MSG((*rlbd_scen_[s]), "rlbd_scen_")
+//		PRINT_COIN_PACKED_VECTOR_MSG((*rubd_scen_[s]), "rubd_scen_")
 	}
 
 	printf("\n### END of printing StoModel data ###\n");

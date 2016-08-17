@@ -5,7 +5,8 @@
  *      Author: kibaekkim
  */
 
-#include <Solver/DualDecomp/DdWorkerLB.h>
+#define DSP_DEBUG
+#include "Solver/DualDecomp/DdWorkerLB.h"
 
 DdWorkerLB::DdWorkerLB(DspParams * par, DecModel * model, DspMessage * message) :
 		DdWorker(par, model, message), solution_key_(-1) {
@@ -120,6 +121,8 @@ DSP_RTN_CODE DdWorkerLB::createProblem()
 
 	for (int s = 0; s < par_->getIntPtrParamSize("ARR_PROC_IDX"); ++s)
 	{
+		DSPdebugMessage("scenario index %d / %d\n",
+				par_->getIntPtrParam("ARR_PROC_IDX")[s], par_->getIntPtrParamSize("ARR_PROC_IDX"));
 		/** create subproblem instance */
 		DdSub * subprob = new DdSub(par_->getIntPtrParam("ARR_PROC_IDX")[s],
 				par_, model_, message_);

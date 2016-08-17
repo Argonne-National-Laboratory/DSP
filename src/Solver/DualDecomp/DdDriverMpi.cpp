@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+#define DSP_DEBUG
 #include "DdDriverMpi.h"
 #include "Solver/DualDecomp/DdMWSync.h"
 #include "Solver/DualDecomp/DdMWAsync.h"
@@ -19,6 +19,7 @@ comm_(comm)
 {
 	BGN_TRY_CATCH
 
+	DSPdebugMessage("comm %d\n", comm_);
 	MPI_Comm_rank(comm_, &comm_rank_); /**< get process ID */
 	MPI_Comm_size(comm_, &comm_size_); /**< get number of processes */
 	DSPdebugMessage("comm_rank_ %d, comm_size_ %d\n", comm_rank_, comm_size_);

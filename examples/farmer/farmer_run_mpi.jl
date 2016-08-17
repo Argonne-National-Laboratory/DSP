@@ -11,9 +11,16 @@ MPI.Init();
 include("farmer_model.jl")
 
 # Dsp solve types
-solve_types = [:Dual, :Benders, :Extensive]
+solve_types = [:Dual, :Benders]
 
-solve(m, solve_type = solve_types[1])
+solve(m, solve_type = solve_types[1], comm = MPI.COMM_WORLD)
+
+if MPI.Comm_rank(MPI.COMM_WORLD) == 0
+    @show getprimobjval() # Dsp.model.primVal
+    @show getdualobjval() # Dsp.model.dualVal
+    @show Dsp.model.colVal
+    @show Dsp.model.rowVal
+end
 
 # finalize
 MPI.Finalize()
