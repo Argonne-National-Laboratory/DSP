@@ -395,6 +395,8 @@ void TssBdSub::solveSingleRecourse(
 		{
 			si = new SolverInterfaceScip(par_);
 			si->loadProblem(cglp_[scenario], "subprob");
+			/** set time limit */
+			si->setTimeLimit(par_->ScipLimitsTime_);
 		}
 		else
 		{
