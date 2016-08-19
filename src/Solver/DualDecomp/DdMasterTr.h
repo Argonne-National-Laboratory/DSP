@@ -92,7 +92,7 @@ protected:
 
 	/** parameters */
 	bool parTr_;            /**< enable/disable trust region */
-	int parTrSize_;         /**< trust region size */
+	double parTrSize_;      /**< trust region size */
 	bool parTrDecrease_;    /**< enable decreasing trust region */
 	int parNumCutsPerIter_; /**< number of cuts added per iteration (determines dimension of theta) */
 	int parMasterAlgo_;     /**< algorithm for solving master problem */
