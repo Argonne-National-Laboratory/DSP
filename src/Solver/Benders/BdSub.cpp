@@ -488,9 +488,9 @@ DSP_RTN_CODE BdSub::calculateCutElements(
             /** l <= Ax <= u, bounded by u */
         	cutrhs += pi[i] * rubd[i];
         }
-		DSPdebugMessage("cutrhs %e, pi %e rlbd %e rubd %e\n", cutrhs, pi[i], rlbd[i], rubd[i]);
+		//DSPdebugMessage("cutrhs %e, pi %e rlbd %e rubd %e\n", cutrhs, pi[i], rlbd[i], rubd[i]);
 	}
-	DSPdebugMessage("cutrhs %E\n", cutrhs);
+	//DSPdebugMessage("cutrhs %E\n", cutrhs);
 
 	/** loop over columns */
 	for (j = ncols - 1; j >= 0; --j)
@@ -525,10 +525,10 @@ DSP_RTN_CODE BdSub::calculateCutElements(
             /** l_j <= x_j <= u_j, bounded by u */
             cutrhs += rc[j] * cubd[j];
         }
-		DSPdebugMessage("cutrhs %e, rc %e clbd %e cubd %e\n", cutrhs, rc[j], clbd[j], cubd[j]);
+		//DSPdebugMessage("cutrhs %e, rc %e clbd %e cubd %e\n", cutrhs, rc[j], clbd[j], cubd[j]);
 	}
 
-	DSPdebugMessage("cutrhs %E\n", cutrhs);
+	//DSPdebugMessage("cutrhs %E\n", cutrhs);
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 

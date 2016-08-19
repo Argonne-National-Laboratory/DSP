@@ -556,7 +556,7 @@ int DdMasterTr::addCuts(
 	}
 
 	nCutsAdded = cuts.sizeCuts();
-	//DSPdebug(cuts.printCuts());
+	DSPdebug(cuts.printCuts());
 	if (nCutsAdded > 0)
 		/** apply cuts */
 		si_->addCuts(cuts);

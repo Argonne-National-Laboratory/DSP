@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-#define DSP_DEBUG
+//#define DSP_DEBUG
 #include "Solver/Benders/BdMWMpi.h"
 #include "Solver/Benders/SCIPconshdlrBendersWorker.h"
 #include "SolverInterface/SolverInterfaceScip.h"
@@ -87,21 +87,25 @@ DSP_RTN_CODE BdMWMpi::finalize()
 	return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE BdMWMpi::run()
-{
-	BGN_TRY_CATCH
+DSP_RTN_CODE BdMWMpi::run() {
+    BGN_TRY_CATCH
 
-	/** run master process */
-	DSP_RTN_CHECK_THROW(runMaster());
+        DSPdebugMessage("Rank %d is here.\n", comm_rank_);
+        MPI_Barrier(comm_);
 
-	/** run worker processes */
-	DSP_RTN_CHECK_THROW(runWorker());
+        /** run master process */
+        DSP_RTN_CHECK_THROW(runMaster());
 
-	DSPdebugMessage("Rank %d: End of run()\n", comm_rank_);
+        DSPdebugMessage("Rank %d is here.\n", comm_rank_);
 
-	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+        /** run worker processes */
+        DSP_RTN_CHECK_THROW(runWorker());
 
-	return DSP_RTN_OK;
+        DSPdebugMessage("Rank %d: End of run()\n", comm_rank_);
+
+    END_TRY_CATCH_RTN(;, DSP_RTN_ERR)
+
+    return DSP_RTN_OK;
 }
 
 DSP_RTN_CODE BdMWMpi::runMaster()

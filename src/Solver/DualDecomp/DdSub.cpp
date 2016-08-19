@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-#define DSP_DEBUG
+//#define DSP_DEBUG
 
 #include <Utility/DspMacros.h>
 #include <Utility/DspMessage.h>
@@ -15,8 +15,6 @@
 //#include "SolverInterface/SolverInterfaceCpx.h"
 #include "Solver/DualDecomp/SCIPconshdlrBendersDd.h"
 #include "SolverInterface/SCIPbranchruleLB.h"
-
-
 
 /** default constructor */
 DdSub::DdSub(int s, DspParams * par, DecModel * model, DspMessage * message) :
@@ -92,164 +90,148 @@ DSP_RTN_CODE DdSub::solve()
 }
 
 /** create problem */
-DSP_RTN_CODE DdSub::createProblem()
-{
+DSP_RTN_CODE DdSub::createProblem() {
 #define FREE_MEMORY       \
-	FREE_PTR(mat)         \
-	FREE_ARRAY_PTR(clbd)  \
-	FREE_ARRAY_PTR(cubd)  \
-	FREE_ARRAY_PTR(ctype) \
-	FREE_ARRAY_PTR(rlbd)  \
-	FREE_ARRAY_PTR(rubd)
+    FREE_PTR(mat)         \
+    FREE_ARRAY_PTR(clbd)  \
+    FREE_ARRAY_PTR(cubd)  \
+    FREE_ARRAY_PTR(ctype) \
+    FREE_ARRAY_PTR(rlbd)  \
+    FREE_ARRAY_PTR(rubd)
 
-	/** problem data */
-	CoinPackedMatrix * mat = NULL;
-	double * clbd = NULL;
-	double * cubd = NULL;
-	char * ctype  = NULL;
-	double * rlbd = NULL;
-	double * rubd = NULL;
-	int augs[1];
-	double clbd_aux[1];
-	double cubd_aux[1];
-	double obj_aux[1];
-	int cpl_ncols;
+    /** problem data */
+    CoinPackedMatrix *mat = NULL;
+    double *clbd = NULL;
+    double *cubd = NULL;
+    char *ctype = NULL;
+    double *rlbd = NULL;
+    double *rubd = NULL;
+    int augs[1];
+    double clbd_aux[1];
+    double cubd_aux[1];
+    double obj_aux[1];
+    int cpl_ncols;
 
-	BGN_TRY_CATCH
+    BGN_TRY_CATCH
 
-	/** parameters */
-	parRelaxIntegrality_ = par_->getBoolPtrParam("RELAX_INTEGRALITY");
-	gapTol_              = par_->getDblParam("SCIP/GAP_TOL");
+        /** parameters */
+        parRelaxIntegrality_ = par_->getBoolPtrParam("RELAX_INTEGRALITY");
+        gapTol_ = par_->getDblParam("SCIP/GAP_TOL");
 
-	/** augmented subproblem index */
-	augs[0] = sind_;
+        /** augmented subproblem index */
+        augs[0] = sind_;
 
-	/** for auxiliary term */
-	clbd_aux[0] = -COIN_DBL_MAX;
-	cubd_aux[0] = COIN_DBL_MAX;
-	obj_aux[0] = 0.0;
+        /** for auxiliary term */
+        clbd_aux[0] = -COIN_DBL_MAX;
+        cubd_aux[0] = COIN_DBL_MAX;
+        obj_aux[0] = 0.0;
 
-	/** decompose model */
-	DSP_RTN_CHECK_THROW(
-			model_->decompose(1, augs, 1, clbd_aux, cubd_aux, obj_aux,
-					mat, clbd, cubd, ctype, obj_, rlbd, rubd));
+        /** decompose model */
+        DSP_RTN_CHECK_THROW(
+                model_->decompose(1, augs, 1, clbd_aux, cubd_aux, obj_aux,
+                                  mat, clbd, cubd, ctype, obj_, rlbd, rubd));
 
-	DSP_RTN_CHECK_THROW(
-			model_->decomposeCoupling(1, augs, cpl_mat_, cpl_cols_, cpl_ncols));
+        DSP_RTN_CHECK_THROW(
+                model_->decomposeCoupling(1, augs, cpl_mat_, cpl_cols_, cpl_ncols));
 
-	/** number of coupling variables and constraints for this subproblem */
-	ncols_coupling_ = model_->getNumSubproblemCouplingCols(sind_);
-	nrows_coupling_ = model_->getNumSubproblemCouplingRows(sind_);
-	assert(ncols_coupling_ == cpl_ncols);
-	assert(nrows_coupling_ == cpl_mat_->getNumRows());
+        /** number of coupling variables and constraints for this subproblem */
+        ncols_coupling_ = model_->getNumSubproblemCouplingCols(sind_);
+        nrows_coupling_ = model_->getNumSubproblemCouplingRows(sind_);
+        assert(ncols_coupling_ == cpl_ncols);
+        assert(nrows_coupling_ == cpl_mat_->getNumRows());
 
-	/** storage for lambda */
-	lambda_ = new double [nrows_coupling_];
-	CoinZeroN(lambda_, nrows_coupling_);
+        /** storage for lambda */
+        lambda_ = new double[nrows_coupling_];
+        CoinZeroN(lambda_, nrows_coupling_);
 
-	/** copy right-hand side of coupling rows */
-	cpl_rhs_ = new double [nrows_coupling_];
-	for (int i = 0; i < nrows_coupling_; i++)
-		cpl_rhs_[i] = model_->getRhsCouplingRow(i);
-	obj_offset_ = 0;
+        /** copy right-hand side of coupling rows */
+        cpl_rhs_ = new double[nrows_coupling_];
+        for (int i = 0; i < nrows_coupling_; i++)
+            cpl_rhs_[i] = model_->getRhsCouplingRow(i);
+        obj_offset_ = 0;
 
-	/** number of integer variables */
-	int nIntegers = model_->getNumIntegers();
+        /** number of integer variables */
+        int nIntegers = model_->getNumIntegers();
 
-	/** adjust first-stage cost */
-	if (model_->isStochastic())
-	{
-		TssModel * tssModel;
-		try
-		{
-			tssModel = dynamic_cast<TssModel *>(model_);
-		}
-		catch (const std::bad_cast& e)
-		{
-			printf("Error: Model claims to be stochastic when it is not\n");
-			return DSP_RTN_ERR;
-		}
+        /** adjust first-stage cost */
+        if (model_->isStochastic()) {
+            TssModel *tssModel;
+            try {
+                tssModel = dynamic_cast<TssModel *>(model_);
+            }
+            catch (const std::bad_cast &e) {
+                printf("Error: Model claims to be stochastic when it is not\n");
+                return DSP_RTN_ERR;
+            }
 
-		double probability = tssModel->getProbability()[sind_];
-		for (int j = 0; j < tssModel->getNumCols(0); ++j)
-			obj_[j] *= probability;
+            double probability = tssModel->getProbability()[sind_];
+            for (int j = 0; j < tssModel->getNumCols(0); ++j)
+                obj_[j] *= probability;
 
-		/** convert column types */
-		if (parRelaxIntegrality_[0])
-		{
-			for (int j = 0; j < tssModel->getNumCols(0); ++j)
-			{
-				if (ctype[j] != 'C')
-					nIntegers--;
-				ctype[j] = 'C';
-			}
-		}
-		if (parRelaxIntegrality_[1])
-		{
-			for (int j = 0; j < tssModel->getNumCols(1); ++j)
-			{
-				if (ctype[tssModel->getNumCols(0) + j] != 'C')
-					nIntegers--;
-			}
-			CoinFillN(ctype + tssModel->getNumCols(0), tssModel->getNumCols(1), 'C');
-		}
-	}
-	else
-	{
-		if (parRelaxIntegrality_[0] || parRelaxIntegrality_[1])
-		{
-			for (int j = 0; j < mat->getNumCols(); j++)
-			{
-				if (ctype[j] != 'C')
-					nIntegers--;
-				ctype[j] = 'C';
-			}
-		}
-	}
+            /** convert column types */
+            if (parRelaxIntegrality_[0]) {
+                for (int j = 0; j < tssModel->getNumCols(0); ++j) {
+                    if (ctype[j] != 'C')
+                        nIntegers--;
+                    ctype[j] = 'C';
+                }
+            }
+            if (parRelaxIntegrality_[1]) {
+                for (int j = 0; j < tssModel->getNumCols(1); ++j) {
+                    if (ctype[tssModel->getNumCols(0) + j] != 'C')
+                        nIntegers--;
+                }
+                CoinFillN(ctype + tssModel->getNumCols(0), tssModel->getNumCols(1), 'C');
+            }
+        } else {
+            if (parRelaxIntegrality_[0] || parRelaxIntegrality_[1]) {
+                for (int j = 0; j < mat->getNumCols(); j++) {
+                    if (ctype[j] != 'C')
+                        nIntegers--;
+                    ctype[j] = 'C';
+                }
+            }
+        }
 
-	if (nIntegers > 0)
-//		si_ = new SolverInterfaceCpx(par_);
-		si_ = new SolverInterfaceScip(par_);
-	else
-		si_ = new SolverInterfaceClp(par_);
+        if (nIntegers > 0)
+//		    si_ = new SolverInterfaceCpx(par_);
+            si_ = new SolverInterfaceScip(par_);
+        else
+            si_ = new SolverInterfaceClp(par_);
 
-	/** no display */
-	si_->setPrintLevel(0);
+        /** no display */
+        si_->setPrintLevel(0);
 
-	/** load problem */
-	si_->loadProblem(mat, clbd, cubd, obj_, ctype, rlbd, rubd, "DdSub");
-	DSPdebug(mat->verifyMtx(4));
+        /** load problem */
+        si_->loadProblem(mat, clbd, cubd, obj_, ctype, rlbd, rubd, "DdSub");
+        DSPdebug(mat->verifyMtx(4));
 
-	/** set solution gap tolerance */
-	si_->setGapTol(gapTol_);
+        /** set solution gap tolerance */
+        si_->setGapTol(gapTol_);
 
-	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
+    END_TRY_CATCH_RTN(FREE_MEMORY, DSP_RTN_ERR)
 
-	FREE_MEMORY
+    FREE_MEMORY
 
-	return DSP_RTN_OK;
+    return DSP_RTN_OK;
 #undef FREE_MEMORY
 }
 
 /** add cut generator */
-DSP_RTN_CODE DdSub::addCutGenerator()
-{
-	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(si_);
-	if (si)
-	{
-		SCIPconshdlrBendersDd * conshdlr = new SCIPconshdlrBendersDd(si->getSCIP());
-		conshdlr->setOriginalVariables(si->getNumCols(), si->getSCIPvars(), 1);
-		DSPdebugMessage("numcols %d, conshdlr %p\n", si->getNumCols(), conshdlr);
-
-		/** add constraint handler */
-		si->addConstraintHandler(conshdlr, true, true);
-	}
-	else
-	{
-		/** TODO */
-		printf("Warning: Cut generation supports only SCIP.\n");
-	}
-	return DSP_RTN_OK;
+DSP_RTN_CODE DdSub::addCutGenerator() {
+    SolverInterfaceScip *si = dynamic_cast<SolverInterfaceScip *>(si_);
+    if (si) {
+        /** create constraint handler */
+        SCIPconshdlrBendersDd *conshdlr = new SCIPconshdlrBendersDd(si->getSCIP());
+        conshdlr->setOriginalVariables(si->getNumCols(), si->getSCIPvars(), 1);
+        DSPdebugMessage("numcols %d, conshdlr %p\n", si->getNumCols(), conshdlr);
+        /** add constraint handler */
+        si->addConstraintHandler(conshdlr, true, true);
+    } else {
+        /** TODO */
+        printf("Warning: Cut generation supports only SCIP.\n");
+    }
+    return DSP_RTN_OK;
 }
 
 /** update problem */

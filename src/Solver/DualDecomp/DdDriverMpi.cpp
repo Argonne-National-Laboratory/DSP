@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-#define DSP_DEBUG
+//#define DSP_DEBUG
 #include "DdDriverMpi.h"
 #include "Solver/DualDecomp/DdMWSync.h"
 #include "Solver/DualDecomp/DdMWAsync.h"
