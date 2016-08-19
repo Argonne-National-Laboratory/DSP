@@ -186,127 +186,115 @@ DSP_RTN_CODE TssModel::loadFirstStage(
 
 /** load first-stage problem */
 DSP_RTN_CODE TssModel::loadSecondStage(
-		const int            s,     /**< scenario index */
-		const double         prob,  /**< probability */
-		const CoinBigIndex * start, /**< start index for each row */
-		const int *          index, /**< column indices */
-		const double *       value, /**< constraint elements */
-		const double *       clbd,  /**< column lower bounds */
-		const double *       cubd,  /**< column upper bounds */
-		const char *         ctype, /**< column types */
-		const double *       obj,   /**< objective coefficients */
-		const double *       rlbd,  /**< row lower bounds */
-		const double *       rubd   /**< row upper bounds */)
-{
+        const int s,               /**< scenario index */
+        const double prob,         /**< probability */
+        const CoinBigIndex *start, /**< start index for each row */
+        const int *index,          /**< column indices */
+        const double *value,       /**< constraint elements */
+        const double *clbd,        /**< column lower bounds */
+        const double *cubd,        /**< column upper bounds */
+        const char *ctype,         /**< column types */
+        const double *obj,         /**< objective coefficients */
+        const double *rlbd,        /**< row lower bounds */
+        const double *rubd         /**< row upper bounds */) {
 #define FREE_MEMORY \
-		FREE_ARRAY_PTR(len); \
-		FREE_ARRAY_PTR(cind); \
-		FREE_ARRAY_PTR(rind);
+        FREE_ARRAY_PTR(len); \
+        FREE_ARRAY_PTR(cind); \
+        FREE_ARRAY_PTR(rind);
 
-	int * len = NULL;
-	int * cind = NULL;
-	int * rind = NULL;
+    int *len = NULL;
+    int *cind = NULL;
+    int *rind = NULL;
 
-	BGN_TRY_CATCH
+    BGN_TRY_CATCH
 
-	if (ncols_ == NULL || ncols_[1] <= 0)
-	{
-		printf("Error: invalid number of columns for scenario %d.\n", s);
-		return DSP_RTN_ERR;
-	}
+        if (ncols_ == NULL || ncols_[1] <= 0) {
+            printf("Error: invalid number of columns for scenario %d.\n", s);
+            return DSP_RTN_ERR;
+        }
 
-	if (nrows_ == NULL || nrows_[1] <= 0)
-	{
-		printf("Error: invalid number of rows for scenario %d.\n", s);
-		return DSP_RTN_ERR;
-	}
+        if (nrows_ == NULL || nrows_[1] <= 0) {
+            printf("Error: invalid number of rows for scenario %d.\n", s);
+            return DSP_RTN_ERR;
+        }
 
-	if (nscen_ <= 0)
-	{
-		printf("Error: invalid number of scenarios.\n");
-		return DSP_RTN_ERR;
-	}
+        if (nscen_ <= 0) {
+            printf("Error: invalid number of scenarios.\n");
+            return DSP_RTN_ERR;
+        }
 
-	if (s < 0 || s >= nscen_)
-	{
-		printf("Error: invalid scenario index.\n");
-		return DSP_RTN_ERR;
-	}
+        if (s < 0 || s >= nscen_) {
+            printf("Error: invalid scenario index.\n");
+            return DSP_RTN_ERR;
+        }
 
-	/** allocate values */
-	prob_[s] = prob;
-	CoinCopyN(clbd,  ncols_[1], clbd_core_[1]);
-	CoinCopyN(cubd,  ncols_[1], cubd_core_[1]);
-	CoinCopyN(ctype, ncols_[1], ctype_core_[1]);
-	CoinCopyN(obj,   ncols_[1], obj_core_[1]);
-	CoinCopyN(rlbd,  nrows_[1], rlbd_core_[1]);
-	CoinCopyN(rubd,  nrows_[1], rubd_core_[1]);
-	//PRINT_ARRAY_MSG(ncols_[1], ctype_core_[1], "ctype_core_[1]");
+        /** allocate values */
+        prob_[s] = prob;
+        CoinCopyN(clbd, ncols_[1], clbd_core_[1]);
+        CoinCopyN(cubd, ncols_[1], cubd_core_[1]);
+        CoinCopyN(ctype, ncols_[1], ctype_core_[1]);
+        CoinCopyN(obj, ncols_[1], obj_core_[1]);
+        CoinCopyN(rlbd, nrows_[1], rlbd_core_[1]);
+        CoinCopyN(rubd, nrows_[1], rubd_core_[1]);
+        //PRINT_ARRAY_MSG(ncols_[1], ctype_core_[1], "ctype_core_[1]");
 
-	/** count number of integer variables */
-	if (s == 0)
-	{
-		for (int j = 0; j < ncols_[1]; ++j)
-		{
-			if (ctype_core_[1][j] != 'C')
-			{
-				nints_[1]++;
-				nints_core_++;
-			}
-		}
-	}
+        /** count number of integer variables */
+        if (s == 0) {
+            for (int j = 0; j < ncols_[1]; ++j) {
+                if (ctype_core_[1][j] != 'C') {
+                    nints_[1]++;
+                    nints_core_++;
+                }
+            }
+        }
 
-	/** construct core matrix rows */
-	for (int i = 0; i < nrows_[1]; ++i)
-	{
-		if (rows_core_[rstart_[1] + i] == NULL)
-		{
-			//printf("creating rows_core_[%d]\n", rstart_[1]+i);
-			rows_core_[rstart_[1] + i] = new CoinPackedVector(start[i+1] - start[i], index + start[i], 0.0);
-			//rows_core_[rstart_[1] + i] = new CoinPackedVector(start[i+1] - start[i], index + start[i], value + start[i]);
-		}
-		else
-		{
-			for (int j = start[i]; j < start[i+1]; ++j)
-			{
-				bool added = false;
-				if (rows_core_[rstart_[1] + i]->findIndex(index[j]) < 0)
-				{
-					//printf(" added index %d element %e to rows_core_[%d]\n", index[j], value[j], rstart_[1]+i);
-					rows_core_[rstart_[1] + i]->insert(index[j], 0.);
-					added = true;
-				}
-				if (added) rows_core_[rstart_[1] + i]->sortIncrIndex();
-			}
-		}
-	}
+        /** construct core matrix rows */
+        for (int i = 0; i < nrows_[1]; ++i) {
+            if (rows_core_[rstart_[1] + i] == NULL) {
+                //printf("creating rows_core_[%d]\n", rstart_[1]+i);
+                rows_core_[rstart_[1] + i] = new CoinPackedVector(start[i + 1] - start[i], index + start[i], 0.0);
+                //rows_core_[rstart_[1] + i] = new CoinPackedVector(start[i+1] - start[i], index + start[i], value + start[i]);
+            } else {
+                for (int j = start[i]; j < start[i + 1]; ++j) {
+                    bool added = false;
+                    if (rows_core_[rstart_[1] + i]->findIndex(index[j]) < 0) {
+                        //printf(" added index %d element %e to rows_core_[%d]\n", index[j], value[j], rstart_[1]+i);
+                        rows_core_[rstart_[1] + i]->insert(index[j], 0.);
+                        added = true;
+                    }
+                    if (added) rows_core_[rstart_[1] + i]->sortIncrIndex();
+                }
+            }
+        }
 
-	/** add scenario mapping */
-	scen2stg_.insert(std::pair<int,int>(s,1));
+        /** add scenario mapping */
+        scen2stg_.insert(std::pair<int, int>(s, 1));
 
-	/** row length */
-	len = new int [nrows_[1]];
-	for (int i = 0; i < nrows_[1]; ++i)
-		len[i] = start[i+1] - start[i];
-	cind = new int [ncols_[1]];
-	rind = new int [nrows_[1]];
-	CoinIotaN(cind, ncols_[1], cstart_[1]);
-	CoinIotaN(rind, nrows_[1], rstart_[1]);
+        /** row length */
+        len = new int[nrows_[1]];
+        for (int i = 0; i < nrows_[1]; ++i)
+            len[i] = start[i + 1] - start[i];
+        cind = new int[ncols_[1]];
+        rind = new int[nrows_[1]];
+        CoinIotaN(cind, ncols_[1], cstart_[1]);
+        CoinIotaN(rind, nrows_[1], rstart_[1]);
 
-	/** allocate memory */
-	mat_scen_[s]  = new CoinPackedMatrix(false, ncols_[0] + ncols_[1], nrows_[1], start[nrows_[1]], value, index, start, len);
-	clbd_scen_[s] = new CoinPackedVector(ncols_[1], cind, clbd);
-	cubd_scen_[s] = new CoinPackedVector(ncols_[1], cind, cubd);
-	obj_scen_[s]  = new CoinPackedVector(ncols_[1], cind, obj);
-	rlbd_scen_[s] = new CoinPackedVector(nrows_[1], rind, rlbd);
-	rubd_scen_[s] = new CoinPackedVector(nrows_[1], rind, rubd);
-	DSPdebug(mat_scen_[s]->verifyMtx(4));
+        /** allocate memory */
+        mat_scen_[s] = new CoinPackedMatrix(false, ncols_[0] + ncols_[1], nrows_[1], start[nrows_[1]], value, index,
+                                            start, len);
+        clbd_scen_[s] = new CoinPackedVector(ncols_[1], cind, clbd);
+        cubd_scen_[s] = new CoinPackedVector(ncols_[1], cind, cubd);
+        obj_scen_[s] = new CoinPackedVector(ncols_[1], cind, obj);
+        rlbd_scen_[s] = new CoinPackedVector(nrows_[1], rind, rlbd);
+        rubd_scen_[s] = new CoinPackedVector(nrows_[1], rind, rubd);
+        DSPdebug(DspMessage::printArray(start[nrows_[1]], value));
+        DSPdebug(mat_scen_[s]->verifyMtx(4));
 
-	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
+    END_TRY_CATCH_RTN(FREE_MEMORY, DSP_RTN_ERR)
 
-	FREE_MEMORY;
+    FREE_MEMORY;
 
-	return DSP_RTN_OK;
+    return DSP_RTN_OK;
 }
 
 /**
