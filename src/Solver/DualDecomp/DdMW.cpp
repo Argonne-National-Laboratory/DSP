@@ -82,6 +82,9 @@ DSP_RTN_CODE DdMW::storeCouplingSolutions(Solutions& stored)
 {
 	BGN_TRY_CATCH
 
+		/** maximum number of solutions to evaluate */
+		int max_stores = par_->getIntParam("DD/MAX_EVAL_UB");
+
 	/** store solutions to distribute */
 	for (int s = 0; s < model_->getNumSubproblems(); ++s)
 	{
@@ -97,11 +100,13 @@ DSP_RTN_CODE DdMW::storeCouplingSolutions(Solutions& stored)
 		{
 			DSPdebugMessage2("Coupling solution:\n");
 			DSPdebug2(DspMessage::printArray(nx, master_->subsolution_[s]));
-
 			/** store solution */
 			ubSolutions_.push_back(x);
 			stored.push_back(x);
+			/** count */
+			max_stores--;
 		}
+		if (max_stores == 0) break;
 	}
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
