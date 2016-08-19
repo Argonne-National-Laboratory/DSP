@@ -39,8 +39,9 @@ parTrSize_(0.0),
 parTrDecrease_(true),
 parNumCutsPerIter_(1),
 parMasterAlgo_(IPM_Feasible),
-parLogLevel_(0)
-{}
+parLogLevel_(0) {
+    DSPdebug(message_->logLevel_ = 9999;);
+}
 
 DdMasterTr::~DdMasterTr()
 {
@@ -62,6 +63,7 @@ DSP_RTN_CODE DdMasterTr::init()
 	parNumCutsPerIter_ = par_->getIntParam("DD/NUM_CUTS_PER_ITER");
 	parMasterAlgo_ = par_->getIntParam("DD/MASTER_ALGO");
 	parLogLevel_ = par_->getIntParam("LOG_LEVEL");
+        DSPdebugMessage("Trust region size %f\n", parTrSize_);
 
 	/** create problem */
 	createProblem();
@@ -169,6 +171,7 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 
 	BGN_TRY_CATCH
 
+        /** TODO */
 	nthetas_  = model_->getNumSubproblems();//CoinMin(model_->getNumSubproblems(), parNumCutsPerIter_);
 	nlambdas_ = model_->getNumCouplingRows();
 
@@ -184,7 +187,8 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 		nzcnt = 0;
 	}
 	ncols = nthetas_ + nlambdas_;
-	message_->print(999, "nrows %d ncols %d nzcnt %d nthetas_ %d nlambdas_ %d\n", nrows, ncols, nzcnt, nthetas_, nlambdas_);
+	DSPdebugMessage("nrows %d ncols %d nzcnt %d nthetas_ %d nlambdas_ %d\n",
+                    nrows, ncols, nzcnt, nthetas_, nlambdas_);
 
 	/** allocate memory */
 	ctype = new char [ncols];
@@ -255,7 +259,7 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 
 	/** constraint matrix */
 	mat = new CoinPackedMatrix(false, ncols, nrows, nzcnt, elem, ind, bgn, len);
-	//mat->verifyMtx(4);
+	DSPdebug(mat->verifyMtx(4));
 
 	/** create solver interface */
 	DSPdebugMessage("parMasterAlgo_ %d\n", parMasterAlgo_);
@@ -416,7 +420,7 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 	}
 
 	message_->print(4, "TR  master has %d rows and %d cols after adding %d cuts.\n",
-				si_->getNumRows(), si_->getNumCols(), nCutsAdded);
+				si_->getNumRows() + nCutsAdded, si_->getNumCols(), nCutsAdded);
 
 	OoqpEps * ooqp = dynamic_cast<OoqpEps*>(si_);
 	if (ooqp)
@@ -556,7 +560,7 @@ int DdMasterTr::addCuts(
 	}
 
 	nCutsAdded = cuts.sizeCuts();
-	DSPdebug(cuts.printCuts());
+	//DSPdebug(cuts.printCuts());
 	if (nCutsAdded > 0)
 		/** apply cuts */
 		si_->addCuts(cuts);
