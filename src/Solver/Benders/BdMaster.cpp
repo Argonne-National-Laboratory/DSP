@@ -118,23 +118,6 @@ DSP_RTN_CODE BdMaster::setSolutions(Solutions initsols)
 	return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE BdMaster::setBranchingPriority(
-		int   size,      /**< size of array */
-		int * priorities /**< branch priority */)
-{
-	BGN_TRY_CATCH
-
-	if (si_->getNumIntegers() > 0)
-	{
-		SolverInterfaceScip * SiScip = dynamic_cast<SolverInterfaceScip*>(si_);
-		SiScip->setBranchPriorities(size, priorities);
-	}
-
-	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
-
-	return DSP_RTN_OK;
-}
-
 DSP_RTN_CODE BdMaster::setConshdlr(SCIPconshdlrBenders* conshdlr)
 {
 	BGN_TRY_CATCH

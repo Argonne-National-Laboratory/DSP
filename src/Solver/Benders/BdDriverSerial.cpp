@@ -62,11 +62,6 @@ DSP_RTN_CODE BdDriverSerial::run()
 	DSPdebugMessage("setObjectiveBounds\n");
 	mw_->getMasterPtr()->setObjectiveBounds(primobj_, dualobj_);
 
-	/** set branching priorities */
-	DSPdebugMessage("setBranchingPriority\n");
-	if (numPriorities_ > 0)
-		mw_->getMasterPtr()->setBranchingPriority(numPriorities_, priorities_);
-
 	/** set initial solutions */
 	DSPdebugMessage("setSolutions\n");
 	if (initsols_.size() > 0)

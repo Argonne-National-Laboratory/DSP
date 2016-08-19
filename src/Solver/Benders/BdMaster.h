@@ -48,11 +48,6 @@ public:
 	/** set initial solutions */
 	virtual DSP_RTN_CODE setSolutions(Solutions initsols);
 
-	/** set branching priorities */
-	virtual DSP_RTN_CODE setBranchingPriority(
-			int   size,      /**< size of array */
-			int * priorities /**< branch priority */);
-
 protected:
 
 	/** create problem */
