@@ -141,9 +141,6 @@ void DspParams::initIntParams()
 	/** branch-and-cut node limit */
 	IntParams_.createParam("NODE_LIM", MAX_INT_NUM);
 
-	/** iteration limit */
-	IntParams_.createParam("DD/ITER_LIM", MAX_INT_NUM);
-
 	/** number of cuts to the master per iteration */
 	IntParams_.createParam("BD/NUM_CUTS_PER_ITER", 1);
 
@@ -157,6 +154,12 @@ void DspParams::initIntParams()
 	 * 0 = solve separate LP relaxation problems;
 	 * 1 = solve separate MILP relaxation problems */
 	IntParams_.createParam("BD/INIT_LB_ALGO", SEPARATE_LP);
+
+    /** iteration limit of the dual decomposition used in Benders for initial lower bounding */
+    IntParams_.createParam("BD/DD/ITER_LIM", 10);
+
+    /** iteration limit */
+    IntParams_.createParam("DD/ITER_LIM", MAX_INT_NUM);
 
 	/** algorithm for the master */
 	IntParams_.createParam("DD/MASTER_ALGO", IPM_Feasible);
@@ -198,10 +201,10 @@ void DspParams::initDblParams()
 	DblParams_.createParam("DD/TR/SIZE", 10);
 
 	/** stopping tolerance */
-	DblParams_.createParam("DD/STOP_TOL", 0.0001);
+	DblParams_.createParam("DD/STOP_TOL", 0.00001);
 
 	/** branch-and-bound gap tolerance */
-	DblParams_.createParam("SCIP/GAP_TOL", 0.0001);
+	DblParams_.createParam("SCIP/GAP_TOL", 0.00001);
 
 	/** time limit */
 	DblParams_.createParam("SCIP/TIME_LIM", 300);

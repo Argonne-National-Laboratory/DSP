@@ -100,9 +100,19 @@ DSP_RTN_CODE BdDriverMpi::findLowerBound() {
 
     BGN_TRY_CATCH
 
+        /** set parameters */
+        int iterlim = par_->getIntParam("DD/ITER_LIM");
+        int fcut = par_->getIntParam("DD/FEAS_CUTS");
+        int ocut = par_->getIntParam("DD/OPT_CUTS");
+        int evalub = par_->getIntParam("DD/EVAL_UB");
+        par_->setIntParam("DD/ITER_LIM", par_->getIntParam("BD/DD/ITER_LIM"));
+        par_->setIntParam("DD/FEAS_CUTS", -1);
+        par_->setIntParam("DD/OPT_CUTS", -1);
+        par_->setIntParam("DD/EVAL_UB", -1);
+
         message_->print(1, "Finding a good lower bound using Dual Decomposition...\n");
 
-        /** TODO use dual decomposition */
+        /** use dual decomposition */
         dd = new DdDriverMpi(par_, model_, comm_);
         DSP_RTN_CHECK_THROW(dd->init());
         DSP_RTN_CHECK_THROW(dd->run());
@@ -115,6 +125,12 @@ DSP_RTN_CODE BdDriverMpi::findLowerBound() {
         DSPdebugMessage("Rank %d: primobj %+e, dualobj %+e\n", comm_rank_, primobj_, dualobj_);
 
         /** TODO copy primal solution */
+
+        /** rollback parameters */
+        par_->setIntParam("DD/ITER_LIM", iterlim);
+        par_->setIntParam("DD/FEAS_CUTS", fcut);
+        par_->setIntParam("DD/OPT_CUTS", ocut);
+        par_->setIntParam("DD/EVAL_UB", evalub);
 
     END_TRY_CATCH_RTN(FREE_MEMORY, DSP_RTN_ERR)
 

@@ -17,14 +17,15 @@ int  SCIP/DISPLAY_FREQ  100  # SCIP display frequency
 # Stopping criteria
 #
 
-int     NODE_LIM       1000000  # Branch-and-cut node limit
-int     DD/ITER_LIM    1000000  # Iteration limit
-double  DE/WALL_LIM    1000000  # Wall clock limit
-double  BD/WALL_LIM    60  # Wall clock limit
-double  DD/WALL_LIM    1000000  # Wall clock limit
-double  DD/STOP_TOL    0.00001  # Stopping tolerance
-double  SCIP/GAP_TOL   0.0      # Duality gap tolerance
-double  SCIP/TIME_LIM  1000000      # Time limit
+int     NODE_LIM        1000000  # Branch-and-cut node limit
+int     BD/DD/ITER_LIM  10       # Iteration limit
+int     DD/ITER_LIM     1000000  # Iteration limit
+double  DE/WALL_LIM     1000000  # Wall clock limit
+double  BD/WALL_LIM     1000000  # Wall clock limit
+double  DD/WALL_LIM     1000000  # Wall clock limit
+double  DD/STOP_TOL     0.00001  # Stopping tolerance
+double  SCIP/GAP_TOL    0.00001  # Duality gap tolerance
+double  SCIP/TIME_LIM   300      # Time limit
 
 # Benders lower bound method
 #   0 = solve separate LP relaxation problems
