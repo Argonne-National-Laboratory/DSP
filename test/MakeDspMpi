@@ -1,2 +1,0 @@
-#!/bin/bash
-mpicc -Wall -g DspSmpsMpi.c -ldl -o DspSmpsMpi

@@ -1,2 +1,0 @@
-#!/bin/bash
-cc -Wall -g DspSmps.c -ldl -o DspSmps
