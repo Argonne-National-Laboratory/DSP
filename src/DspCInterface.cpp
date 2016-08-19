@@ -290,9 +290,7 @@ void solveDd(DspApiEnv * env)
 }
 
 /** solve serial Benders decomposition */
-void solveBd(
-		DspApiEnv * env,     /**< pointer to API object */
-		int         nauxvars /**< number of auxiliary variables (scenario clusters) */)
+void solveBd(DspApiEnv * env)
 {
 	STO_API_CHECK_MODEL();
 	freeSolver(env);
@@ -303,16 +301,16 @@ void solveBd(
 		return;
 	}
 
-	DSPdebugMessage("Creating a serial Benders object\n");
 	BdDriverSerial * bd = new BdDriverSerial(env->par_, new DecTssModel(*getTssModel(env)));
 	env->solver_ = bd;
+	DSPdebugMessage("Created a serial Benders object\n");
 
-	double * obj_aux  = NULL;
-	double * clbd_aux = NULL;
-	double * cubd_aux = NULL;
-
+    int nauxvars = env->par_->getIntParam("BD/NUM_CUTS_PER_ITER");
 	if (nauxvars > 0)
 	{
+		double * obj_aux  = NULL;
+		double * clbd_aux = NULL;
+		double * cubd_aux = NULL;
 		/** set auxiliary variables */
 		obj_aux  = new double [nauxvars];
 		clbd_aux = new double [nauxvars];
@@ -320,18 +318,20 @@ void solveBd(
 		CoinFillN(obj_aux, nauxvars, 1.0);
 		CoinFillN(clbd_aux, nauxvars, -COIN_DBL_MAX);
 		CoinFillN(cubd_aux, nauxvars, +COIN_DBL_MAX);
-
+		/** set auxiliary variables */
 		bd->setAuxVarData(nauxvars, obj_aux, clbd_aux, cubd_aux);
-
+        /** free memory */
 		FREE_ARRAY_PTR(obj_aux);
 		FREE_ARRAY_PTR(clbd_aux);
 		FREE_ARRAY_PTR(cubd_aux);
 	}
+	DSPdebugMessage("Set auxiliary variable data\n");
 
 	/** relax second-stage integrality */
 	env->par_->setBoolPtrParam("RELAX_INTEGRALITY", 1, true);
 
 	env->solver_->init();
+	DSPdebugMessage("Initialized a serial Benders object\n");
 	env->solver_->run();
 	env->solver_->finalize();
 }
@@ -354,9 +354,7 @@ void solveDdMpi(DspApiEnv * env, MPI_Comm comm)
 
 /** solve parallel Benders decomposition */
 void solveBdMpi(
-		DspApiEnv * env,      /**< pointer to API object */
-		int         nauxvars, /**< number of auxiliary variables (scenario clusters) */
-		MPI_Comm    comm      /**< MPI communicator */)
+		DspApiEnv * env, MPI_Comm comm)
 {
 	STO_API_CHECK_MODEL();
 	freeSolver(env);
@@ -375,6 +373,7 @@ void solveBdMpi(
 	double * clbd_aux = NULL;
 	double * cubd_aux = NULL;
 
+    int nauxvars = env->par_->getIntParam("BD/NUM_CUTS_PER_ITER");
 	if (nauxvars > 0)
 	{
 		/** set auxiliary variables */

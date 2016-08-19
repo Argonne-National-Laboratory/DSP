@@ -103,9 +103,7 @@ void solveDe(DspApiEnv * env /**< pointer to API object */);
 void solveDd(DspApiEnv * env /**< pointer to API object */);
 
 /** solve serial Benders decomposition */
-void solveBd(
-		DspApiEnv * env,     /**< pointer to API object */
-		int         nauxvars /**< number of auxiliary variables (scenario clusters) */);
+void solveBd(DspApiEnv * env /**< pointer to API object */);
 
 #ifdef DSP_HAS_MPI
 /** solve parallel dual decomposition */
@@ -116,7 +114,6 @@ void solveDdMpi(
 /** solve parallel Benders decomposition */
 void solveBdMpi(
 		DspApiEnv * env,                 /**< pointer to API object */
-		int         nauxvars,            /**< number of auxiliary variables (scenario clusters) */
 		MPI_Comm    comm = MPI_UNDEFINED /**< MPI communicator */);
 #endif
 
