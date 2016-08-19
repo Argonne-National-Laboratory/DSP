@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-#define DSP_DEBUG
+//#define DSP_DEBUG
 #include "Solver/DualDecomp/DdMWSync.h"
 #include "Solver/DualDecomp/DdMasterTr.h"
 #include "Solver/DualDecomp/DdMasterDsb.h"
@@ -75,6 +75,10 @@ DSP_RTN_CODE DdMWSync::init()
 		for (unsigned i = 0; i < worker_.size(); ++i)
 			worker_[i]->init();
 	}
+
+        /** reset iteration info */
+        itercnt_   = 0;
+        iterstime_ = CoinGetTimeOfDay();
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -239,13 +243,6 @@ DSP_RTN_CODE DdMWSync::runMaster()
 	lambdas = new double * [model_->getNumSubproblems()];
 
 	printHeaderInfo();
-
-	/** reset iteration info */
-	itercnt_   = 0;
-	iterstime_ = CoinGetTimeOfDay();
-
-	/** send start time */
-	MPI_Bcast(&iterstime_, 1, MPI_DOUBLE, 0, subcomm_);
 
 	/**
 	 * This is the main loop to iteratively solve master problem.
@@ -477,10 +474,6 @@ DSP_RTN_CODE DdMWSync::runWorker()
 	/** solutions to derive Benders cuts and evaluate upper bounds */
 	Solutions solutions;
 
-	/** receive start time */
-	if (subcomm_ != MPI_COMM_NULL)
-		MPI_Bcast(&iterstime_, 1, MPI_DOUBLE, 0, subcomm_);
-
 	/** loop until when the master signals stop */
 	while (1)
 	{
@@ -498,7 +491,7 @@ DSP_RTN_CODE DdMWSync::runWorker()
 				sendbuf[pos++] = workerlb->subprobs_[s]->getDualObjective();
 				CoinCopyN(workerlb->subprobs_[s]->si_->getSolution(), workerlb->subprobs_[s]->ncols_coupling_, sendbuf + pos);
 				pos += model_->getNumSubproblemCouplingCols(workerlb->subprobs_[s]->sind_);
-				message_->print(5, "MW -> worker %d, subprob %d primobj %+e dualobj %+e\n",
+				DSPdebugMessage("MW -> worker %d, subprob %d primobj %+e dualobj %+e\n",
 						comm_rank_, workerlb->subprobs_[s]->sind_,
 						workerlb->subprobs_[s]->getPrimalObjective(), workerlb->subprobs_[s]->getDualObjective());
 			}

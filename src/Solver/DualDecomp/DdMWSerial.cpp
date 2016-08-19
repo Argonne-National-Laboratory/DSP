@@ -234,7 +234,7 @@ DSP_RTN_CODE DdMWSerial::run()
 				}
 				cuts.dumpCuts();
 				DSPdebugMessage("Benders cuts %d\n", cutsToAdd_->sizeCuts());
-				DSPdebug(cutsToAdd_->printCuts());
+				DSPdebug2(cutsToAdd_->printCuts());
 			}
 			/** evaluate coupling solutions */
 			if (parEvalUb_ >= 0)
@@ -243,11 +243,12 @@ DSP_RTN_CODE DdMWSerial::run()
 				double oldub = master_->bestprimobj_;
 				for (unsigned i = 0; i < coupling_solutions.size(); ++i)
 				{
+					if (remainingTime() < 0) break;
 					/** set time limit */
 					workerub->setTimeLimit(remainingTime());
 					/** evaluate upper bounds */
 					double newub = workerub->evaluate(coupling_solutions[i]);
-					DSPdebugMessage("Current upper bound %+e\n", newub);
+					DSPdebugMessage("Current upper bound %+e, time remained %.2f\n", newub, remainingTime());
 					if (newub < master_->bestprimobj_)
 					{
 						master_->bestprimobj_ = newub;
@@ -405,7 +406,7 @@ DSP_RTN_CODE DdMWSerial::generateBendersCuts(
 		DSP_RTN_CHECK_THROW(workercg->generateCuts(solutions[i], &localcuts, cuttype));
 		DSPdebugMessage("Benders cut generator generated %d cuts for solution %d.\n",
 				localcuts.sizeCuts(), i);
-		DSPdebug(message_->printArray(solutions[i]));
+		DSPdebug2(message_->printArray(solutions[i]));
 
 		/** check if there exists a feasibility cut */
 		bool hasFeasibilityCuts = false;
@@ -440,10 +441,9 @@ DSP_RTN_CODE DdMWSerial::generateBendersCuts(
 					for (int k = 0; k < cutrow.getNumElements(); ++k)
 						aggcut[cutrow.getIndices()[k]] += cutrow.getElements()[k];
 					aggrhs += rc->lb();
-					DSPdebugMessage("localcuts[%d]:\n", j);
-					DSPdebug(rc->print());
+					DSPdebugMessage2("localcuts[%d]:\n", j);
+					DSPdebug2(rc->print());
 				}
-//				DSPdebug(message_->printArray(tssmodel->getNumCols(0) + 1, aggcut));
 
 				CoinPackedVector orow;
 				for (int j = 0; j < tssmodel->getNumCols(0); ++j)
@@ -456,7 +456,7 @@ DSP_RTN_CODE DdMWSerial::generateBendersCuts(
 				ocut.setUb(COIN_DBL_MAX);
 				ocut.setLb(aggrhs);
 
-				DSPdebug(ocut.print());
+				DSPdebug2(ocut.print());
 				cuts.insertIfNotDuplicate(ocut);
 			}
 
@@ -466,7 +466,7 @@ DSP_RTN_CODE DdMWSerial::generateBendersCuts(
 				for (int j = 0; j < localcuts.sizeCuts(); ++j)
 				{
 					OsiRowCut * rc = localcuts.rowCutPtr(j);
-					DSPdebug(rc->print());
+					DSPdebug2(rc->print());
 					cuts.insertIfNotDuplicate(*rc);
 					ret = DSP_STAT_MW_RESOLVE;
 				}
