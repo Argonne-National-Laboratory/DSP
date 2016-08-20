@@ -2,7 +2,7 @@
 # Kibaek Kim - ANL MCS 2015
 # updated on 2016
 
-using MPI, Dsp
+using MPI, JuMP, Dsp
 
 # Initialize MPI
 MPI.Init()
@@ -10,7 +10,7 @@ MPI.Init()
 # Algorithmic parameters
 nScenarios  = 2 # number of scenarios
 if length(ARGS) == 1
-	nScenarios  = int(ARGS[1])
+	nScenarios  = parse(Int, ARGS[1])
 end
 
 # Unit commitment model

@@ -42,16 +42,16 @@ min_gen        = tmpdat1[:,3];  # Minimum power generation (MW)
 max_gen        = tmpdat1[:,4];  # Maximum power generation (MW)
 gen_0          = tmpdat1[:,5];  # Power generation in hour 0 (MW)
 use_history    = tmpdat1[:,6];  # number of hours the generator has been on or off before hour 1
-uptime         = tmpdat1[:,7];  # Minimum uptime (hours)
-downtime       = tmpdat1[:,8];  # Minimum downtime (hours)
+uptime         = round(Int64,tmpdat1[:,7]);  # Minimum uptime (hours)
+downtime       = round(Int64,tmpdat1[:,8]);  # Minimum downtime (hours)
 ramp_rate      = tmpdat1[:,9];  # Ramp rate per hour (MW/hour)
 quick_start    = tmpdat1[:,12]; # Quick start capability?
 fixed_cost_gen = tmpdat1[:,13]; # Fixed cost of running the generator for an hour ($)
 cost_start     = tmpdat1[:,14]; # Cost of starting a generator ($)
 
 # define quick starters
-FASTGENS = sort(unique(GENERATORS .* int(quick_start)));
-SLOWGENS = sort(unique(GENERATORS .* int(1 - quick_start)));
+FASTGENS = sort(unique(GENERATORS .* round(Int64, quick_start)));
+SLOWGENS = sort(unique(GENERATORS .* round(Int64, 1 - quick_start)));
 if FASTGENS[1] == 0
         FASTGENS = FASTGENS[2:length(FASTGENS)];
 end
@@ -68,7 +68,7 @@ spin_notice    = 10;   # Spinning notice window (min)
 total_demand = tmpdat3[:,1]; # Power load for each hour (MW)
 demand_dist = zeros(nBuses); # Demand distribution
 for i in 1:size(tmpdat4,1)
-        demand_dist[tmpdat4[i,2]] = tmpdat4[i,3];
+        demand_dist[round(Int64,tmpdat4[i,2])] = tmpdat4[i,3];
 end
 
 wind_bus_id = tmpdat6[:,2]; # Wind power generator ID
@@ -81,10 +81,10 @@ flow_max          = tmpdat8[:,8]; # Transmission line capacity
 # Initialize auxiliary parameters
 # -------------------------------
 
-use_0         = zeros(nGenerators);      # Unit commitment in hour 0
-downtime_init = zeros(nGenerators);      # Initial minimum downtime
-uptime_init   = zeros(nGenerators);      # Initial minimum uptime
-demand        = zeros(nBuses, nPeriods); # Power load
+use_0         = zeros(nGenerators);       # Unit commitment in hour 0
+downtime_init = zeros(Int64,nGenerators); # Initial minimum downtime
+uptime_init   = zeros(Int64,nGenerators); # Initial minimum uptime
+demand        = zeros(nBuses, nPeriods);  # Power load
 
 for i in GENERATORS
         if use_history[i] > 0
@@ -170,7 +170,7 @@ m = Model();
 # -----------------
 # For each scenario
 # -----------------
-for s in getblockids(NS)
+for s in getblockids(nScenarios)
 
         # ----------------
         # JuMP Model block
