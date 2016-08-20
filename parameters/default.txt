@@ -58,6 +58,6 @@ int     BD/NUM_CORES       1        # Number of cores used by OpenMP
 int     BD/CUT_PRIORITY    -200000  # Parameater CONSHDLR_SEPAPRIORITY for SCIP
 bool    DD/TR              true     # Use trust region?
 bool    DD/TR/DECREASE     true     # Decrease trust-region size?
-double  DD/TR/SIZE         10       # Initial trust-region size
+double  DD/TR/SIZE         1        # Initial trust-region size
 bool    DD/CACHE_RECOURSE  true     # Do not release recourse problem
 bool    DD/LOG_DUAL_VARS   false    # Store all the dual variable values

@@ -1,8 +1,14 @@
 DSP Release Notes
 =================
 
+Version 0.3.0 (August 19, 2016)
+----------------------------
+
+* New design of the software package
+* Implemented the serial versions of the methods
+
 Version 0.2.1 (November 30, 2015)
------------------------------
+---------------------------------
 
 * Implemented Benders decomposition with MPI
 * Implemented a doubly stabilized bundle method for dual decomposition

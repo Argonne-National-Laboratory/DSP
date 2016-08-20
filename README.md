@@ -25,7 +25,9 @@ git clone https://github.com/Argonne-National-Laboratory/DSP.git
 
 See [INSTALL.md](INSTALL.md)
 
-## Julia Interface
+## Interfaces
+
+### Julia Interface
 
 DSP can use Julia as a modeling interface for the computational experiments. Julia is a high level dynamic programming language for technical computing, with syntax that is familiar to users of other technical computing environments such as MATLAB and Python. Julia can be downloaded from http://julialang.org/downloads/ If Julia is successfully installed on your machine, then you can start the Julia command-line tool by typing
 ```bash
@@ -39,7 +41,7 @@ Pkg.update();
 ```julia
     Pkg.add("JuMP");
 ```
-* The [Dsp.jl](https://github.com/kibaekkim/Dsp.jl.git) package provides an interface to ``JuMP.jl``. DSPsolver.jl can be installed by the Julia command
+* The [Dsp.jl](https://github.com/kibaekkim/Dsp.jl) package provides an interface to ``JuMP.jl``. DSPsolver.jl can be installed by the Julia command
 ```julia
     Pkg.clone("https://github.com/kibaekkim/Dsp.jl.git");
 ```
@@ -48,27 +50,20 @@ Pkg.update();
     Pkg.add("MPI");
 ```
 
-## Python Interface
+### Python Interface
 
-Python interface will be automatically installed if python is available on your machine.
+Python interface will be automatically installed if ``python`` library is available on your machine.
 
-## Example (farmer)
+## Example
 
-An example is provided in subdirectory examples/farmer. You can run the farmer example with the dual decomposition method by typing the command line
-```bash
-mpirun -n 1 julia examples/farmer/farmer_run.jl DD # dual decomposition
-```
-You can also solve the problem by using the Benders decomposition and the extensive form solution implemented in DSP:
-```bash
-julia examples/farmer/farmer_run.jl BD # Benders decomposition
-julia examples/farmer/farmer_run.jl DE # Extensive form solution
-```
+You can find examples in subdirectory examples.
+
 
 ## Credits
 
 DSP has been developed and is maintained by:
 * [Kibaek Kim](http://mcs.anl.gov/~kibaekkim/), Mathematics and Computer Science Division, Argonne National Laboratory.
-* [Victor M. Zavala](http://mcs.anl.gov/~vzavala/), Mathematics and Computer Science Division, Argonne National Laboratory.
+* [Victor M. Zavala](http://zavalab.engr.wisc.edu/), Department of Chemical and Biological Engineering, University of Wisconsin-Madison.
 
 ## Publication
 * Kibaek Kim and Victor M. Zavala. "[Algorithmic innovations and software for the dual decomposition method applied to stochastic mixed-integer programs](http://www.optimization-online.org/DB_FILE/2015/06/4960.pdf)" Optimization Online, 2015

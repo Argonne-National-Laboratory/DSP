@@ -15,7 +15,7 @@ Prerequisites
 
 We recommend to install and run DSP on a **Linux** machine with an appropriate **MPI** library. The software packages necessary to build the source code of DSP are listed below.
 
-*NOTE: We have also tested installing and running DSP on MacOSX (10.9 or later). This requires the user to install the required packages using Macport. We will prepare the documentation for that soon. For now, please email and consult us for how to install and run DSP on MacOSX.*
+*NOTE: We have also tested installing and running DSP on MacOSX (10.9 or later). We will prepare the documentation for that soon. For now, please email and consult us for how to install and run DSP on MacOSX.*
 
 Build Essentials
 ################
@@ -35,10 +35,6 @@ Manual installation
 If you have used ``./get.essentials``, then you can ignore this section and directly go to `External software packages`_. Before using apt-get, please update the package list::
 
    sudo apt-get update
-
-* MPICH -- A version of MPICH is **required** to build and run DSP. It is required to install a version of MPICH, which is available from http://www.mpich.org/downloads/. On Linux, you can also do::
-
-    sudo apt-get install libmpich-dev
 
 * CMake -- This package is **required** to build DSP and all the other external software packages. It is available from http://www.cmake.org/download/. On Linux, you can also do::
 
@@ -64,6 +60,10 @@ If you have used ``./get.essentials``, then you can ignore this section and dire
     sudo apt-get install libbz2-dev
     sudo apt-get install zlib1g-dev
     sudo apt-get install xutils-dev
+
+* MPICH -- A version of MPICH is **optional** to build and run DSP. This is available from http://www.mpich.org/downloads/. On Linux, you can also do::
+
+    sudo apt-get install libmpich-dev
 
 External software packages
 ##########################
@@ -111,19 +111,16 @@ Now we need to install four Julia packages required to run DSP in the Julia envi
 
 The following packages should be installed.
 
-* `MPI.jl <https://github.com/JuliaParallel/MPI.jl>`_ is an MPI interface package, which can be installed by the following Julia command. MPICH is required for this package::
-
-   julia> Pkg.add("MPI");
-
 * `JuMP.jl <https://github.com/JuliaOpt/JuMP.jl>`_ is an algebraic modeling package in Julia for mathematical programming, which can be installed by the following Julia command::
 
    julia> Pkg.add("JuMP");
 
-* `StochJuMP.jl <https://github.com/kibaekkim/StochJuMP.jl.git>`_ is an algebraic modeling package in Julia for stochastic programming, which can be installed by the following Julia command::
+* The `Dsp.jl <https://github.com/kibaekkim/Dsp.jl.git>`_ package provides an interface to JuMP. Dsp.jl can be installed by the Julia command::
 
-   julia> Pkg.clone("https://github.com/kibaekkim/StochJuMP.jl.git");
+   julia> Pkg.clone("https://github.com/kibaekkim/Dsp.jl.git");
 
-* The `DSPsolver.jl <https://github.com/kibaekkim/DSPsolver.jl.git>`_ package provides an interface to StochJuMP. DSPsolver.jl can be installed by the Julia command::
+This package is optional.
+* `MPI.jl <https://github.com/JuliaParallel/MPI.jl>`_ is an MPI interface package, which can be installed by the following Julia command. MPICH is required for this package::
 
-   julia> Pkg.clone("https://github.com/Argonne-National-Laboratory/DSPsolver.jl.git");
+   julia> Pkg.add("MPI");
 

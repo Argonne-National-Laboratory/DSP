@@ -20,10 +20,6 @@ If you have used ./get.essentials, then you can ignore this section and directly
 ```bash
 sudo apt-get update
 ```
-* MPICH -- A version of MPICH is **required** to build and run DSP. It is required to install a version of MPICH, which is available from http://www.mpich.org/downloads/. On Linux, you can also do
-```bash
-    sudo apt-get install libmpich-dev
-```
 * CMake -- This package is **required** to build DSP and all the other external software packages. It is available from http://www.cmake.org/download/. On Linux, you can also do
 ```bash
     sudo apt-get install cmake
@@ -49,6 +45,10 @@ sudo apt-get update
     sudo apt-get install zlib1g-dev
     sudo apt-get install xutils-dev
 ```
+* MPICH -- A version of MPICH is **optional** to build and run DSP, but **required** to run DSP in parallel. This is available from http://www.mpich.org/downloads/. On Linux, you can also do
+```bash
+    sudo apt-get install libmpich-dev
+```
 
 <a name="External"></a>
 ### External software packages
@@ -69,7 +69,9 @@ The following packages are also **required** to build and run DSP and need to be
 
 If you have all the prerequisite packages installed on your system, then you need to go to the root directory of DSP and type
 ```bash
-cmake .
+mkdir build
+cd build
+cmake ..
 ```
 to configure OOQP. If you wish to install the package in a more permanent location, you may then type
 ```bash
@@ -83,4 +85,15 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<DSP_SRC_PATH>/lib
 for Mac,
 ```bash
 export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:<DSP_SRC_PATH>/lib
+```
+
+## Test
+
+You can run test problems using Julia scripts. Assuming that you are at ``<DSP_SRC_PATH>``, you can run the Julia test script for serial solvers,
+```bash
+julia test/test.jl
+```
+For parallel,
+```bash
+mpirun -n 4 julia test/test_mpi.jl
 ```
