@@ -20,15 +20,14 @@ Yield    = [3.0 3.6 24.0;
 Minreq   = [200 240 0]     # minimum crop requirement
 
 # JuMP model
-# m = Model(solver = DspSolver(method = :DD, param = "myparams.txt"))
-m = Model()
+m = Model(nblocks = NS)
 
 @variable(m, x[i=CROPS] >= 0, Int)
 @objective(m, Min, sum{Cost[i] * x[i], i=CROPS})
 @constraint(m, const_budget, sum{x[i], i=CROPS} <= Budget)
 
-for s in 1:NS
-    blk = Model()
+for s in blockids()
+    blk = Model(parent = m, id = s, weight = probability[s])
 
     @variable(blk, y[j=PURCH] >= 0)
     @variable(blk, w[k=SELL] >= 0)
@@ -38,7 +37,4 @@ for s in 1:NS
     @constraint(blk, const_minreq[j=PURCH], Yield[s,j] * x[j] + y[j] - w[j] >= Minreq[j])
     @constraint(blk, const_minreq_beets, Yield[s,3] * x[3] - w[3] - w[4] >= Minreq[3])
     @constraint(blk, const_aux, w[3] <= 6000)
-
-    # add blk to m as a block
-    @block(m, blk, s, probability[s])
 end

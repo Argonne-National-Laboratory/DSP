@@ -13,7 +13,7 @@ include("farmer_model.jl")
 # Dsp solve types
 solve_types = [:Dual, :Benders]
 
-status = solve(m, solve_type = solve_types[2], comm = MPI.COMM_WORLD)
+status = solve(m, solve_type = solve_types[1])
 
 if MPI.Comm_rank(MPI.COMM_WORLD) == 0
     @show getprimobjval() # Dsp.model.primVal
