@@ -24,7 +24,7 @@ DecDetModel::~DecDetModel()
 	FREE_PTR(det_);
 }
 
-STO_RTN_CODE DecDetModel::decompose(
+DSP_RTN_CODE DecDetModel::decompose(
 		int size,                /**< [in] size of subproblem subset */
 		int * subprobs,          /**< [in] subset of subproblems */
 		int naux,                /**< [in] number of auxiliary columns */
@@ -69,12 +69,12 @@ STO_RTN_CODE DecDetModel::decompose(
 	CoinCopyN(obj_aux, naux, obj + ncols);
 	CoinFillN(ctype + ncols, naux, 'C');
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
-STO_RTN_CODE DecDetModel::getFullModel(
+DSP_RTN_CODE DecDetModel::getFullModel(
 	CoinPackedMatrix *& mat, /**< [out] constraint matrix */
 	double *& clbd,          /**< [out] column lower bounds */
 	double *& cubd,          /**< [out] column upper bounds */
@@ -128,9 +128,9 @@ STO_RTN_CODE DecDetModel::getFullModel(
 		}
 	}
 
-	END_TRY_CATCH_RTN(;,STO_RTN_ERR)
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 /** get objective coefficients */

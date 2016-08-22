@@ -1,18 +1,11 @@
 This contains Farmer example.
 
-* farmer_data.jl defines the model data.
-* farmer_model.jl defines the algebraic model using the StochJuMP.jl package.
+* farmer_model.jl defines the algebraic model using the JuMP.jl and Dsp.jl packages.
 * farmer_run.jl runs DSP. You can run farmer_run.jl
-  * dual decomposition
 ```bash
-    mpirun -n 1 julia farmer_run.jl DD
+    julia farmer_run.jl
 ```
-  * Benders decomposition
+* farmer_run_mpi.jl runs parallel DSP using MPI library. You can run farmer_run_mpi.jl
 ```bash
-    julia farmer_run.jl BD
+    mpirun -n 2 julia farmer_run_mpi.jl
 ```
-  * Extensive form solution
-```bash
-    julia farmer_run.jl DE
-```
-

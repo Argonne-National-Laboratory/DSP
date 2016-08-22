@@ -1,10 +1,10 @@
 This contains examples for using DSP with Julia interface.
 
-* smps_dd.jl reads SMPS files in subdirectory ./smps and solves the problem using dual decomposition.
+* smps.jl reads SMPS files given as an argument and solves the problem using serial DSP.
 ```bash
-    mpirun -n 1 julia smps_dd.jl
+    julia smps.jl ./smps/sslp_15_45_5
 ```
-* smps_bd.jl reads SMPS files in subdirectory ./smps and solves the problem using Benders decomposition.
+* smps.jl reads SMPS files given as an argument and solves the problem using parallel DSP.
 ```bash
-    julia smps_bd.jl
+    mpirun -n 2 julia smps_mpi.jl ./smps/sslp_15_45_5
 ```

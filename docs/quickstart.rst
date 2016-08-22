@@ -26,12 +26,12 @@ where :math:`T_{is}` is an :math:`(i,s)`-element of matrix
    2.0 & 2.4 & 16.0
    \end{array}\right].
 
-Modeling in StochJuMP
-^^^^^^^^^^^^^^^^^^^^^
+Modeling in JuMP.jl and Dsp.jl
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-We model the farmer problem by using the StochJuMP package :cite:`huchette2014parallel`. StochJuMP is a scalable algebraic modeling package for stochastic programming problems based on the mathematical programming modeling package JuMP :cite:`bezanson2012julia,lubin2013computing`.
+We model the farmer problem by using the JuMP package :cite:`bezanson2012julia,lubin2013computing`. JuMP is an algebraic modeling package for mathematical programming.
 
-.. note:: StochJuMP enables the generation of large-scale problems in parallel environments and thus overcomes memory and timing bottlenecks. Moreover, it exploits the algebraic modeling capabilities of JuMP to specify problems in a concise format and Julia programming language, which enables the easy handling of data and the use of other tools (e.g., statistical analysis and plotting tools).
+.. note:: Dsp.jl provides an Julia interface to the DSP software package. The Dsp.jl package defines some convenient functions working together with the JuMP.jl package and optionally MPI.jl package.
 
 The farmer problem can be written as follows.
 
@@ -39,64 +39,61 @@ The farmer problem can be written as follows.
    :linenos:
    :caption: Model file: farmer_model.jl
 
-   using StochJuMP
-   m = StochasticModel(NS);
-   @defVar(m, x[i=CROPS] >= 0, Int);
-   @setObjective(m, Min, sum{Cost[i] * x[i], i=CROPS});
-   @addConstraint(m, const_budget, sum{x[i], i=CROPS} <= Budget);
-   @second_stage m s begin
-       sb = StochasticBlock(m, probability[s]);
-       @defVar(sb, y[j=PURCH] >= 0);
-       @defVar(sb, w[k=SELL] >= 0);
-       @setObjective(sb, Min,
+   using JuMP
+   m = Model();
+   @variable(m, x[i=CROPS] >= 0, Int);
+   @objective(m, Min, sum{Cost[i] * x[i], i=CROPS});
+   @constraint(m, const_budget, sum{x[i], i=CROPS} <= Budget);
+   for s = 1:NS
+       sb = Model();
+       @variable(sb, y[j=PURCH] >= 0);
+       @variable(sb, w[k=SELL] >= 0);
+       @objective(sb, Min,
            sum{Purchase[j] * y[j], j=PURCH} 
            - sum{Sell[k] * w[k], k=SELL});
-       @addConstraint(sb, const_minreq[j=PURCH],
+       @constraint(sb, const_minreq[j=PURCH],
                       Yield[s,j] * x[j] + y[j] - w[j] >= Minreq[j]);
-       @addConstraint(sb, const_minreq_beets,
+       @constraint(sb, const_minreq_beets,
                       Yield[s,3] * x[3] - w[3] - w[4] >= Minreq[3]);
-       @addConstraint(sb, const_aux, w[3] <= 6000);
+       @constraint(sb, const_aux, w[3] <= 6000);
+        @block(m, sb, s, probability[s]);
    end
 
-The model file ``farmer_model.jl`` shows the StochJuMP model. In the first line of this script we include ``StochJuMP.jl`` package. The first-stage is defined in lines 3 to 5 and the second stage in lines 7 to 17 for each scenario. The data can be described in a separate file ``farmer_data.jl`` defined as follows.
-
-.. code-block:: julia
-   :caption: Data file: farmer_data.jl
-
-   NS = 3;
-   CROPS = 1:3;
-   PURCH = 1:2;
-   SELL  = 1:4;
-   probability = [1/3 1/3 1/3];
-   Cost = [150 230 260];
-   Purchase = [238 210];
-   Sell = [170 150 36 10];
-   Minreq = [200 240 0];
-   Yield = [3.0 3.6 24.0; 2.5 3.0 20.0; 2.0 2.4 16.0];
-
-Solving with DSPsolver.jl
-^^^^^^^^^^^^^^^^^^^^^^^^^
-
-We now solve the farmer model by using different DSP methods. The ``DSPsolver.jl`` package is required to run DSP in Julia.
+The model file ``farmer_model.jl`` shows the JuMP model. In the first line of this script we include ``JuMP.jl`` package. The first-stage is defined in lines 3 to 5 and the second stage in lines 7 to 17 for each scenario.
 
 Parallel dual decomposition
 ***************************
 
-The following file ``farmer_run.jl`` reads the farmer model and runs the dual decomposition method in parallel via the ``MPI.jl`` package.
+The following file ``farmer_run_mpi.jl`` reads the farmer model and runs the dual decomposition method in parallel via the ``MPI.jl`` package.
 
 .. code-block:: julia
    :linenos:
-   :caption: Run file: farmer_run.jl
+       :caption: Run file: farmer_run_mpi.jl
 
-   using DSPsolver, MPI
-   MPI.Init();
-   include("farmer_data.jl");
-   include("farmer_model.jl");
-   DSPsolver.loadProblem(m);
-   DSPsolver.solve();
-   MPI.Finalize();
+       using MPI, Dsp
+       MPI.Init()
+       include("farmer_model.jl")
+       status = solve(m, solve_type = :Dual, comm = MPI.COMM_WORLD)
+       MPI.Finalize()
 
-Line 1 includes the required packages. The MPI library is initialized and finalized in lines 2 and 7, respectively. The StochJuMP model is given in lines 3 and 4. Note that only two lines of code (5 and 6) are required to invoke the parallel decomposition method. The following command is an example of running ``farmer_run.jl`` with MPI library::
+    Line 1 includes the required packages. The MPI library is initialized and finalized in lines 2 and 5, respectively. The JuMP model is given and solved in lines 3 and 4. The following command is an example of running ``farmer_run_mpi.jl`` with MPI library::
+
+   mpiexec -np 3 julia farmer_run_mpi.jl
+
+Serial dual decomposition
+***************************
+
+The following file ``farmer_run.jl`` reads the farmer model and runs the dual decomposition method in serial.
+
+.. code-block:: julia
+   :linenos:
+       :caption: Run file: farmer_run.jl
+
+       using Dsp
+       include("farmer_model.jl")
+       status = solve(m, solve_type = :Dual)
+
+    Line 1 includes the required packages. The MPI library is initialized and finalized in lines 2 and 7, respectively. The StochJuMP model is given in lines 3 and 4. Note that only two lines of code (5 and 6) are required to invoke the parallel decomposition method. The following command is an example of running ``farmer_run.jl`` with MPI library::
 
    mpiexec -np 3 julia farmer_run.jl
 
@@ -105,25 +102,25 @@ Benders decomposition
 
 Alternatively, users can use Benders decomposition by replacing line 6 of ``farmer_run.jl`` with::
 
-   DSPsolver.solve(DSP_SOLVER_BD);
+   status = solve(m, solve_type = :Benders)
 
-The ``MPI.jl`` package is no longer required for Benders decomposition.
+For the parallel Benders decomposition::
+
+   status = solve(m, solve_type = :Benders, comm = MPI.COMM_WORLD)
 
 Extensive form solution
 ***********************
 
 Users can also solve the extensive form of the problem by replacing line 6 of ``farmer_run.jl`` with::
 
-  DSPsolver.solve(DSP_SOLVER_DE);
-
-The ``MPI.jl`` package is no longer required for solving the extensive form.
+  status = solve(m, solve_type = :Extensive)
 
 Reading model in SMPS format
 ****************************
 
 DSP can also read a model provided in SMPS files :cite:`birge1987standard`. In this format, a model is defined by three files: core, time, and stochastic with file extensions of ``.cor``, ``.tim``, and ``.sto``, respectively. The core file defines the deterministic version of the model with a single reference scenario, the time file indicates a row and a column that split the deterministic data and stochastic data in the constraint matrix, and the stochastic file defines random data. DSP can read model in SMPS format (e.g., ``farmer.cor``, ``farmer.tim`` and ``farmer.sto``) as follows::
 
-   DSPsolver.readSmps("farmer");
+   readSmps("farmer");
 
 Modeling General Decomposition
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

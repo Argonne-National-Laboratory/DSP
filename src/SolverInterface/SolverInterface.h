@@ -9,12 +9,12 @@
 #define SOLVERINTERFACE_H_
 
 /** Coin-OR */
+#include <Utility/DspMacros.h>
+#include <Utility/DspRtnCodes.h>
 #include "CoinPackedMatrix.hpp"
 #include "OsiCuts.hpp"
 
 /** DSP */
-#include "Utility/StoRtnCodes.h"
-#include "Utility/StoMacros.h"
 #include "Utility/DspParams.h"
 
 class SolverInterface
@@ -33,10 +33,10 @@ public:
 protected:
 
 	/** initialize solver interface */
-	virtual STO_RTN_CODE initialize() = 0;
+	virtual DSP_RTN_CODE initialize() = 0;
 
 	/** finalize solver interface */
-	virtual STO_RTN_CODE finalize() = 0;
+	virtual DSP_RTN_CODE finalize() = 0;
 
 public:
 
@@ -73,7 +73,7 @@ public:
 	virtual void solve() = 0;
 
 	/** solution status */
-	virtual STO_RTN_CODE getStatus() = 0;
+	virtual DSP_RTN_CODE getStatus() = 0;
 
 	/**
 	 * Get functions
@@ -84,6 +84,9 @@ public:
 
 	/** get number of columns */
 	virtual int getNumCols() = 0;
+
+	/** get number of integer variables */
+	virtual int getNumIntegers() = 0;
 
 	/** get column lower bounds */
 	virtual const double * getColLower() = 0;
@@ -154,6 +157,9 @@ public:
 
 	/** set wall time limit */
 	virtual void setTimeLimit(double sec) = 0;
+
+	/** set gap tolerance */
+	virtual void setGapTol(double tol) = 0;
 
 	/** set print out level */
 	virtual void setPrintLevel(int level) = 0;

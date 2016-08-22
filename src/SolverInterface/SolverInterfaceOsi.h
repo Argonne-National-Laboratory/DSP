@@ -58,13 +58,16 @@ public:
 	virtual void solve();
 
 	/** solution status */
-	virtual STO_RTN_CODE getStatus();
+	virtual DSP_RTN_CODE getStatus();
 
 	/** get number of rows */
 	virtual int getNumRows() {return si_->getNumRows();}
 
 	/** get number of columns */
 	virtual int getNumCols() {return si_->getNumCols();}
+
+	/** get number of integer variables */
+	virtual int getNumIntegers() {return si_->getNumIntegers();}
 
 	/** get column lower bounds */
 	virtual const double * getColLower() {return si_->getColLower();}
@@ -133,7 +136,10 @@ public:
 	virtual void setIterLimit(int limit);
 
 	/** set wall time limit */
-	virtual void setTimeLimit(double sec);
+	virtual void setTimeLimit(double sec) {}
+
+	/** set gap tolerance */
+	virtual void setGapTol(double tol) {}
 
 	/** set print out level */
 	virtual void setPrintLevel(int level);
@@ -150,10 +156,10 @@ public:
 protected:
 
 	/** initialize solver interface */
-	virtual STO_RTN_CODE initialize();
+	virtual DSP_RTN_CODE initialize();
 
 	/** finalize solver interface */
-	virtual STO_RTN_CODE finalize();
+	virtual DSP_RTN_CODE finalize();
 
 	OsiSolverInterface * si_; /**< OsiClp solver interface */
 	CoinWarmStart * ws_;         /**< warmstart information */

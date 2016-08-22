@@ -46,10 +46,9 @@ The block-angular structure leads to different decomposition methods that enable
 
 **Additional features** of DSP include:
 
-* Interface for the StochJuMP.jl package in Julia
+* Interface for the JuMP.jl package in Julia
 
-  * `StochJuMP.jl <https://github.com/kibaekkim/StochJuMP.jl>`_ -- a scalable algebraic modeling package for stochastic programming in Julia
-  * Extension of the JuMP.jl package, one of the fastest optimization modeling package in Julia
+  * `JuMP.jl <https://github.com/JuliaOpt/JuMP.jl>`_ -- an algebraic modeling package for mathematical programming in Julia
   * User can run DSP in parallel via Julia without coding any MPI codes.
 
 * Solver independence

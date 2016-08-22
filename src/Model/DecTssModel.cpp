@@ -31,7 +31,7 @@ DecTssModel::~DecTssModel()
 	/** nothing to do */
 }
 
-STO_RTN_CODE DecTssModel::decomposeCoupling(
+DSP_RTN_CODE DecTssModel::decomposeCoupling(
 	int size,                    /**< [in] size of subproblem subset */
 	int * subprobs,              /**< [in] subset of subproblems */
 	CoinPackedMatrix *& cpl_mat, /**< [out] coupling constraint matrix */
@@ -68,7 +68,7 @@ STO_RTN_CODE DecTssModel::decomposeCoupling(
 		k += getNumSubproblemCouplingCols(subprobs[s]);
 	assert(k == cpl_ncols);
 
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 const int * DecTssModel::getSubproblemCouplingRowIndices(int s)
@@ -131,7 +131,7 @@ void DecTssModel::convertLagrangianFromAlternative(double * multipliers, double 
 		}
 }
 
-STO_RTN_CODE DecTssModel::getFullModel(
+DSP_RTN_CODE DecTssModel::getFullModel(
 	CoinPackedMatrix *& mat, /**< [out] constraint matrix */
 	double *& clbd,          /**< [out] column lower bounds */
 	double *& cubd,          /**< [out] column upper bounds */
@@ -144,7 +144,7 @@ STO_RTN_CODE DecTssModel::getFullModel(
 	int * subprobs = new int [nsubprobs];
 	CoinIotaN(subprobs, nsubprobs, 0);
 
-	STO_RTN_CODE rtn = decompose(nsubprobs, subprobs, 0, NULL, NULL, NULL,
+	DSP_RTN_CODE rtn = decompose(nsubprobs, subprobs, 0, NULL, NULL, NULL,
 			mat, clbd, cubd, ctype, obj, rlbd, rubd);
 
 	/** free array */

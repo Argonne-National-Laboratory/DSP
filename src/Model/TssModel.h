@@ -32,7 +32,7 @@ public:
 	 * this results in a standard Benders decomposition structure. If size = 1, then
 	 * this results in a dual decomposition structure.
 	 */
-	STO_RTN_CODE decompose(
+	DSP_RTN_CODE decompose(
 			int size,                /**< [in] size of scenario subset */
 			int * scen,              /**< [in] subset of scenarios */
 			int naux,                /**< [in] number of auxiliary columns */
@@ -50,7 +50,7 @@ public:
 	/**
 	 * This constructs a deterministic equivalent form.
 	 */
-	STO_RTN_CODE copyDeterministicEquivalent(
+	DSP_RTN_CODE copyDeterministicEquivalent(
 			CoinPackedMatrix *& mat, /**< [out] constraint matrix */
 			double *& clbd,          /**< [out] column lower bounds */
 			double *& cubd,          /**< [out] column upper bounds */
@@ -62,13 +62,13 @@ public:
 	/**
 	 * Create a DetModel representing the deterministic equivalent of this model.
 	 */
-	STO_RTN_CODE copyDeterministicEquivalent(
+	DSP_RTN_CODE copyDeterministicEquivalent(
 			DetModel *& det /**< [out] deterministic equivalent model */);
 
 	/**
 	 * This creates recourse problem structure for a given scenario index.
 	 */
-	STO_RTN_CODE copyRecoProb(
+	DSP_RTN_CODE copyRecoProb(
 			int scen,                     /**< [in] scenario index */
 			CoinPackedMatrix *& mat_tech, /**< [out] technology matrix */
 			CoinPackedMatrix *& mat_reco, /**< [out] recourse matrix */
@@ -84,17 +84,17 @@ public:
 public:
 
 	/** set number of scenarios */
-	STO_RTN_CODE setNumberOfScenarios(int nscen);
+	DSP_RTN_CODE setNumberOfScenarios(int nscen);
 
 	/** set dimensions */
-	STO_RTN_CODE setDimensions(
+	DSP_RTN_CODE setDimensions(
 			const int ncols1, /**< number of first-stage columns */
 			const int nrows1, /**< number of first-stage rows */
 			const int ncols2, /**< number of second-stage columns */
 			const int nrows2  /**< number of second-stage rows */);
 
 	/** load first-stage problem */
-	STO_RTN_CODE loadFirstStage(
+	DSP_RTN_CODE loadFirstStage(
 			const CoinBigIndex * start, /**< start index for each row */
 			const int *          index, /**< column indices */
 			const double *       value, /**< constraint elements */
@@ -106,7 +106,7 @@ public:
 			const double *       rubd   /**< row upper bounds */);
 
 	/** load first-stage problem */
-	STO_RTN_CODE loadSecondStage(
+	DSP_RTN_CODE loadSecondStage(
 			const int            s,     /**< scenario index */
 			const double         prob,  /**< probability */
 			const CoinBigIndex * start, /**< start index for each row */

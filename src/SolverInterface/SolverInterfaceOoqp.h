@@ -11,20 +11,16 @@
 //#define DSP_HAS_MA57
 
 /** DSP */
+#include <Utility/DspMessage.h>
 #include "SolverInterface/SolverInterface.h"
-#include "Utility/StoMessage.h"
-
-/** OOQP */
+#include "QpGen.h"
 #include "QpGenData.h"
 #include "QpGenVars.h"
 #include "QpGenResiduals.h"
-#include "GondzioSolver.h"
-#include "MehrotraSolver.h"
-#ifdef DSP_HAS_MA57
-#include "QpGenSparseMa57.h"
-#else
-#include "QpGenSparseMa27.h"
-#endif
+#include "Solver.h"
+
+#define GUTS_OF_LOAD_PROBLEM gutsOfLoadSparseProblem
+#define SET_HESSIAN          setSparseHessian
 
 /** columns dynamically added */
 class dynColumns
@@ -89,7 +85,7 @@ public:
 		SolverInterface(par),
 		dynCols_(NULL),
 		sense_(1),
-		status_(STO_STAT_UNKNOWN),
+		status_(DSP_STAT_UNKNOWN),
 		print_level_(0),
 		qp_(NULL),
 		prob_(NULL),
@@ -97,14 +93,19 @@ public:
 		resid_(NULL),
 		solver_(NULL),
 		released_(true),
-		my_(0), mz_(0),
+		nx_(0), my_(0), mz_(0),
 		nrows_(0), ncols_(0),
+		xlow_(NULL), ixlow_(NULL), xupp_(NULL), ixupp_(NULL),
+		c_(NULL),
 		mat_(NULL),
 		clbd_(NULL), cubd_(NULL),
 		obj_(NULL),
 		rlbd_(NULL), rubd_(NULL),
+		nnzA_(0), irowA_(NULL), jcolA_(NULL), dA_(NULL), b_(NULL),
+		nnzC_(0), irowC_(NULL), jcolC_(NULL), dC_(NULL),
+		clow_(NULL), iclow_(NULL), cupp_(NULL), icupp_(NULL),
 		nnzQ_(0), irowQ_(NULL), jcolQ_(NULL), dQ_(NULL),
-		objval_(0),
+		objval_(COIN_DBL_MAX),
 		x_(NULL),
 		y_(NULL),
 		lambda_(NULL),
@@ -140,7 +141,10 @@ public:
 			const char * probname = "null");
 
 	/** core part for load problem */
-	virtual void gutsOfLoadProblem();
+	virtual void gutsOfLoadSparseProblem();
+
+	/** core part for load problem */
+	virtual void gutsOfLoadDenseProblem();
 
 	/** add row */
 	virtual void addRow(int size, const int * indices, const double * vals, double lb, double ub);
@@ -161,7 +165,7 @@ public:
 	virtual int getObjSense() {return sense_;}
 
 	/** solution status */
-	virtual STO_RTN_CODE getStatus() {return status_;}
+	virtual DSP_RTN_CODE getStatus() {return status_;}
 
 	/** get number of rows */
 	virtual int getNumRows() {return my_ + mz_;}
@@ -174,6 +178,9 @@ public:
 
 	/** get number of columns */
 	virtual int getNumCols() {return ncols_;}
+
+	/** get number of integer variables */
+	virtual int getNumIntegers() {return 0;}
 
 	/** get constraint matrix */
 	virtual CoinPackedMatrix * getMatrix() {return mat_;}
@@ -271,6 +278,9 @@ public:
 	/** set wall time limit */
 	virtual void setTimeLimit(double sec) {DSPdebugMessage("Not available for OOQP.\n");}
 
+	/** set gap tolerance */
+	virtual void setGapTol(double tol) {}
+
 	/** set print out level */
 	virtual void setPrintLevel(int level) {print_level_ = level;}
 
@@ -279,11 +289,17 @@ public:
 
 protected:
 
+	/** set lower triangular Hessian matrix */
+	virtual void setSparseHessian(int nnzQ, int * irowQ, int * jcolQ, double * dQ);
+
+	/** set lower triangular Hessian matrix */
+	virtual void setDenseHessian(int nnzQ, int * irowQ, int * jcolQ, double * dQ);
+
 	/** initialize solver interface */
-	virtual STO_RTN_CODE initialize() {return STO_RTN_OK;}
+	virtual DSP_RTN_CODE initialize() {return DSP_RTN_OK;}
 
 	/** finalize solver interface */
-	virtual STO_RTN_CODE finalize();
+	virtual DSP_RTN_CODE finalize();
 
 	/** release OOQP objects */
 	virtual void releaseOOQP();
@@ -300,11 +316,11 @@ public:
 protected:
 
 	int sense_; /**< objective sense */
-	STO_RTN_CODE status_; /**< solution status */
+	DSP_RTN_CODE status_; /**< solution status */
 	int print_level_;
 
 	/** OOQP objects */
-	QpGenSparseSeq * qp_;
+	QpGen * qp_;
 	QpGenData * prob_;
 	QpGenVars * vars_;
 	QpGenResiduals * resid_;
@@ -312,16 +328,35 @@ protected:
 	bool released_;
 
 	/** original data */
+	int nx_;
 	int my_;
 	int mz_;
 	int nrows_;
 	int ncols_;
+	double * xlow_;
+	char * ixlow_;
+	double * xupp_;
+	char * ixupp_;
+	double * c_;
 	CoinPackedMatrix * mat_;
 	double * clbd_;
 	double * cubd_;
 	double * obj_;
 	double * rlbd_;
 	double * rubd_;
+	int nnzA_;
+	int * irowA_;
+	int * jcolA_;
+	double * dA_;
+	double * b_;
+	int nnzC_;
+	int * irowC_;
+	int * jcolC_;
+	double * dC_;
+	double * clow_;
+	char * iclow_;
+	double * cupp_;
+	char * icupp_;
 	int nnzQ_;
 	int * irowQ_;
 	int * jcolQ_;

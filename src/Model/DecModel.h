@@ -8,12 +8,12 @@
 #ifndef DECMODEL_H_
 #define DECMODEL_H_
 
+#include <Utility/DspMacros.h>
+#include <Utility/DspRtnCodes.h>
 #include <map>
 #include "CoinTime.hpp"
 #include "SmiScnModel.hpp"
 
-#include "Utility/StoMacros.h"
-#include "Utility/StoRtnCodes.h"
 
 /**
  * Interface for a decomposable model (not necessarily stochastic).
@@ -131,7 +131,7 @@ public:
 	 * this results in a standard Benders decomposition structure. If size = 1, then
 	 * this results in a dual decomposition structure.
 	 */
-	virtual STO_RTN_CODE decompose(
+	virtual DSP_RTN_CODE decompose(
 		int size,                    /**< [in] size of subproblem subset */
 		int * subprobs,              /**< [in] subset of subproblems */
 		int naux,                    /**< [in] number of auxiliary columns */
@@ -154,7 +154,7 @@ public:
 	 * array cpl_cols is the subset of columns of cpl_mat that are involved in coupling rows,
 	 * which will be sent from a subproblem to the master).
 	 */
-	virtual STO_RTN_CODE decomposeCoupling(
+	virtual DSP_RTN_CODE decomposeCoupling(
 		int size,                    /**< [in] size of subproblem subset */
 		int * subprobs,              /**< [in] subset of subproblems */
 		CoinPackedMatrix *& cpl_mat, /**< [out] coupling constraint matrix */
@@ -164,7 +164,7 @@ public:
 	/**
 	 * Returns the full model in matrix form, including coupling constraints.
 	 */
-	virtual STO_RTN_CODE getFullModel(
+	virtual DSP_RTN_CODE getFullModel(
 		CoinPackedMatrix *& mat, /**< [out] constraint matrix */
 		double *& clbd,          /**< [out] column lower bounds */
 		double *& cubd,          /**< [out] column upper bounds */

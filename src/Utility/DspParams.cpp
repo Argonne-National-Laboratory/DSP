@@ -5,7 +5,9 @@
  *      Author: kibaekkim
  */
 
-#include <Utility/DspParams.h>
+//#define DSP_DEBUG
+#include "Utility/DspMessage.h"
+#include "Utility/DspParams.h"
 
 #define MAX_INT_NUM numeric_limits<int>::max()
 #define MAX_DBL_NUM numeric_limits<double>::max()
@@ -70,8 +72,6 @@ void DspParams::readParamFile(const char * param_file)
 			}
 			if (!is_valid) break;
 
-			printf("Set parameter: [%s][%s][%s]\n", param_element[0].c_str(), param_element[1].c_str(), param_element[2].c_str());
-
 			if (param_element[0].compare("bool") == 0)
 			{
 				if (param_element[2].compare("true") == 0)
@@ -118,11 +118,17 @@ void DspParams::initBoolParams()
 	/** enable decreasing trust region */
 	BoolParams_.createParam("DD/TR/DECREASE", true);
 
+	/** enable decreasing trust region */
+	BoolParams_.createParam("DD/ALLOW_IDLE_WORKERS", false);
+
 	/** cache recourse models */
 	BoolParams_.createParam("DD/CACHE_RECOURSE", true);
 
 	/** log dual variable values */
 	BoolParams_.createParam("DD/LOG_DUAL_VARS", false);
+
+	/** enable asynchronous parallelization */
+	BoolParams_.createParam("DD/ASYNC", false);
 }
 
 void DspParams::initIntParams()
@@ -133,8 +139,8 @@ void DspParams::initIntParams()
 	/** branch-and-cut node limit */
 	IntParams_.createParam("NODE_LIM", MAX_INT_NUM);
 
-	/** iteration limit */
-	IntParams_.createParam("ITER_LIM", MAX_INT_NUM);
+	/** number of cuts to the master per iteration */
+	IntParams_.createParam("BD/NUM_CUTS_PER_ITER", 1);
 
 	/** number of cores used in OpenMP library (Benders only) */
 	IntParams_.createParam("BD/NUM_CORES", 1);
@@ -147,6 +153,12 @@ void DspParams::initIntParams()
 	 * 1 = solve separate MILP relaxation problems */
 	IntParams_.createParam("BD/INIT_LB_ALGO", SEPARATE_LP);
 
+    /** iteration limit of the dual decomposition used in Benders for initial lower bounding */
+    IntParams_.createParam("BD/DD/ITER_LIM", 10);
+
+    /** iteration limit */
+    IntParams_.createParam("DD/ITER_LIM", MAX_INT_NUM);
+
 	/** algorithm for the master */
 	IntParams_.createParam("DD/MASTER_ALGO", IPM_Feasible);
 
@@ -154,13 +166,19 @@ void DspParams::initIntParams()
 	IntParams_.createParam("DD/NUM_CUTS_PER_ITER", 1);
 
 	/** add feasibility cuts */
-	IntParams_.createParam("DD/FEAS_CUTS", -1);
+	IntParams_.createParam("DD/FEAS_CUTS", 1);
 
 	/** add optimality cuts */
-	IntParams_.createParam("DD/OPT_CUTS", -1);
+	IntParams_.createParam("DD/OPT_CUTS", 1);
 
 	/** evaluate upper bound */
-	IntParams_.createParam("DD/EVAL_UB", -1);
+	IntParams_.createParam("DD/EVAL_UB", 1);
+
+	/** maximum number of solutions to evaluate */
+	IntParams_.createParam("DD/MAX_EVAL_UB", 100);
+
+	/** maximum queue size for asynchronous one */
+	IntParams_.createParam("DD/MAX_QSIZE", 5);
 
 	/** display frequency */
 	IntParams_.createParam("SCIP/DISPLAY_FREQ", 100);
@@ -169,24 +187,31 @@ void DspParams::initIntParams()
 void DspParams::initDblParams()
 {
 	/** wall clock limit */
-	DblParams_.createParam("WALL_LIM", MAX_DBL_NUM);
+	DblParams_.createParam("DE/WALL_LIM", MAX_DBL_NUM);
+
+	/** wall clock limit */
+	DblParams_.createParam("BD/WALL_LIM", MAX_DBL_NUM);
+
+	/** wall clock limit */
+	DblParams_.createParam("DD/WALL_LIM", MAX_DBL_NUM);
 
 	/** initial trust region size */
-	DblParams_.createParam("DD/TR/SIZE", 100);
+	DblParams_.createParam("DD/TR/SIZE", 1);
 
 	/** stopping tolerance */
-	DblParams_.createParam("DD/STOP_TOL", 1.0e-5);
+	DblParams_.createParam("DD/STOP_TOL", 0.00001);
 
 	/** branch-and-bound gap tolerance */
-	DblParams_.createParam("SCIP/GAP_TOL", 0.0);
+	DblParams_.createParam("SCIP/GAP_TOL", 0.00001);
 
 	/** time limit */
-	DblParams_.createParam("SCIP/TIME_LIM", MAX_DBL_NUM);
+	DblParams_.createParam("SCIP/TIME_LIM", 300);
 }
 
 void DspParams::initStrParams()
 {
-	/** no string parameters */
+	/** prefix for output files */
+	StrParams_.createParam("OUTPUT/PREFIX", "dsp");
 }
 
 void DspParams::initBoolPtrParams()
@@ -200,6 +225,7 @@ void DspParams::initBoolPtrParams()
 
 void DspParams::initIntPtrParams()
 {
+	DSPdebugMessage("creating integer array parameters\n");
 	/** array of scenarios for the current process */
 	IntPtrParams_.createParam("ARR_PROC_IDX");
 

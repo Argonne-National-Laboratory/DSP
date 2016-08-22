@@ -26,21 +26,23 @@ rank = comm.Get_rank()
 PyDsp.solveBdMpi(dsp, 1, comm)
 comm.Barrier()
 
+# solution status
 if rank == 0:
-	# solution status
-	status = PyDsp.getSolutionStatus(dsp)
+	status = PyDsp.getStatus(dsp)
 	print ("Solution status: %d" % status)
 	
 	# collect solutions
 	ncols = PyDsp.getTotalNumCols(dsp)
-	x_val = PyDsp.doubleArray(ncols)
-	PyDsp.getSolution(dsp, ncols, x_val)
 	print ("Number of variables: %d" % ncols)
 	print ("Primal bound: %+e" % PyDsp.getPrimalBound(dsp))
 	print ("Dual bound  : %+e" % PyDsp.getDualBound(dsp))
+	'''
+	x_val = PyDsp.doubleArray(ncols)
+	PyDsp.getSolution(dsp, ncols, x_val)
 	for i in xrange(ncols):
 		if abs(x_val[i]) > 1.0e-6:
 			print ("x[%d]\t%+e" % (i,x_val[i]))
-
+	'''
+	
 # free DSP environment
 PyDsp.freeEnv(dsp)

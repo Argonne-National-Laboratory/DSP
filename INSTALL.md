@@ -20,10 +20,6 @@ If you have used ./get.essentials, then you can ignore this section and directly
 ```bash
 sudo apt-get update
 ```
-* MPICH -- A version of MPICH is **required** to build and run DSP. It is required to install a version of MPICH, which is available from http://www.mpich.org/downloads/. On Linux, you can also do
-```bash
-    sudo apt-get install libmpich-dev
-```
 * CMake -- This package is **required** to build DSP and all the other external software packages. It is available from http://www.cmake.org/download/. On Linux, you can also do
 ```bash
     sudo apt-get install cmake
@@ -49,6 +45,10 @@ sudo apt-get update
     sudo apt-get install zlib1g-dev
     sudo apt-get install xutils-dev
 ```
+* MPICH -- A version of MPICH is **optional** to build and run DSP, but **required** to run DSP in parallel. This is available from http://www.mpich.org/downloads/. On Linux, you can also do
+```bash
+    sudo apt-get install libmpich-dev
+```
 
 <a name="External"></a>
 ### External software packages
@@ -69,7 +69,9 @@ The following packages are also **required** to build and run DSP and need to be
 
 If you have all the prerequisite packages installed on your system, then you need to go to the root directory of DSP and type
 ```bash
-cmake .
+mkdir build
+cd build
+cmake ..
 ```
 to configure OOQP. If you wish to install the package in a more permanent location, you may then type
 ```bash
@@ -85,29 +87,13 @@ for Mac,
 export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:<DSP_SRC_PATH>/lib
 ```
 
-## Julia Interface (Required)
+## Test
 
-DSP uses Julia as a modeling interface for the computational experiments. Julia is a high level dynamic programming language for technical computing, with syntax that is familiar to users of other technical computing environments such as MATLAB and Python. Julia can be downloaded from http://julialang.org/downloads/ If Julia is successfully installed on your machine, then you can start the Julia command-line tool by typing
+You can run test problems using Julia scripts. Assuming that you are at ``<DSP_SRC_PATH>``, you can run the Julia test script for serial solvers,
 ```bash
-julia
+julia test/test.jl
 ```
-Now we need to install four Julia packages required to run DSP in the Julia environment. The packages should be installed in the Julia command-line tool. Please update the package list of Julia by typing
-```julia
-Pkg.update();
-```
-* [MPI.jl](https://github.com/JuliaParallel/MPI.jl) is an MPI interface package, which can be installed by the following Julia command. MPICH is required for this package.
-```julia
-    Pkg.add("MPI");
-```
-* [JuMP.jl](https://github.com/JuliaOpt/JuMP.jl) is a algebraic modeling package in Julia for mathematical programming, which can be installed by the following Julia command:
-```julia
-    Pkg.add("JuMP");
-```
-* [StochJuMP.jl](https://github.com/kibaekkim/StochJuMP.jl.git) is a algebraic modeling package in Julia for stochastic programming, which can be installed by the following Julia command:
-```julia
-    Pkg.clone("https://github.com/kibaekkim/StochJuMP.jl.git");
-```
-* The [DSPsolver.jl](https://github.com/kibaekkim/DSPsolver.jl.git) package provides an interface to StochJuMP. DSPsolver.jl can be installed by the Julia command
-```julia
-    Pkg.clone("https://github.com/kibaekkim/DSPsolver.jl.git");
+For parallel,
+```bash
+mpirun -n 4 julia test/test_mpi.jl
 ```

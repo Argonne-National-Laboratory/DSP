@@ -5,16 +5,16 @@
  *      Author: kibaekkim
  */
 
+#include <Utility/DspMacros.h>
 #include "SolverInterface/SolverInterfaceClp.h"
-#include "Utility/StoMacros.h"
-
-/** Coin-OR */
 #include "OsiClpSolverInterface.hpp"
 
 SolverInterfaceClp::SolverInterfaceClp(DspParams * par) :
 	SolverInterfaceOsi(par)
 {
-	STO_RTN_CHECK_THROW(initialize(), "initialize", "SolverInterfaceClp");
+	BGN_TRY_CATCH
+	DSP_RTN_CHECK_THROW(initialize());
+	END_TRY_CATCH(;)
 }
 
 /** copy constructor */
@@ -34,7 +34,7 @@ SolverInterfaceClp::SolverInterfaceClp(DspParams * par, OsiSolverInterface * si)
 }
 
 /** initialize solver interface */
-STO_RTN_CODE SolverInterfaceClp::initialize()
+DSP_RTN_CODE SolverInterfaceClp::initialize()
 {
 	if (si_ == NULL)
 	{
@@ -42,6 +42,6 @@ STO_RTN_CODE SolverInterfaceClp::initialize()
 		si_->setHintParam(OsiDoDualInResolve);
 		si_->setHintParam(OsiDoScale);
 	}
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 

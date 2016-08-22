@@ -41,10 +41,10 @@ public:
 protected:
 
 	/** initialize solver interface */
-	virtual STO_RTN_CODE initialize();
+	virtual DSP_RTN_CODE initialize();
 
 	/** finalize solver interface */
-	virtual STO_RTN_CODE finalize();
+	virtual DSP_RTN_CODE finalize();
 
 public:
 
@@ -123,7 +123,7 @@ public:
 	virtual void solve();
 
 	/** solution status */
-	virtual STO_RTN_CODE getStatus();
+	virtual DSP_RTN_CODE getStatus();
 
 	/**
 	 * Get functions
@@ -134,6 +134,9 @@ public:
 
 	/** get number of columns */
 	virtual int getNumCols() {return SCIPgetNOrigVars(scip_);}
+
+	/** get number of integer variables */
+	virtual int getNumIntegers() {return SCIPgetNOrigIntVars(scip_);}
 
 	/** get column lower bounds */
 	virtual const double * getColLower() {return clbd_;}
@@ -148,10 +151,10 @@ public:
 	virtual const double * getRowUpper() {return rubd_;}
 
 	/** get linear objective function coefficient */
-	virtual const double * getObjCoef() {return NULL;}
+	virtual const double * getObjCoef() {return obj_;}
 
 	/** get variable objective function */
-	virtual double getObjCoeff(int j) {return SCIPvarGetObj(vars_[j]);}
+//	virtual double getObjCoeff(int j) {return SCIPvarGetObj(vars_[j]);}
 
 	/** get global primal bound (upper bound in minimization) */
 	virtual double getPrimalBound() {return SCIPgetPrimalbound(scip_);}
@@ -214,6 +217,9 @@ public:
 	/** set time limit */
 	virtual void setTimeLimit(double sec);
 
+	/** set gap tolerance */
+	virtual void setGapTol(double tol);
+
 	/** set solution */
 	virtual void setSolution(double * solution);
 
@@ -235,9 +241,6 @@ public:
 
 	/** set cuts */
 	virtual void setCuts(OsiCuts * cuts);
-
-	/** clear cuts */
-	virtual void clearCuts();
 
 	/**
 	 * SCIP specific functions
@@ -264,6 +267,7 @@ private:
 	/** store original variables */
 	int nvars_;
 	SCIP_Var ** vars_;
+	double * obj_;
 	double * clbd_;
 	double * cubd_;
 

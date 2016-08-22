@@ -5,6 +5,7 @@
  *      Author: kibaekkim
  */
 
+#include <Utility/DspMessage.h>
 #include "stdio.h"
 #include "math.h"
 
@@ -18,7 +19,6 @@
 #include "MehrotraSolver.h"
 
 /** DSP */
-#include "Utility/StoMessage.h"
 #include "SolverInterface/OoqpStatus.h"
 
 OoqpStatus::~OoqpStatus()

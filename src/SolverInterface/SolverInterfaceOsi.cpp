@@ -6,8 +6,8 @@
  */
 
 #include <assert.h>
-#include "Utility/StoMacros.h"
-#include "Utility/StoMessage.h"
+#include <Utility/DspMacros.h>
+#include <Utility/DspMessage.h>
 #include "SolverInterface/SolverInterfaceOsi.h"
 
 #include "CoinWarmStartBasis.hpp"
@@ -17,7 +17,9 @@ SolverInterfaceOsi::SolverInterfaceOsi(DspParams * par) :
 	si_(NULL),
 	ws_(NULL)
 {
-	STO_RTN_CHECK_THROW(initialize(), "initialize", "SolverInterfaceOsi");
+	BGN_TRY_CATCH
+	DSP_RTN_CHECK_THROW(initialize());
+	END_TRY_CATCH(;)
 }
 
 /** copy constructor */
@@ -38,7 +40,9 @@ SolverInterfaceOsi::SolverInterfaceOsi(DspParams * par, OsiSolverInterface * si)
 
 SolverInterfaceOsi::~SolverInterfaceOsi()
 {
-	STO_RTN_CHECK_THROW(finalize(), "finalize", "SolverInterfaceOsi");
+	BGN_TRY_CATCH
+	DSP_RTN_CHECK_THROW(finalize());
+	END_TRY_CATCH(;)
 }
 
 /** clone */
@@ -48,17 +52,17 @@ SolverInterface * SolverInterfaceOsi::clone()
 }
 
 /** initialize solver interface */
-STO_RTN_CODE SolverInterfaceOsi::initialize()
+DSP_RTN_CODE SolverInterfaceOsi::initialize()
 {
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 /** finalize solver interface */
-STO_RTN_CODE SolverInterfaceOsi::finalize()
+DSP_RTN_CODE SolverInterfaceOsi::finalize()
 {
 	FREE_PTR(si_);
 	FREE_PTR(ws_);
-	return STO_RTN_OK;
+	return DSP_RTN_OK;
 }
 
 /** load problem */
@@ -98,6 +102,13 @@ void SolverInterfaceOsi::loadProblem(
 {
 	assert(si_);
 	si_->loadProblem(*mat, collb, colub, obj, rowlb, rowub);
+	for (int j = 0; j < mat->getNumCols(); ++j)
+	{
+		if (ctype[j] == 'C')
+			si_->setContinuous(j);
+		else
+			si_->setInteger(j);
+	}
 }
 
 /** add row */
@@ -163,41 +174,45 @@ int SolverInterfaceOsi::addCuts(OsiCuts cuts, double effectiveness)
 void SolverInterfaceOsi::solve()
 {
 	assert(si_);
-
-	if (ws_ == NULL)
-		si_->initialSolve();
-	else
+	if (si_->getNumIntegers() == 0)
 	{
-		/** set warmstart basis */
-		if (si_->setWarmStart(ws_) == false)
-			printf("Failed to set warm-start information in SolverInterfaceOsi()\n");
-		si_->resolve();
-	}
+		if (ws_ == NULL)
+			si_->initialSolve();
+		else
+		{
+			/** set warmstart basis */
+			if (si_->setWarmStart(ws_) == false)
+				printf("Failed to set warm-start information in SolverInterfaceOsi()\n");
+			si_->resolve();
+		}
 
-	/** get warmstart */
-	FREE_PTR(ws_);
-	ws_ = si_->getWarmStart();
-	assert(ws_);
+		/** get warmstart */
+		FREE_PTR(ws_);
+		ws_ = si_->getWarmStart();
+		assert(ws_);
+	}
+	else
+		si_->branchAndBound();
 }
 
 /** solution status */
-STO_RTN_CODE SolverInterfaceOsi::getStatus()
+DSP_RTN_CODE SolverInterfaceOsi::getStatus()
 {
 	if (si_->isProvenOptimal())
-		return STO_STAT_OPTIMAL;
+		return DSP_STAT_OPTIMAL;
 	if (si_->isProvenDualInfeasible())
-		return STO_STAT_DUAL_INFEASIBLE;
+		return DSP_STAT_DUAL_INFEASIBLE;
 	if (si_->isProvenPrimalInfeasible())
-		return STO_STAT_PRIM_INFEASIBLE;
+		return DSP_STAT_PRIM_INFEASIBLE;
 	if (si_->isPrimalObjectiveLimitReached())
-		return STO_STAT_LIM_PRIM_OBJ;
+		return DSP_STAT_LIM_PRIM_OBJ;
 	if (si_->isDualObjectiveLimitReached())
-		return STO_STAT_LIM_DUAL_OBJ;
+		return DSP_STAT_LIM_DUAL_OBJ;
 	if (si_->isIterationLimitReached())
-		return STO_STAT_LIM_ITERorTIME;
+		return DSP_STAT_LIM_ITERorTIME;
 	if (si_->isAbandoned())
-		return STO_STAT_STOPPED_UNKNOWN;
-	return STO_STAT_UNKNOWN;
+		return DSP_STAT_STOPPED_UNKNOWN;
+	return DSP_STAT_UNKNOWN;
 }
 
 /** get global primal bound (upper bound in minimization) */
@@ -228,12 +243,6 @@ void SolverInterfaceOsi::setObjCoef(double * obj)
 void SolverInterfaceOsi::setIterLimit(int limit)
 {
 	si_->setIntParam(OsiMaxNumIteration, limit);
-}
-
-/** set wall time limit */
-void SolverInterfaceOsi::setTimeLimit(double sec)
-{
-	DSPdebugMessage("Warning: Clp does not support time limit.\n");
 }
 
 /** set print out level */

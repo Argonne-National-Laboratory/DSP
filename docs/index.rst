@@ -23,7 +23,7 @@ DSP is an object-oriented open-source software package written in C++ for solvin
 DSP has been developed and is maintained by:
 
 * `Kibaek Kim <http://mcs.anl.gov/~kibaekkim/>`_, Mathematics and Computer Science Division, Argonne National Laboratory.
-* `Victor M. Zavala <http://mcs.anl.gov/~vzavala/>`_, Mathematics and Computer Science Division, Argonne National Laboratory.
+* `Victor M. Zavala <http://zavalab.engr.wisc.edu/>`_, Department of Chemical and Biological Engineering, University of Wisconsin-Madison.
 
 **Publication**
 

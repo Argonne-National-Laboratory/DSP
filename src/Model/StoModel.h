@@ -9,11 +9,12 @@
 #define STOMODEL_H_
 
 #include <map>
+#include "Utility/DspTypes.h"
+#include "Utility/DspMacros.h"
+#include "Utility/DspRtnCodes.h"
 #include "CoinTime.hpp"
 #include "SmiScnModel.hpp"
 
-#include "Utility/StoMacros.h"
-#include "Utility/StoRtnCodes.h"
 
 /*
  * This class is a wrapper for SMI, which reads and writes SMPS files.
@@ -39,7 +40,7 @@ public:
 	virtual ~StoModel();
 
 	/** read SMPS files */
-	STO_RTN_CODE readSmps(const char * filename);
+	DSP_RTN_CODE readSmps(const char * filename);
 
 	void __printData();
 
@@ -74,19 +75,8 @@ public:
 	/** get column type for a given stage */
 	const char * getCtypeCore(int stage) {return ctype_core_[stage];}
 
-	/** get number of branch priorities */
-	int getNumPriorities() {return numPriorities_;}
-
-	/** get branch priorities */
-	const int * getPriorities() {return priorities_;}
-
 	/** get initial solutions */
-	const vector<CoinPackedVector*> getInitialSolutions() {return init_solutions_;}
-
-	/** set branch priorities */
-	void setPriorities(
-			int   size,      /**< size of array */
-			int * priorities /**< branch priority */);
+	const Solutions getInitialSolutions() {return init_solutions_;}
 
 	/** set initial solutions */
 	void setSolution(
@@ -204,10 +194,7 @@ protected:
 
 	StoScenMap scen2stg_; /** map from scenario to stage */
 
-	int numPriorities_; /**< length of branch priorities */
-	int * priorities_;  /**< branch priority */
-
-	vector<CoinPackedVector*> init_solutions_; /**< initial solutions */
+	Solutions init_solutions_; /**< initial solutions */
 
 	bool fromSMPS_; /**< problem was read from SMPS files? */
 
