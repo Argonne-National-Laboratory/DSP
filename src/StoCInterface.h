@@ -163,6 +163,9 @@ void setDdStoppingTolerance(StoApiEnv * env, double tol);
 /** set number of cuts per iteration added to master */
 void setDdMasterNumCutsPerIter(StoApiEnv* env, int num);
 
+/** set maximum number of solutions to evalute */
+void setDdMaxPrimsolEval(StoApiEnv* env, int num);
+
 /** set SCIP/display/freq */
 void setScipDisplayFreq(StoApiEnv * env, int freq);
 

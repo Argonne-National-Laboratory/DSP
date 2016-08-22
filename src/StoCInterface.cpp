@@ -367,8 +367,15 @@ void setDdStoppingTolerance(StoApiEnv * env, double tol)
 /** set number of cuts per iteration added to master */
 void setDdMasterNumCutsPerIter(StoApiEnv* env, int num)
 {
-	STO_API_CHECK_ENV();
-	env->par_->TssDdMasterNumCutsPerIter_ = num;
+    STO_API_CHECK_ENV();
+    env->par_->TssDdMasterNumCutsPerIter_ = num;
+}
+
+/** set maximum number of solutions to evalute */
+void setDdMaxPrimsolEval(StoApiEnv* env, int num)
+{
+    STO_API_CHECK_ENV();
+    env->par_->TssDdMaxPrimSolEval_ = num;
 }
 
 /** set SCIP/display/freq */
