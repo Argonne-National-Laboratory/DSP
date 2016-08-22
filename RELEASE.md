@@ -1,11 +1,12 @@
 DSP Release Notes
 =================
 
-Version 0.3.0 (August 19, 2016)
+Version 0.3.0 (August 22, 2016)
 ----------------------------
 
 * New design of the software package
-* Implemented the serial versions of the methods
+* Implemented the **serial** versions of the methods
+* Working with [JuMP](https://github.com/JuliaOpt/JuMP.jl) via new Julia interface [Dsp.jl](https://github.com/kibaekkim/Dsp.jl)
 
 Version 0.2.1 (November 30, 2015)
 ---------------------------------
