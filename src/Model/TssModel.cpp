@@ -411,6 +411,7 @@ DSP_RTN_CODE TssModel::decompose(
 		else
 			nzcnt += mat_scen_[scen[s]]->getNumElements();
 	}
+	DSPdebugMessage("nzcnt %d\n", nzcnt);
 
 	/** allocate memory */
 	rowIndices = new int [nzcnt];
@@ -467,10 +468,21 @@ DSP_RTN_CODE TssModel::decompose(
 				CoinCopyN(mat_scen_[scen[s]]->getElements() + start, length, elements + pos);
 			}
 			shiftVecIndices(length, colIndices + pos, s * ncols_[1], cstart_[1]);
+			DSPdebugMessage("shift vector indices from %d by %d from %d\n", pos, s * ncols_[1], cstart_[1]);
+			/*for (int k = 0, l = 0; l < length; ++l)
+			{
+				if (fabs(elements[pos+l]) < 1.0e-10) continue;
+				if (k > 0 && k % 4 == 0) printf("\n");
+				printf("  [%5d,%4d,%4d] %+e", i, rowIndices[pos+l], mat_scen_[scen[s]]->getIndices()[start+l], mat_scen_[scen[s]]->getElements()[start+l]);
+				//printf("  [%5d,%4d,%4d] %+e", i, rowIndices[pos+l], colIndices[pos+l], elements[pos+l]);
+				k++;
+			}
+			printf("\n");*/
 			pos += length;
 			rownum++;
 		}
 	}
+	DSPdebugMessage("rownum %d nzcnt %d pos %d\n", rownum, nzcnt, pos);
 	assert(nzcnt == pos);
 
 	mat = new CoinPackedMatrix(false, rowIndices, colIndices, elements, nzcnt);

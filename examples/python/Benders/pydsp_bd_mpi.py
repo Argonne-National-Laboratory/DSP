@@ -43,6 +43,6 @@ if rank == 0:
 		if abs(x_val[i]) > 1.0e-6:
 			print ("x[%d]\t%+e" % (i,x_val[i]))
 	'''
-
+	
 # free DSP environment
 PyDsp.freeEnv(dsp)
