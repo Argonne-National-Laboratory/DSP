@@ -17,13 +17,13 @@ MPI.Init()
 
 readSmps(smps)
 
-optimize(solve_type = solve_types[1], comm = MPI.COMM_WORLD)
+optimize(solve_type = solve_types[1])
 
 if MPI.Comm_rank(MPI.COMM_WORLD) == 0
-    @show getprimobjval() # Dsp.model.primVal
-    @show getdualobjval() # Dsp.model.dualVal
-    @show Dsp.model.colVal
-    @show Dsp.model.rowVal
+    @show getprimobjval() 
+    @show getdualobjval() 
+    @show getprimvalue()
+    @show getdualvalue()
 end
 
 MPI.Finalize()

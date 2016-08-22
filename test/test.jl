@@ -22,8 +22,8 @@ for st in solve_types
     solve(m, solve_type = st, param = myparam)
     @show getprimobjval()
     @show getdualobjval()
-    @show Dsp.model.colVal
-    @show Dsp.model.rowVal
+    @show getprimvalue()
+    @show getdualvalue()
     @show getsolutiontime()
 end
 

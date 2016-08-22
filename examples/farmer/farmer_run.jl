@@ -10,7 +10,7 @@ solve_types = [:Dual, :Benders, :Extensive]
 
 solve(m, solve_type = solve_types[1])
 
-@show getprimobjval() # Dsp.model.primVal
-@show getdualobjval() # Dsp.model.dualVal
-@show Dsp.model.colVal
-@show Dsp.model.rowVal
+@show getprimobjval()
+@show getdualobjval()
+@show getprimvalue()
+@show getdualvalue()

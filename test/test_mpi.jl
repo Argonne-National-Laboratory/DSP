@@ -18,11 +18,12 @@ myparam = joinpath(dirname(@__FILE__),"params.set")
 # smps directory
 smps_dir = joinpath(dirname(@__FILE__), "../examples/smps")
 
+# Dsp solve types
+#solve_types = [:Dual, :Benders]
+solve_types = [:Dual]
+
 # model file
 include("../examples/farmer/farmer_model.jl")
-
-# Dsp solve types
-solve_types = [:Dual, :Benders]
 
 for st in solve_types
     if MPI.Comm_rank(MPI.COMM_WORLD) == 0
@@ -30,7 +31,7 @@ for st in solve_types
         println("# Solve farmer using ", st)
         println("################################################################################\n")
     end
-    status = solve(m, solve_type = st, param = myparam, comm = MPI.COMM_WORLD)
+    status = solve(m, solve_type = st, param = myparam)
     if MPI.Comm_rank(MPI.COMM_WORLD) == 0
         @show getprimobjval()
         @show getdualobjval()
@@ -56,7 +57,7 @@ for f in smps_files
                 println("# Solve $fname using ", st)
                 println("################################################################################\n")
             end
-            status = optimize(solve_type = st, param = myparam, comm = MPI.COMM_WORLD)
+            status = optimize(solve_type = st, param = myparam)
             if MPI.Comm_rank(MPI.COMM_WORLD) == 0
                 @show getprimobjval()
                 @show getdualobjval()

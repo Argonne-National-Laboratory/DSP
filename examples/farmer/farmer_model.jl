@@ -20,14 +20,14 @@ Yield    = [3.0 3.6 24.0;
 Minreq   = [200 240 0]     # minimum crop requirement
 
 # JuMP model
-m = Model(nblocks = NS)
+m = Model(NS)
 
 @variable(m, x[i=CROPS] >= 0, Int)
 @objective(m, Min, sum{Cost[i] * x[i], i=CROPS})
 @constraint(m, const_budget, sum{x[i], i=CROPS} <= Budget)
 
 for s in blockids()
-    blk = Model(parent = m, id = s, weight = probability[s])
+    blk = Model(m, s, probability[s])
 
     @variable(blk, y[j=PURCH] >= 0)
     @variable(blk, w[k=SELL] >= 0)

@@ -13,14 +13,24 @@ include("farmer_model.jl")
 # Dsp solve types
 solve_types = [:Dual, :Benders]
 
-status = solve(m, solve_type = solve_types[1])
+status = solve(m, solve_type = solve_types[2])
 
 if MPI.Comm_rank(MPI.COMM_WORLD) == 0
-    @show getprimobjval() # Dsp.model.primVal
-    @show getdualobjval() # Dsp.model.dualVal
-    @show Dsp.model.colVal
-    @show Dsp.model.rowVal
+    @show getprimobjval()
+    @show getdualobjval()
+    @show getprimvalue()
+    @show getdualvalue()
 end
 
+for i = 1:MPI.Comm_size(MPI.COMM_WORLD)
+    if MPI.Comm_rank(MPI.COMM_WORLD) == i - 1
+        @show MPI.Comm_rank(MPI.COMM_WORLD)
+        for b in m.ext[:DspBlocks].children
+            @show b.first
+            @show b.second.colVal
+        end
+    end
+    MPI.Barrier(MPI.COMM_WORLD)
+end
 # finalize
 MPI.Finalize()

@@ -16,12 +16,12 @@ end
 # Unit commitment model
 include("suc_mod.jl")
 
-solve(m, solve_type = :Dual, comm = MPI.COMM_WORLD)
+solve(m, solve_type = :Dual)
 
 if MPI.Comm_rank(MPI.COMM_WORLD) == 0
-    @show getprimobjval() # Dsp.model.primVal
-    @show getdualobjval() # Dsp.model.dualVal
-    @show Dsp.model.rowVal
+    @show getprimobjval()
+    @show getdualobjval()
+    # @show getdualvalue()
 end
 
 MPI.Finalize()

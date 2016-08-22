@@ -117,7 +117,7 @@ total_wind_scen = reshape(sum(wind_scen,1), nPeriods, nScenarios);
 # ----------
 # JuMP Model
 # ----------
-m = Model();
+m = Model(nScenarios);
 
 # ---------------------
 # First-stage Variables
@@ -170,12 +170,12 @@ m = Model();
 # -----------------
 # For each scenario
 # -----------------
-for s in getblockids(nScenarios)
+for s in blockids()
 
         # ----------------
         # JuMP Model block
         # ----------------
-        sb = Model()
+        sb = Model(m, s, prob[s])
 
         # ----------------------
         # Second-stage Variables
@@ -285,6 +285,4 @@ for s in getblockids(nScenarios)
                 <= sum{load_shift_factor[n,l] * demand[n,t], n=BUSES}
                 - sum{load_shift_factor[n,l] * wind_scen[wn,t,s], n=BUSES, wn=WINDS; wind_bus_id[wn] == n}
                 + flow_max[l])
-
-        @block(m, sb, s, prob[s])
 end
