@@ -67,6 +67,7 @@ DSP has been developed and is maintained by:
 
 ## Publication
 * Kibaek Kim and Victor M. Zavala. "[Algorithmic innovations and software for the dual decomposition method applied to stochastic mixed-integer programs](http://www.optimization-online.org/DB_FILE/2015/06/4960.pdf)" Optimization Online, 2015
+* Kibaek Kim, Fan Yang, Victor M. Zavala, and Andrew A. Chien. "[Data Centers as Dispatchable Loads to Harness Stranded Power](http://dx.doi.org/10.1109/TSTE.2016.2593607)" IEEE Transactions on Sustainable Energy, 2016
 
 ## Acknowledgements
 
