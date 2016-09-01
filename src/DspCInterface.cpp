@@ -365,7 +365,7 @@ void solveBdMpi(
 		return;
 	}
 
-	DSPdebugMessage("Creating a MPI Benders object (comm %d)\n", comm);
+	//DSPdebugMessage("Creating a MPI Benders object (comm %d)\n", comm);
 	BdDriverMpi * bd = new BdDriverMpi(env->par_, new DecTssModel(*getTssModel(env)), comm);
 	env->solver_ = bd;
 

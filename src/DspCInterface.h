@@ -108,13 +108,13 @@ void solveBd(DspApiEnv * env /**< pointer to API object */);
 #ifdef DSP_HAS_MPI
 /** solve parallel dual decomposition */
 void solveDdMpi(
-		DspApiEnv * env,                 /**< pointer to API object */
-		MPI_Comm    comm = MPI_UNDEFINED /**< MPI communicator */);
+		DspApiEnv * env, /**< pointer to API object */
+		MPI_Comm    comm /**< MPI communicator */);
 
 /** solve parallel Benders decomposition */
 void solveBdMpi(
-		DspApiEnv * env,                 /**< pointer to API object */
-		MPI_Comm    comm = MPI_UNDEFINED /**< MPI communicator */);
+		DspApiEnv * env, /**< pointer to API object */
+		MPI_Comm    comm /**< MPI communicator */);
 #endif
 
 /** read parameter file */

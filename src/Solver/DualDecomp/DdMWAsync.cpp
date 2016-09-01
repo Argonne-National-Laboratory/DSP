@@ -212,7 +212,7 @@ DSP_RTN_CODE DdMWAsync::runWorker()
 	else if (cgub_comm_ != MPI_COMM_NULL)
 	{
 		int dummy = 0;
-		MPI_Request recv_message;
+		int recv_message;
 		MPI_Status status;
 		Solutions solutions, local_solutions;
 		while (1)
