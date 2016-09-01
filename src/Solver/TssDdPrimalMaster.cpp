@@ -485,7 +485,8 @@ bool TssDdPrimalMaster::isSolutionBoundary(double eps)
 			mindiff = diff;
 	}
 	//printf("mindiff %e maxdiff %e\n", mindiff, maxdiff);
-	return fabs(maxdiff) < eps;
+	//return fabs(maxdiff) < eps;
+	return fabs(mindiff) < eps;
 }
 
 /** aging cuts */
