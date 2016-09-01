@@ -18,7 +18,7 @@ The methods can be run on cluster as well as desktop computers.
 
 You can clone this repository in your preferred directory by typing
 ```bash
-git clone https://github.com/kibaekkim/DSP.git
+git clone -b MPC https://github.com/kibaekkim/DSP.git
 ```
 or download the zip file from [this link](https://github.com/kibaekkim/DSP/archive/MPC.zip).
 
