@@ -1,0 +1,7 @@
+#!/bin/bash
+
+brew update
+brew install gcc
+brew install mpich cmake svn homebrew/dupes/zlib
+
+echo "Please set GNU c/c++ compilers as your default compilers.\n"

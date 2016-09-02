@@ -1,16 +1,34 @@
 ## Prerequisites
 
-DSP has been tested on MacOSX (10.9 or later) and Linux machines. The software packages necessary to build the source code of DSP are listed below.
+DSP has been tested on several linux distributions and MacOSX (10.9 or later). The software packages necessary to build the source code of DSP are listed below.
 
 ### Build Essentials
 
-There are some libraries required to run DSP.
+Installation of DSP requires some libraries. Installing the libraries depends on your distribution and more specifically package managers.
 
 #### Quick Instructions
 
-If ``apt-get`` is available on your system, please run the following command to install the packages required for DSP. Otherwise, please refer the manual installation.
+We provide scripts for the most common distributions. If you cannot find your distribution below, please refer the manual instruction section.
+
+* MacOSX: This requires to have [brew](http://brew.sh) installed.
 ```bash
-sudo ./get.essentials
+sudo ./get.essentials.macosx
+```
+* Debian based distribution (Debian, Ubuntu, Mint, ...):
+```bash
+sudo ./get.essentials.debian
+```
+* Redhat based distribution (Redhat, Fedora, CentOS, ...):
+```bash
+sudo ./get.essentials.redhat
+```
+* OpenSUSE:
+```bash
+sudo ./get.essentials.opensuse
+```
+* ArchLinux:
+```bash
+sudo ./get.essentials.archlinux
 ```
 
 #### Manual Installation
