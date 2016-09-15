@@ -1,11 +1,12 @@
-%% Figure 5
-
-d1 = csvread('output/suc8-3-1_duals.csv');
-p1 = csvread('output/suc8-3-1_primals.csv');
-d2 = csvread('output/suc8-21_duals.csv');
-p2 = csvread('output/suc8-21_primals.csv');
-d3 = csvread('output/suc8-2-1_duals.csv');
-p3 = csvread('output/suc8-2-1_primals.csv');
+%% Figure 11
+clc;
+clear;
+d1 = csvread('output/suc8_3-1_duals.csv');
+p1 = csvread('output/suc8_3-1_primals.csv');
+d2 = csvread('output/suc8_21_duals.csv');
+p2 = csvread('output/suc8_21_primals.csv');
+d3 = csvread('output/suc8_2-1_duals.csv');
+p3 = csvread('output/suc8_2-1_primals.csv');
 
 d2 = d2(1);
 p2 = p2(1);
@@ -31,8 +32,3 @@ legend('DDSub (Upper Bounds)', ...
     'DSP+P1 (Lower Bounds)', ...
     'Location', 'NorthWest');
 hold off;
-
-% save
-hgexport(gcf, 'Figure8.eps');
-
-

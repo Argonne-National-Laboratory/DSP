@@ -1,51 +1,19 @@
-%% MIP Gap (Benders vs. Dual)
+%% Figure 6
 clc
-probs={...
-    'dcap233_200',...
-    'dcap233_300',...
-    'dcap233_500',...
-    'dcap243_200',...
-    'dcap243_300',...
-    'dcap243_500',...
-    'dcap332_200',...
-    'dcap332_300',...
-    'dcap332_500',...
-    'dcap342_200',...
-    'dcap342_300',...
-    'dcap342_500',...
-    'sslp_5_25_50',...
-    'sslp_5_25_100',...
-    'sslp_15_45_5',...
-    'sslp_15_45_10',...
-    'sslp_15_45_15',...
-    'sslp_10_50_50',...
-    'sslp_10_50_100'
-    };
+clear
 
-ddgap = zeros(length(probs),1);
-bdgap = zeros(length(probs),1);
+gra = csvread('output/sslp_15_45_15_3_dualvars.csv');
+spx = csvread('output/sslp_15_45_15_0_dualvars.csv');
+ipm = csvread('output/sslp_15_45_15_2_dualvars.csv');
 
-i = 1;
-for p = probs
-    ddname = sprintf('output/%s_s2.csv', p{1});
-    if exist(ddname, 'file')
-        d = importdata(ddname);
-        ddgap(i) = abs(d(3) - d(4)) / abs(d(3) + 1.0e-10) * 100;
-    end
-    bdname = sprintf('output/%s_bd.csv', p{1});
-    if exist(bdname, 'file')
-        d = importdata(bdname);
-        bdgap(i) = d(3) * 100;
-    end
-    i = i + 1;
-end
-
-figure();
-axes('position', [0.08 0.05 0.92 0.9]);
-bar(max(0,bdgap-ddgap));
-Xlabs = strrep(probs, '_', '\_');
-ylabel('Optimality Gap Improved (%)');
-xticklabel_rotate(1:size(ddgap,1), 90, Xlabs);
-
-% save
-hgexport(gcf, 'Figure6.eps');
+h = figure;
+% set(h, 'position', [0, 0, 500, 300]);
+plot(1:size(gra,1), gra, 'Color', [0 0.4 0]);
+hold on;
+plot(1:size(spx,1), spx, 'r');
+plot(1:size(ipm,1), ipm, 'b');
+legend('DDSub', 'DDCP', 'DSP');
+xlabel('Number of Iterations');
+ylabel('||\lambda^{k+1} - \lambda^k||_2');
+xlim([1 100]);
+hold off;

@@ -27,6 +27,7 @@ DSPsolver.setScipLimitsTime(300);
 DSPsolver.setDdStoppingTolerance(1.0e-4);
 DSPsolver.setDdMasterSolver(solver_type);
 DSPsolver.setDdMasterNumCutsPerIter(1);
+DSPsolver.setIterLimit(0);
 DSPsolver.setDdAddFeasCuts(cuts);
 DSPsolver.setDdAddOptCuts(cuts);
 DSPsolver.setDdEvalUb(1);
@@ -42,11 +43,6 @@ if MPI.Comm_rank(MPI.COMM_WORLD) == 0
 	dual = DSPsolver.getDualBound();
 	println(f, DSPsolver.getNumIterations(), ",", primal, ",", dual, ",", DSPsolver.getSolutionTime());
 	close(f);
-
-	if nScenarios == 8
-	        writecsv("output/$prefix\_primals.csv", DSPsolver.getDdPrimalBounds());
-        	writecsv("output/$prefix\_duals.csv", DSPsolver.getDdDualBounds());
-	end
 
         println("Solution status: ", DSPsolver.getSolutionStatus());
         println("Primal Bound   : ", DSPsolver.getPrimalBound());

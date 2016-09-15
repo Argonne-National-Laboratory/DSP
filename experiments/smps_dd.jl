@@ -3,12 +3,12 @@
 
 # Arguments from command line
 smps_file   = ARGS[1];      # SMPS file name
-solver_type = int(ARGS[2]); # 0 = Simplex, 2 = Primal-dual interior point, 3 = Subgradient
-fcut        = int(ARGS[3]); # add feasibility cut: -1 = No
-ocut        = int(ARGS[4]); # add optimality cut : -1 = No
-ddlog       = int(ARGS[5]); # Log dual variable values?
-iterlim     = int(ARGS[6]); # iteration limit
-wtime       = int(ARGS[7]); # wall time limit
+solver_type = parse(Int,ARGS[2]); # 0 = Simplex, 2 = Primal-dual interior point, 3 = Subgradient
+fcut        = parse(Int,ARGS[3]); # add feasibility cut: -1 = No
+ocut        = parse(Int,ARGS[4]); # add optimality cut : -1 = No
+ddlog       = parse(Int,ARGS[5]); # Log dual variable values?
+iterlim     = parse(Int,ARGS[6]); # iteration limit
+wtime       = parse(Int,ARGS[7]); # wall time limit
 prefix      = ARGS[8];      # output prefix
 
 using MPI, DSPsolver
@@ -28,6 +28,8 @@ DSPsolver.setDdMasterSolver(solver_type);   # set solver type
 DSPsolver.setDdAddFeasCuts(fcut);           # enable feasibility cuts
 DSPsolver.setDdAddOptCuts(ocut);            # enable optimality cuts
 DSPsolver.setDdDualVarsLog(ddlog);          # enable logging dual variable values
+DSPsolver.setDdMaxPrimsolEval(100);         # maximum number of solutions
+DSPsolver.setScipLimitsTime(300);
 
 # solve problem using Dual Decomposition
 DSPsolver.solve(DSP_SOLVER_DD)
@@ -39,7 +41,16 @@ if MPI.Comm_rank(MPI.COMM_WORLD) == 0
 	f = open("output/$prefix.csv", "w");
 	primal = DSPsolver.getPrimalBound();
 	dual = DSPsolver.getDualBound();
-	println(f, solver_type, ",", DSPsolver.getNumIterations(), ",", primal, ",", dual, ",", DSPsolver.getSolutionTime());
+	println(f, 
+		solver_type, ",", 
+		DSPsolver.getNumIterations(), ",", 
+		primal, ",", 
+		dual, ",", 
+		DSPsolver.getSolutionTime(), ",",
+		DSPsolver.getDdMasterTotalTime(), ",",
+		DSPsolver.getDdLbTotalTime(), ",",
+		DSPsolver.getDdUbTotalTime(), ",",
+		DSPsolver.getDdCgTotalTime());
 	close(f);
 
 	if contains(smps_file, "sslp_15_45_15")
