@@ -18,8 +18,11 @@ int  SCIP/DISPLAY_FREQ  100  # SCIP display frequency
 #
 
 int     NODE_LIM       1000000  # Branch-and-cut node limit
-int     ITER_LIM       1000000  # Iteration limit
-double  WALL_LIM       1000000  # Wall clock limit
+int     BD/DD/ITER_LIM 1000000  # Iteration limit
+int     DD/ITER_LIM    1000000  # Iteration limit
+double  DE/WALL_LIM    1000000  # Wall clock limit
+double  BD/WALL_LIM    1000000  # Wall clock limit
+double  DD/WALL_LIM    1000000  # Wall clock limit
 double  DD/STOP_TOL    0.00001  # Stopping tolerance
 double  SCIP/GAP_TOL   0.0      # Duality gap tolerance
 double  SCIP/TIME_LIM  1000000  # Time limit
