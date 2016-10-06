@@ -31,10 +31,10 @@ DspApiEnv * createEnv(void);
 void freeEnv(DspApiEnv * env);
 
 /** free model */
-void freeTssModel(DspApiEnv * env);
+void freeModel(DspApiEnv * env);
 
 /** free solver */
-void freeTssSolver(DspApiEnv * env);
+void freeSolver(DspApiEnv * env);
 
 /** If current model is stochastic, return the model as a TssModel object. If no model exists, create one. */
 TssModel * getTssModel(DspApiEnv * env);
