@@ -65,7 +65,7 @@ DSP_RTN_CODE DdMWAsync::init()
 		}
 		/** initialize workers */
 		for (unsigned i = 0; i < worker_.size(); ++i)
-			worker_[i]->init();
+			DSP_RTN_CHECK_THROW(worker_[i]->init());
 	}
 	max_queue_size_ = par_->getIntParam("DD/MAX_QSIZE");
 
@@ -194,7 +194,7 @@ DSP_RTN_CODE DdMWAsync::runWorker()
 
 	/** receive start time */
 	MPI_Bcast(&iterstime_, 1, MPI_DOUBLE, 0, comm_);
-	
+
 	if (lb_comm_ != MPI_COMM_NULL)
 	{
 		DSPdebugMessage("Rank %d runs runWorkerInit() and runWorkerCore().\n", comm_rank_);
