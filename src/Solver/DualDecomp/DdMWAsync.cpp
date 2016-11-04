@@ -155,9 +155,10 @@ DSP_RTN_CODE DdMWAsync::runMaster()
 	iterstime_ = CoinGetTimeOfDay();
 	MPI_Bcast(&iterstime_, 1, MPI_DOUBLE, 0, comm_);
 
-	runMasterInit();
-	runMasterCore();
+	DSP_RTN_CHECK_RTN_CODE(runMasterInit());
+	DSP_RTN_CHECK_RTN_CODE(runMasterCore());
 
+	/** TODO: Warp this part into a function, say runMasterPost(); */
 	int request, dummy;
 	while (1)
 	{
@@ -201,6 +202,7 @@ DSP_RTN_CODE DdMWAsync::runWorker()
 		runWorkerInit();
 		runWorkerCore();
 
+		/** TODO: Warp this part as a function, say runWorkerPost(); */
 		/** make sure every processor finished */
 		MPI_Barrier(lb_comm_);
 		if (lb_comm_rank_ == 0)
@@ -211,6 +213,8 @@ DSP_RTN_CODE DdMWAsync::runWorker()
 	}
 	else if (cgub_comm_ != MPI_COMM_NULL)
 	{
+		/** TODO: Warp this part as a function, say runWorkerCgub(); */
+
 		int dummy = 0;
 		int recv_message;
 		MPI_Status status;
@@ -349,6 +353,8 @@ DSP_RTN_CODE DdMWAsync::runMasterInit()
 
 	Solutions solutions;
 
+	int dummy;
+
 	BGN_TRY_CATCH
 
 	DdMasterAtr * master = dynamic_cast<DdMasterAtr*>(master_);
@@ -459,9 +465,13 @@ DSP_RTN_CODE DdMWAsync::runMasterInit()
 	{
 		/** store coupling solutions */
 		storeCouplingSolutions(solutions);
+		/** receive dummy message */
+		MPI_Recv(&dummy, 1, MPI_INT, cgub_comm_root_, DSP_MPI_TAG_ASK_SOLS, comm_, MPI_STATUS_IGNORE);
 		/** send coupling solutions */
-		MPIsendCoinPackedVectors(comm_, cgub_comm_root_, solutions, DSP_MPI_TAG_SOLS);
+		DSP_RTN_CHECK_RTN_CODE(MPIsendCoinPackedVectors(comm_, cgub_comm_root_, solutions, DSP_MPI_TAG_SOLS));
 		DSPdebugMessage("Rank %d sent %lu solutions to rank %d.\n", comm_rank_, solutions.size(), cgub_comm_root_);
+		/** clear solutions */
+		solutions.clear();
 	}
 
 	/** update problem */
@@ -469,7 +479,7 @@ DSP_RTN_CODE DdMWAsync::runMasterInit()
 	master->addCuts();
 
 	/** solve problem */
-	master->solve();
+	DSP_RTN_CHECK_RTN_CODE(master->solve());
 
 	/** retrieve master solution by part */
 	double * master_primsol = const_cast<double*>(master->getPrimalSolution());
@@ -482,9 +492,9 @@ DSP_RTN_CODE DdMWAsync::runMasterInit()
 	}
 	/** push lambda to queue */
 	if (max_queue_size_ > 0)
-		pushSolutionToQueue(master_primsol);
+		DSP_RTN_CHECK_RTN_CODE(pushSolutionToQueue(master_primsol));
 	for (int i = 0; i < lb_comm_size_; ++i)
-		master->setPrimsolToWorker(i, master_primsol);
+		DSP_RTN_CHECK_RTN_CODE(master->setPrimsolToWorker(i, master_primsol));
 	master_primsol = NULL;
 
 	/** create send buffer */
@@ -514,10 +524,6 @@ DSP_RTN_CODE DdMWAsync::runMasterInit()
 	/** release shallow-copy of pointers */
 	for (int i = 0; i < model_->getNumSubproblems(); ++i)
 		lambdas[i] = NULL;
-
-	/** clear solutions */
-	if (parEvalUb_ >= 0 || parFeasCuts_ >= 0 || parOptCuts_ >= 0)
-		solutions.clear();
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
@@ -641,7 +647,7 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 			}
 		}
 		/** clear queue */
-		master->clearSubprobData();
+		DSP_RTN_CHECK_RTN_CODE(master->clearSubprobData());
 
 		DSPdebugMessage("################# time stamp 1: %.2f\n", CoinGetTimeOfDay() - iterstime_);
 		while (recv_message)
@@ -698,11 +704,12 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 			/** check if there exists a message to receive */
 			MPI_Status probe_status;
 			MPI_Iprobe(MPI_ANY_SOURCE, DSP_MPI_TAG_LB, subcomm_, &recv_message, &probe_status);
-			if (recv_message)
-			{
+#ifdef DSP_DEBUG
+			if (recv_message) {
 				MPI_Get_count(&probe_status, MPI_DOUBLE, &local_count);
 				DSPdebugMessage("Iprobe: source %d count %d recv_message %d\n", probe_status.MPI_SOURCE, local_count, recv_message);
 			}
+#endif
 
 			/** The master received messages from all the LB workers? */
 			if (master->worker_.size() == numLbWorkers)
@@ -771,7 +778,7 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 				primsol_from_Q = q_solution_.front();
 				q_solution_.front() = NULL;
 			}
-			popSolutionFromQueue();
+			DSP_RTN_CHECK_RTN_CODE(popSolutionFromQueue());
 		}
 
 		/** update problem */
@@ -783,8 +790,9 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 			message_->printArray(master->getSiPtr()->getNumCols(), primsol_from_Q);
 #endif
 			message_->print(5, "best dual obj %e, current dual obj %e.\n", olddual, dualobj);
-			master->updateProblem(primsol_from_Q, dualobj);
+			DSP_RTN_CHECK_RTN_CODE(master->updateProblem(primsol_from_Q, dualobj));
 			FREE_ARRAY_PTR(primsol_from_Q);
+
 			if (olddual < master->bestdualobj_)
 			{
 				itercode_ = itercode_ == 'P' ? 'B' : 'D';
@@ -802,7 +810,7 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 						}
 					}
 					if (removeQueue == false) break;
-					popBackSolutionFromQueue();
+					DSP_RTN_CHECK_RTN_CODE(popBackSolutionFromQueue());
 				}
 				message_->print(3, "The queue has been cleaned up (size %lu).\n", q_indicator_.size());
 			}
@@ -812,13 +820,13 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 			int ncuts = master->addCuts();
 			message_->print(5, "Added %d cuts to the master.\n", ncuts);
 			if (ncuts == 0 && allowIdleLbProcessors == false)
-				master->updateTrustRegion();
+				DSP_RTN_CHECK_RTN_CODE(master->updateTrustRegion());
 		}
 
 		/** solve problem */
 		if (allowIdleLbProcessors == false ||
 				q_solution_.size() < max_queue_size_)
-			master->solve();
+			DSP_RTN_CHECK_RTN_CODE(master->solve());
 
 		/** put solution to Q */
 		if (q_solution_.size() < max_queue_size_)
@@ -826,7 +834,7 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 			/** retrieve master solution */
 			double * master_primsol = const_cast<double*>(master_->getPrimalSolution());
 			/** queue lambda if it is a new one. */
-			pushSolutionToQueue(master_primsol);
+			DSP_RTN_CHECK_RTN_CODE(pushSolutionToQueue(master_primsol));
 			master_primsol = NULL;
 			message_->print(5, "Added a new trial point to the queue (size %lu).\n", q_solution_.size());
 		}
@@ -888,16 +896,16 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 				message_->print(1, "The master is sending solution (ID %d, %p) to LB worker (rank %d).\n",
 						master->solution_key_[i], master_primsol, master->worker_[i]);
 #endif
-				master->setPrimsolToWorker(master->worker_[i]-1, master_primsol);
-				sendMasterSolution(master->solution_key_[i], master_primsol, master->worker_[i],
-						master->nsubprobs_[i], master->subindex_[i], numCutsAdded);
+				DSP_RTN_CHECK_RTN_CODE(master->setPrimsolToWorker(master->worker_[i]-1, master_primsol));
+				DSP_RTN_CHECK_RTN_CODE(sendMasterSolution(master->solution_key_[i], master_primsol, master->worker_[i],
+						master->nsubprobs_[i], master->subindex_[i], numCutsAdded));
 			}
 			else if (!allowIdleLbProcessors)
 			{
 				master_primsol = const_cast<double*>(master_->getPrimalSolution());
-				master->setPrimsolToWorker(master->worker_[i]-1, master_primsol);
-				sendMasterSolution(master->solution_key_[i], master_primsol, master->worker_[i],
-						master->nsubprobs_[i], master->subindex_[i], numCutsAdded);
+				DSP_RTN_CHECK_RTN_CODE(master->setPrimsolToWorker(master->worker_[i]-1, master_primsol));
+				DSP_RTN_CHECK_RTN_CODE(sendMasterSolution(master->solution_key_[i], master_primsol, master->worker_[i],
+						master->nsubprobs_[i], master->subindex_[i], numCutsAdded));
 				//message_->print(0, "The master sent a solution to LB processor (rank %d).\n", master->worker_[i]);
 			}
 			master_primsol = NULL;
@@ -930,9 +938,9 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 					message_->print(1, "The master is sending solution (ID %d, %p) to Idle LB worker (rank %d).\n",
 							idle_solution_key[i], master_primsol, idle_worker[i]);
 #endif
-					master->setPrimsolToWorker(idle_worker[i]-1, master_primsol);
-					sendMasterSolution(idle_solution_key[i], master_primsol,
-							idle_worker[i], idle_nsubprobs[i], idle_subindex[i], numCutsAdded);
+					DSP_RTN_CHECK_RTN_CODE(master->setPrimsolToWorker(idle_worker[i]-1, master_primsol));
+					DSP_RTN_CHECK_RTN_CODE(sendMasterSolution(idle_solution_key[i], master_primsol,
+							idle_worker[i], idle_nsubprobs[i], idle_subindex[i], numCutsAdded));
 				}
 				master_primsol = NULL;
 			}
