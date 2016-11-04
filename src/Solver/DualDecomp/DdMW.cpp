@@ -82,8 +82,8 @@ DSP_RTN_CODE DdMW::storeCouplingSolutions(Solutions& stored)
 {
 	BGN_TRY_CATCH
 
-		/** maximum number of solutions to evaluate */
-		int max_stores = par_->getIntParam("DD/MAX_EVAL_UB");
+	/** maximum number of solutions to evaluate */
+       	int max_stores = par_->getIntParam("DD/MAX_EVAL_UB");
 
 	/** store solutions to distribute */
 	for (int s = 0; s < model_->getNumSubproblems(); ++s)
