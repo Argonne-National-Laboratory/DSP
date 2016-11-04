@@ -190,6 +190,8 @@ DSP_RTN_CODE DdMWSync::runMaster()
 	double **      lambdas = NULL; /**< of master problem */
 
 	Solutions stored; /**< coupling solutions */
+	Solutions dummy_solutions;
+	std::vector<double> dummy_double_array;
 
 	/** Benders cuts */
 	int ncuts = 0;
@@ -199,6 +201,13 @@ DSP_RTN_CODE DdMWSync::runMaster()
 	MPI_Status status;
 
 	BGN_TRY_CATCH
+
+	/** collect timing results */
+	double mt_total = 0.0; /**< total time */
+	double mt_solve = 0.0; /**< solution time */
+	double mt_idle = 0.0; /**< idle time (due to subproblem solutions) */
+	double mts_total = CoinGetTimeOfDay();
+	double mts_solve, mts_idle;
 
 	int signal = DSP_STAT_MW_CONTINUE;   /**< signal to communicate with workers */
 	DdMaster * master = dynamic_cast<DdMaster*>(master_);
@@ -256,11 +265,13 @@ DSP_RTN_CODE DdMWSync::runMaster()
 		itercode_ = ' ';
 
 		/** receive message */
+		mts_idle = CoinGetTimeOfDay();
 		DSPdebugMessage("Rank %d calls MPI_Gatherv.\n", comm_rank_);
 		MPI_Gatherv(NULL, 0, MPI_DOUBLE, recvbuf, rcounts, rdispls, MPI_DOUBLE, 0, subcomm_);
+		mt_idle += CoinGetTimeOfDay() - mts_idle;
 
-		DSPdebugMessage("master receive buffer:\n");
-		DSPdebug(for (int i = 0; i < subcomm_size_; ++i) {
+		DSPdebugMessage2("master receive buffer:\n");
+		DSPdebug2(for (int i = 0; i < subcomm_size_; ++i) {
 			DSPdebugMessage("  rank %d:\n", i);
 			message_->printArray(rcounts[i], recvbuf + rdispls[i]);
 		});
@@ -299,7 +310,7 @@ DSP_RTN_CODE DdMWSync::runMaster()
 			}
 			/** collect upper bounds */
 			if (cg_status == DSP_STAT_MW_CONTINUE)
-				syncUpperbound();
+			  syncUpperbound(dummy_solutions, dummy_double_array);
 		}
 
 		/** update problem */
@@ -333,6 +344,7 @@ DSP_RTN_CODE DdMWSync::runMaster()
 			/** solve problem */
 			double tic = CoinGetTimeOfDay();
 			master_->solve();
+			mt_solve += CoinGetTimeOfDay() - tic;
 			DSPdebugMessage("Rank %d solved the master (%.2f sec).\n", comm_rank_, CoinGetTimeOfDay() - tic);
 
 			/** termination test */
@@ -403,6 +415,10 @@ DSP_RTN_CODE DdMWSync::runMaster()
 	for (int i = 0; i < model_->getNumSubproblems(); ++i)
 		lambdas[i] = NULL;
 
+	/** get total time spend in the master */
+	mt_total += CoinGetTimeOfDay() - mts_total;
+	message_->print(0, "Master timing results: total %.2f, solve %.2f, idle %.2f\n", mt_total, mt_solve, mt_idle);
+
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
 	FREE_MEMORY
@@ -446,6 +462,15 @@ DSP_RTN_CODE DdMWSync::runWorker()
 
 	BGN_TRY_CATCH
 
+	/** timing results */
+	double st_total = 0.0;
+	double st_lb = 0.0;
+	double st_cg = 0.0;
+	double st_ub = 0.0;
+	double st_idle = 0.0;
+	double sts_total = CoinGetTimeOfDay();
+	double sts_lb, sts_cg, sts_ub, sts_idle;
+
 	int signal = DSP_STAT_MW_CONTINUE;
 	int narrprocidx  = par_->getIntPtrParamSize("ARR_PROC_IDX"); /**< number of subproblems */
 	int * arrprocidx = par_->getIntPtrParam("ARR_PROC_IDX");     /**< subproblem indices */
@@ -482,7 +507,9 @@ DSP_RTN_CODE DdMWSync::runWorker()
 			/** set time limit */
 			workerlb->setTimeLimit(remainingTime());
 			/** Solve subproblems assigned to each process  */
+			sts_lb = CoinGetTimeOfDay();
 			workerlb->solve();
+			st_lb += CoinGetTimeOfDay() - sts_lb;
 			/** create send buffer */
 			for (int s = 0, pos = 0; s < narrprocidx; ++s)
 			{
@@ -517,14 +544,18 @@ DSP_RTN_CODE DdMWSync::runWorker()
 			DSP_RTN_CHECK_THROW(bcastCouplingSolutions(solutions));
 
 			/** sync Benders cut information */
+			sts_cg = CoinGetTimeOfDay();
 			cg_status = syncBendersInfo(solutions, cuts);
+			st_cg += CoinGetTimeOfDay() - sts_cg;
 
 			/** calculate and sync upper bounds */
 			if (cg_status == DSP_STAT_MW_CONTINUE)
 			{
+				sts_ub = CoinGetTimeOfDay();
 				vector<double> upperbounds;
 				DSP_RTN_CHECK_THROW(calculateUpperbound(solutions, upperbounds));
 				DSP_RTN_CHECK_THROW(syncUpperbound(solutions, upperbounds));
+				st_ub += CoinGetTimeOfDay() - sts_ub;
 			}
 
 			/** free solutions */
@@ -557,7 +588,9 @@ DSP_RTN_CODE DdMWSync::runWorker()
 					/** receive upper bound */
 					MPI_Bcast(&bestprimalobj, 1, MPI_DOUBLE, 0, subcomm_);
 				/** receive message from the master */
+				sts_idle = CoinGetTimeOfDay();
 				MPI_Scatterv(NULL, NULL, NULL, MPI_DOUBLE, recvbuf, rcount, MPI_DOUBLE, 0, subcomm_);
+				st_idle += CoinGetTimeOfDay() - sts_idle;
 				DSPdebugMessage2("Worker received message (%d):\n", rcount);
 				DSPdebug2(message_->printArray(rcount, recvbuf));
 				/** parse message */
@@ -579,6 +612,8 @@ DSP_RTN_CODE DdMWSync::runWorker()
 
 	/** release pointers */
 	arrprocidx = NULL;
+
+	st_total += CoinGetTimeOfDay() - sts_total;
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
@@ -673,7 +708,7 @@ DSP_RTN_CODE DdMWSync::bcastCouplingSolutions(
 }
 
 DSP_RTN_CODE DdMWSync::calculateUpperbound(
-		Solutions solutions, /**< solutions to evaluate */
+		Solutions& solutions, /**< solutions to evaluate */
 		vector<double>&  upperbounds /**< list of upper bounds */)
 {
 	/** return if there is no solution to evaluate */
@@ -782,8 +817,8 @@ DSP_RTN_CODE DdMWSync::syncBendersInfo(
 }
 
 DSP_RTN_CODE DdMWSync::syncUpperbound(
-		Solutions      solutions,  /**< number of solutions */
-		vector<double> upperbounds /**< list of upper bounds */) {
+		Solutions&      solutions,  /**< number of solutions */
+		vector<double>& upperbounds /**< list of upper bounds */) {
 #define FREE_MEMORY              \
 	FREE_ARRAY_PTR(primobjzeros) \
 	FREE_ARRAY_PTR(primobjs)     \
@@ -814,13 +849,14 @@ DSP_RTN_CODE DdMWSync::syncUpperbound(
 	{
 		nsolutions = solutions.size();
 		/** send the number of solutions */
-		if (lb_comm_rank_ == 0)
+		if (lb_comm_rank_ == 0) {
 			MPI_Send(&nsolutions, 1, MPI_INT, 0, DSP_MPI_TAG_UB, comm_);
+		}
 	}
 
 	/** allocate memory */
 	primobjs = new double [nsolutions];
-
+	
 	if (comm_rank_ == 0)
 	{
 		int bestprimsol = -1;
@@ -852,8 +888,9 @@ DSP_RTN_CODE DdMWSync::syncUpperbound(
 			sumub = new double [nsolutions];
 		MPI_Reduce(&upperbounds[0], sumub, nsolutions, MPI_DOUBLE, MPI_SUM, 0, lb_comm_);
 		/** send the upper bounds to the root */
-		if (lb_comm_rank_ == 0)
+		if (lb_comm_rank_ == 0) {
 			MPI_Send(sumub, nsolutions, MPI_DOUBLE, 0, DSP_MPI_TAG_UB, comm_);
+		}
 	}
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
