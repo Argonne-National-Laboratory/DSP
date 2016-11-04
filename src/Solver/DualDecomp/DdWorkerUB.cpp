@@ -23,8 +23,8 @@ double DdWorkerUB::evaluate(CoinPackedVector* solution)
 {
 	BGN_TRY_CATCH
 
-	fixCouplingVariableValues(solution);
-	solve();
+	DSP_RTN_CHECK_RTN_CODE(fixCouplingVariableValues(solution));
+	DSP_RTN_CHECK_RTN_CODE(solve());
 
 	END_TRY_CATCH_RTN(;,COIN_DBL_MAX)
 
@@ -59,7 +59,6 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 	double dualobj = 0.0;
 	double total_cputime = 0.0;
 	double total_walltime = 0.0;
-	double pargaptol = par_->getDblParam("DD/STOP_TOL");
 
 	for (unsigned s = 0; s < subprobs_.size(); ++s)
 	{
