@@ -44,6 +44,7 @@ protected:
 
 	int solution_key_; /**< solution ID to be evaluated */
 	vector<DdSub*> subprobs_; /**< set of subproblems */
+	bool isInit_; /**< indicate if this is the initial iteration */
 };
 
 #endif /* SRC_SOLVER_DUALDECOMP_DDWORKERLB_H_ */

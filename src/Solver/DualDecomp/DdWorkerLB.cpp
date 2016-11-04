@@ -14,7 +14,7 @@ DdWorkerLB::DdWorkerLB(
         DecModel *model,
         DspMessage *message) :
         DdWorker(par, model, message),
-        solution_key_(-1) {
+        solution_key_(-1), isInit_(true) {
 }
 
 DdWorkerLB::~DdWorkerLB() {
@@ -48,6 +48,9 @@ DSP_RTN_CODE DdWorkerLB::solve() {
             cputime = CoinCpuTime();
             walltime = CoinGetTimeOfDay();
 
+	    /** reset gap tolerance */
+	    subprobs_[s]->setGapTol(par_->getDblParam("SCIP/GAP_TOL"));
+
             bool resolve = true;
             while (resolve) {
                 resolve = false;
@@ -76,7 +79,8 @@ DSP_RTN_CODE DdWorkerLB::solve() {
                     break;
 
                 /** set solution gap tolerance */
-                if (subprobs_[s]->getPrimalObjective() >= subprobs_[s]->theta_ &&
+                if (isInit_ == false &&
+			subprobs_[s]->getPrimalObjective() >= subprobs_[s]->theta_ &&
                         subprobs_[s]->gapTol_ > pargaptol) {
                     /** TODO parameterize this */
                     double gapTol = subprobs_[s]->gapTol_ * 0.5;
@@ -101,6 +105,8 @@ DSP_RTN_CODE DdWorkerLB::solve() {
             /** consume time */
             time_remains_ -= CoinGetTimeOfDay() - walltime;
         }
+
+	isInit_ = false;
 
         /** update statistics */
         s_statuses_.push_back(status_);
