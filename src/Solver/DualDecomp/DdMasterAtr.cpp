@@ -39,7 +39,7 @@ DSP_RTN_CODE DdMasterAtr::solve()
 {
 	BGN_TRY_CATCH
 
-	DdMasterTr::solve();
+	DSP_RTN_CHECK_RTN_CODE(DdMasterTr::solve());
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
