@@ -28,6 +28,9 @@ DSP_RTN_CODE DdWorkerCGBd::init() {
 	tssmodel = dynamic_cast<TssModel*>(model_);
 	if (!tssmodel) throw "Invalid model type cast";
 
+    DSPdebugMessage("This has %d subproblem indices.\n", parProcIdxSize_);
+    DSPdebug(DspMessage::printArray(parProcIdxSize_,parProcIdx_));
+
 	bdsub_ = new BdSub(par_);
 	DSP_RTN_CHECK_THROW(bdsub_->setSubIndices(parProcIdxSize_, parProcIdx_));
 	DSP_RTN_CHECK_THROW(bdsub_->loadProblem(tssmodel));
