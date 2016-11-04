@@ -88,6 +88,7 @@ void SCIPconshdlrBendersDd::generateCuts(
 		OsiRowCut * rc = cutsToAdd_->rowCutPtr(i);
 		if (!rc) continue;
 		const CoinPackedVector row = rc->row();
+		if (row.getNumElements() == 0) continue;
 
 		/** is optimality cut? */
 		DSPdebug(rc->print());
