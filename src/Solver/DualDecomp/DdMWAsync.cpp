@@ -1331,7 +1331,9 @@ DSP_RTN_CODE DdMWAsync::runWorkerCg(
 		/** generate Benders cuts */
 		int cg_status = generateBendersCuts(cgub_comm_, cgub_comm_rank_, solutions, cuts);
 		MPI_Allreduce(&cg_status, &signal, 1, MPI_INT, MPI_MAX, cgub_comm_);
-		if (cgub_comm_rank_ == 0)
+		/** FIXME: This must be wrong. All cgub processors should send cuts.
+		 * See the corresponding part in the master. */
+		//if (cgub_comm_rank_ == 0)
 		{
 			DSPdebugMessage("Rank %d has cut generation status %d.\n", comm_rank_, signal);
 			/** send the cuts to the root */
@@ -1404,7 +1406,7 @@ DSP_RTN_CODE DdMWAsync::runWorkerUb(
 
 	return signal;
 }
-
+#if 0
 DSP_RTN_CODE DdMWAsync::recvCouplingSolutions(
 		MPI_Comm comm, /**< communicator to broadcast solutions */
 		int comm_rank, /**< processor rank of the given communicator */
@@ -1476,27 +1478,37 @@ DSP_RTN_CODE DdMWAsync::recvCouplingSolutions(
 	return DSP_RTN_OK;
 #undef FREE_MEMORY
 }
-
+#endif
 DSP_RTN_CODE DdMWAsync::recvBendersCuts() {
 
 	MPI_Status status;
 	int recv_message;
+	int cgub_proc;
 	OsiCuts cuts;
 
 	BGN_TRY_CATCH
 
+	/** FIXME: The master should receive cuts from all cgub processors.
+	 * See the corresponding part in the worker. */
+
 	/** is there a message to receive? */
-	MPI_Iprobe(cgub_comm_root_, DSP_MPI_TAG_CGBD, comm_, &recv_message, &status);
-	DSPdebugMessage("MPI_Iprobe returns recv_message %d from rank %d.\n" ,recv_message, cgub_comm_root_);
+	MPI_Iprobe(MPI_ANY_SOURCE, DSP_MPI_TAG_CGBD, comm_, &recv_message, &status);
+	//MPI_Iprobe(cgub_comm_root_, DSP_MPI_TAG_CGBD, comm_, &recv_message, &status);
+	//DSPdebugMessage("MPI_Iprobe returns recv_message %d from rank %d.\n" ,recv_message, cgub_comm_root_);
 	if (recv_message == 0) return DSP_RTN_ERR;
 
 	/** receive cuts from CG worker */
 	while (recv_message)
 	{
+		/** identify the source */
+		cgub_proc = status.MPI_SOURCE;
+		DSPdebugMessage("MPI_Iprobe returns recv_message %d from rank %d.\n" ,recv_message, cgub_proc);
 		/** receive cuts */
-		MPIrecvOsiCuts(comm_, cgub_comm_root_, cuts, DSP_MPI_TAG_CGBD);
+		MPIrecvOsiCuts(comm_, cgub_proc, cuts, DSP_MPI_TAG_CGBD);
+		//MPIrecvOsiCuts(comm_, cgub_comm_root_, cuts, DSP_MPI_TAG_CGBD);
 		/** is there a message to receive? */
-		MPI_Iprobe(cgub_comm_root_, DSP_MPI_TAG_CGBD, comm_, &recv_message, &status);
+		MPI_Iprobe(MPI_ANY_SOURCE, DSP_MPI_TAG_CGBD, comm_, &recv_message, &status);
+		//MPI_Iprobe(cgub_comm_root_, DSP_MPI_TAG_CGBD, comm_, &recv_message, &status);
 	}
 
 	/** move cuts */

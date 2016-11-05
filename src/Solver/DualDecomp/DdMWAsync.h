@@ -51,10 +51,10 @@ private:
 	DSP_RTN_CODE storeCouplingSolutions(Solutions & stored);
 
 	/** receive coupling solutions */
-	DSP_RTN_CODE recvCouplingSolutions(
-			MPI_Comm comm, /**< communicator to broadcast solutions */
-			int comm_rank, /**< processor rank of the given communicator */
-			Solutions &solutions /**< received solution placeholder */);
+//	DSP_RTN_CODE recvCouplingSolutions(
+//			MPI_Comm comm, /**< communicator to broadcast solutions */
+//			int comm_rank, /**< processor rank of the given communicator */
+//			Solutions &solutions /**< received solution placeholder */);
 
 	/** send master solution to workers */
 	DSP_RTN_CODE sendMasterSolution(
