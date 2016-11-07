@@ -226,15 +226,15 @@ DSP_RTN_CODE DdMasterAtr::updateProblem(
 		/** null step */
 		message_->print(3, "TR  NULL STEP: dual objective %e", newdual);
 
-		if (curprimobj < bestdualobj_)
-		{
-			/** increase trust region */
-			stability_param_ = CoinMin(2. * stability_param_, 1.0e+4);
-			message_->print(3, ", increased trust region size %e", stability_param_);
-			/** set trust region */
-			setTrustRegion(stability_param_, stability_center_);
-		}
-		else if (parTrDecrease_)
+//		if (curprimobj < bestdualobj_)
+//		{
+//			/** increase trust region */
+//			stability_param_ = CoinMin(2. * stability_param_, 1.0e+4);
+//			message_->print(3, ", increased trust region size %e", stability_param_);
+//			/** set trust region */
+//			setTrustRegion(stability_param_, stability_center_);
+//		}
+//		else if (parTrDecrease_)
 		{
 			/** The following rule is from Linderoth and Wright (2003) */
 			double rho = CoinMin(1.0, stability_param_) * (bestdualobj_ - newdual) / (curprimobj - bestdualobj_);
@@ -262,23 +262,35 @@ DSP_RTN_CODE DdMasterAtr::updateTrustRegion()
 {
 	BGN_TRY_CATCH
 
+	/** add cuts and re-optimize */
+	int nCutsAdded = addCuts();
+
+	/** increase minor cut counter */
+	ncuts_minor_ += nCutsAdded;
+
 	/** number of cuts generated from the last iteration */
 	int ncuts = 0;
 	for (int i = 1; i < nworkers_; ++i)
 		ncuts += nlastcuts_[i];
 	if (ncuts > 0) return DSP_RTN_OK;
 
-	if (isSolutionBoundary())
+	/**
+	 * Update the trust region based on the model error
+	 */
+	double currobj = si_->getPrimalBound();
+	double model_error = (currobj - bestdualobj_) / (fabs(bestdualobj_) + 1.0e-10);
+	message_->print(3, "[TR] Model error %.2f, trcnt %d", model_error, trcnt_);
+	if (model_error < 0.01) trcnt_++;
+	if (model_error >= 0.05 || (trcnt_ >= 3 && model_error > 0.01))
 	{
-		/** increase trust region */
-		stability_param_ = CoinMin(2. * stability_param_, 1.0e+4);
+		/** decrease trust region */
+		stability_param_ *= CoinMin(model_error, 0.5);
+		message_->print(3, "[TR] decreased trust region size %e", stability_param_);
+		trcnt_ = 0;
+
+		/** set trust region */
 		setTrustRegion(stability_param_, stability_center_);
 	}
-
-//	double * primsol = primsol_to_worker_[worker_[0]-1];
-//	CoinCopyN(primsol + nthetas_, nlambdas_, stability_center_);
-//	primsol = NULL;
-//	message_->print(3, "TR  updated trust region (size %e)\n", stability_param_);
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
