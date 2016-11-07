@@ -635,17 +635,19 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 		/** put idle worker processors */
 		if (allowIdleLbProcessors)
 		{
+			int nIdles = 0;
 			for (unsigned i = 0; i < master->solution_key_.size(); ++i)
 			{
 				if (master->solution_key_[i] < 0)
 				{
-					//message_->print(1, "LB worker (rank %d) becomes idle.\n", master->worker_[i]);
 					idle_solution_key.push_back(-1);
 					idle_worker.push_back(master->worker_[i]);
 					idle_nsubprobs.push_back(master->nsubprobs_[i]);
 					idle_subindex.push_back(master->subindex_[i]);
+					nIdles++;
 				}
 			}
+			message_->print(3, "Number of Idle LB workers: %d\n", nIdles);
 		}
 		/** clear queue */
 		DSP_RTN_CHECK_RTN_CODE(master->clearSubprobData());
@@ -828,9 +830,8 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 				message_->print(3, "The queue has been cleaned up (size %lu).\n", q_indicator_.size());
 			}
 		}
-		else //if (allowIdleLbProcessors == false)
+		else if (allowIdleLbProcessors == false)
 		{
-			message_->print(3, "No queue solution is evaluated.\n");
 			DSP_RTN_CHECK_RTN_CODE(master->updateTrustRegion());
 		}
 
@@ -848,10 +849,14 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 				master_primsol = NULL;
 				message_->print(5, "Added a new trial point to the queue (size %lu).\n", q_solution_.size());
 			}
-		}
 
-		/** display iteration info */
-		printIterInfo();
+			/** display iteration info */
+			printIterInfo();
+
+			/** increment iteration count */
+			itercnt_++;
+		} else
+			sleep(10);
 
 		/** returns continue or stop signal */
 		if (remainingTime() < 1.0)
@@ -881,9 +886,6 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 			numLbWorkers -= master->worker_.size() + idle_worker.size();
 			break;
 		}
-
-		/** increment iteration count */
-		itercnt_++;
 
 		for (unsigned i = 0; i < master->worker_.size(); ++i)
 		{
@@ -931,22 +933,15 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 				double * master_primsol = NULL;
 				for (unsigned k = 0; k < q_indicator_.size(); ++k)
 				{
-					if (q_indicator_[k][idle_worker[i]-1] != Q_NOT_ASSIGNED) continue;
-					idle_solution_key[i] = q_id_[k];
-					master_primsol = q_solution_[k];
-					q_indicator_[k][idle_worker[i]-1] = Q_ASSIGNED;
-#ifdef DSP_DEBUG_QUEUE1
-					printf("number of queues %lu, master->worker_ %d, master->solution_key_ %d, q_solution_ %p\n",
-							q_indicator_.size(), idle_worker[i], idle_solution_key[i], q_solution_[k]);
-#endif
-					break;
+					if (q_indicator_[k][idle_worker[i]-1] == Q_NOT_ASSIGNED) {
+						idle_solution_key[i] = q_id_[k];
+						master_primsol = q_solution_[k];
+						q_indicator_[k][idle_worker[i]-1] = Q_ASSIGNED;
+						break;
+					}
 				}
 				if (idle_solution_key[i] >= 0)
 				{
-#ifdef DSP_DEBUG_QUEUE1
-					message_->print(1, "The master is sending solution (ID %d, %p) to Idle LB worker (rank %d).\n",
-							idle_solution_key[i], master_primsol, idle_worker[i]);
-#endif
 					DSP_RTN_CHECK_RTN_CODE(master->setPrimsolToWorker(idle_worker[i]-1, master_primsol));
 					DSP_RTN_CHECK_RTN_CODE(sendMasterSolution(idle_solution_key[i], master_primsol,
 							idle_worker[i], idle_nsubprobs[i], idle_subindex[i], numCutsAdded));
@@ -955,7 +950,6 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 			}
 
 			/** remove active worker processors */
-			int numIdles = 0;
 			for (unsigned i = 0; i < idle_solution_key.size(); ++i)
 			{
 				if (idle_solution_key[i] < 0)
@@ -964,11 +958,8 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 					master->worker_.push_back(idle_worker[i]);
 					master->nsubprobs_.push_back(idle_nsubprobs[i]);
 					master->subindex_.push_back(idle_subindex[i]);
-					numIdles++;
 				}
 			}
-			if (numIdles > 0)
-				message_->print(3, "Number of idle LB workers: %d\n", numIdles);
 			idle_solution_key.clear();
 			idle_worker.clear();
 			idle_nsubprobs.clear();
