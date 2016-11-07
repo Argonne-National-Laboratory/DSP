@@ -754,26 +754,32 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 			}
 		}
 
-		/** check queue */
+		/**
+		 * Check the solution queues:
+		 * - Check each queue from the front to the back.
+		 * - Remove the queue if it is evaluated by all the worker processors.
+		 * - Keep the best queue solutions among the evaluated.
+		 */
+		bool hasEvaluatedQueue = false;
 		double * primsol_from_Q = NULL;
 		double dualobj = -COIN_DBL_MAX;
 		while (q_indicator_.size() > 0)
 		{
 			int * indicator = q_indicator_.front();
+			double queue_objval = q_objval_.front();
 			bool removeQueue = true;
-			for (int k = 0; k < lb_comm_size_; ++k)
-			{
-				if (indicator[k] < Q_EVALUATED)
-				{
+			for (int k = 0; k < lb_comm_size_; ++k) {
+				if (indicator[k] < Q_EVALUATED) {
 					removeQueue = false;
 					break;
 				}
 			}
 			if (removeQueue == false) break;
 			message_->print(5, "The trial point (ID %d) is evaluated and removed from the queue.\n", q_id_.front());
-			if (q_objval_.front() > dualobj)
+			hasEvaluatedQueue = true;
+			if (queue_objval > dualobj)
 			{
-				dualobj = q_objval_.front();
+				dualobj = queue_objval;
 				FREE_ARRAY_PTR(primsol_from_Q);
 				primsol_from_Q = q_solution_.front();
 				q_solution_.front() = NULL;
@@ -781,9 +787,11 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 			DSP_RTN_CHECK_RTN_CODE(popSolutionFromQueue());
 		}
 
-		/** update problem */
-		if (dualobj > -COIN_DBL_MAX)
+		if (hasEvaluatedQueue)
 		{
+			/**
+			 * Update the master, if the queue with the best dual objective value is chosen.
+			 */
 			double olddual = master->bestdualobj_;
 #ifdef DSP_DEBUG_QUEUE1
 			message_->print(0, "Primal solution from Q (dual obj %+e):\n", dualobj);
@@ -793,6 +801,10 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 			DSP_RTN_CHECK_RTN_CODE(master->updateProblem(primsol_from_Q, dualobj));
 			FREE_ARRAY_PTR(primsol_from_Q);
 
+			/**
+			 * If the best dual objective value is updated,
+			 * remove all the queues not assigned to any worker processor.
+			 */
 			if (olddual < master->bestdualobj_)
 			{
 				itercode_ = itercode_ == 'P' ? 'B' : 'D';
@@ -815,15 +827,13 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 				message_->print(3, "The queue has been cleaned up (size %lu).\n", q_indicator_.size());
 			}
 		}
-		else
+		else if (allowIdleLbProcessors == false)
 		{
-			int ncuts = master->addCuts();
-			message_->print(5, "Added %d cuts to the master.\n", ncuts);
-			if (ncuts == 0 && allowIdleLbProcessors == false)
-				DSP_RTN_CHECK_RTN_CODE(master->updateTrustRegion());
+			DSP_RTN_CHECK_RTN_CODE(master->updateTrustRegion());
 		}
 
 		/** solve problem */
+		/** TODO: Shouldn't we always solve? */
 		if (allowIdleLbProcessors == false ||
 				q_solution_.size() < max_queue_size_)
 			DSP_RTN_CHECK_RTN_CODE(master->solve());
@@ -876,43 +886,41 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 
 		for (unsigned i = 0; i < master->worker_.size(); ++i)
 		{
+			/**
+			 * Note that we should not see the queues evaluated here.
+			 * From the first in the queue, find a queue not assigned to the worker,
+			 * and assign the queue to the worker.
+			 */
 			double * master_primsol = NULL;
 			master->solution_key_[i] = -1;
-			for (unsigned k = 0; k < q_indicator_.size(); ++k)
-			{
-				if (q_indicator_[k][master->worker_[i]-1] != Q_NOT_ASSIGNED) continue;
-				master->solution_key_[i] = q_id_[k];
-				master_primsol = q_solution_[k];
-				q_indicator_[k][master->worker_[i]-1] = Q_ASSIGNED;
+			for (unsigned k = 0; k < q_indicator_.size(); ++k) {
+				if (q_indicator_[k][master->worker_[i]-1] == Q_NOT_ASSIGNED) {
+					master->solution_key_[i] = q_id_[k];
+					master_primsol = q_solution_[k];
+					q_indicator_[k][master->worker_[i]-1] = Q_ASSIGNED;
 #ifdef DSP_DEBUG_QUEUE1
-				printf("number of queues %lu, master->worker_ %d, master->solution_key_ %d, q_solution_ %p\n",
-						q_indicator_.size(), master->worker_[i], master->solution_key_[i], q_solution_[k]);
+					printf("number of queues %lu, master->worker_ %d, master->solution_key_ %d, q_solution_ %p\n",
+							q_indicator_.size(), master->worker_[i], master->solution_key_[i], q_solution_[k]);
 #endif
-				break;
+					break;
+				}
 			}
-			if (master->solution_key_[i] >= 0)
+
+			if (master->solution_key_[i] >= 0 || allowIdleLbProcessors == false)
 			{
-#ifdef DSP_DEBUG_QUEUE1
-				message_->print(1, "The master is sending solution (ID %d, %p) to LB worker (rank %d).\n",
-						master->solution_key_[i], master_primsol, master->worker_[i]);
-#endif
-				DSP_RTN_CHECK_RTN_CODE(master->setPrimsolToWorker(master->worker_[i]-1, master_primsol));
-				DSP_RTN_CHECK_RTN_CODE(sendMasterSolution(master->solution_key_[i], master_primsol, master->worker_[i],
-						master->nsubprobs_[i], master->subindex_[i], numCutsAdded));
-			}
-			else if (!allowIdleLbProcessors)
-			{
-				master_primsol = const_cast<double*>(master_->getPrimalSolution());
-				DSP_RTN_CHECK_RTN_CODE(master->setPrimsolToWorker(master->worker_[i]-1, master_primsol));
-				DSP_RTN_CHECK_RTN_CODE(sendMasterSolution(master->solution_key_[i], master_primsol, master->worker_[i],
-						master->nsubprobs_[i], master->subindex_[i], numCutsAdded));
-				//message_->print(0, "The master sent a solution to LB processor (rank %d).\n", master->worker_[i]);
+				/** Get the current master solution, if no queue is assigned. */
+				if (master->solution_key_[i] < 0)
+					master_primsol = const_cast<double*>(master_->getPrimalSolution());
+
+				/** Send q new trial point either from the queue or from the master */
+				DSP_RTN_CHECK_RTN_CODE(
+						master->setPrimsolToWorker(master->worker_[i]-1, master_primsol));
+				DSP_RTN_CHECK_RTN_CODE(
+						sendMasterSolution(master->solution_key_[i], master_primsol,
+								master->worker_[i], master->nsubprobs_[i], master->subindex_[i],
+								numCutsAdded));
 			}
 			master_primsol = NULL;
-#ifdef DSP_DEBUG_QUEUE1
-			DSPdebugMessage("print master solution:\n");
-			DspMessage::printArray(master->getSiPtr()->getNumCols(), master_primsol);
-#endif
 		}
 
 		if (allowIdleLbProcessors)
