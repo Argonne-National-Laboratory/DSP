@@ -579,6 +579,7 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 
 	/** TODO allow idle LB processors? */
 	bool allowIdleLbProcessors = par_->getBoolParam("DD/ALLOW_IDLE_WORKERS");
+	//int minNumWorkers
 
 	BGN_TRY_CATCH
 
@@ -701,6 +702,14 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 				break;
 			}
 
+			/** The master received messages from all the LB workers? */
+			if (master->worker_.size() == numLbWorkers)
+				break;
+
+			/** time limit */
+			if (remainingTime() < 1.0)
+				break;
+
 			/** check if there exists a message to receive */
 			MPI_Status probe_status;
 			MPI_Iprobe(MPI_ANY_SOURCE, DSP_MPI_TAG_LB, subcomm_, &recv_message, &probe_status);
@@ -710,14 +719,6 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 				DSPdebugMessage("Iprobe: source %d count %d recv_message %d\n", probe_status.MPI_SOURCE, local_count, recv_message);
 			}
 #endif
-
-			/** The master received messages from all the LB workers? */
-			if (master->worker_.size() == numLbWorkers)
-				break;
-
-			/** time limit */
-			if (remainingTime() < 1.0)
-				break;
 		}
 		DSPdebugMessage("################# time stamp 2: %.2f\n", CoinGetTimeOfDay() - iterstime_);
 		DSPdebugMessage("Number of worker messages: %lu\n", master->worker_.size());
@@ -954,6 +955,7 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 			}
 
 			/** remove active worker processors */
+			int numIdles = 0;
 			for (unsigned i = 0; i < idle_solution_key.size(); ++i)
 			{
 				if (idle_solution_key[i] < 0)
@@ -962,10 +964,11 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 					master->worker_.push_back(idle_worker[i]);
 					master->nsubprobs_.push_back(idle_nsubprobs[i]);
 					master->subindex_.push_back(idle_subindex[i]);
+					numIdles++;
 				}
 				else
-					message_->print(5, "LB worker (rank %d) becomes active.\n", idle_worker[i]);
 			}
+			message_->print(3, "Number of idle LB workers: %d\n", numIdles);
 			idle_solution_key.clear();
 			idle_worker.clear();
 			idle_nsubprobs.clear();

@@ -268,11 +268,13 @@ DSP_RTN_CODE DdMasterAtr::updateTrustRegion()
 	/** increase minor cut counter */
 	ncuts_minor_ += nCutsAdded;
 
+#if 0
 	/** number of cuts generated from the last iteration */
 	int ncuts = 0;
 	for (int i = 1; i < nworkers_; ++i)
 		ncuts += nlastcuts_[i];
 	if (ncuts > 0) return DSP_RTN_OK;
+#endif
 
 	/**
 	 * Update the trust region based on the model error
