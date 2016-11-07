@@ -966,7 +966,6 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 					master->subindex_.push_back(idle_subindex[i]);
 					numIdles++;
 				}
-				else
 			}
 			message_->print(3, "Number of idle LB workers: %d\n", numIdles);
 			idle_solution_key.clear();
