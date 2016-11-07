@@ -828,26 +828,26 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 				message_->print(3, "The queue has been cleaned up (size %lu).\n", q_indicator_.size());
 			}
 		}
-		else if (allowIdleLbProcessors == false)
+		else //if (allowIdleLbProcessors == false)
 		{
+			message_->print(3, "No queue solution is evaluated.\n");
 			DSP_RTN_CHECK_RTN_CODE(master->updateTrustRegion());
 		}
 
 		/** solve problem */
-		/** TODO: Shouldn't we always solve? */
-		if (allowIdleLbProcessors == false ||
-				q_solution_.size() < max_queue_size_)
+		if (allowIdleLbProcessors == false || q_solution_.size() < max_queue_size_) {
 			DSP_RTN_CHECK_RTN_CODE(master->solve());
 
-		/** put solution to Q */
-		if (q_solution_.size() < max_queue_size_)
-		{
-			/** retrieve master solution */
-			double * master_primsol = const_cast<double*>(master_->getPrimalSolution());
-			/** queue lambda if it is a new one. */
-			DSP_RTN_CHECK_RTN_CODE(pushSolutionToQueue(master_primsol));
-			master_primsol = NULL;
-			message_->print(5, "Added a new trial point to the queue (size %lu).\n", q_solution_.size());
+			/** put solution to Q */
+			if (q_solution_.size() < max_queue_size_)
+			{
+				/** retrieve master solution */
+				double * master_primsol = const_cast<double*>(master_->getPrimalSolution());
+				/** queue lambda if it is a new one. */
+				DSP_RTN_CHECK_RTN_CODE(pushSolutionToQueue(master_primsol));
+				master_primsol = NULL;
+				message_->print(5, "Added a new trial point to the queue (size %lu).\n", q_solution_.size());
+			}
 		}
 
 		/** display iteration info */
@@ -967,7 +967,8 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 					numIdles++;
 				}
 			}
-			message_->print(3, "Number of idle LB workers: %d\n", numIdles);
+			if (numIdles > 0)
+				message_->print(3, "Number of idle LB workers: %d\n", numIdles);
 			idle_solution_key.clear();
 			idle_worker.clear();
 			idle_nsubprobs.clear();

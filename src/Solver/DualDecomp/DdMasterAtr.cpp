@@ -224,7 +224,7 @@ DSP_RTN_CODE DdMasterAtr::updateProblem(
 		ncuts_minor_ += nCutsAdded;
 
 		/** null step */
-		message_->print(3, "TR  NULL STEP: dual objective %e", newdual);
+		message_->print(3, "[TR]  NULL STEP: dual objective %e", newdual);
 
 //		if (curprimobj < bestdualobj_)
 //		{
@@ -238,6 +238,7 @@ DSP_RTN_CODE DdMasterAtr::updateProblem(
 		{
 			/** The following rule is from Linderoth and Wright (2003) */
 			double rho = CoinMin(1.0, stability_param_) * (bestdualobj_ - newdual) / (curprimobj - bestdualobj_);
+			message_->print(3, ", rho %e, trcnt %d", rho, trcnt_);
 			if (rho > 0) trcnt_++;
 			if (rho >= 3 || (trcnt_ >= 3 && fabs(rho - 2.) < 1.0))
 			{
