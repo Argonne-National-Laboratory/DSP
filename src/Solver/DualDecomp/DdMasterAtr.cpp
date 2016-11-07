@@ -8,6 +8,7 @@
 //#define DSP_DEBUG
 
 #include "Solver/DualDecomp/DdMasterAtr.h"
+#include "SolverInterface/OoqpEps.h"
 
 DdMasterAtr::DdMasterAtr(
 		DspParams *  par,     /**< parameter pointer */
