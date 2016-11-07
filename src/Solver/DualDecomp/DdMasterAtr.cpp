@@ -254,6 +254,18 @@ DSP_RTN_CODE DdMasterAtr::updateProblem(
 		message_->print(3, "\n");
 	}
 
+	OoqpEps * ooqp = dynamic_cast<OoqpEps*>(si_);
+	if (ooqp)
+	{
+		if (ooqp->hasOoqpStatus_ && isSolved_)
+		{
+			DSPdebugMessage("bestprimobj %+e bestdualobj %+e\n", bestprimobj_, bestdualobj_);
+			double epsilon = (si_->getPrimalBound() - newdual + ooqp->getDualityGap()) / (1. + fabs(si_->getPrimalBound()));
+			if (epsilon > 1.) epsilon = 1.;
+			ooqp->setOoqpStatus(epsilon, -bestprimobj_, -bestdualobj_);
+		}
+	}
+
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
@@ -277,6 +289,19 @@ DSP_RTN_CODE DdMasterAtr::updateTrustRegion()
 	if (ncuts > 0) return DSP_RTN_OK;
 #endif
 
+	OoqpEps * ooqp = dynamic_cast<OoqpEps*>(si_);
+	if (ooqp)
+	{
+		if (ooqp->hasOoqpStatus_ && isSolved_)
+		{
+			DSPdebugMessage("bestprimobj %+e bestdualobj %+e\n", bestprimobj_, bestdualobj_);
+			double epsilon = (si_->getPrimalBound() - bestdualobj_ + ooqp->getDualityGap()) / (1. + fabs(si_->getPrimalBound()));
+			if (epsilon > 1.) epsilon = 1.;
+			ooqp->setOoqpStatus(epsilon, -bestprimobj_, -bestdualobj_);
+		}
+	}
+
+#if 0
 	/**
 	 * Update the trust region based on the model error
 	 */
@@ -284,7 +309,7 @@ DSP_RTN_CODE DdMasterAtr::updateTrustRegion()
 	double model_error = (currobj - bestdualobj_) / (fabs(bestdualobj_) + 1.0e-10);
 	if (model_error > 0.01) trcnt_++;
 	message_->print(3, "[TR] Model error %.2f, trcnt %d\n", model_error, trcnt_);
-	if (model_error >= 0.10 || (trcnt_ >= 3 && model_error > 0.01))
+	if (model_error >= 0.10 || (trcnt_ >= 3 && model_error > 0.05))
 	{
 		/** decrease trust region */
 		stability_param_ *= CoinMax(CoinMin(model_error, 0.9), 0.25);
@@ -294,6 +319,7 @@ DSP_RTN_CODE DdMasterAtr::updateTrustRegion()
 		/** set trust region */
 		setTrustRegion(stability_param_, stability_center_);
 	}
+#endif
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
