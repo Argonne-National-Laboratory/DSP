@@ -279,13 +279,13 @@ DSP_RTN_CODE DdMasterAtr::updateTrustRegion()
 	 */
 	double currobj = si_->getPrimalBound();
 	double model_error = (currobj - bestdualobj_) / (fabs(bestdualobj_) + 1.0e-10);
-	message_->print(3, "[TR] Model error %.2f, trcnt %d", model_error, trcnt_);
+	message_->print(3, "[TR] Model error %.2f, trcnt %d\n", model_error, trcnt_);
 	if (model_error < 0.01) trcnt_++;
 	if (model_error >= 0.05 || (trcnt_ >= 3 && model_error > 0.01))
 	{
 		/** decrease trust region */
 		stability_param_ *= CoinMin(model_error, 0.5);
-		message_->print(3, "[TR] decreased trust region size %e", stability_param_);
+		message_->print(3, "[TR] decreased trust region size %e\n", stability_param_);
 		trcnt_ = 0;
 
 		/** set trust region */
