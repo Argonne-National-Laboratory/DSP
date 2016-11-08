@@ -211,7 +211,7 @@ DSP_RTN_CODE DdMWPara::createGroups() {
 		/** CG-UB group */
 		if (has_cgub_comm_)
 		{
-			MPI_Group_excl(world_group, comm_size_ - nranks, ranks + nranks, &cgub_group_);
+			MPI_Group_excl(world_group, nranks, ranks, &cgub_group_);
 			MPI_Comm_create_group(comm_, cgub_group_, DSP_MPI_TAG_CGUB, &cgub_comm_);
 			if (cgub_comm_ != MPI_COMM_NULL)
 			{
