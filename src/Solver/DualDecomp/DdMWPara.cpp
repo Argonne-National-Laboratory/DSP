@@ -182,9 +182,10 @@ DSP_RTN_CODE DdMWPara::createGroups() {
 	else
 	{
 		/** TODO equally split the processors for now */
-		if (has_cgub_comm_)
-			nranks = ceil(1.0*(comm_size_-1)/2) + 1;
-		else
+		if (has_cgub_comm_) {
+			//nranks = ceil(1.0*(comm_size_-1)/2) + 1;
+			nranks = comm_size_ * par_->getDblParam("DD/WORKER_RATIO");
+		} else
 			nranks = min(comm_size_,model_->getNumSubproblems() + 1);
 		ranks = new int [nranks];
 		for (int i = 0; i < nranks; ++i)
@@ -210,7 +211,7 @@ DSP_RTN_CODE DdMWPara::createGroups() {
 		/** CG-UB group */
 		if (has_cgub_comm_)
 		{
-			MPI_Group_excl(world_group, nranks, ranks, &cgub_group_);
+			MPI_Group_excl(world_group, comm_size_ - nranks, ranks + nranks, &cgub_group_);
 			MPI_Comm_create_group(comm_, cgub_group_, DSP_MPI_TAG_CGUB, &cgub_comm_);
 			if (cgub_comm_ != MPI_COMM_NULL)
 			{

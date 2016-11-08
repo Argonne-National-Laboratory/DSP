@@ -206,6 +206,9 @@ void DspParams::initDblParams()
 
 	/** time limit */
 	DblParams_.createParam("SCIP/TIME_LIM", 300);
+
+	/** LB-UB worker ratio */
+	DblParams_.createParam("DD/WORKER_RATIO", 0.8);
 }
 
 void DspParams::initStrParams()
