@@ -288,7 +288,6 @@ DSP_RTN_CODE DdMasterAtr::updateTrustRegion()
 	for (int i = 1; i < nworkers_; ++i)
 		ncuts += nlastcuts_[i];
 	if (ncuts > 0) return DSP_RTN_OK;
-#endif
 
 	OoqpEps * ooqp = dynamic_cast<OoqpEps*>(si_);
 	if (ooqp)
@@ -300,6 +299,18 @@ DSP_RTN_CODE DdMasterAtr::updateTrustRegion()
 			if (epsilon > 1.) epsilon = 1.;
 			ooqp->setOoqpStatus(epsilon, -bestprimobj_, -bestdualobj_);
 		}
+	}
+#endif
+
+	/** is solution boundary? */
+	if (isSolutionBoundary())
+	{
+		/** increase trust region */
+		stability_param_ = CoinMin(2. * stability_param_, 1.0e+4);
+		message_->print(3, ", increased trust region size %e", stability_param_);
+
+		/** set trust region */
+		setTrustRegion(stability_param_, stability_center_);
 	}
 
 #if 0
