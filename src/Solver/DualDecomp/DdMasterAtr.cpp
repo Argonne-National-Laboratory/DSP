@@ -341,6 +341,7 @@ DSP_RTN_CODE DdMasterAtr::terminationTest()
 
 	if (isSolutionBoundary() == false)
 	{
+#if 0
 		if (is_updated_ == false)
 		{
 			for (unsigned i = 0; i < worker_.size(); ++i)
@@ -362,6 +363,7 @@ DSP_RTN_CODE DdMasterAtr::terminationTest()
 		}
 		else
 			is_updated_ = false;
+#endif
 
 		if (status_ == DSP_STAT_MW_STOP) return status_;
 
