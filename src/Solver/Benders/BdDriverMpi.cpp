@@ -105,6 +105,14 @@ DSP_RTN_CODE BdDriverMpi::findLowerBound() {
         int fcut = par_->getIntParam("DD/FEAS_CUTS");
         int ocut = par_->getIntParam("DD/OPT_CUTS");
         int evalub = par_->getIntParam("DD/EVAL_UB");
+        int initalgo = par_->getIntParam("BD/INIT_LB_ALGO");
+        bool relax_integrality[2];
+        if (initalgo == SEPARATE_LP) {
+        	for (int i = 0; i < 2; ++i) {
+				relax_integrality[i] = par_->getBoolPtrParam("RELAX_INTEGRALITY")[i];
+				par_->setBoolPtrParam("RELAX_INTEGRALITY", i, true);
+        	}
+        }
         par_->setIntParam("DD/ITER_LIM", par_->getIntParam("BD/DD/ITER_LIM"));
         par_->setIntParam("DD/FEAS_CUTS", -1);
         par_->setIntParam("DD/OPT_CUTS", -1);
@@ -127,6 +135,10 @@ DSP_RTN_CODE BdDriverMpi::findLowerBound() {
         /** TODO copy primal solution */
 
         /** rollback parameters */
+        if (initalgo == SEPARATE_LP) {
+        	for (int i = 0; i < 2; ++i)
+				par_->setBoolPtrParam("RELAX_INTEGRALITY", i, relax_integrality[i]);
+        }
         par_->setIntParam("DD/ITER_LIM", iterlim);
         par_->setIntParam("DD/FEAS_CUTS", fcut);
         par_->setIntParam("DD/OPT_CUTS", ocut);
