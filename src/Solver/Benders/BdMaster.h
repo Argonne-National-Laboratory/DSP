@@ -10,15 +10,14 @@
 
 /** DSP */
 #include "Solver/DecSolver.h"
-#include "Solver/Benders/SCIPconshdlrBenders.h"
-#include "SolverInterface/SolverInterface.h"
+#include "Solver/Benders/BdWorker.h"
 
 class BdMaster: public DecSolver {
 
 public:
 
 	/** constructor */
-	BdMaster(DspParams * par, DecModel * model, DspMessage * message);
+	BdMaster(DecModel * model, DspParams * par, DspMessage * message);
 
 	/** destructor */
 	virtual ~BdMaster();
@@ -29,18 +28,16 @@ public:
 	/** solve */
 	virtual DSP_RTN_CODE solve();
 
-public:
+	/** finalize */
+	virtual DSP_RTN_CODE finalize();
 
-	/** get solver interface pointer */
-	virtual SolverInterface * getSiPtr() {return si_;}
+	/** set worker pointer */
+	void setWorkerPtr(DdWorker* worker) {worker_ = worker;}
 
 public:
 
 	/** set objective bounds */
 	virtual DSP_RTN_CODE setObjectiveBounds(double upper, double lower);
-
-	/** set constraint handler for Benders cut generation */
-	virtual DSP_RTN_CODE setConshdlr(SCIPconshdlrBenders * conshdlr);
 
 	/** set auxiliary column data */
 	virtual DSP_RTN_CODE setAuxVarData(int size, double * obj, double * clbd, double * cubd);
@@ -55,7 +52,7 @@ protected:
 
 protected:
 
-	SolverInterface * si_; /**< my solver interface */
+	BdWorker* worker_; /**< Benders worker */
 
 	int      naux_;     /**< number of auxiliary variables */
 	double * obj_aux_;  /**< auxiliary variable objectives */

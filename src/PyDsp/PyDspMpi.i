@@ -1,6 +1,6 @@
 %module PyDsp
 %{
-#include "DspCInterface.h"
+#include "DspCInterface.cpp"
 %}
 
 %include "carrays.i"

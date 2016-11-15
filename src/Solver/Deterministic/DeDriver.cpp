@@ -5,11 +5,12 @@
  *      Author: kibaekkim
  */
 
+/** Coin */
+#include "OsiCbcSolverInterface.hpp"
+#include "OsiCpxSolverInterface.hpp"
+/** Dsp */
 #include "Model/TssModel.h"
 #include "Solver/Deterministic/DeDriver.h"
-//#include "SolverInterface/SolverInterfaceCpx.h"
-#include "SolverInterface/SolverInterfaceScip.h"
-#include "SolverInterface/SolverInterfaceClp.h"
 
 DeDriver::DeDriver(DspParams * par, DecModel * model):
 	DspDriver(par,model), si_(NULL) {}
@@ -110,64 +111,68 @@ DSP_RTN_CODE DeDriver::run()
 		}
 	}
 
-	if (nIntegers > 0)
-	{
-		si_ = new SolverInterfaceScip(par_);
-//		si_ = new SolverInterfaceCpx(par_);
-		/** print level */
-		si_->setPrintLevel(CoinMin(par_->getIntParam("LOG_LEVEL") + 2, 5));
-//		si_->setPrintLevel(par_->getIntParam("LOG_LEVEL"));
-	}
-	else
-	{
-		si_ = new SolverInterfaceClp(par_);
-		/** print level */
-		si_->setPrintLevel(par_->getIntParam("LOG_LEVEL"));
-	}
-
+	/** create solver */
+	si_ = new OsiCbcSolverInterface();
+	/** print level */
+	si_->messageHandler()->logLevel(par_->getIntParam("LOG_LEVEL"));
 	/** load problem */
-	si_->loadProblem(mat, clbd, cubd, obj, ctype, rlbd, rubd, "DeDriver");
+	si_->loadProblem(*mat, clbd, cubd, obj, ctype, rlbd, rubd);
 
-	/** time limit */
 	double time_limit = CoinMin(
 			par_->getDblParam("DE/WALL_LIM"),
 			par_->getDblParam("SCIP/TIME_LIM"));
-	si_->setTimeLimit(time_limit);
-
-	/** set node limit */
-	si_->setNodeLimit(par_->getIntParam("NODE_LIM"));
+	/** TODO: lines specific to CBC */
+	OsiCbcSolverInterface* cbc = dynamic_cast<OsiCbcSolverInterface*>(si_);
+	if (cbc) {
+		/** time limit */
+		cbc->setMaximumSeconds(time_limit);
+		/** set node limit */
+		cbc->setMaximumNodes(par_->getIntParam("NODE_LIM"));
+	}
 
 	/** tic */
 	cputime_  = CoinCpuTime();
 	walltime_ = CoinGetTimeOfDay();
 
 	/** solve */
-	si_->solve();
+	si_->initialSolve();
+	if (nIntegers > 0)
+		si_->branchAndBound();
 
 	/** toc */
 	cputime_  = CoinCpuTime() - cputime_;
 	walltime_ = CoinGetTimeOfDay() - walltime_;
 
 	/** solution status */
-	status_ = si_->getStatus();
+	if (si_->isDualObjectiveLimitReached())
+		status_ = DSP_STAT_LIM_ITERorTIME;
+	else if (si_->isIterationLimitReached())
+		status_ = DSP_STAT_LIM_ITERorTIME;
+	else if (si_->isPrimalObjectiveLimitReached())
+		status_ = DSP_STAT_LIM_PRIM_OBJ;
+	else if (si_->isDualObjectiveLimitReached())
+		status_ = DSP_STAT_LIM_DUAL_OBJ;
+	else if (si_->isProvenPrimalInfeasible())
+		status_ = DSP_STAT_PRIM_INFEASIBLE;
+	else if (si_->isProvenDualInfeasible())
+		status_ = DSP_STAT_DUAL_INFEASIBLE;
+	else if (si_->isProvenOptimal())
+		status_ = DSP_STAT_OPTIMAL;
 
 	/** get solutions */
-	if (status_ == DSP_STAT_OPTIMAL ||
-		status_ == DSP_STAT_STOPPED_TIME ||
-		status_ == DSP_STAT_STOPPED_NODE ||
-		status_ == DSP_STAT_STOPPED_GAP)
-	{
+	if (status_ != DSP_STAT_PRIM_INFEASIBLE &&
+			status_ != DSP_STAT_DUAL_INFEASIBLE) {
 		/** objective bounds */
-		primobj_ = si_->getPrimalBound();
-		dualobj_ = si_->getDualBound();
-
+		primobj_ = si_->getObjValue();
+		/** TODO: how to get dual bound? */
+		dualobj_ = si_->getObjValue();
 		/** solution */
-		if (si_->getSolution())
-			CoinCopyN(si_->getSolution(), si_->getNumCols(), primsol_);
-
+		CoinCopyN(si_->getColSolution(), si_->getNumCols(), primsol_);
 		/** statistics */
 		numIterations_ = si_->getIterationCount();
-		numNodes_ = si_->getNumNodes();
+		/** TODO: Cbc specific */
+		if (cbc)
+			numNodes_ = cbc->getNodeCount();
 	}
 
 	/** save memory */
@@ -199,7 +204,7 @@ void DeDriver::writeExtMps(const char * name)
 	assert(model_);
 
 	/** model info */
-	SolverInterface * si = NULL;
+	OsiSolverInterface * si = NULL;
 	CoinPackedMatrix * mat = NULL;
 	double * clbd   = NULL;
 	double * cubd   = NULL;
@@ -210,18 +215,12 @@ void DeDriver::writeExtMps(const char * name)
 
 	BGN_TRY_CATCH
 
-	double stime;
-
 	/** get DE model */
 	DSP_RTN_CHECK_THROW(model_->getFullModel(mat, clbd, cubd, ctype, obj, rlbd, rubd));
-
-	int nIntegers = model_->getNumIntegers();
-
-	si = new SolverInterfaceScip(par_);
-
+	/** create solver */
+	si = new OsiCbcSolverInterface();
 	/** load problem */
-	si->loadProblem(mat, clbd, cubd, obj, ctype, rlbd, rubd, "writeMps");
-
+	si->loadProblem(*mat, clbd, cubd, obj, ctype, rlbd, rubd);
 	/** write mps */
 	si->writeMps(name);
 

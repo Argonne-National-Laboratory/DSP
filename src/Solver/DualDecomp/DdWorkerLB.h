@@ -8,7 +8,7 @@
 #ifndef SRC_SOLVER_DUALDECOMP_DDWORKERLB_H_
 #define SRC_SOLVER_DUALDECOMP_DDWORKERLB_H_
 
-#include <Solver/DualDecomp/DdWorker.h>
+#include "Solver/DualDecomp/DdWorker.h"
 
 class DdWorkerLB: public DdWorker {
 

@@ -9,13 +9,16 @@
 #define SRC_UTILITY_DSPUTILITY_H_
 
 #include <vector>
-#include "CoinHelperFunctions.hpp"
+/** Coin */
+#include "OsiSolverInterface.hpp"
+/** Dsp */
+#include "Utility/DspRtnCodes.h"
 #include "Utility/DspMessage.h"
 
 using namespace std;
 
 /** check whether solution is duplicate or not */
-bool duplicateVector(
+inline bool duplicateVector(
 		CoinPackedVector * vec,
 		vector<CoinPackedVector*> vecs)
 {
@@ -46,6 +49,26 @@ bool duplicateVector(
 	}
 
 	return dup;
+}
+
+/** convert coin-status to dsp-status */
+inline void convertCoinToDspStatus(const OsiSolverInterface* si, int& status) {
+	if (si->isProvenOptimal())
+		status = DSP_STAT_OPTIMAL;
+	else if (si->isProvenPrimalInfeasible())
+		status = DSP_STAT_PRIM_INFEASIBLE;
+	else if (si->isProvenDualInfeasible())
+		status = DSP_STAT_DUAL_INFEASIBLE;
+	else if (si->isPrimalObjectiveLimitReached())
+		status = DSP_STAT_LIM_PRIM_OBJ;
+	else if (si->isDualObjectiveLimitReached())
+		status = DSP_STAT_LIM_DUAL_OBJ;
+	else if (si->isIterationLimitReached())
+		status = DSP_STAT_LIM_ITERorTIME;
+	else if (si->isAbandoned())
+		status = DSP_STAT_ABORT;
+	else
+		status = DSP_STAT_UNKNOWN;
 }
 
 

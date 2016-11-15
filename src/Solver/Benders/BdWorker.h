@@ -8,35 +8,34 @@
 #ifndef SRC_SOLVER_BENDERS_BDWORKER_H_
 #define SRC_SOLVER_BENDERS_BDWORKER_H_
 
-#include "Solver/DecSolver.h"
 #include "Solver/Benders/BdSub.h"
 
-class BdWorker: public DecSolver {
+class BdWorker {
 public:
 
 	/** constructor */
-	BdWorker(DspParams * par, DecModel * model, DspMessage * message);
+	BdWorker(DecModel * model, DspParams * par, DspMessage * message);
 
 	/** destructor */
 	virtual ~BdWorker();
 
-	/** initialize */
-	virtual DSP_RTN_CODE init();
-
-	/** solve */
-	virtual DSP_RTN_CODE solve();
-
-public:
-
-	/** get BdSub pointer */
-	virtual BdSub * getBdSubPtr() {return bdsub_;}
+	/** generate cuts */
+	DSP_RTN_CODE generateCuts(int nx, int naux, const double* x, OsiCuts& cs);
 
 protected:
 
-	/** create problem */
-	virtual DSP_RTN_CODE createProblem();
+	/** aggregate cuts, if necessary, based on the number of auxiliary variables
+	 * introduced to the master.
+	 *
+	 * This may be derived to communicate cuts in MPI parallel implementation.
+	 */
+	virtual DSP_RTN_CODE collectCuts(int nx, int naux, double** cut, double* rhs, OsiCuts& cs);
 
-private:
+protected:
+
+	DecModel * model_;     /**< DecModel object */
+	DspParams * par_;      /**< parameters */
+	DspMessage * message_; /**< message */
 
 	BdSub * bdsub_; /**< benders subproblem */
 

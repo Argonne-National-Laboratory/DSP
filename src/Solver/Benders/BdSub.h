@@ -9,12 +9,12 @@
 #define SRC_SOLVER_BENDERS_BDSUB_H_
 
 #include <assert.h>
-#include <Utility/DspMacros.h>
-#include <Utility/DspRtnCodes.h>
 
 /** DSP */
+#include "Utility/DspMacros.h"
+#include "Utility/DspRtnCodes.h"
 #include "Utility/DspParams.h"
-#include "Model/TssModel.h"
+#include "Model/DecModel.h"
 
 /**
  * This class defines a Benders cut generator.
@@ -32,7 +32,7 @@ public:
 	DSP_RTN_CODE setSubIndices(int size, int * indices);
 
 	/** load problem */
-	DSP_RTN_CODE loadProblem(TssModel * model);
+	DSP_RTN_CODE loadProblem(DecModel * model);
 
 	/** generate Benders cut in raw format (without constructing) */
 	int generateCuts(
@@ -51,6 +51,9 @@ public:
 
 	/** get status for subproblem subindices_[i] */
 	DSP_RTN_CODE getStatus(int i) {return status_[i];}
+
+	/** get statuses */
+	const int* getStatuses() {return status_;}
 
 	/** get number of subproblems */
 	int getNumSubprobs() {return nsubprobs_;}

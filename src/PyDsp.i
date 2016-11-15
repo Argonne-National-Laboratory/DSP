@@ -1,6 +1,6 @@
 %module PyDsp
 %{
-#include "StoCInterface.h"
+#include "StoCInterface.cpp"
 %}
 
 %include "carrays.i"

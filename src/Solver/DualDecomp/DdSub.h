@@ -13,7 +13,6 @@
 /** DSP */
 #include "Model/DecModel.h"
 #include "Solver/DecSolver.h"
-#include "SolverInterface/SolverInterface.h"
 
 /**
  * This defines a class for solving a dual decomposition subproblem.
@@ -42,9 +41,6 @@ private:
 	/** create problem */
 	DSP_RTN_CODE createProblem();
 
-	/** add cut generator */
-	DSP_RTN_CODE addCutGenerator();
-
 public:
 
 	/** update problem */
@@ -65,8 +61,6 @@ public:
 	void setPrintLevel(int level);
 
 public:
-
-	SolverInterface * si_; /**< solver interface */
 
 	int sind_;           /**< scenario index */
 	int nrows_coupling_; /**< number of coupling constraints for the subproblem (dimension of lambda) */

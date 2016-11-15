@@ -8,8 +8,10 @@
 #ifndef SRC_SOLVER_DETERMINISTIC_DEDRIVER_H_
 #define SRC_SOLVER_DETERMINISTIC_DEDRIVER_H_
 
+/** Coin */
+#include "OsiSolverInterface.hpp"
+/** Dsp */
 #include "Solver/DspDriver.h"
-#include "SolverInterface/SolverInterface.h"
 
 /**
  * This class defines a driver for solving a deterministic equivalent problem.
@@ -37,7 +39,7 @@ public:
 
 private:
 
-	SolverInterface * si_; /**< my solver interface */
+	OsiSolverInterface * si_; /**< my solver interface */
 };
 
 #endif /* SRC_SOLVER_DETERMINISTIC_DEDRIVER_H_ */

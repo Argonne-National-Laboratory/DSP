@@ -16,7 +16,6 @@
 #include <cstdlib>
 #include <iostream>
 #include <fstream>
-using namespace std;
 
 // modified 5/21/04 based on the new primes in PCx
 
@@ -46,7 +45,7 @@ void OutOfSpace()
 {
   // On newer compilers, can't get here anyway, since new throws and 
   // exception.
-  cerr << "Out of Memory!!";
+  std::cerr << "Out of Memory!!";
   exit( 1 );
 }
 
@@ -97,7 +96,7 @@ HashTable      *NewHashTable(int size)
       delete [] table->list;
       delete table;
     }
-    cerr << "Could not allocate the table\n";
+    std::cerr << "Could not allocate the table\n";
     throw;
   }
   return (table);
@@ -176,7 +175,7 @@ int Insert(HashTable *table, char *name, int index)
       ptr->next = table->list[i];
       table->list[i] = ptr;
     } catch ( ... ) {
-      cerr << "Not enought memory to insert an item into the hash table";
+      std::cerr << "Not enought memory to insert an item into the hash table";
       throw;
     }
     return (0);			/* normal */

@@ -11,15 +11,11 @@
 
 //#define DSP_DEBUG
 
-#include <Utility/DspMessage.h>
-#include "Solver/Benders/BdSub.h"
-
 /** Coin */
-#include "OsiSpxSolverInterface.hpp"
 #include "OsiClpSolverInterface.hpp"
-
-#define COIN_OSI OsiSpxSolverInterface
-#define DSP_SI   SolverInterfaceSpx
+/** Dsp */
+#include "Utility/DspMessage.h"
+#include "Solver/Benders/BdSub.h"
 
 BdSub::BdSub(DspParams* par):
 	par_(par),
@@ -47,8 +43,7 @@ DSP_RTN_CODE BdSub::setSubIndices(int size, int* indices)
 	nsubprobs_ = size;
 
 	/** allocate memory */
-	if (subindices_)
-		FREE_ARRAY_PTR(subindices_);
+	FREE_ARRAY_PTR(subindices_);
 	subindices_ = new int [size];
 
 	CoinCopyN(indices, size, subindices_);
@@ -58,7 +53,7 @@ DSP_RTN_CODE BdSub::setSubIndices(int size, int* indices)
 	return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE BdSub::loadProblem(TssModel* model)
+DSP_RTN_CODE BdSub::loadProblem(DecModel* model)
 {
 #define FREE_MEMORY            \
 	FREE_PTR(mat_reco)         \
@@ -102,7 +97,7 @@ DSP_RTN_CODE BdSub::loadProblem(TssModel* model)
 				obj_reco, rlbd_reco, rubd_reco));
 
 		/** creating solver interface */
-		cglp_[i] = new COIN_OSI;
+		cglp_[i] = new OsiClpSolverInterface;
 		cglp_[i]->loadProblem(*mat_reco, clbd_reco, cubd_reco, obj_reco, rlbd_reco, rubd_reco);
 		for (int j = 0; j < cglp_[i]->getNumCols(); ++j)
 		{
@@ -212,7 +207,7 @@ void BdSub::solveOneSubproblem(
 	const double * rc   = NULL; /** reduced costs */
 
 	/** clone CGLP */
-	cglp = new COIN_OSI;
+	cglp = new OsiClpSolverInterface;
 	cglp->loadProblem(*(cgl->cglp_[s]->getMatrixByCol()),
 			cgl->cglp_[s]->getColLower(), cgl->cglp_[s]->getColUpper(),
 			cgl->cglp_[s]->getObjCoefficients(),

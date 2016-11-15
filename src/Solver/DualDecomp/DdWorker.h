@@ -9,10 +9,9 @@
 #define SRC_SOLVER_DUALDECOMP_DDWORKER_H_
 
 /** DSP */
-#include "Solver/DualDecomp/DdSolver.h"
-#include "Solver/DualDecomp/DdSub.h"
+#include "Solver/DecSolver.h"
 
-class DdWorker : public DdSolver {
+class DdWorker : public DecSolver {
 public:
 
 	enum {

@@ -9,11 +9,13 @@
 #define STOMODEL_H_
 
 #include <map>
+/** Coin */
+#include "CoinTime.hpp"
+#include "SmiScnModel.hpp"
+/** Dsp */
 #include "Utility/DspTypes.h"
 #include "Utility/DspMacros.h"
 #include "Utility/DspRtnCodes.h"
-#include "CoinTime.hpp"
-#include "SmiScnModel.hpp"
 
 
 /*

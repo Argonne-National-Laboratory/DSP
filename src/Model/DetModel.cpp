@@ -5,96 +5,42 @@
  *      Author: ctjandra
  */
 
-#include "DetModel.h"
+//#define DSP_DEBUG
+
+#include "Utility/DspMessage.h"
+#include "Model/DetModel.h"
 
 DetModel::DetModel() :
-		mat_(NULL),
-		clbd_(NULL),
-		cubd_(NULL),
-		ctype_(NULL),
-		obj_(NULL),
-		rlbd_(NULL),
-		rubd_(NULL),
-		nints_(0)
-{
+		mat_(NULL), clbd_(NULL), cubd_(NULL), ctype_(NULL), obj_(NULL),
+		rlbd_(NULL), rubd_(NULL), nints_(0) {
 	/** nothing to do */
 }
 
 DetModel::DetModel(
-	const CoinPackedMatrix * mat,   /**< constraint matrix */
-	const double * clbd,            /**< column lower bounds */
-	const double * cubd,            /**< column upper bounds */
-	const char   * ctype,           /**< column types */
-	const double * obj,             /**< objective coefficients */
-	const double * rlbd,            /**< row lower bounds */
-	const double * rubd             /**< row upper bounds */)
-{
-	int ncols = mat->getNumCols();
-	int nrows = mat->getNumRows();
-
-	clbd_ = new double [ncols];
-	cubd_ = new double [ncols];
-	ctype_ = new char [ncols];
-	obj_ = new double [ncols];
-	rlbd_ = new double [nrows];
-	rubd_ = new double [nrows];
-
-	mat_ = new CoinPackedMatrix(*mat);
-	CoinCopyN(clbd,  ncols, clbd_);
-	CoinCopyN(cubd,  ncols, cubd_);
-	CoinCopyN(ctype, ncols, ctype_);
-	CoinCopyN(obj,   ncols, obj_);
-	CoinCopyN(rlbd,  nrows, rlbd_);
-	CoinCopyN(rubd,  nrows, rubd_);
-
-	nints_ = 0;
-	for (int j = 0; j < ncols; j++)
-	{
-		if (ctype_[j] != 'C')
-			nints_++;
-	}
+		const CoinPackedMatrix * mat, /**< constraint matrix */
+		const double * clbd,          /**< column lower bounds */
+		const double * cubd,          /**< column upper bounds */
+		const char   * ctype,         /**< column types */
+		const double * obj,           /**< objective coefficients */
+		const double * rlbd,          /**< row lower bounds */
+		const double * rubd           /**< row upper bounds */) {
+	createModel(mat, clbd, cubd, ctype, obj, rlbd, rubd);
 }
 
 DetModel::DetModel(
-	const CoinBigIndex * start,     /**< start index for each row */
-	const int    * index,           /**< column indices */
-	const double * value,           /**< constraint elements */
-	const int      numels,          /**< number of elements in index and value */
-	const int      ncols,           /**< number of columns */
-	const int      nrows,           /**< number of rows */
-	const double * clbd,            /**< column lower bounds */
-	const double * cubd,            /**< column upper bounds */
-	const char   * ctype,           /**< column types */
-	const double * obj,             /**< objective coefficients */
-	const double * rlbd,            /**< row lower bounds */
-	const double * rubd             /**< row upper bounds */)
-{
-	int * len = new int [nrows];
-	for (int i = 0; i < nrows; i++)
-		len[i] = start[i+1] - start[i];
-
-	mat_ = new CoinPackedMatrix(false, ncols, nrows, numels, value, index, start, len);
-
-	clbd_ = new double [ncols];
-	cubd_ = new double [ncols];
-	ctype_ = new char [ncols];
-	obj_ = new double [ncols];
-	rlbd_ = new double [nrows];
-	rubd_ = new double [nrows];
-
-	CoinCopyN(clbd,  ncols, clbd_);
-	CoinCopyN(cubd,  ncols, cubd_);
-	CoinCopyN(ctype, ncols, ctype_);
-	CoinCopyN(obj,   ncols, obj_);
-	CoinCopyN(rlbd,  nrows, rlbd_);
-	CoinCopyN(rubd,  nrows, rubd_);
-
-	nints_ = 0;
-	for (int j = 0; j < ncols; j++)
-	{
-		if (ctype_[j] != 'C')
-			nints_++;
-	}
+		const CoinBigIndex * start, /**< start index for each row */
+		const int    * index,       /**< column indices */
+		const double * value,       /**< constraint elements */
+		const int      numels,      /**< number of elements in index and value */
+		const int      ncols,       /**< number of columns */
+		const int      nrows,       /**< number of rows */
+		const double * clbd,        /**< column lower bounds */
+		const double * cubd,        /**< column upper bounds */
+		const char   * ctype,       /**< column types */
+		const double * obj,         /**< objective coefficients */
+		const double * rlbd,        /**< row lower bounds */
+		const double * rubd         /**< row upper bounds */) {
+	createModel(start, index, value, numels, ncols, nrows, clbd, cubd, ctype, obj, rlbd, rubd);
 }
 
 /** copy constructor */
@@ -118,6 +64,83 @@ DetModel::DetModel(const DetModel & rhs) :
 	CoinCopyN(rhs.obj_,   ncols, obj_);
 	CoinCopyN(rhs.rlbd_,  nrows, rlbd_);
 	CoinCopyN(rhs.rubd_,  nrows, rubd_);
+}
+
+void DetModel::createModel(
+		const CoinPackedMatrix* mat, /**< constraint matrix */
+		const double* clbd,          /**< column lower bounds */
+		const double* cubd,          /**< column upper bounds */
+		const char*   ctype,         /**< column types */
+		const double* obj,           /**< objective coefficients */
+		const double* rlbd,          /**< row lower bounds */
+		const double* rubd           /**< row upper bounds */) {
+	int ncols = mat->getNumCols();
+	int nrows = mat->getNumRows();
+
+	clbd_ = new double[ncols];
+	cubd_ = new double[ncols];
+	ctype_ = new char[ncols];
+	obj_ = new double[ncols];
+	rlbd_ = new double[nrows];
+	rubd_ = new double[nrows];
+
+	mat_ = new CoinPackedMatrix(*mat);
+	/** make sure the matrix is row-wise */
+	if (mat_->isColOrdered()) mat_->reverseOrdering();
+	CoinCopyN(clbd, ncols, clbd_);
+	CoinCopyN(cubd, ncols, cubd_);
+	CoinCopyN(ctype, ncols, ctype_);
+	CoinCopyN(obj, ncols, obj_);
+	CoinCopyN(rlbd, nrows, rlbd_);
+	CoinCopyN(rubd, nrows, rubd_);
+
+	nints_ = 0;
+	for (int j = 0; j < ncols; j++) {
+		if (ctype_[j] != 'C')
+			nints_++;
+	}
+}
+
+void DetModel::createModel(
+		const CoinBigIndex* start, /**< start index for each row */
+		const int*    index,       /**< column indices */
+		const double* value,       /**< constraint elements */
+		const int     numels,      /**< number of elements in index and value */
+		const int     ncols,       /**< number of columns */
+		const int     nrows,       /**< number of rows */
+		const double* clbd,        /**< column lower bounds */
+		const double* cubd,        /**< column upper bounds */
+		const char*   ctype,       /**< column types */
+		const double* obj,         /**< objective coefficients */
+		const double* rlbd,        /**< row lower bounds */
+		const double* rubd         /**< row upper bounds */) {
+	int * len = new int[nrows];
+	for (int i = 0; i < nrows; i++)
+		len[i] = start[i + 1] - start[i];
+
+	DSPdebugMessage("ncols %d nrows %d\n", ncols, nrows);
+	mat_ = new CoinPackedMatrix(false, ncols, nrows, numels, value, index, start, len);
+	DSPdebug(mat_->verifyMtx(4));
+
+	clbd_ = new double[ncols];
+	cubd_ = new double[ncols];
+	ctype_ = new char[ncols];
+	obj_ = new double[ncols];
+	rlbd_ = new double[nrows];
+	rubd_ = new double[nrows];
+
+	CoinCopyN(clbd, ncols, clbd_);
+	CoinCopyN(cubd, ncols, cubd_);
+	CoinCopyN(ctype, ncols, ctype_);
+	CoinCopyN(obj, ncols, obj_);
+	CoinCopyN(rlbd, nrows, rlbd_);
+	CoinCopyN(rubd, nrows, rubd_);
+
+	nints_ = 0;
+	for (int j = 0; j < ncols; j++) {
+		if (ctype_[j] != 'C')
+			nints_++;
+	}
 }
 
 DetModel::~DetModel()

@@ -6,18 +6,13 @@
  */
 
 //#define DSP_DEBUG
-#include <Solver/DualDecomp/DdWorkerUB.h>
+#include "Solver/DualDecomp/DdWorkerUB.h"
 
 DdWorkerUB::DdWorkerUB(DspParams * par, DecModel * model, DspMessage * message):
-DdWorkerLB(par, model, message), ub_(0.0)
-{
-	// TODO Auto-generated constructor stub
+	DdWorkerLB(par, model, message),
+	ub_(0.0) {}
 
-}
-
-DdWorkerUB::~DdWorkerUB() {
-	// TODO Auto-generated destructor stub
-}
+DdWorkerUB::~DdWorkerUB() {}
 
 double DdWorkerUB::evaluate(CoinPackedVector* solution)
 {
@@ -74,25 +69,18 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 		subprobs_[s]->solve();
 
 		/** check status. there might be unexpected results. */
-		switch (subprobs_[s]->si_->getStatus()) {
-		case DSP_STAT_OPTIMAL:
-		case DSP_STAT_LIM_ITERorTIME:
-		case DSP_STAT_STOPPED_GAP:
-		case DSP_STAT_STOPPED_NODE:
-		case DSP_STAT_STOPPED_TIME:
-			break;
-		default:
+		if (subprobs_[s]->si_->isAbandoned() ||
+				subprobs_[s]->si_->isProvenPrimalInfeasible() ||
+				subprobs_[s]->si_->isProvenDualInfeasible()) {
 			status_ = DSP_STAT_MW_STOP;
 			message_->print(0,
-					"Warning: subproblem %d solution status is %d\n", s,
-					subprobs_[s]->si_->getStatus());
+					"Warning: subproblem %d solution status is unexpected.\n", s);
 			break;
 		}
-		if (status_ == DSP_STAT_MW_STOP)
-			break;
 
-		primobj += subprobs_[s]->si_->getPrimalBound();
-		dualobj += subprobs_[s]->si_->getDualBound();
+		primobj += subprobs_[s]->si_->getObjValue();
+		/** TODO: how to get dual bound? */
+		dualobj += subprobs_[s]->si_->getObjValue();
 		total_cputime += CoinCpuTime() - cputime;
 		total_walltime += CoinGetTimeOfDay() - walltime;
 

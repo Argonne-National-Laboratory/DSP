@@ -7,18 +7,22 @@
 
 //#define DSP_DEBUG
 
-#include <Utility/DspMacros.h>
-#include <Utility/DspMessage.h>
+/** Coin */
+#include "OsiCbcSolverInterface.hpp"
+#ifdef DSP_HAS_CPLEX
+#include "OsiCpxSolverInterface.hpp"
+#include "cplex.h"
+#endif
+/** Dsp */
+#include "Utility/DspMacros.h"
+#include "Utility/DspMessage.h"
 #include "Solver/DualDecomp/DdSub.h"
-#include "SolverInterface/SolverInterfaceClp.h"
-#include "SolverInterface/SolverInterfaceScip.h"
-//#include "SolverInterface/SolverInterfaceCpx.h"
 #include "Solver/DualDecomp/SCIPconshdlrBendersDd.h"
 #include "SolverInterface/SCIPbranchruleLB.h"
 
 /** default constructor */
 DdSub::DdSub(int s, DspParams * par, DecModel * model, DspMessage * message) :
-	DecSolver(par, model, message),
+	DecSolver(model, par, message),
 	si_(NULL),
 	sind_(s),
 	nrows_coupling_(0),
@@ -53,9 +57,6 @@ DSP_RTN_CODE DdSub::init()
 	/** create problem */
 	createProblem();
 
-	/** add cut generator (lazycuts) */
-	addCutGenerator();
-
 	/** allocate memory */
 	primsol_ = new double [si_->getNumCols()];
 
@@ -67,24 +68,24 @@ DSP_RTN_CODE DdSub::init()
 /** solve problem */
 DSP_RTN_CODE DdSub::solve()
 {
-	si_->solve();
+	si_->resolve();
 
 	/** check status. there might be unexpected results. */
-	status_ = si_->getStatus();
-	switch (status_) {
-	case DSP_STAT_OPTIMAL:
-	case DSP_STAT_LIM_ITERorTIME:
-	case DSP_STAT_STOPPED_GAP:
-	case DSP_STAT_STOPPED_NODE:
-	case DSP_STAT_STOPPED_TIME:
-		primobj_ = si_->getPrimalBound();
-		dualobj_ = si_->getDualBound();
-		CoinCopyN(si_->getSolution(), si_->getNumCols(), primsol_);
+	if (si_->isProvenOptimal()) {
+		primobj_ = si_->getObjValue();
+		/** TODO: how to get dual bound? */
+		dualobj_ = si_->getObjValue();
+		CoinCopyN(si_->getColSolution(), si_->getNumCols(), primsol_);
 		DSPdebugMessage("primal objective %+e\n", primobj_);
-		break;
-	default:
-		break;
-	}
+		status_ = DSP_STAT_OPTIMAL;
+	} else if (si_->isIterationLimitReached())
+		status_ = DSP_STAT_LIM_ITERorTIME;
+	else if (si_->isAbandoned())
+		status_ = DSP_STAT_ABORT;
+	else if (si_->isProvenPrimalInfeasible())
+		status_ = DSP_STAT_PRIM_INFEASIBLE;
+	else if (si_->isProvenDualInfeasible())
+		status_ = DSP_STAT_DUAL_INFEASIBLE;
 
 	return DSP_RTN_OK;
 }
@@ -150,9 +151,6 @@ DSP_RTN_CODE DdSub::createProblem() {
             cpl_rhs_[i] = model_->getRhsCouplingRow(i);
         obj_offset_ = 0;
 
-        /** number of integer variables */
-        int nIntegers = model_->getNumIntegers();
-
         /** adjust first-stage cost */
         if (model_->isStochastic()) {
             TssModel *tssModel;
@@ -170,44 +168,39 @@ DSP_RTN_CODE DdSub::createProblem() {
 
             /** convert column types */
             if (parRelaxIntegrality_[0]) {
-                for (int j = 0; j < tssModel->getNumCols(0); ++j) {
-                    if (ctype[j] != 'C')
-                        nIntegers--;
+                for (int j = 0; j < tssModel->getNumCols(0); ++j)
                     ctype[j] = 'C';
-                }
             }
-            if (parRelaxIntegrality_[1]) {
-                for (int j = 0; j < tssModel->getNumCols(1); ++j) {
-                    if (ctype[tssModel->getNumCols(0) + j] != 'C')
-                        nIntegers--;
-                }
+            if (parRelaxIntegrality_[1])
                 CoinFillN(ctype + tssModel->getNumCols(0), tssModel->getNumCols(1), 'C');
-            }
         } else {
             if (parRelaxIntegrality_[0] || parRelaxIntegrality_[1]) {
-                for (int j = 0; j < mat->getNumCols(); j++) {
-                    if (ctype[j] != 'C')
-                        nIntegers--;
+                for (int j = 0; j < mat->getNumCols(); j++)
                     ctype[j] = 'C';
-                }
             }
         }
 
-        if (nIntegers > 0)
-//		    si_ = new SolverInterfaceCpx(par_);
-            si_ = new SolverInterfaceScip(par_);
-        else
-            si_ = new SolverInterfaceClp(par_);
+#ifdef DSP_HAS_CPLEX
+        si_ = new OsiCpxSolverInterface();
+#else
+        si_ = new OsiCbcSolverInterface();
+#endif
 
         /** no display */
-        si_->setPrintLevel(0);
+        si_->messageHandler()->logLevel(0);
 
         /** load problem */
-        si_->loadProblem(mat, clbd, cubd, obj_, ctype, rlbd, rubd, "DdSub");
+        si_->loadProblem(*mat, clbd, cubd, obj_, rlbd, rubd);
         DSPdebug(mat->verifyMtx(4));
 
+        /** set integers */
+        for (int j = 0; j < si_->getNumCols(); ++j) {
+        	if (ctype[j] != 'C')
+        		si_->setInteger(j);
+        }
+
         /** set solution gap tolerance */
-        si_->setGapTol(gapTol_);
+        setGapTol(gapTol_);
 
     END_TRY_CATCH_RTN(FREE_MEMORY, DSP_RTN_ERR)
 
@@ -215,23 +208,6 @@ DSP_RTN_CODE DdSub::createProblem() {
 
     return DSP_RTN_OK;
 #undef FREE_MEMORY
-}
-
-/** add cut generator */
-DSP_RTN_CODE DdSub::addCutGenerator() {
-    SolverInterfaceScip *si = dynamic_cast<SolverInterfaceScip *>(si_);
-    if (si) {
-        /** create constraint handler */
-        SCIPconshdlrBendersDd *conshdlr = new SCIPconshdlrBendersDd(si->getSCIP());
-        conshdlr->setOriginalVariables(si->getNumCols(), si->getSCIPvars(), 1);
-        DSPdebugMessage("numcols %d, conshdlr %p\n", si->getNumCols(), conshdlr);
-        /** add constraint handler */
-        si->addConstraintHandler(conshdlr, true, true);
-    } else {
-        /** TODO */
-        printf("Warning: Cut generation supports only SCIP.\n");
-    }
-    return DSP_RTN_OK;
 }
 
 /** update problem */
@@ -275,7 +251,7 @@ DSP_RTN_CODE DdSub::updateProblem(
 			obj_offset_ += lambda[i] * (-cpl_rhs_[i]);
 		}
 
-		si_->setObjCoef(newobj);
+		si_->setObjective(newobj);
 	}
 
 	/** update primal bound (bounds of auxiliary constraint) */
@@ -293,12 +269,7 @@ DSP_RTN_CODE DdSub::updateProblem(
 /** push cuts */
 DSP_RTN_CODE DdSub::pushCuts(OsiCuts * cuts)
 {
-	/** TODO only for SCIP */
-	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(si_);
-	if (si)
-	{
-		si->setCuts(cuts);
-	}
+	si_->applyCuts(*cuts);
 	return DSP_RTN_OK;
 }
 
@@ -306,7 +277,13 @@ DSP_RTN_CODE DdSub::pushCuts(OsiCuts * cuts)
 void DdSub::setTimeLimit(double sec)
 {
 	assert(si_);
-	si_->setTimeLimit(sec);
+#ifdef DSP_HAS_CPLEX
+	OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
+	if (cpx) CPXsetdblparam(cpx->getEnvironmentPtr(), CPX_PARAM_TILIM, sec);
+#else
+	OsiCbcSolverInterface* cbc = dynamic_cast<OsiCbcSolverInterface*>(si_);
+	if (cbc) cbc->setMaximumSeconds(sec);
+#endif
 }
 
 /** set accuracy tolerance */
@@ -314,15 +291,16 @@ void DdSub::setGapTol(double tol)
 {
 	assert(si_);
 	gapTol_ = tol;
-	si_->setGapTol(gapTol_);
+#ifdef DSP_HAS_CPLEX
+	OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
+	if (cpx) CPXsetdblparam(cpx->getEnvironmentPtr(), CPX_PARAM_EPGAP, gapTol_);
+#else
+	OsiCbcSolverInterface* cbc = dynamic_cast<OsiCbcSolverInterface*>(si_);
+	if (cbc) cbc->getModelPtr()->setAllowableFractionGap(gapTol_);
+#endif
 }
 
 /** set print level */
-void DdSub::setPrintLevel(int level)
-{
-	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(si_);
-	if (si)
-		si_->setPrintLevel(level);
-	else
-		si_->setPrintLevel(CoinMax(0, level - 2));
+void DdSub::setPrintLevel(int level) {
+	si_->messageHandler()->logLevel(level);
 }

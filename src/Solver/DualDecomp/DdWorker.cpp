@@ -7,10 +7,9 @@
 
 /** DSP */
 #include "Solver/DualDecomp/DdWorker.h"
-#include "SolverInterface/SolverInterfaceScip.h"
 
 DdWorker::DdWorker(DspParams * par, DecModel * model, DspMessage * message) :
-		DdSolver(par, model, message) {
+		DecSolver(par, model, message) {
 }
 
 DdWorker::~DdWorker() {

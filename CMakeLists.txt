@@ -120,9 +120,6 @@ set(EXTRA_DIR ${CMAKE_SOURCE_DIR}/extra)
 if (READ_CONF)
 	message(STATUS "MA27_DIR is set at ${MA27_DIR}")
 	message(STATUS "OOQP_DIR is set at ${OOQP_DIR}")
-	message(STATUS "SCIPOPTSUITE_DIR is set at ${SCIPOPTSUITE_DIR}")
-	set(SCIP_DIR ${SCIPOPTSUITE_DIR}/scip-3.1.1)
-	set(SOPLEX_DIR ${SCIPOPTSUITE_DIR}/soplex-2.0.1)
 	message(STATUS "SMI_DIR is set at ${SMI_DIR}")
 else(READ_CONF)
 	# OOQP-0.99.25
@@ -167,6 +164,7 @@ else(READ_CONF)
 		set(OOQP_HSL_LIB "MA27LIB=${MA27_DIR}/lib/libma27.a")
 		execute_process(COMMAND cp ${OOQP_DIR}/src/QpGen/Makefile.inc.ma27 ${OOQP_DIR}/src/QpGen/Makefile.inc)
 	endif()
+
 	# OOQP
 	ExternalProject_Add(OOQP-0.99.25
 		DEPENDS ${OOQP_DEPENDS}
@@ -177,53 +175,52 @@ else(READ_CONF)
 		BUILD_COMMAND make all_libs
 		INSTALL_COMMAND make install_headers)
 
-	# SCIP Optimization Suite (3.1.1)
-	set(SCIPOPTSUITE_DIR ${EXTRA_DIR}/scipoptsuite-3.1.1)
-	set(SCIP_DIR ${SCIPOPTSUITE_DIR}/scip-3.1.1)
-	set(SOPLEX_DIR ${SCIPOPTSUITE_DIR}/soplex-2.0.1)
-	ExternalProject_Add(scipoptsuite
-		PREFIX ${SCIPOPTSUITE_DIR}
-		SOURCE_DIR ${SCIPOPTSUITE_DIR}
-		CONFIGURE_COMMAND ""
-		BINARY_DIR ${SCIPOPTSUITE_DIR}
-		BUILD_COMMAND make scipoptlib SHARED=true GMP=false ZLIB=false READLINE=false
-		INSTALL_COMMAND "")
-	
-	# COIN-OR Smi (0.95)
+	# COIN-OR Alps
+	set(ALPS_DIR ${EXTRA_DIR}/Alps)
+	ExternalProject_Add(Alps
+		PREFIX ${ALPS_DIR}
+		DOWNLOAD_DIR ${EXTRA_DIR}
+		SVN_REPOSITORY https://projects.coin-or.org/svn/CHiPPS/Alps/stable/1.5
+		SVN_TRUST_CERT 1
+		UPDATE_COMMAND ""
+		SOURCE_DIR ${ALPS_DIR}
+		CONFIGURE_COMMAND ${ALPS_DIR}/configure --enable-static --disable-shared ADD_CXXFLAGS=-fPIC CXX=${CMAKE_CXX_COMPILER}
+		BINARY_DIR ${ALPS_DIR}
+		BUILD_COMMAND make
+		INSTALL_COMMAND make install)
+
+	# COIN-OR Cbc
+	set(CBC_DIR ${EXTRA_DIR}/Cbc)
+	ExternalProject_Add(Cbc
+		PREFIX ${CBC_DIR}
+		DOWNLOAD_DIR ${EXTRA_DIR}
+		SVN_REPOSITORY https://projects.coin-or.org/svn/Cbc/releases/2.9.8
+		SVN_TRUST_CERT 1
+		UPDATE_COMMAND ""
+		SOURCE_DIR ${CBC_DIR}
+		CONFIGURE_COMMAND ${CBC_DIR}/configure --enable-static --disable-shared ADD_CXXFLAGS=-fPIC CXX=${CMAKE_CXX_COMPILER}
+		BINARY_DIR ${CBC_DIR}
+		BUILD_COMMAND make
+		INSTALL_COMMAND make install)
+
+	# COIN-OR Smi
 	set(SMI_DIR ${EXTRA_DIR}/Smi)
-	set(SMI_FLAGS "-L${SOPLEX_DIR}/lib -lsoplex")
+	set(LAZYCPLEX_INCDIR "/Users/kibaekkim/Applications/IBM/ILOG/CPLEX_Studio1261/cplex/include/ilcplex")
+	set(LAZYCPLEX_LIB "-L/Users/kibaekkim/Applications/IBM/ILOG/CPLEX_Studio1261/cplex/lib/x86-64_osx/static_pic -lcplex -lm -lpthread")
 	ExternalProject_Add(Smi
-		DEPENDS scipoptsuite
 		PREFIX ${SMI_DIR}
 		DOWNLOAD_DIR ${EXTRA_DIR}
-		SVN_REPOSITORY https://projects.coin-or.org/svn/Smi/stable/0.95
+		SVN_REPOSITORY https://projects.coin-or.org/svn/Smi/releases/0.96.0
 		SVN_TRUST_CERT 1
 		UPDATE_COMMAND ""
 		SOURCE_DIR ${SMI_DIR}
-		CONFIGURE_COMMAND ${SMI_DIR}/configure --enable-static --disable-shared --with-soplex-incdir=${SOPLEX_DIR}/src --with-soplex-lib=${SMI_FLAGS} ADD_CXXFLAGS=-fPIC CXX=${CMAKE_CXX_COMPILER}
+		CONFIGURE_COMMAND ${SMI_DIR}/configure --enable-static --disable-shared --with-cplex-incdir=${LAZYCPLEX_INCDIR} --with-cplex-lib=${LAZYCPLEX_LIB} ADD_CXXFLAGS=-fPIC CXX=${CMAKE_CXX_COMPILER}
 		BINARY_DIR ${SMI_DIR}
 		BUILD_COMMAND make
 		INSTALL_COMMAND make install)
 	# SMI installation script does not copy SmiQuadratic.hpp. (their bug)
 	add_custom_command(TARGET Smi POST_BUILD COMMAND cp ${SMI_DIR}/Smi/src/SmiQuadratic.hpp ${SMI_DIR}/include/coin/)
 endif()
-
-#set(LAZYCPLEX_INCDIR "/opt/ibm/ILOG/CPLEX_Studio1261/cplex/include/ilcplex")
-#set(LAZYCPLEX_LIB "-L/opt/ibm/ILOG/CPLEX_Studio1261/cplex/lib/x86-64_linux/static_pic -lcplex -lm -lpthread")
-#set(SMI_FLAGS "-L${SOPLEX_DIR}/lib -lsoplex")
-#ExternalProject_Add(Smi
-#	DEPENDS scipoptsuite-3.1.1
-#	PREFIX ${SMI_DIR}
-#	DOWNLOAD_DIR ${EXTRA_DIR}
-#	SVN_REPOSITORY https://projects.coin-or.org/svn/Smi/stable/0.95
-#	SVN_TRUST_CERT 1
-#	UPDATE_COMMAND ""
-#	SOURCE_DIR ${SMI_DIR}
-#	CONFIGURE_COMMAND ${SMI_DIR}/configure --enable-static --disable-shared --with-cplex-incdir=${LAZYCPLEX_INCDIR} --with-cplex-lib=${LAZYCPLEX_LIB} --with-soplex-incdir=${SOPLEX_DIR}/src --with-soplex-lib=${SMI_FLAGS} ADD_CXXFLAGS=-fPIC CXX=${CMAKE_CXX_COMPILER}
-#	BINARY_DIR ${SMI_DIR}
-#	BUILD_COMMAND make
-#	INSTALL_COMMAND make install
-#)
 
 ##################################################
 # add include directories
@@ -236,9 +233,8 @@ set(DSP_INCLUDE_DIRS
 	src/SolverInterface
 	${LAZYCPLEX_INCDIR}
 	${OOQP_DIR}/include
-	${SCIP_DIR}/src
-	${SCIP_DIR}/src/scip
-	${SOPLEX_DIR}/src
+	${ALPS_DIR}/include/coin
+	${CBC_DIR}/include/coin
 	${SMI_DIR}/include/coin
 	${MPI_CXX_INCLUDE_PATH})
 if (MPI_CXX_FOUND)

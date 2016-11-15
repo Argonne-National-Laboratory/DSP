@@ -425,7 +425,7 @@ int DdMasterAtr::addCuts(bool possiblyDel)
 	if (nCutsAdded > 0)
 	{
 		//cuts.printCuts();
-		si_->addCuts(cuts);
+		si_->applyCuts(cuts);
 		is_updated_ = true;
 		CoinFillN(proved_optimality_, nworkers_, false);
 	}

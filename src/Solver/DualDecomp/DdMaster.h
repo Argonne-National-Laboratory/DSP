@@ -8,10 +8,9 @@
 #ifndef SRC_SOLVER_DUALDECOMP_DDMASTER_H_
 #define SRC_SOLVER_DUALDECOMP_DDMASTER_H_
 
-#include "Solver/DualDecomp/DdSolver.h"
-#include "SolverInterface/SolverInterface.h"
+#include "Solver/DecSolver.h"
 
-class DdMaster: public DdSolver {
+class DdMaster: public DecSolver {
 
 	friend class DdMW;
 	friend class DdMWSerial;
@@ -22,10 +21,9 @@ public:
 
 	/** constructor */
 	DdMaster(
-			DspParams *  par,    /**< parameter pointer */
 			DecModel *   model,  /**< model pointer */
+			DspParams *  par,    /**< parameter pointer */
 			DspMessage * message /**< message pointer */);
-			//int nworkers          /**< number of workers */);
 
 	/** destructor */
 	virtual ~DdMaster();
@@ -46,8 +44,6 @@ public:
 
 	const double * getLambda() {return lambda_;}
 
-	SolverInterface * getSiPtr() {return si_;}
-
 	double   getBestPrimalObjective() {return bestprimobj_;}
 	double   getBestDualObjective()   {return bestdualobj_;}
 	double * getBestPrimalSolution()  {return bestprimsol_;}
@@ -59,17 +55,12 @@ public:
 
 protected:
 
-	SolverInterface * si_; /**< solver interface */
-
 	double bestprimobj_;   /**< best primal objective value */
 	double bestdualobj_;   /**< best dual objective value */
 	double * bestprimsol_; /** best primal solution */
 	double * bestdualsol_; /** best dual solution */
-	double * lambda_; /**< lambda part of the solution */
-//	int nworkers_;       /**< number of workers */
+	double * lambda_;      /**< lambda part of the solution */
 
-	//int nsubprobs_;         /**< number of subproblems for the current worker */
-	//int * subindex_;        /**< array of subproblem indices */
 	double * subprimobj_;   /**< subproblem primal objective values */
 	double * subdualobj_;   /**< subproblem dual objective values */
 	double ** subsolution_; /**< subproblem solution */

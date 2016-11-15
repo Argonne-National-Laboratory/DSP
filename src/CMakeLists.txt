@@ -1,59 +1,26 @@
 include_directories(Model Solver Utility)
 
 set(DSP_SRC_FILES
-	Model/DecData.cpp
-	Model/DecDetModel.cpp
+	DspDriver.cpp
+	Model/BlkModel.cpp
+	Model/DecBlkModel.cpp
 	Model/DecTssModel.cpp
 	Model/DetModel.cpp
 	Model/StoModel.cpp
 	Model/TssModel.cpp
-	Solver/DecSolver.cpp
-	Solver/DspDriver.cpp
-	Solver/Benders/BdDriver.cpp
-	Solver/Benders/BdDriverSerial.cpp
-	Solver/Benders/BdMaster.cpp
-	Solver/Benders/BdMW.cpp
-	Solver/Benders/BdMWSerial.cpp
-	Solver/Benders/BdSub.cpp
-	Solver/Benders/BdWorker.cpp
-	Solver/Benders/SCIPconshdlrBenders.cpp
-	Solver/Deterministic/DeDriver.cpp
-	Solver/DualDecomp/DdDriver.cpp
-	Solver/DualDecomp/DdDriverSerial.cpp
-	Solver/DualDecomp/DdMaster.cpp
-	Solver/DualDecomp/DdMasterAtr.cpp
-	Solver/DualDecomp/DdMasterDsb.cpp
-	Solver/DualDecomp/DdMasterSubgrad.cpp
-	Solver/DualDecomp/DdMasterTr.cpp
-	Solver/DualDecomp/DdMW.cpp
-	Solver/DualDecomp/DdMWSerial.cpp
-	Solver/DualDecomp/DdSub.cpp
-	Solver/DualDecomp/DdWorker.cpp
-	Solver/DualDecomp/DdWorkerCG.cpp
-	Solver/DualDecomp/DdWorkerCGBd.cpp
-	Solver/DualDecomp/DdWorkerLB.cpp
-	Solver/DualDecomp/DdWorkerUB.cpp
-	Solver/DualDecomp/SCIPconshdlrBendersDd.cpp
+	Solver/DantzigWolfe/DwAlgo.cpp
+	Solver/DantzigWolfe/DwFeasPump.cpp
+	Solver/DantzigWolfe/DwMaster.cpp
+	Solver/DantzigWolfe/DwWorker.cpp
 	SolverInterface/OoqpEps.cpp
 	SolverInterface/OoqpStatus.cpp
-	SolverInterface/SCIPbranchruleLB.cpp
-	SolverInterface/SolverInterfaceClp.cpp
-	SolverInterface/SolverInterfaceOoqp.cpp
-	SolverInterface/SolverInterfaceOsi.cpp
-	SolverInterface/SolverInterfaceScip.cpp
-	SolverInterface/SolverInterfaceSpx.cpp
-#	SolverInterface/SolverInterfaceCpx.cpp
+	SolverInterface/OsiOoqpSolverInterface.cpp
+	TreeSearch/DspModel.cpp
+	TreeSearch/DspTreeNode.cpp
 	Utility/DspParams.cpp)
 if (MPI_CXX_FOUND)
 	set(DSP_SRC_FILES
 		${DSP_SRC_FILES}
-		Solver/Benders/BdDriverMpi.cpp
-		Solver/Benders/BdMWMpi.cpp
-		Solver/Benders/SCIPconshdlrBendersWorker.cpp
-		Solver/DualDecomp/DdDriverMpi.cpp
-		Solver/DualDecomp/DdMWAsync.cpp
-		Solver/DualDecomp/DdMWPara.cpp
-		Solver/DualDecomp/DdMWSync.cpp
 		Utility/DspMpi.cpp)
 endif()
 add_library(Dsp SHARED
@@ -75,15 +42,13 @@ set(DSP_LIBS
 	${SMI_DIR}/lib/libSmi.a
 	${SMI_DIR}/lib/libClp.a
 	${SMI_DIR}/lib/libOsiClp.a
-	${SMI_DIR}/lib/libOsiSpx.a
-#	${SMI_DIR}/lib/libOsiCpx.a
+	${CBC_DIR}/lib/libCgl.a
+	${CBC_DIR}/lib/libCbc.a
+	${CBC_DIR}/lib/libOsiCbc.a
+	${SMI_DIR}/lib/libOsiCpx.a
 	${SMI_DIR}/lib/libOsi.a
 	${SMI_DIR}/lib/libCoinUtils.a
-	${SCIP_DIR}/lib/libscip.a
-	${SCIP_DIR}/lib/libobjscip.a
-	${SCIP_DIR}/lib/liblpispx.a
-	${SCIP_DIR}/lib/libnlpi.cppad.a
-	${SOPLEX_DIR}/lib/libsoplex.a
+	${ALPS_DIR}/lib/libAlps.a
 	${OOQP_DIR}/lib/libooqpmehrotra.a
 	${OOQP_DIR}/lib/libooqpgondzio.a
 	${OOQP_DIR}/lib/libooqpgendense.a
@@ -92,7 +57,8 @@ set(DSP_LIBS
 	${OOQP_DIR}/lib/libooqpsparse.a
 	${OOQP_DIR}/lib/libooqpbase.a
 	${HSL_LIBS}
-	gfortran 
+	/Users/kibaekkim/Applications/IBM/ILOG/CPLEX_Studio1261/cplex/lib/x86-64_osx/static_pic/libcplex.a
+	gfortran
 	${BLAS_LIBRARIES}
 	${LAPACK_LIBRARIES}
 	${ZLIB_LIBRARIES}
