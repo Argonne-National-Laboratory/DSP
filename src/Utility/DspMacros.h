@@ -62,14 +62,17 @@
 #define BGN_TRY_CATCH try {
 
 #define END_TRY_CATCH(STMT)                                                                \
+	} catch (std::bad_alloc& ba) {                                                         \
+		std::cerr << "bad_alloc caught: " << ba.what() << std::endl;                       \
+		STMT                                                                               \
 	} catch (const char * str) {                                                           \
-		std::cout << str << std::endl;                                                     \
+		std::cerr << str << std::endl;                                                     \
 		STMT                                                                               \
 	} catch (std::exception & e) {                                                         \
-		std::cout << "Exception: " << e.what() << std::endl;                               \
+		std::cerr << "Exception: " << e.what() << std::endl;                               \
 		STMT                                                                               \
 	} catch (...) {                                                                        \
-		std::cout << "Exception occurred at " << __FILE__ << ":" << __LINE__ << std::endl; \
+		std::cerr << "Exception occurred at " << __FILE__ << ":" << __LINE__ << std::endl; \
 		STMT                                                                               \
 	}
 

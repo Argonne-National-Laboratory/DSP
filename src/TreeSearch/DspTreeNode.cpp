@@ -48,8 +48,8 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 	if (isRoot)
 		quality_ = -ALPS_OBJ_MAX;
 
-#ifdef DSP_DEBUG
-	if (depth_ > 100) {
+#ifdef DSP_DEBUG1
+	if (depth_ > 2) {
 		setStatus(AlpsNodeStatusFathomed);
 		return status;
 	}
@@ -69,7 +69,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 	solver->setBranchingObjects(desc->getBranchingObject());
 
 	/** TODO: set bound information */
-	//solver->setIterLimit(1);
+	//solver->setIterLimit(10);
 
 	/** set heuristics */
 	if (isRoot || gap > 0.1) {
@@ -86,7 +86,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 			setStatus(AlpsNodeStatusFathomed);
 			return AlpsReturnStatusErr;
 		}
-		//DSPdebugMessage("Bounding solution status: %d\n", solver->getStatus());
+		DSPdebugMessage("Bounding solution status: %d\n", solver->getStatus());
 
 		/** any heuristic solution */
 		if (solver->getBestPrimalObjective() < gUb) {
@@ -101,8 +101,10 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 			break;
 
 		/** turn off heuristics for resolve */
-		solver->setHeuristicRuns(false);
+		//solver->setHeuristicRuns(false);
 	}
+
+	DSPdebugMessage("Node selection type: %d\n", getKnowledgeBroker()->getNodeSelection()->getType());
 
 	switch (solver->getStatus()) {
 	case DSP_STAT_OPTIMAL:
@@ -164,6 +166,9 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 	std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > newNodes;
 	DspNodeDesc* node = NULL;
 
+	/** diving? */
+//	DSPdebugMessage("Diving? %s\n", diving_ ? "true" : "false");
+
 	/** add branching-up node */
 	node = new DspNodeDesc(model, 1, branchingUp_);
 	newNodes.push_back(CoinMakeTriple(
@@ -190,5 +195,9 @@ DspTreeNode* DspTreeNode::createNewTreeNode(AlpsNodeDesc*& desc) const {
 	/** create a new node */
 	DspTreeNode* node = new DspTreeNode();
 	node->desc_ = desc;
+
+	/** diving? */
+//	DSPdebugMessage("Diving? %s\n", diving_ ? "true" : "false");
+
 	return node;
 }

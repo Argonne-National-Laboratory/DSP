@@ -14,98 +14,29 @@
 /** Dsp */
 #include "Model/TssModel.h"
 #include "Solver/DantzigWolfe/DwFeasPump.h"
+#include "Solver/DantzigWolfe/DwMaster.h"
 
-DwFeasPump::DwFeasPump(
-		DecModel* model, /**< model pointer */
-		DspParams* par, /**< parameters */
-		DspMessage* message):
-DwAlgo(model, par, message){
-#define FREE_MEMORY \
-	FREE_PTR(org_mat); \
-	FREE_ARRAY_PTR(org_clbd); \
-	FREE_ARRAY_PTR(org_cubd); \
-	FREE_ARRAY_PTR(org_obj);  \
-	FREE_ARRAY_PTR(org_rlbd); \
-	FREE_ARRAY_PTR(org_rubd); \
-	FREE_ARRAY_PTR(org_ctype);
-
-	CoinPackedMatrix* org_mat = NULL;
-	double* org_clbd = NULL;
-	double* org_cubd = NULL;
-	double* org_obj = NULL;
-	char* org_ctype = NULL;
-	double* org_rlbd = NULL;
-	double* org_rubd = NULL;
-
-	BGN_TRY_CATCH
+DwFeasPump::DwFeasPump(DwMaster* master):
+DwAlgo(master->getModelPtr(), master->getParPtr(), master->getMessagePtr()) {
 
 	/** initialize random seed */
 	srand(1);
 
-	/** create subproblem solver */
-    worker_ = new DwWorker(model_, par_, message_);
+	BGN_TRY_CATCH
 
-    if (model_->isStochastic()) {
-    	DSPdebugMessage("Loading stochastic model.\n");
-
-    	/** get DE model */
-    	DSP_RTN_CHECK_THROW(model_->getFullModel(org_mat, org_clbd, org_cubd, org_ctype, org_obj, org_rlbd, org_rubd));
-
-    	int nscen = model_->getNumSubproblems();
-    	int ncols_first_stage = model_->getNumCouplingCols();
-    	int ncols = org_mat->getNumCols() + ncols_first_stage * (nscen - 1);
-    	const double* probability = dynamic_cast<TssModel*>(model_)->getProbability();
-
-    	org_mat_ = new CoinPackedMatrix(org_mat->isColOrdered(), 0, 0);
-    	org_mat_->setDimensions(0, ncols);
-
-    	/** add non-anticipativity constraints */
-    	int indices[2];
-    	double elements[] = {1.0, -1.0};
-    	for (int i = 0; i < nscen; ++i) {
-    		if (i < nscen - 1) {
-        		for (int j = 0; j < ncols_first_stage; ++j) {
-        			indices[0] = i * ncols_first_stage + j;
-        			indices[1] = (i+1) * ncols_first_stage + j;
-            		org_mat_->appendRow(2, indices, elements);
-        		}
-    		} else {
-        		for (int j = 0; j < ncols_first_stage; ++j) {
-        			indices[0] = i * ncols_first_stage + j;
-        			indices[1] = j;
-            		org_mat_->appendRow(2, indices, elements);
-        		}
-    		}
-    	}
-    	DSPdebug(org_mat_->verifyMtx(4));
-
-    	org_clbd_ = new double [ncols];
-    	org_cubd_ = new double [ncols];
-    	org_ctype_ = new char [ncols];
-    	org_obj_ = new double [ncols];
-    	org_rlbd_ = new double [org_mat_->getNumRows()];
-    	org_rubd_ = new double [org_mat_->getNumRows()];
-		for (int s = 0; s < nscen; ++s) {
-			CoinCopyN(org_clbd, ncols_first_stage, org_clbd_ + s * ncols_first_stage);
-			CoinCopyN(org_cubd, ncols_first_stage, org_cubd_ + s * ncols_first_stage);
-			CoinCopyN(org_ctype, ncols_first_stage, org_ctype_ + s * ncols_first_stage);
-	    	for (int j = 0; j < ncols_first_stage; ++j)
-	    		org_obj_[s * ncols_first_stage + j] = org_obj[j] * probability[s];
-		}
-		CoinCopyN(org_clbd + ncols_first_stage,  ncols - nscen * ncols_first_stage,
-				org_clbd_ + nscen * ncols_first_stage);
-		CoinCopyN(org_cubd + ncols_first_stage,  ncols - nscen * ncols_first_stage,
-				org_cubd_ + nscen * ncols_first_stage);
-		CoinCopyN(org_ctype + ncols_first_stage, ncols - nscen * ncols_first_stage,
-				org_ctype_ + nscen * ncols_first_stage);
-		CoinZeroN(org_obj_ + nscen * ncols_first_stage, ncols - nscen * ncols_first_stage);
-		CoinZeroN(org_rlbd_, org_mat_->getNumRows());
-		CoinZeroN(org_rubd_, org_mat_->getNumRows());
-    } else {
-    	/** retrieve the original master problem structure */
-    	model_->decompose(0, NULL, 0, NULL, NULL, NULL,
-    			org_mat_, org_clbd_, org_cubd_, org_ctype_, org_obj_, org_rlbd_, org_rubd_);
-    }
+	org_mat_ = new CoinPackedMatrix(*master->org_mat_);
+	org_clbd_  = new double [org_mat_->getNumCols()];
+	org_cubd_  = new double [org_mat_->getNumCols()];
+	org_ctype_ = new char [org_mat_->getNumCols()];
+	org_obj_   = new double [org_mat_->getNumCols()];
+	org_rlbd_  = new double [org_mat_->getNumRows()];
+	org_rubd_  = new double [org_mat_->getNumRows()];
+	CoinCopyN(master->org_clbd_, org_mat_->getNumCols(), org_clbd_);
+	CoinCopyN(master->org_cubd_, org_mat_->getNumCols(), org_cubd_);
+	CoinCopyN(master->org_ctype_, org_mat_->getNumCols(), org_ctype_);
+	CoinCopyN(master->org_obj_, org_mat_->getNumCols(), org_obj_);
+	CoinCopyN(master->org_rlbd_, org_mat_->getNumRows(), org_rlbd_);
+	CoinCopyN(master->org_rubd_, org_mat_->getNumRows(), org_rubd_);
 
 	ncols_orig_ = org_mat_->getNumCols(); /**< number of columns in the original master */
 	nrows_orig_ = org_mat_->getNumRows(); /**< number of rows in the original master */
@@ -121,48 +52,16 @@ DwAlgo(model, par, message){
 
 	/** number of rows in the restricted master */
 	nrows_ = nrows_orig_ + nrows_branch_ + nrows_conv_;
-
 	DSPdebugMessage("nrwos_ %d, nrows_orig_ %d, nrows_branch_ %d, nrows_conv_ %d\n",
 			nrows_, nrows_orig_, nrows_branch_, nrows_conv_);
 
-	/** maps each subproblem to branching constraints */
-	if (model_->isStochastic()) {
-		TssModel* tssmodel = dynamic_cast<TssModel*>(model_);
-		for (int s = 0; s < tssmodel->getNumScenarios(); ++s) {
-			std::vector<int> ccols;
-			/** first-stage variables */
-			for (int j = 0; j < tssmodel->getNumCols(0); ++j) {
-				int ccol = s * tssmodel->getNumCols(0) + j;
-				if (org_ctype_[ccol] != 'C')
-					ccols.push_back(nrows_orig_ + ccol);
-			}
-			/** second-stage variables */
-			for (int j = 0; j < tssmodel->getNumCols(1); ++j) {
-				int ccol = tssmodel->getNumScenarios() * tssmodel->getNumCols(0) + s * tssmodel->getNumCols(1) + j;
-				if (org_ctype_[ccol] != 'C')
-					ccols.push_back(nrows_orig_ + ccol);
-			}
-			subproblem_to_branch_rows_[s] = ccols;
-		}
-	} else {
-		for (int s = 0; s < model_->getNumSubproblems(); ++s) {
-			std::vector<int> ccols;
-			for (int j = 0; j < model_->getNumSubproblemCouplingCols(s); ++j) {
-				int ccol = model_->getSubproblemCouplingColIndices(s)[j];
-				if (org_ctype_[ccol] != 'C')
-					ccols.push_back(nrows_orig_ + ccol);
-			}
-			subproblem_to_branch_rows_[s] = ccols;
-		}
-	}
+	/** create subproblem solver */
+    worker_ = new DwWorker(model_, par_, message_);
 
 	/** create problem */
 	DSP_RTN_CHECK(createProblem());
 
-	END_TRY_CATCH(FREE_MEMORY)
-
-	FREE_MEMORY
-#undef FREE_MEMORY
+	END_TRY_CATCH(;)
 }
 
 DSP_RTN_CODE DwFeasPump::setBranchRowBounds(

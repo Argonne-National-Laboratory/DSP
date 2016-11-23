@@ -7,6 +7,7 @@
 
 #include "DspDriver.h"
 #include "Solver/DantzigWolfe/DwMaster.h"
+#include "Solver/DantzigWolfe/DwMasterTr.h"
 
 DspDriver::DspDriver(DecModel * model, DspParams * par):
 		model_(model),
@@ -39,7 +40,7 @@ DspDriver::~DspDriver() {
 DSP_RTN_CODE DspDriver::init() {
 
 	/** TODO: Parameterize what to create */
-	solver_ = new DwMaster(model_, par_, message_);
+	solver_ = new DwMasterTr(model_, par_, message_);
 	DSP_RTN_CHECK_RTN_CODE(solver_->init());
 
 	alps_ = new DspModel(solver_);

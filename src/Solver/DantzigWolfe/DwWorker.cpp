@@ -7,6 +7,7 @@
 
 //#define DSP_DEBUG
 
+#include "cplex.h"
 /** Coin */
 #include "OsiCbcSolverInterface.hpp"
 #include "OsiCpxSolverInterface.hpp"
@@ -25,11 +26,6 @@ DwWorker::DwWorker(DecModel * model, DspParams * par, DspMessage * message) :
 		message_(message),
 		si_(NULL),
 		sub_objs_(NULL) {
-	double* clbd = NULL;
-	double* cubd = NULL;
-	char* ctype  = NULL;
-	double* rlbd = NULL;
-	double* rubd = NULL;
 
 	/** parameters */
 	parProcIdxSize_ = par_->getIntPtrParamSize("ARR_PROC_IDX");
@@ -38,13 +34,6 @@ DwWorker::DwWorker(DecModel * model, DspParams * par, DspMessage * message) :
 
 	/** create subproblem solver */
 	//sub_ = new DwSub();
-
-	/** free memory */
-	FREE_ARRAY_PTR(clbd);
-	FREE_ARRAY_PTR(cubd);
-	FREE_ARRAY_PTR(ctype);
-	FREE_ARRAY_PTR(rlbd);
-	FREE_ARRAY_PTR(rubd);
 
 	/** create solver interface */
 	si_ = new OsiSolverInterface* [parProcIdxSize_];
@@ -144,7 +133,6 @@ DSP_RTN_CODE DwWorker::createSubproblems() {
 		//dynamic_cast<SI*>(si_[s])->getModelPtr()->setLogLevel(1);
 
 		si_[s]->messageHandler()->setLogLevel(0);
-		//DSPdebug(si_[s]->messageHandler()->setLogLevel(4));
 		si_[s]->initialSolve();
 
 		if (nintegers > 0)
@@ -395,6 +383,9 @@ DSP_RTN_CODE DwWorker::solveSubproblems() {
 
 		/** do branch-and-bound if there are integer variables */
 		if (si_[s]->getNumIntegers() > 0 && si_[s]->isProvenOptimal()) {
+//			OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_[s]);
+//			if (cpx)
+//				CPXsetdblparam(cpx->getEnvironmentPtr(), CPX_PARAM_TILIM, 300);
 			/** solve */
 			si_[s]->branchAndBound();
 //			DSPdebugMessage("Subproblem(%d) solution:\n", parProcIdx_[s]);

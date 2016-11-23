@@ -43,12 +43,6 @@ protected:
     /** Run heuristics */
     virtual DSP_RTN_CODE heuristics();
 
-    /** Run diving heuristic */
-    DSP_RTN_CODE hDiving();
-
-    /** Run feasibility pump */
-    DSP_RTN_CODE hFeasPump();
-
     /** Solve the master with integrality */
     DSP_RTN_CODE solveMip();
 

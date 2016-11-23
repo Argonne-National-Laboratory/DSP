@@ -10,13 +10,13 @@
 
 #include "Solver/DantzigWolfe/DwAlgo.h"
 
+class DwMaster;
+
 class DwFeasPump: public DwAlgo {
 public:
+
     /** default constructor */
-	DwFeasPump(
-			DecModel *   model,  /**< model pointer */
-            DspParams *  par,    /**< parameters */
-            DspMessage * message /**< message pointer */);
+	DwFeasPump(DwMaster* master);
 
     /** default destructor */
 	virtual ~DwFeasPump() {

@@ -11,6 +11,7 @@ set(DSP_SRC_FILES
 	Solver/DantzigWolfe/DwAlgo.cpp
 	Solver/DantzigWolfe/DwFeasPump.cpp
 	Solver/DantzigWolfe/DwMaster.cpp
+	Solver/DantzigWolfe/DwMasterTr.cpp
 	Solver/DantzigWolfe/DwWorker.cpp
 	SolverInterface/OoqpEps.cpp
 	SolverInterface/OoqpStatus.cpp

@@ -49,9 +49,9 @@ bool DspModel::fathomAllNodes() {
 DSP_RTN_CODE DspModel::solve() {
 	BGN_TRY_CATCH
 
+	AlpsPar()->setEntry(AlpsParams::searchStrategy, 3);
+	AlpsPar()->setEntry(AlpsParams::timeLimit, 300);
 	AlpsKnowledgeBrokerSerial alpsBroker(0, NULL, *this);
-	alpsBroker.setNodeSelection(new AlpsNodeSelectionDepth);
-	alpsBroker.setSubTreeSelection(new AlpsTreeSelectionDepth);
     alpsBroker.search(this);
 
 //    DspNodeSolution* solution = dynamic_cast<DspNodeSolution*>(alpsBroker.getBestKnowledge(AlpsKnowledgeTypeSolution).first);

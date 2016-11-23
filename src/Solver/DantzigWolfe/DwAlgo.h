@@ -70,6 +70,11 @@ protected:
     /** guts of solve */
     virtual DSP_RTN_CODE gutsOfSolve();
 
+    /** calculate piA */
+    virtual DSP_RTN_CODE calculatePiA(
+    		const double* price, /**< [in] price */
+			double*& piA         /**< [out] pi^T A */);
+
     /** Add columns */
     virtual DSP_RTN_CODE addCols(
     		const double* price,                  /**< [in] price */
@@ -87,6 +92,11 @@ protected:
 			std::vector<double>& objs, /**< [in] subproblem objective values */
 			double& lb                 /**< [out] lower bound */);
 
+    /** update master */
+    virtual DSP_RTN_CODE updateModel(
+    		const double* price, /**< [in] price */
+			double curLb         /**< [in] current lower bound */);
+
     /** get warm-start information */
     virtual DSP_RTN_CODE getWarmStartInfo(
     		std::vector<double>& sol, /**< [out] current solution */
@@ -98,13 +108,15 @@ protected:
     		CoinWarmStartBasis*& ws   /**< [out] warmstart basis */);
 
     /** termination test */
-    virtual bool terminationTest(int itercnt, double relgap);
+    virtual bool terminationTest(int nnewcols, int itercnt, double relgap);
 
     /** termination test after column generation*/
     virtual bool terminationTestColgen(std::vector<int>& statuses);
 
     /** run heuristics */
     virtual DSP_RTN_CODE heuristics() {return DSP_RTN_OK;}
+
+    bool useCpxBarrier_;
 
     int phase_; /**< phase 1 or 2? */
     std::vector<CoinPackedVector*> auxcols_;
@@ -126,8 +138,10 @@ protected:
     //@}
 
     DwWorker* worker_; /**< subproblem solver */
-    std::map<int,std::vector<int>> subproblem_to_branch_rows_; /**< maps each subproblem to branching rows */
 
+    std::vector<DwCol*> cols_generated_; /**< columns generated */
+
+public:
     /**@name original master problem data */
     CoinPackedMatrix* org_mat_; /**< constraint matrix */
     double* org_clbd_;
@@ -136,8 +150,6 @@ protected:
     char* org_ctype_;
     double* org_rlbd_;
     double* org_rubd_;
-
-    std::vector<DwCol*> cols_generated_; /**< columns generated */
 };
 
 #endif /* SRC_SOLVER_DANTZIGWOLFE_DWALGO_H_ */

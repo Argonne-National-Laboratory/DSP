@@ -34,12 +34,6 @@ DSP_RTN_CODE DwMaster::init() {
 
 	BGN_TRY_CATCH
 
-	/** feasibility pump solver */
-	fpump_ = new DwFeasPump(model_, par_, message_);
-
-	/** subproblem solver */
-    worker_ = new DwWorker(model_, par_, message_);
-
     if (model_->isStochastic()) {
     	DSPdebugMessage("Loading stochastic model.\n");
 
@@ -123,37 +117,11 @@ DSP_RTN_CODE DwMaster::init() {
 	DSPdebugMessage("nrwos_ %d, nrows_orig_ %d, nrows_branch_ %d, nrows_conv_ %d\n",
 			nrows_, nrows_orig_, nrows_branch_, nrows_conv_);
 
-#if 0
-	/** maps each subproblem to branching constraints */
-	if (model_->isStochastic()) {
-		for (int s = 0; s < tss->getNumScenarios(); ++s) {
-			std::vector<int> ccols;
-			/** first-stage variables */
-			for (int j = 0; j < tss->getNumCols(0); ++j) {
-				int ccol = s * tss->getNumCols(0) + j;
-				if (org_ctype_[ccol] != 'C')
-					ccols.push_back(ccol);
-			}
-			/** second-stage variables */
-			for (int j = 0; j < tss->getNumCols(1); ++j) {
-				int ccol = tss->getNumScenarios() * tss->getNumCols(0) + s * tss->getNumCols(1) + j;
-				if (org_ctype_[ccol] != 'C')
-					ccols.push_back(ccol);
-			}
-			subproblem_to_branch_rows_[s] = ccols;
-		}
-	} else {
-		for (int s = 0; s < model_->getNumSubproblems(); ++s) {
-			std::vector<int> ccols;
-			for (int j = 0; j < model_->getNumSubproblemCouplingCols(s); ++j) {
-				int ccol = model_->getSubproblemCouplingColIndices(s)[j];
-				if (org_ctype_[ccol] != 'C')
-					ccols.push_back(ccol);
-			}
-			subproblem_to_branch_rows_[s] = ccols;
-		}
-	}
-#endif
+	/** feasibility pump solver */
+	fpump_ = new DwFeasPump(this);
+
+	/** subproblem solver */
+    worker_ = new DwWorker(model_, par_, message_);
 
 	/** generate initial columns */
 	DSP_RTN_CHECK_RTN_CODE(initialColumns());
@@ -177,6 +145,8 @@ DSP_RTN_CODE DwMaster::createProblem() {
 	FREE_ARRAY_PTR(cubd)  \
 	FREE_ARRAY_PTR(rlbd)  \
 	FREE_ARRAY_PTR(rubd)
+
+	OsiCpxSolverInterface* cpx = NULL;
 
 	/** master problem */
 	CoinPackedMatrix * mat = NULL;
@@ -230,6 +200,7 @@ DSP_RTN_CODE DwMaster::createProblem() {
 	si_ = new OsiCpxSolverInterface();
 	//dynamic_cast<OsiClpSolverInterface*>(si_)->getModelPtr()->setLogLevel(0);
 	si_->messageHandler()->logLevel(0);
+	//si_->passInMessageHandler(si_->messageHandler());
 	//DSPdebug(si_->messageHandler()->logLevel(4));
 
 	/** load problem data */
@@ -266,9 +237,20 @@ DSP_RTN_CODE DwMaster::createProblem() {
 	DSPdebug(si_->writeMps("master"));
 
 	/** set hint parameters */
-	si_->setHintParam(OsiDoPresolveInResolve, true);
-	si_->setHintParam(OsiDoDualInResolve, false);
-	si_->setHintParam(OsiDoInBranchAndCut, false);
+	useCpxBarrier_ = false;
+	cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
+
+	if (useCpxBarrier_ && cpx) {
+		/** use barrier */
+		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_LPMETHOD, CPX_ALG_BARRIER);
+		/** no crossover */
+		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARCROSSALG, -1);
+		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARDISPLAY, 0);
+	} else {
+		si_->setHintParam(OsiDoPresolveInResolve, true);
+		si_->setHintParam(OsiDoDualInResolve, false);
+		si_->setHintParam(OsiDoInBranchAndCut, false);
+	}
 
 	/** initial solve */
 	si_->initialSolve();
@@ -305,7 +287,7 @@ DSP_RTN_CODE DwMaster::createProblem() {
 }
 
 DSP_RTN_CODE DwMaster::heuristics() {
-	return DSP_RTN_OK;
+
 	BGN_TRY_CATCH
 
 	if (phase_ == 2 && runHeuristics_) {
@@ -334,70 +316,6 @@ DSP_RTN_CODE DwMaster::heuristics() {
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
-}
-
-DSP_RTN_CODE DwMaster::hDiving() {
-#define FREE_MEMORY \
-	FREE_ARRAY_PTR(rlbd) \
-	FREE_ARRAY_PTR(rubd)
-
-	/** original row bounds for branching constraints */
-	double* rlbd = NULL;
-	double* rubd = NULL;
-
-	double inttol = 1.0e-8; /**< integer tolerance */
-	double minfrac = 0.5; /**< minimum fractional value */
-	int minfracind; /**< minimum fractional indices */
-	double newlbd, newubd; /**< new bounds */
-
-	BGN_TRY_CATCH
-
-	/** copy bounds */
-	rlbd = new double [nrows_branch_];
-	rubd = new double [nrows_branch_];
-	CoinCopyN(si_->getRowLower() + nrows_orig_, nrows_branch_, rlbd);
-	CoinCopyN(si_->getRowUpper() + nrows_orig_, nrows_branch_, rubd);
-
-	/** find lowest fractional variable */
-	minfracind = -1;
-	for (int i = 0; i < nrows_branch_; ++i) {
-		double x = si_->getRowActivity()[nrows_orig_+i];
-		double frac = fabs(x - floor(x + 0.5));
-		if (frac < minfrac && frac > inttol) {
-			minfrac = frac;
-			minfracind = i;
-			if (frac - floor(frac) < 0.5) {
-				newlbd = si_->getRowLower()[nrows_orig_+i];
-				newubd = floor(frac);
-			} else {
-				newlbd = ceil(frac);
-				newubd = si_->getRowUpper()[nrows_orig_+i];
-			}
-		}
-	}
-
-	if (minfracind > -1) {
-		/** bound variable */
-		si_->setRowBounds(nrows_orig_ + minfracind, newlbd, newubd);
-		worker_->setColBounds(branch_row_to_col_[nrows_orig_+minfracind], newlbd, newubd);
-
-		/** resolve */
-	} else {
-		/** found integer variable */
-	}
-
-	/** restore bounds */
-	for (int i = 0; i < nrows_branch_; ++i) {
-		si_->setRowBounds(nrows_orig_ + i, rlbd[i], rubd[i]);
-		worker_->setColBounds(branch_row_to_col_[nrows_orig_+i], rlbd[i], rubd[i]);
-	}
-
-	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
-
-	FREE_MEMORY
-
-	return DSP_RTN_OK;
-#undef FREE_MEMORY
 }
 
 DSP_RTN_CODE DwMaster::solveMip() {
@@ -478,15 +396,49 @@ bool DwMaster::chooseBranchingObjects(
 	FREE_PTR(branchingUp)
 	FREE_PTR(branchingDn)
 
-	/** most fractional value */
-	for (unsigned j = 0; j < nrows_branch_; ++j) {
-		x = Ax[nrows_orig_ + j];
-		//DSPdebugMessage("Checking integrality: row %d, val %e\n", nrows_orig_ + j, x);
-		dist = fabs(x - floor(x + 0.5));
-		if (dist > maxdist) {
-			maxdist = dist;
-			branchingIndex = nrows_orig_ + j;
-			branchingValue = x;
+	if (model_->isStochastic()) {
+		TssModel* tss = dynamic_cast<TssModel*>(model_);
+
+		/** most fractional value */
+		for (unsigned j = 0; j < nrows_branch_; ++j) {
+			if (branch_row_to_col_[nrows_orig_+j] < tss->getNumScenarios() * tss->getNumCols(0)) {
+				x = Ax[nrows_orig_ + j];
+				//DSPdebugMessage("Checking integrality: row %d, val %e\n", nrows_orig_ + j, x);
+				dist = fabs(x - floor(x + 0.5));
+				if (dist > maxdist) {
+					maxdist = dist;
+					branchingIndex = nrows_orig_ + j;
+					branchingValue = x;
+				}
+			}
+		}
+
+		if (branchingIndex > -1) {
+			/** most fractional value */
+			for (unsigned j = 0; j < nrows_branch_; ++j) {
+				if (branch_row_to_col_[nrows_orig_+j] >= tss->getNumScenarios() * tss->getNumCols(0)) {
+					x = Ax[nrows_orig_ + j];
+					//DSPdebugMessage("Checking integrality: row %d, val %e\n", nrows_orig_ + j, x);
+					dist = fabs(x - floor(x + 0.5));
+					if (dist > maxdist) {
+						maxdist = dist;
+						branchingIndex = nrows_orig_ + j;
+						branchingValue = x;
+					}
+				}
+			}
+		}
+	} else {
+		/** most fractional value */
+		for (unsigned j = 0; j < nrows_branch_; ++j) {
+			x = Ax[nrows_orig_ + j];
+			//DSPdebugMessage("Checking integrality: row %d, val %e\n", nrows_orig_ + j, x);
+			dist = fabs(x - floor(x + 0.5));
+			if (dist > maxdist) {
+				maxdist = dist;
+				branchingIndex = nrows_orig_ + j;
+				branchingValue = x;
+			}
 		}
 	}
 
