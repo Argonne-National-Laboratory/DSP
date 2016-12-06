@@ -19,7 +19,8 @@ public:
 		obj_(obj),
 		lb_(lb),
 		ub_(ub),
-		active_(true) {
+		active_(true),
+		age_(0) {
 		/** that's it */
 	}
 
@@ -33,6 +34,7 @@ public:
 	double lb_;
 	double ub_;
 	bool active_;
+	int age_;
 };
 
 

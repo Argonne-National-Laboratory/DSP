@@ -230,11 +230,13 @@ DSP_RTN_CODE DecBlkModel::copySubprob(
 	CoinCopyN(sub->getObj(), sub->getNumCols(), obj);
 	CoinCopyN(sub->getRowLower(), sub->getNumRows(), rlbd);
 	CoinCopyN(sub->getRowUpper(), sub->getNumRows(), rubd);
-	DSPdebug({printf("clbd:\n");DspMessage::printArray(sub->getNumCols(), sub->getColLower());});
-	DSPdebug({printf("cubd:\n");DspMessage::printArray(sub->getNumCols(), sub->getColUpper());});
-	DSPdebug({printf("obj:\n");DspMessage::printArray(sub->getNumCols(), sub->getObj());});
-	DSPdebug({printf("rlbd:\n");DspMessage::printArray(sub->getNumRows(), sub->getRowLower());});
-	DSPdebug({printf("rubd:\n");DspMessage::printArray(sub->getNumRows(), sub->getRowUpper());});
+#ifdef DSP_DEBUG1
+	printf("clbd:\n"); DspMessage::printArray(sub->getNumCols(), sub->getColLower());
+	printf("cubd:\n"); DspMessage::printArray(sub->getNumCols(), sub->getColUpper());
+	printf("obj:\n");  DspMessage::printArray(sub->getNumCols(), sub->getObj());
+	printf("rlbd:\n"); DspMessage::printArray(sub->getNumRows(), sub->getRowLower());
+	printf("rubd:\n"); DspMessage::printArray(sub->getNumRows(), sub->getRowUpper());
+#endif
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 

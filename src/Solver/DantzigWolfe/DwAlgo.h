@@ -36,10 +36,8 @@
  */
 class DwAlgo: public DecSolver {
 public:
-    /** default constructor */
-	DwAlgo(DecModel *   model,  /**< model pointer */
-           DspParams *  par,    /**< parameters */
-           DspMessage * message /**< message pointer */);
+    /** constructor with worker */
+	DwAlgo(DwWorker* worker);
 
     /** default destructor */
 	virtual ~DwAlgo();
@@ -69,6 +67,13 @@ protected:
 
     /** guts of solve */
     virtual DSP_RTN_CODE gutsOfSolve();
+
+    /** generate columns */
+    virtual DSP_RTN_CODE generateCols(
+    		const double* price, /**< [in] price */
+			double*& piA,        /**< [out] pi^T A */
+			double& lb,          /**< [out] lower bound (only for phase 2) */
+			int& ncols           /**< [out] number of columns generated */);
 
     /** calculate piA */
     virtual DSP_RTN_CODE calculatePiA(
@@ -122,14 +127,6 @@ protected:
     std::vector<CoinPackedVector*> auxcols_;
     std::vector<int> auxcolindices_;
 
-    int ncols_orig_; /**< number of columns in the original master */
-
-    int nrows_;        /**< number of rows */
-    int nrows_orig_;   /**< number of rows in the original master */
-    int nrows_branch_; /**< number of rows representing integer columns in the original master */
-    int nrows_conv_;   /**< number of rows representing the convexification constraints */
-    std::map<int,int> branch_row_to_col_; /**< maps each branching row to column in the original master */
-
     /**@name original row bounds of the branching constraints,
      * which is equivalent to the original integer column bounds. */
     //@{
@@ -142,6 +139,15 @@ protected:
     std::vector<DwCol*> cols_generated_; /**< columns generated */
 
 public:
+
+    int ncols_orig_; /**< number of columns in the original master */
+
+    int nrows_;        /**< number of rows */
+    int nrows_orig_;   /**< number of rows in the original master */
+    int nrows_branch_; /**< number of rows representing integer columns in the original master */
+    int nrows_conv_;   /**< number of rows representing the convexification constraints */
+    std::map<int,int> branch_row_to_col_; /**< maps each branching row to column in the original master */
+
     /**@name original master problem data */
     CoinPackedMatrix* org_mat_; /**< constraint matrix */
     double* org_clbd_;

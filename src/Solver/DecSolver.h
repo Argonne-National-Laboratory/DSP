@@ -108,14 +108,14 @@ public:
 	/** get best primal objective */
 	virtual double getBestPrimalObjective() {return bestprimobj_;}
 
-	/** get best primal objective */
-	virtual void setBestPrimalObjective(double primobj) {bestprimobj_ = primobj;}
-
 	/** get primal objective */
 	virtual double getPrimalObjective() {return primobj_;}
 
 	/** get dual objective */
 	virtual double getDualObjective() {return dualobj_;}
+
+	/** get log level */
+	virtual int getLogLevel() {return message_->logLevel_;}
 
 	/** get model pointer */
 	virtual DecModel * getModelPtr() {return model_;}
@@ -143,6 +143,9 @@ public:
 			si_->setColBounds(j, clbd[j], cubd[j]);
 	}
 
+	/** set best primal objective */
+	virtual void setBestPrimalObjective(double primobj) {bestprimobj_ = primobj;}
+
 	/** set primal objective */
 	virtual void setPrimalObjective(double primobj) {primobj_=primobj;}
 
@@ -157,6 +160,9 @@ public:
 
 	/** set heuristic runs on/off */
 	virtual void setHeuristicRuns(bool on) {runHeuristics_ = on;}
+
+	/** set log level */
+	virtual void setLogLevel(int level) {message_->logLevel_ = level;}
 
 	//@}
 

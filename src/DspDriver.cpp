@@ -6,8 +6,7 @@
  */
 
 #include "DspDriver.h"
-#include "Solver/DantzigWolfe/DwMaster.h"
-#include "Solver/DantzigWolfe/DwMasterTr.h"
+#include "Solver/DantzigWolfe/DwSolverSerial.h"
 
 DspDriver::DspDriver(DecModel * model, DspParams * par):
 		model_(model),
@@ -38,23 +37,29 @@ DspDriver::~DspDriver() {
 }
 
 DSP_RTN_CODE DspDriver::init() {
+	BGN_TRY_CATCH
 
-	/** TODO: Parameterize what to create */
-	solver_ = new DwMasterTr(model_, par_, message_);
+	solver_ = new DwSolverSerial(model_, par_, message_);
 	DSP_RTN_CHECK_RTN_CODE(solver_->init());
 
+	/** create an Alps model */
 	alps_ = new DspModel(solver_);
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
 }
 
 DSP_RTN_CODE DspDriver::run() {
+	BGN_TRY_CATCH
 	DSP_RTN_CHECK_RTN_CODE(alps_->solve());
-	//solver_->solve();
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;
 }
 
 DSP_RTN_CODE DspDriver::finalize() {
-	solver_->finalize();
+	BGN_TRY_CATCH
+	DSP_RTN_CHECK_RTN_CODE(solver_->finalize());
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;
 }

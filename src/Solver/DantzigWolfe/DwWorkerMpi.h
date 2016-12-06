@@ -25,7 +25,7 @@ public:
 	virtual ~DwWorkerMpi();
 
 	/** generate variables */
-	DSP_RTN_CODE generateCols(
+	virtual DSP_RTN_CODE generateCols(
 			int phase,                           /**< [in] phase of the master */
 			const double* piA,                   /**< [in] piA */
 			std::vector<int>& indices,           /**< [out] subproblem indices */
@@ -34,20 +34,18 @@ public:
 			std::vector<double>& objs,           /**< [out] subproblem objective values */
 			std::vector<CoinPackedVector*>& sols /**< [out] subproblem coupling column solutions */);
 
-	/** set column lower bounds */
-	void setColBounds(int j, double lb, double ub);
+	/** set column bounds */
+	virtual void setColBounds(int size, const int* indices, const double* lbs, const double* ubs);
 
-private:
+	/** In this function, non-root processes receive signals
+	 * from the root process and do proper processing. */
+	DSP_RTN_CODE receiver();
 
 	enum {
 		sig_generateCols = 0,
 		sig_setColBounds,
 		sig_terminate
 	};
-
-	/** In this function, non-root processes receive signals
-	 * from the root process and do proper processing. */
-	DSP_RTN_CODE coordinator();
 
 private:
 
@@ -57,8 +55,6 @@ private:
 
 	int npiA_; /**< size of piA vector */
 	double* piA_; /**< local piA vector */
-
-	int nsubprobs_; /**< number of subproblems */
 };
 
 #endif /* SRC_SOLVER_DANTZIGWOLFE_DWWORKERMPI_H_ */

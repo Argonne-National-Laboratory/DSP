@@ -32,6 +32,9 @@ DwWorker::DwWorker(DecModel * model, DspParams * par, DspMessage * message) :
 	parProcIdx_     = par_->getIntPtrParam("ARR_PROC_IDX");
 	DSPdebugMessage("Created parameters, DwWorker.\n");
 
+	/** number of total subproblems */
+	nsubprobs_ = parProcIdxSize_;
+
 	/** create subproblem solver */
 	//sub_ = new DwSub();
 
@@ -138,6 +141,10 @@ DSP_RTN_CODE DwWorker::createSubproblems() {
 		if (nintegers > 0)
 			dynamic_cast<OsiCpxSolverInterface*>(si_[s])->switchToMIP();
 
+		OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_[s]);
+		if (cpx)
+			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, 1);
+
 #ifdef DSP_DEBUG1
 		if (s >= 0) {
 			/** write MPS */
@@ -206,6 +213,7 @@ DSP_RTN_CODE DwWorker::generateCols(
 		/** store solution status */
 		int status;
 		convertCoinToDspStatus(si_[s], status);
+		DSPdebugMessage("sind %d status %d\n", sind, status);
 		statuses.push_back(status);
 
 		if (si_[s]->isProvenOptimal() || si_[s]->isProvenDualInfeasible()) {
@@ -252,6 +260,7 @@ DSP_RTN_CODE DwWorker::generateCols(
 				cx = 0.0;
 				for (int j = 0; j < si_[s]->getNumCols(); ++j)
 					cx += sub_objs_[s][j] * x[j];
+				DSPdebugMessage("Subprob %d: objval %e, cx %e\n", sind, objval, cx);
 
 				/** subproblem coupling solution */
 				for (int j = 0; j < si_[s]->getNumCols(); ++j) {
@@ -275,6 +284,10 @@ DSP_RTN_CODE DwWorker::generateCols(
 			sol = NULL;
 		} else {
 			DSPdebugMessage("Subproblem %d: status %d\n", sind, status);
+			/** store dummies */
+			cxs.push_back(0.0);
+			objs.push_back(0.0);
+			sols.push_back(new CoinPackedVector);
 		}
 	}
 
@@ -362,6 +375,11 @@ void DwWorker::setColBounds(int j, double lb, double ub) {
 	}
 }
 
+void DwWorker::setColBounds(int size, const int* indices, const double* lbs, const double* ubs) {
+	for (int i = 0; i < size; ++i)
+		setColBounds(indices[i], lbs[i], ubs[i]);
+}
+
 DSP_RTN_CODE DwWorker::solveSubproblems() {
 	int status;
 
@@ -376,9 +394,9 @@ DSP_RTN_CODE DwWorker::solveSubproblems() {
 
 		/** solve LP relaxation */
 		si_[s]->resolve();
-#ifdef DSP_DEBUG1
+#ifdef DSP_DEBUG
 		convertCoinToDspStatus(si_[s], status);
-		DSPdebugMessage("LP relaxation subproblem %d status %d\n", s, status);
+		DSPdebugMessage("LP relaxation subproblem %d status %d\n", parProcIdx_[s], status);
 #endif
 
 		/** do branch-and-bound if there are integer variables */
@@ -391,9 +409,9 @@ DSP_RTN_CODE DwWorker::solveSubproblems() {
 //			DSPdebugMessage("Subproblem(%d) solution:\n", parProcIdx_[s]);
 //			DSPdebug(DspMessage::printArray(si_[s]->getNumCols(), si_[s]->getColSolution()));
 
-#ifdef DSP_DEBUG1
+#ifdef DSP_DEBUG
 			convertCoinToDspStatus(si_[s], status);
-			DSPdebugMessage("MILP subproblem %d status %d\n", s, status);
+			DSPdebugMessage("MILP subproblem %d status %d\n", parProcIdx_[s], status);
 #endif
 		} else if (si_[s]->isProvenDualInfeasible()) {
 			/** If primal unbounded, ray may not be immediately available.

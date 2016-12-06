@@ -14,36 +14,31 @@
 #include "Solver/DantzigWolfe/DwAlgo.h"
 #include "Model/TssModel.h"
 
-DwAlgo::DwAlgo(
-		DecModel *   model,  /**< model pointer */
-        DspParams *  par,    /**< parameters */
-        DspMessage * message /**< message pointer */):
-DecSolver(model, par, message),
+DwAlgo::DwAlgo(DwWorker* worker):
+DecSolver(worker->model_, worker->par_, worker->message_),
 useCpxBarrier_(false),
 phase_(1),
+rlbd_branch_(NULL),
+rubd_branch_(NULL),
+worker_(worker),
 ncols_orig_(0),
 nrows_(0),
 nrows_orig_(0),
 nrows_branch_(0),
 nrows_conv_(0),
-rlbd_branch_(NULL),
-rubd_branch_(NULL),
-worker_(NULL),
 org_mat_(NULL),
 org_clbd_(NULL),
 org_cubd_(NULL),
 org_obj_(NULL),
 org_ctype_(NULL),
 org_rlbd_(NULL),
-org_rubd_(NULL) {
-}
+org_rubd_(NULL) {}
 
 DwAlgo::~DwAlgo() {
 	for (unsigned i = 0; i < auxcols_.size(); ++i)
 		FREE_PTR(auxcols_[i]);
 	FREE_ARRAY_PTR(rlbd_branch_);
 	FREE_ARRAY_PTR(rubd_branch_);
-	FREE_PTR(worker_);
 	FREE_PTR(org_mat_);
 	FREE_ARRAY_PTR(org_clbd_);
 	FREE_ARRAY_PTR(org_cubd_);
@@ -252,13 +247,10 @@ DSP_RTN_CODE DwAlgo::gutsOfSolve() {
 
 	double feastol = 1.0e-8; /**< feasibility tolerance */
 	double curLb = -COIN_DBL_MAX;
+	double relgap;
 
 	/** column generation info */
-	std::vector<int> subinds;
-	std::vector<int> substatus;
-	std::vector<double> subcxs;
-	std::vector<double> subobjs;
-	std::vector<CoinPackedVector*> subsols;
+	int nColsAdded = 0;
 
 	BGN_TRY_CATCH
 
@@ -269,7 +261,6 @@ DSP_RTN_CODE DwAlgo::gutsOfSolve() {
 	piA = new double [ncols_orig_];
 
 	std::vector<double> prevsol(si_->getNumCols(), 0.0);
-	//dualobj_ = -COIN_DBL_MAX;
 
 	/** timing results */
 	double stime;
@@ -306,29 +297,14 @@ DSP_RTN_CODE DwAlgo::gutsOfSolve() {
 
 	while (status_ == DSP_STAT_OPTIMAL) {
 
-		/** calculate pi^T A */
-		DSP_RTN_CHECK_RTN_CODE(calculatePiA(price, piA));
-
 		/** generate columns */
 		stime = CoinGetTimeOfDay();
-		DSP_RTN_CHECK_RTN_CODE(
-				worker_->generateCols(phase_, piA, subinds, substatus, subcxs, subobjs, subsols));
+		DSP_RTN_CHECK_RTN_CODE(generateCols(price, piA, curLb, nColsAdded));
 		t_gencols += CoinGetTimeOfDay() - stime;
 
-		/** termination test */
-		if (terminationTestColgen(substatus))
+		/** subproblem solution may declare infeasibility. */
+		if (status_ == DSP_STAT_PRIM_INFEASIBLE)
 			break;
-
-		/** calculate lower bound */
-		if (phase_ == 2) {
-			DSP_RTN_CHECK_RTN_CODE(getLagrangianBound(price, subobjs, curLb));
-			DSPdebugMessage("Current lower bound %e, best lower bound %e\n", curLb, dualobj_);
-		}
-
-		/** create and add columns */
-		int nColsAdded = 0;
-		DSP_RTN_CHECK_RTN_CODE(
-				addCols(price, piA, subinds, substatus, subcxs, subobjs, subsols, nColsAdded));
 
 		/** update master */
 		DSP_RTN_CHECK_RTN_CODE(updateModel(price, curLb));
@@ -346,22 +322,28 @@ DSP_RTN_CODE DwAlgo::gutsOfSolve() {
 
 		/** get price */
 		CoinCopyN(si_->getRowPrice(), si_->getNumRows(), price);
+#ifdef DSP_DEBUG
+		double tr_terms = 0.0;
+		for (int j = 0; j < 2 * (nrows_branch_ + nrows_orig_); ++j)
+			tr_terms += si_->getObjCoefficients()[j] * si_->getColSolution()[j];
+		DSPdebugMessage("master obj %e, obj w/o tr %e\n", primobj_, primobj_ - tr_terms);
+#endif
 
-		double relgap = (primobj_-dualobj_)/(1.0e-10+fabs(primobj_))*100;
-		message_->print(0, "[Phase %d] Iteration %3d: Master objective %e, ", phase_, itercnt, primobj_);
+		relgap = (primobj_-dualobj_)/(1.0e-10+fabs(primobj_))*100;
+		message_->print(1, "[Phase %d] Iteration %3d: Master objective %e, ", phase_, itercnt, primobj_);
 		if (phase_ == 2)
-			message_->print(0, "Lb %e (gap %.2f %%), ", dualobj_, relgap);
-		message_->print(0, "nrows %d, ncols %d (new cols %d), ", si_->getNumRows(), si_->getNumCols(), nColsAdded);
-		message_->print(0, "itercnt %d, timing (total %.2f, master %.2f, gencols %.2f), statue %d\n",
+			message_->print(1, "Lb %e (gap %.2f %%), ", dualobj_, relgap);
+		message_->print(1, "nrows %d, ncols %d (new cols %d), ", si_->getNumRows(), si_->getNumCols(), nColsAdded);
+		message_->print(1, "itercnt %d, timing (total %.2f, master %.2f, gencols %.2f), statue %d\n",
 				si_->getIterationCount(), CoinGetTimeOfDay() - t_total, t_master, t_gencols, status_);
-
-		/** termination test */
-		if (terminationTest(nColsAdded, itercnt, relgap))
-			break;
 
 		/** get warm-start information */
 		if (hasBasis)
 			DSP_RTN_CHECK_RTN_CODE(getWarmStartInfo(prevsol, ws));
+
+		/** termination test */
+		if (terminationTest(nColsAdded, itercnt, relgap))
+			break;
 
 		itercnt++;
 
@@ -372,17 +354,57 @@ DSP_RTN_CODE DwAlgo::gutsOfSolve() {
 #endif
 	}
 
-	/** free memory for subproblem solutions */
-	for (unsigned i = 0; i < subsols.size(); ++i)
-		FREE_PTR(subsols[i]);
-	subsols.clear();
-
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
 	FREE_MEMORY
 
 	return DSP_RTN_OK;
 #undef FREE_MEMORY
+}
+
+DSP_RTN_CODE DwAlgo::generateCols(
+		const double* price, /**< [in] price */
+		double*& piA,        /**< [out] pi^T A */
+		double& lb,          /**< [out] lower bound (only for phase 2) */
+		int& ncols           /**< [out] number of columns generated */) {
+	/** column generation info */
+	std::vector<int> subinds;
+	std::vector<int> substatus;
+	std::vector<double> subcxs;
+	std::vector<double> subobjs;
+	std::vector<CoinPackedVector*> subsols;
+
+	BGN_TRY_CATCH
+
+	/** calculate pi^T A */
+	DSP_RTN_CHECK_RTN_CODE(calculatePiA(price, piA));
+
+	/** generate columns */
+	DSP_RTN_CHECK_RTN_CODE(
+			worker_->generateCols(phase_, piA, subinds, substatus, subcxs, subobjs, subsols));
+
+	/** termination test */
+	terminationTestColgen(substatus);
+
+	if (status_ == DSP_STAT_FEASIBLE) {
+		/** calculate lower bound */
+		if (phase_ == 2) {
+			DSP_RTN_CHECK_RTN_CODE(getLagrangianBound(price, subobjs, lb));
+			DSPdebugMessage("Current lower bound %e, best lower bound %e\n", lb, dualobj_);
+		}
+
+		/** create and add columns */
+		DSP_RTN_CHECK_RTN_CODE(
+				addCols(price, piA, subinds, substatus, subcxs, subobjs, subsols, ncols));
+	}
+
+	/** free memory for subproblem solutions */
+	for (unsigned i = 0; i < subsols.size(); ++i)
+		FREE_PTR(subsols[i]);
+	subsols.clear();
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+	return DSP_RTN_OK;
 }
 
 DSP_RTN_CODE DwAlgo::addCols(
@@ -486,30 +508,32 @@ DSP_RTN_CODE DwAlgo::getLagrangianBound(
 	BGN_TRY_CATCH
 
 	/** calculate lower bound */
-	lb = 0;
+#if 1
+	lb = 0.0;
+	const char* sense = si_->getRowSense();
+	const double* rlbd = si_->getRowLower();
+	const double* rubd = si_->getRowUpper();
 	for (int j = 0; j < nrows_orig_ + nrows_branch_; ++j) {
-		if (fabs(price[j]) < 1.0e-8) continue;
-		switch (si_->getRowSense()[j]) {
-		case 'E':
-			lb += price[j] * si_->getRowUpper()[j];
-			break;
-		case 'L':
-			lb += price[j] * si_->getRowUpper()[j];
-			break;
-		case 'G':
-			lb += price[j] * si_->getRowLower()[j];
-			break;
-		case 'R':
-			if (price[j] > 0)
-				lb += price[j] * si_->getRowLower()[j];
-			else
-				lb += price[j] * si_->getRowUpper()[j];
-			break;
-		}
+		if (fabs(price[j]) < 1.0e-8)
+			continue;
+		else if (price[j] > 0)
+			lb += price[j] * rlbd[j];
+		else
+			lb += price[j] * rubd[j];
 	}
-
-	for (unsigned int s = 0; s < objs.size(); ++s)
+	DSPdebugMessage("pia %e\n", lb);
+#else
+	//lb = primobj_;
+	lb = si_->getObjValue();
+	for (int j = nrows_orig_ + nrows_branch_; j < nrows_; ++j)
+		lb -= price[j];
+	DSPdebugMessage("si_->getObjValue() %e price %e\n", si_->getObjValue(), lb - primobj_);
+#endif
+	for (unsigned int s = 0; s < objs.size(); ++s) {
 		lb += objs[s];
+		DSPdebugMessage("subobj[%d] %e\n", s, objs[s]);
+	}
+	DSPdebugMessage("lb %e\n", lb);
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -519,7 +543,7 @@ DSP_RTN_CODE DwAlgo::getLagrangianBound(
 bool DwAlgo::terminationTest(int nnewcols, int itercnt, double relgap) {
 
 	if (nnewcols == 0)
-		true;
+		return true;
 
 	bool term = false;
 	double feastol = 1.0e-8;
@@ -532,9 +556,9 @@ bool DwAlgo::terminationTest(int nnewcols, int itercnt, double relgap) {
 		}
 	}
 	if (phase_ == 2) {
-		if (iterlim_ <= itercnt ||
+		if (iterlim_ <= itercnt /*||
 			relgap < 0.01 ||
-			dualobj_ >= bestprimobj_) {
+			dualobj_ >= bestprimobj_*/) {
 			status_ = DSP_STAT_FEASIBLE;
 			term = true;
 		}
@@ -572,17 +596,18 @@ DSP_RTN_CODE DwAlgo::calculatePiA(
 
 bool DwAlgo::terminationTestColgen(std::vector<int>& statuses) {
 	bool term = false;
-	//if (phase_ == 1) {
-		for (unsigned s = 0; s < statuses.size(); ++s)
-			if (statuses[s] != DSP_STAT_OPTIMAL && statuses[s] != DSP_STAT_DUAL_INFEASIBLE) {
-				status_ = DSP_STAT_PRIM_INFEASIBLE;
-				break;
-			}
-		if (status_ == DSP_STAT_PRIM_INFEASIBLE) {
-			DSPdebugMessage("Subproblems are infeasible.\n");
-			term = true;
+	status_ = DSP_STAT_FEASIBLE;
+	for (unsigned s = 0; s < statuses.size(); ++s) {
+		if (statuses[s] != DSP_STAT_OPTIMAL && statuses[s] != DSP_STAT_DUAL_INFEASIBLE) {
+			status_ = DSP_STAT_PRIM_INFEASIBLE;
+			break;
 		}
-	//}
+		DSPdebugMessage("statuses[%d] %d\n", s, statuses[s]);
+	}
+	if (status_ == DSP_STAT_PRIM_INFEASIBLE) {
+		DSPdebugMessage("Subproblems are infeasible.\n");
+		term = true;
+	}
 	return term;
 }
 

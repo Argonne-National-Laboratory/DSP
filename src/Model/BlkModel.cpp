@@ -47,15 +47,18 @@ DSP_RTN_CODE BlkModel::updateBlocks() {
 
 	BGN_TRY_CATCH
 
+	std::vector<int> blockids;
+	for (Blocks::iterator it = blocks_.begin(); it != blocks_.end(); ++it)
+		blockids.push_back(it->first);
+
 	double stime = CoinGetTimeOfDay();
 	/** number of blocks */
-	int nblocks = blocks_.size();
-	if (nblocks > 0) {
+	if (blockids.size() > 0) {
 		/** coupling columns and rows */
 		std::vector<int> master_coupling_cols;
 
 		/** retrieve master information */
-		DetBlock* master = block(0);
+		DetBlock* master = block(blockids[0]);
 		if (master == NULL)
 			return DSP_RTN_ERR;
 		const CoinPackedMatrix* master_mat = master->getConstraintMatrix();
@@ -69,12 +72,13 @@ DSP_RTN_CODE BlkModel::updateBlocks() {
 		ncols_coupled = new int [master->getNumCols()];
 		CoinZeroN(ncols_coupled, master->getNumCols());
 
-		for (int id = 1; id < nblocks; ++id) {
+		for (unsigned i = 1; i < blockids.size(); ++i) {
 			/** coupling columns and rows */
 			std::vector<int> sub_coupling_cols;
 			std::vector<int> sub_coupling_rows;
 
 			/** retrieve subproblem */
+			int id = blockids[i];
 			DetBlock* sub = block(id);
 			if (sub == NULL)
 				return DSP_RTN_ERR;

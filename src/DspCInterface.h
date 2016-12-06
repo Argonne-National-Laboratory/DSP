@@ -163,6 +163,11 @@ void setSolution(
 /** solve decomposition */
 void solveDw(DspApiEnv * env);
 
+#ifdef DSP_HAS_MPI
+/** solve decomposition */
+void solveDwMpi(DspApiEnv * env, MPI_Comm comm);
+#endif
+
 /** read parameter file */
 void readParamFile(DspApiEnv * env, const char * param_file);
 

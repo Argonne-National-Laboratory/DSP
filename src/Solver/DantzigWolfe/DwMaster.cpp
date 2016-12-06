@@ -2,7 +2,7 @@
 // Created by Kibaek Kim on 8/27/16.
 //
 
-#define DSP_DEBUG
+//#define DSP_DEBUG
 
 #include "cplex.h"
 /** Coin */
@@ -102,7 +102,7 @@ DSP_RTN_CODE DwMaster::init() {
 	ncols_orig_ = org_mat_->getNumCols(); /**< number of columns in the original master */
 	nrows_orig_ = org_mat_->getNumRows(); /**< number of rows in the original master */
 	nrows_branch_ = 0; /**< number of branching rows in the restricted master */
-	nrows_conv_ = model_->getNumSubproblems(); /**< number of convex combination rows in the restricted master */
+	nrows_conv_ = worker_->getNumSubprobs(); /**< number of convex combination rows in the restricted master */
 
 	/** maps each branching row to original column index */
 	for (int j = 0; j < ncols_orig_; ++j)
@@ -116,12 +116,6 @@ DSP_RTN_CODE DwMaster::init() {
 
 	DSPdebugMessage("nrwos_ %d, nrows_orig_ %d, nrows_branch_ %d, nrows_conv_ %d\n",
 			nrows_, nrows_orig_, nrows_branch_, nrows_conv_);
-
-	/** feasibility pump solver */
-	fpump_ = new DwFeasPump(this);
-
-	/** subproblem solver */
-    worker_ = new DwWorker(model_, par_, message_);
 
 	/** generate initial columns */
 	DSP_RTN_CHECK_RTN_CODE(initialColumns());
@@ -289,7 +283,7 @@ DSP_RTN_CODE DwMaster::createProblem() {
 DSP_RTN_CODE DwMaster::heuristics() {
 
 	BGN_TRY_CATCH
-
+#if 0
 	if (phase_ == 2 && runHeuristics_) {
 		/** run feasibility pump */
 		DSP_RTN_CHECK_RTN_CODE(fpump_->copyColumns(cols_generated_));
@@ -312,6 +306,19 @@ DSP_RTN_CODE DwMaster::heuristics() {
 			status_ = DSP_STAT_MW_RESOLVE;
 		}
 	}
+#endif
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
+}
+
+DSP_RTN_CODE DwMaster::solve() {
+	BGN_TRY_CATCH
+
+	dualobj_ = -COIN_DBL_MAX;
+
+	DSP_RTN_CHECK_RTN_CODE(DwAlgo::solve());
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -382,7 +389,7 @@ bool DwMaster::chooseBranchingObjects(
 		DspBranch*& branchingDn  /**< [out] branching-down object */) {
 
 	bool branched = false;
-	double x, dist, maxdist = 1.0e-6;
+	double dist, maxdist = 1.0e-6;
 	int branchingIndex = -1;
 	double branchingValue;
 
@@ -390,7 +397,6 @@ bool DwMaster::chooseBranchingObjects(
 
 	const double* rlbd = si_->getRowLower();
 	const double* rubd = si_->getRowUpper();
-	const double* Ax = si_->getRowActivity();
 
 	/** cleanup */
 	FREE_PTR(branchingUp)
@@ -400,66 +406,91 @@ bool DwMaster::chooseBranchingObjects(
 		TssModel* tss = dynamic_cast<TssModel*>(model_);
 
 		/** most fractional value */
-		for (unsigned j = 0; j < nrows_branch_; ++j) {
-			if (branch_row_to_col_[nrows_orig_+j] < tss->getNumScenarios() * tss->getNumCols(0)) {
-				x = Ax[nrows_orig_ + j];
-				//DSPdebugMessage("Checking integrality: row %d, val %e\n", nrows_orig_ + j, x);
-				dist = fabs(x - floor(x + 0.5));
-				if (dist > maxdist) {
-					maxdist = dist;
-					branchingIndex = nrows_orig_ + j;
-					branchingValue = x;
-				}
+		for (int j = 0; j < tss->getNumScenarios() * tss->getNumCols(0); ++j) {
+			if (org_ctype_[j] == 'C') continue;
+			dist = fabs(primsol_[j] - floor(primsol_[j] + 0.5));
+			if (dist > maxdist) {
+				maxdist = dist;
+				branchingIndex = j;
+				branchingValue = primsol_[j];
 			}
 		}
 
-		if (branchingIndex > -1) {
+		if (branchingIndex < 0) {
 			/** most fractional value */
-			for (unsigned j = 0; j < nrows_branch_; ++j) {
-				if (branch_row_to_col_[nrows_orig_+j] >= tss->getNumScenarios() * tss->getNumCols(0)) {
-					x = Ax[nrows_orig_ + j];
-					//DSPdebugMessage("Checking integrality: row %d, val %e\n", nrows_orig_ + j, x);
-					dist = fabs(x - floor(x + 0.5));
-					if (dist > maxdist) {
-						maxdist = dist;
-						branchingIndex = nrows_orig_ + j;
-						branchingValue = x;
-					}
+			for (int j = tss->getNumScenarios() * tss->getNumCols(0); j < ncols_orig_; ++j) {
+				if (org_ctype_[j] == 'C') continue;
+				dist = fabs(primsol_[j] - floor(primsol_[j] + 0.5));
+				if (dist > maxdist) {
+					maxdist = dist;
+					branchingIndex = j;
+					branchingValue = primsol_[j];
 				}
 			}
 		}
 	} else {
+#define EXPERIMENTAL
 		/** most fractional value */
-		for (unsigned j = 0; j < nrows_branch_; ++j) {
-			x = Ax[nrows_orig_ + j];
-			//DSPdebugMessage("Checking integrality: row %d, val %e\n", nrows_orig_ + j, x);
-			dist = fabs(x - floor(x + 0.5));
+		for (int j = 0; j < ncols_orig_; ++j) {
+			if (org_ctype_[j] == 'C') continue;
+			if (org_obj_[j] >= 0.0) continue;
+			dist = fabs(primsol_[j] - floor(primsol_[j] + 0.5));
 			if (dist > maxdist) {
 				maxdist = dist;
-				branchingIndex = nrows_orig_ + j;
-				branchingValue = x;
+				branchingIndex = j;
+				branchingValue = primsol_[j];
 			}
 		}
+
+		if (branchingIndex < 0) {
+			/** most fractional value */
+			for (int j = 0; j < ncols_orig_; ++j) {
+				if (org_ctype_[j] == 'C') continue;
+				if (org_obj_[j] < 0.0) continue;
+				dist = fabs(primsol_[j] - floor(primsol_[j] + 0.5));
+				if (dist > maxdist) {
+					maxdist = dist;
+					branchingIndex = j;
+					branchingValue = primsol_[j];
+				}
+			}
+		}
+#ifdef EXPERIMENTAL
+#else
+		/** most fractional value */
+		for (int j = 0; j < ncols_orig_; ++j) {
+			if (org_ctype_[j] == 'C') continue;
+			dist = fabs(primsol_[j] - floor(primsol_[j] + 0.5));
+			if (dist > maxdist) {
+				maxdist = dist;
+				branchingIndex = j;
+				branchingValue = primsol_[j];
+			}
+		}
+#endif
 	}
 
 	if (branchingIndex > -1) {
-		DSPdebugMessage("Creating branch objects on column %d (value %e).\n", branchingIndex - nrows_orig_, branchingValue);
+		DSPdebugMessage("Creating branch objects on column %d (value %e).\n", branchingIndex, branchingValue);
 		branched = true;
 
 		/** creating branching objects */
 		branchingUp = new DspBranch();
 		branchingDn = new DspBranch();
-		for (unsigned j = nrows_orig_; j < nrows_orig_ + nrows_branch_; ++j) {
+		for (int j = 0, k = nrows_orig_; j < ncols_orig_; ++j) {
+			if (org_ctype_[j] == 'C') continue;
 			if (branchingIndex == j) {
-				branchingUp->push_back(branchingIndex, ceil(branchingValue), rubd[branchingIndex]);
-				branchingDn->push_back(branchingIndex, rlbd[branchingIndex], floor(branchingValue));
-			} else if (rlbd[j] > rlbd_branch_[j - nrows_orig_] || rubd[j] < rubd_branch_[j - nrows_orig_]) {
+				branchingUp->push_back(k, ceil(branchingValue), rubd[k]);
+				branchingDn->push_back(k, rlbd[k], floor(branchingValue));
+			} else if (rlbd[k] > rlbd_branch_[k - nrows_orig_] || rubd[k] < rubd_branch_[k - nrows_orig_]) {
 				/** store any bound changes made in parent nodes */
-				branchingUp->push_back(j, rlbd[j], rubd[j]);
-				branchingDn->push_back(j, rlbd[j], rubd[j]);
+				branchingUp->push_back(k, rlbd[k], rubd[k]);
+				branchingDn->push_back(k, rlbd[k], rubd[k]);
 			}
+			k++;
 		}
 	} else {
+		DSPdebugMessage("No branch object is found.\n");
 		//DSPdebug(si_->writeMps("Incumbent"));
 	}
 
@@ -469,18 +500,32 @@ bool DwMaster::chooseBranchingObjects(
 }
 
 void DwMaster::setBranchingObjects(const DspBranch* branchobj) {
+#define FREE_MEMORY \
+	FREE_ARRAY_PTR(indices)
+
+	int* indices = NULL;
+
+	BGN_TRY_CATCH
+
 	if (branchobj) {
+		indices = new int [nrows_branch_];
+
 		/** restore original bounds */
-		for (int j = 0; j < nrows_branch_; ++j) {
+		for (int j = 0; j < nrows_branch_; ++j)
 			si_->setRowBounds(nrows_orig_ + j, rlbd_branch_[j], rubd_branch_[j]);
-			worker_->setColBounds(branch_row_to_col_[nrows_orig_ + j], rlbd_branch_[j], rubd_branch_[j]);
-		}
 		/** apply new bounds */
 		for (unsigned j = 0; j < branchobj->index_.size(); ++j) {
 			si_->setRowBounds(branchobj->index_[j], branchobj->lb_[j], branchobj->ub_[j]);
-			worker_->setColBounds(branch_row_to_col_[branchobj->index_[j]], branchobj->lb_[j], branchobj->ub_[j]);
-			DSPdebugMessage("Set subproblem column bounds: %d [%e %e]\n",
+			DSPdebugMessage("Branching on %d [%e, %e]\n",
 					branch_row_to_col_[branchobj->index_[j]], branchobj->lb_[j], branchobj->ub_[j]);
 		}
+		for (int j = 0; j < nrows_branch_; ++j)
+			indices[j] = branch_row_to_col_[nrows_orig_ + j];
+		worker_->setColBounds(nrows_branch_, indices,
+				si_->getRowLower() + nrows_orig_, si_->getRowUpper() + nrows_orig_);
 	}
+
+	END_TRY_CATCH(FREE_MEMORY)
+	FREE_MEMORY
+#undef FREE_MEMORY
 }

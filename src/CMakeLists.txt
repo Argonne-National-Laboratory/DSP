@@ -9,9 +9,9 @@ set(DSP_SRC_FILES
 	Model/StoModel.cpp
 	Model/TssModel.cpp
 	Solver/DantzigWolfe/DwAlgo.cpp
-	Solver/DantzigWolfe/DwFeasPump.cpp
 	Solver/DantzigWolfe/DwMaster.cpp
 	Solver/DantzigWolfe/DwMasterTr.cpp
+	Solver/DantzigWolfe/DwSolverSerial.cpp
 	Solver/DantzigWolfe/DwWorker.cpp
 	SolverInterface/OoqpEps.cpp
 	SolverInterface/OoqpStatus.cpp
@@ -22,6 +22,9 @@ set(DSP_SRC_FILES
 if (MPI_CXX_FOUND)
 	set(DSP_SRC_FILES
 		${DSP_SRC_FILES}
+		DspDriverMpi.cpp
+		Solver/DantzigWolfe/DwSolverMpi.cpp
+		Solver/DantzigWolfe/DwWorkerMpi.cpp
 		Utility/DspMpi.cpp)
 endif()
 add_library(Dsp SHARED

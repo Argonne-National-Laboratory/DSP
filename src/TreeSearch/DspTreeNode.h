@@ -12,6 +12,7 @@
 #include <AlpsTreeNode.h>
 /** Dsp */
 #include "TreeSearch/DspBranch.h"
+#include "TreeSearch/DspNodeDesc.h"
 
 class DspTreeNode: public AlpsTreeNode {
 public:
@@ -72,7 +73,11 @@ public:
      */
     virtual std::vector< CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > branch();
 
+    void wirteLog(const char* status, DspNodeDesc* desc, double lpbound = 0.0, double infeas = 0.0, int suminfeas = 0);
+
 private:
+
+    std::fstream logstream_;
 
 	/** branching object */
     DspBranch* branchingUp_;

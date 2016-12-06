@@ -5,6 +5,8 @@
  *      Author: kibaekkim
  */
 
+//#define DSP_DEBUG
+#include "Model/TssModel.h"
 #include <DantzigWolfe/DwWorkerMpi.h>
 
 DwWorkerMpi::DwWorkerMpi(
@@ -18,33 +20,29 @@ comm_(comm) {
 	MPI_Comm_size(comm_, &comm_size_);
 
 	/** calculate the size of piA vector */
-	if (comm_rank_ > 0) {
-		if (model_->isStochastic()) {
-			TssModel* tss = dynamic_cast<TssModel*>(model_);
-			npiA_ = tss->getNumScenarios() * (tss->getNumCols(0) + tss->getNumCols(1));
-		} else
-			npiA_ = model_->getNumSubproblemCouplingCols(0);
-	}
-
-	/** broadcast the size of piA vector */
-	MPI_Bcast(&npiA_, 1, MPI_INT, 0, comm_);
+	if (model_->isStochastic()) {
+		TssModel* tss = dynamic_cast<TssModel*>(model_);
+		npiA_ = tss->getNumScenarios() * (tss->getNumCols(0) + tss->getNumCols(1));
+	} else
+		npiA_ = model_->getNumCouplingCols();
 
 	/** create a local vector memory */
 	piA_ = new double [npiA_];
+	DSPdebugMessage("Rank %d created piA_ vector of size %d.\n", comm_rank_, npiA_);
 
 	/** get the number of subproblems */
-	MPI_Reduce(&parProcIdxSize_, &nsubprobs_, 1, MPI_INT, MPI_SUM, 0, comm_);
-
-	/** start coordinator */
-	if (comm_rank_ > 0)
-		coordinator();
+	MPI_Allreduce(&parProcIdxSize_, &nsubprobs_, 1, MPI_INT, MPI_SUM, comm_);
+#ifdef DSP_DEBUG
+	if (comm_rank_ == 0)
+		DSPdebugMessage("Number of subproblems: %d\n", nsubprobs_);
+#endif
 }
 
 DwWorkerMpi::~DwWorkerMpi() {
 	FREE_ARRAY_PTR(piA_);
 }
 
-DSP_RTN_CODE DwWorkerMpi::coordinator() {
+DSP_RTN_CODE DwWorkerMpi::receiver() {
 	int signal;
 	std::vector<int> indices;
 	std::vector<int> statuses;
@@ -59,14 +57,20 @@ DSP_RTN_CODE DwWorkerMpi::coordinator() {
 	while (terminate == false) {
 		/** receive a signal */
 		MPI_Bcast(&signal, 1, MPI_INT, 0, comm_);
+		DSPdebugMessage("Rank %d received signal %d.\n", comm_rank_, signal);
 
 		switch(signal) {
 		case sig_generateCols:
 			DSP_RTN_CHECK_RTN_CODE(
 					generateCols(-1, NULL, indices, statuses, cxs, objs, sols));
+			indices.clear();
+			statuses.clear();
+			cxs.clear();
+			objs.clear();
+			sols.clear();
 			break;
 		case sig_setColBounds:
-			setColBounds(-1, 0.0, 0.0);
+			setColBounds(0, NULL, NULL, NULL);
 			break;
 		case sig_terminate:
 			terminate = true;
@@ -96,8 +100,10 @@ DSP_RTN_CODE DwWorkerMpi::generateCols(
 		FREE_ARRAY_PTR(_cxs) \
 		FREE_ARRAY_PTR(_objs)
 
-	int* recvcounts = NULL;
-	int* displs = NULL;
+	int* recvcounts = NULL; /**< number of subproblems for each rank */
+	int* displs = NULL;     /**< displacement for each receive buffer */
+
+	/** temporary arrays to collect data from ranks */
 	int* _indices = NULL;
 	int* _statuses = NULL;
 	double* _cxs = NULL;
@@ -108,7 +114,9 @@ DSP_RTN_CODE DwWorkerMpi::generateCols(
 
 	if (comm_rank_ == 0) {
 		/** send signal */
-		MPI_Bcast(&sig_generateCols, 1, MPI_INT, 0, comm_);
+		int sig = sig_generateCols;
+		DSPdebugMessage("Rank %d sends signal %d.\n", comm_rank_, sig);
+		MPI_Bcast(&sig, 1, MPI_INT, 0, comm_);
 
 		/** copy piA vector */
 		CoinCopyN(piA, npiA_, piA_);
@@ -121,30 +129,36 @@ DSP_RTN_CODE DwWorkerMpi::generateCols(
 		_objs = new double [nsubprobs_];
 	}
 
-	/** The root rank gathers the number of subproblems for each process. */
-	MPI_Gather(&parProcIdxSize_, 1, MPI_INT, recvcounts, 1, MPI_INT, 0, comm_);
-	/** calculate displacement of the receive buffer */
-	displs[0] = 0;
-	for (int i = 1; i < comm_size_; ++i)
-		displs[i] = displs[i-1] + recvcounts[i-1];
-
-	/** synchronize information */
+	/** synchronize phase and piA_ */
 	MPI_Bcast(&phase, 1, MPI_INT, 0, comm_);
 	MPI_Bcast(piA_, npiA_, MPI_DOUBLE, 0, comm_);
+	//DSPdebugMessage("Rank %d received phase %d and piA_ vector of size %d.\n", comm_rank_, phase, npiA_);
 
 	DSP_RTN_CHECK_RTN_CODE(
-			DwWorker::generateCols(phase, piA, indices, statuses, cxs, objs, sols));
+			DwWorker::generateCols(phase, piA_, indices, statuses, cxs, objs, sols));
+	DSPdebugMessage("Rank %d generated %u indices, %u statuses, %u cxs, %u objs, and %u sols.\n",
+			comm_rank_, indices.size(), statuses.size(), cxs.size(), objs.size(), sols.size());
+
+	/** The root rank gathers the number of subproblems for each process. */
+	MPI_Gather(&parProcIdxSize_, 1, MPI_INT, recvcounts, 1, MPI_INT, 0, comm_);
+
+	/** calculate displacement of the receive buffer */
+	if (comm_rank_ == 0) {
+		displs[0] = 0;
+		for (int i = 1; i < comm_size_; ++i)
+			displs[i] = displs[i-1] + recvcounts[i-1];
+	}
 
 	/** synchronize information */
-	MPI_Gatherv(&indices[0], indices.size(), MPI_INT,
+	MPI_Gatherv(&indices[0], parProcIdxSize_, MPI_INT,
 			_indices, recvcounts, displs, MPI_INT, 0, comm_);
-	MPI_Gatherv(&statuses[0], statuses.size(), MPI_INT,
+	MPI_Gatherv(&statuses[0], parProcIdxSize_, MPI_INT,
 			_statuses, recvcounts, displs, MPI_INT, 0, comm_);
-	MPI_Gatherv(&cxs[0], cxs.size(), MPI_DOUBLE,
+	MPI_Gatherv(&cxs[0], parProcIdxSize_, MPI_DOUBLE,
 			_cxs, recvcounts, displs, MPI_DOUBLE, 0, comm_);
-	MPI_Gatherv(&objs[0], objs.size(), MPI_DOUBLE,
+	MPI_Gatherv(&objs[0], parProcIdxSize_, MPI_DOUBLE,
 			_objs, recvcounts, displs, MPI_DOUBLE, 0, comm_);
-	MPIgatherCoinPackedVectors(comm_, _sols, sols);
+	MPIgatherCoinPackedVectors(comm_, sols, _sols);
 
 	/** construct output arguments */
 	if (comm_rank_ == 0) {
@@ -169,22 +183,53 @@ DSP_RTN_CODE DwWorkerMpi::generateCols(
 	FREE_MEMORY
 
 	return DSP_RTN_OK;
+#undef FREE_MEMORY
 }
 
-void DwWorkerMpi::setColBounds(int j, double lb, double ub) {
+void DwWorkerMpi::setColBounds(int size, const int* indices, const double* lbs, const double* ubs) {
+#define FREE_MEMORY \
+	FREE_ARRAY_PTR(_indices) \
+	FREE_ARRAY_PTR(_lbs) \
+	FREE_ARRAY_PTR(_ubs)
+
+	int _size;
+	int* _indices = NULL;
+	double* _lbs = NULL;
+	double* _ubs = NULL;
 
 	BGN_TRY_CATCH
 
 	/** send signal */
-	if (comm_rank_ == 0)
-		MPI_Bcast(&sig_setColBounds, 1, MPI_INT, 0, comm_);
+	if (comm_rank_ == 0) {
+		int sig = sig_setColBounds;
+		MPI_Bcast(&sig, 1, MPI_INT, 0, comm_);
+		DSPdebugMessage("Rank 0 sent signal %d.\n", sig);
+		_size = size;
+		_indices = const_cast<int*>(indices);
+		_lbs = const_cast<double*>(lbs);
+		_ubs = const_cast<double*>(ubs);
+	}
 
 	/** synchronize information */
-	MPI_Bcast(&j, 1, MPI_INT, 0, comm_);
-	MPI_Bcast(&lb, 1, MPI_DOUBLE, 0, comm_);
-	MPI_Bcast(&ub, 1, MPI_DOUBLE, 0, comm_);
+	MPI_Bcast(&_size, 1, MPI_INT, 0, comm_);
+	DSPdebugMessage("Rank %d broadcasted size [%d].\n", comm_rank_, _size);
+	if (comm_rank_ > 0) {
+		_indices = new int [_size];
+		_lbs = new double [_size];
+		_ubs = new double [_size];
+	}
+	MPI_Bcast(_indices, _size, MPI_INT, 0, comm_);
+	MPI_Bcast(_lbs, _size, MPI_DOUBLE, 0, comm_);
+	MPI_Bcast(_ubs, _size, MPI_DOUBLE, 0, comm_);
+	DwWorker::setColBounds(_size, _indices, _lbs, _ubs);
 
-	DwWorker::setColBounds(j, lb, ub);
+	if (comm_rank_ == 0) {
+		_indices = NULL;
+		_lbs = NULL;
+		_ubs = NULL;
+	}
 
-	END_TRY_CATCH(;)
+	END_TRY_CATCH(FREE_MEMORY)
+	FREE_MEMORY
+#undef FREE_MEMORY
 }

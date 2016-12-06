@@ -51,6 +51,8 @@ public:
 		FREE_PTR(branchobj_);
 	}
 
+	int branchdir() {return branchdir_;}
+
 	/** get branching object */
 	const DspBranch* getBranchingObject() {return branchobj_;}
 

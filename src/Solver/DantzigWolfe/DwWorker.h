@@ -32,7 +32,7 @@ public:
 	virtual ~DwWorker();
 
 	/** generate variables */
-	DSP_RTN_CODE generateCols(
+	virtual DSP_RTN_CODE generateCols(
 			int phase,                           /**< [in] phase of the master */
 			const double* piA,                   /**< [in] piA */
 			std::vector<int>& indices,           /**< [out] subproblem indices */
@@ -41,32 +41,40 @@ public:
 			std::vector<double>& objs,           /**< [out] subproblem objective values */
 			std::vector<CoinPackedVector*>& sols /**< [out] subproblem coupling column solutions */);
 
-	/** set column lower bounds */
-	void setColBounds(int j, double lb, double ub);
+	/** get number of total subproblems */
+	virtual int getNumSubprobs() {return nsubprobs_;}
+
+	/** set column bounds */
+	virtual void setColBounds(int j, double lb, double ub);
+
+	/** set column bounds */
+	virtual void setColBounds(int size, const int* indices, const double* lbs, const double* ubs);
 
 protected:
 
 	/** create subproblems */
-	DSP_RTN_CODE createSubproblems();
+	virtual DSP_RTN_CODE createSubproblems();
 
 	/**
 	 * This calculates and sets the objective coefficients for the subproblems.
 	 */
-	DSP_RTN_CODE adjustObjFunction(
+	virtual DSP_RTN_CODE adjustObjFunction(
 			int phase,        /**< [in] phase of the master */
 			const double* piA /**< [in] dual variable times the constraint matrix */);
 
 	/** solve subproblems */
-	DSP_RTN_CODE solveSubproblems();
+	virtual DSP_RTN_CODE solveSubproblems();
 
 	/** reset subproblems */
-	DSP_RTN_CODE resetSubproblems();
+	virtual DSP_RTN_CODE resetSubproblems();
 
-protected:
+public:
 
 	DecModel * model_;     /**< DecModel object */
 	DspParams * par_;      /**< parameters */
 	DspMessage * message_; /**< message */
+
+protected:
 
 	OsiSolverInterface** si_; /**< solver interface */
 
@@ -78,6 +86,8 @@ protected:
 
 	int parProcIdxSize_; /**< number of subproblems for this worker */
 	int * parProcIdx_;   /**< subproblem indices for this worker */
+
+	int nsubprobs_; /**< number of total subproblems */
 };
 
 #endif /* SRC_SOLVER_DANTZIGWOLFE_DWWORKER_H_ */

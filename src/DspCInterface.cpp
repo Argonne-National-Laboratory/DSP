@@ -21,6 +21,7 @@
 #ifdef DSP_HAS_MPI
 //#include "Solver/Benders/BdDriverMpi.h"
 //#include "Solver/DualDecomp/DdDriverMpi.h"
+#include "DspDriverMpi.h"
 #endif
 #include "Model/DecTssModel.h"
 #include "Model/DecBlkModel.h"
@@ -227,6 +228,16 @@ void solveDw(DspApiEnv * env) {
 	env->solver_->run();
 	env->solver_->finalize();
 }
+
+#ifdef DSP_HAS_MPI
+/** solve Dantzig-Wolfe decomposition */
+void solveDwMpi(DspApiEnv * env, MPI_Comm comm) {
+	env->solver_ = new DspDriverMpi(env->model_, env->par_, comm);
+	DSP_RTN_CHECK_RTN(env->solver_->init());
+	env->solver_->run();
+	env->solver_->finalize();
+}
+#endif
 
 /** read parameter file */
 void readParamFile(DspApiEnv * env, const char * param_file)

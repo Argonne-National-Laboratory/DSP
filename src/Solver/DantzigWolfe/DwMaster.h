@@ -6,26 +6,24 @@
 #define DSP_DWMASTER_H
 
 #include "Solver/DantzigWolfe/DwAlgo.h"
-#include "Solver/DantzigWolfe/DwFeasPump.h"
 #include "TreeSearch/DspBranch.h"
+#include "Solver/DantzigWolfe/DwWorker.h"
+#include "Solver/DantzigWolfe/DwWorkerMpi.h"
 
 class DwMaster : public DwAlgo {
 public:
 
-    /** default constructor */
-    DwMaster(
-    		DecModel *   model,  /**< model pointer */
-            DspParams *  par,    /**< parameters */
-            DspMessage * message /**< message pointer */):
-	DwAlgo(model, par, message), fpump_(NULL) {}
+    /** constructor with worker */
+    DwMaster(DwWorker* worker): DwAlgo(worker) {}
 
     /** default destructor */
-    virtual ~DwMaster() {
-    	FREE_PTR(fpump_);
-    }
+    virtual ~DwMaster() {}
 
     /** initialize */
     virtual DSP_RTN_CODE init();
+
+    /** solve */
+    virtual DSP_RTN_CODE solve();
 
 	/** The function chooses branching objects and returns the pointers. */
 	virtual bool chooseBranchingObjects(
@@ -46,14 +44,6 @@ protected:
     /** Solve the master with integrality */
     DSP_RTN_CODE solveMip();
 
-public:
-
-    /** redefine getNumCols() */
-    int getNumCols() {return ncols_orig_;}
-
-protected:
-
-    DwFeasPump* fpump_;
 };
 
 

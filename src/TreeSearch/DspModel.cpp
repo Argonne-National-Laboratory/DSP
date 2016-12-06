@@ -49,8 +49,10 @@ bool DspModel::fathomAllNodes() {
 DSP_RTN_CODE DspModel::solve() {
 	BGN_TRY_CATCH
 
-	AlpsPar()->setEntry(AlpsParams::searchStrategy, 3);
-	AlpsPar()->setEntry(AlpsParams::timeLimit, 300);
+	AlpsPar()->setEntry(AlpsParams::searchStrategy, 0);
+	AlpsPar()->setEntry(AlpsParams::nodeLogInterval, 1);
+	AlpsPar()->setEntry(AlpsParams::nodeLimit, 1);
+	//AlpsPar()->setEntry(AlpsParams::timeLimit, 300);
 	AlpsKnowledgeBrokerSerial alpsBroker(0, NULL, *this);
     alpsBroker.search(this);
 

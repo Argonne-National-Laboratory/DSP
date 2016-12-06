@@ -5,7 +5,9 @@
  *      Author: kibaekkim
  */
 
-#define DSP_DEBUG
+//#define DSP_DEBUG
+//#define WRITELOG
+
 /** Coin */
 #include "CoinHelperFunctions.hpp"
 #include "CoinUtility.hpp"
@@ -14,7 +16,6 @@
 #include "Utility/DspMessage.h"
 #include "Utility/DspRtnCodes.h"
 #include "TreeSearch/DspTreeNode.h"
-#include "TreeSearch/DspNodeDesc.h"
 #include "TreeSearch/DspModel.h"
 #include "TreeSearch/DspNodeSolution.h"
 
@@ -22,10 +23,17 @@ DspTreeNode::DspTreeNode() :
 		AlpsTreeNode(),
 		branchingUp_(NULL),
 		branchingDn_(NULL) {
+#ifdef WRITELOG
+	//const char* logname = getKnowledgeBroker()->getModel()->AlpsPar()->entry(AlpsParams::logFile).c_str();
+	DSPdebugMessage("Writing log file to DspAlps.vbc.\n");
+	logstream_.open("DspAlps.vbc", ios::app);
+#endif
 }
 
 DspTreeNode::~DspTreeNode() {
-	// TODO Auto-generated destructor stub
+#ifdef WRITELOG
+	logstream_.close();
+#endif
 }
 
 int DspTreeNode::process(bool isRoot, bool rampUp) {
@@ -43,86 +51,67 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 	double gUb = curUb;
 	double gLb = getKnowledgeBroker()->getBestNode()->getQuality();
 	double gap = (gUb - gLb) / (fabs(gUb) + 1e-10);
-
-	/** quality_ represents the best-known lower bound */
-	if (isRoot)
-		quality_ = -ALPS_OBJ_MAX;
-
-#ifdef DSP_DEBUG1
-	if (depth_ > 2) {
-		setStatus(AlpsNodeStatusFathomed);
-		return status;
-	}
-#endif
-
-	/** fathom if the relative gap is small enough */
-	if (!isRoot) {
-		if (gap < relTol) {
-			setStatus(AlpsNodeStatusFathomed);
-			return status;
-		}
-	}
-
 	DSPdebugMessage("Solving node %d, gUb %e, gLb %e, gap %.2f\n", index_, gUb, gLb, gap);
 
-	/** set branching object */
-	solver->setBranchingObjects(desc->getBranchingObject());
+	/** quality_ represents the best-known lower bound */
+	if (isRoot) quality_ = -ALPS_OBJ_MAX;
 
-	/** TODO: set bound information */
-	//solver->setIterLimit(10);
+	/** fathom if the relative gap is small enough */
+	if (!isRoot && gap < relTol) {
+		setStatus(AlpsNodeStatusFathomed);
+		wirteLog("fathomed", desc);
+		return status;
+	}
+
+	solver->setBranchingObjects(desc->getBranchingObject());
+	solver->setIterLimit(9999);
 
 	/** set heuristics */
-	if (isRoot || gap > 0.1) {
+	if (isRoot || gap > 0.01)
 		solver->setHeuristicRuns(true);
-	} else {
+	else
 		solver->setHeuristicRuns(false);
-		DSPdebugMessage("Heuristics are turned off.\n");
+
+	/** solve the bounding problem */
+	ret = solver->solve();
+	if (ret != DSP_RTN_OK) {
+		setStatus(AlpsNodeStatusDiscarded);
+		wirteLog("fathomed", desc);
+		return AlpsReturnStatusErr;
 	}
+	DSPdebugMessage("Bounding solution status: %d\n", solver->getStatus());
 
-	while (1) {
-		/** solve the bounding problem */
-		ret = solver->solve();
-		if (ret != DSP_RTN_OK) {
-			setStatus(AlpsNodeStatusFathomed);
-			return AlpsReturnStatusErr;
-		}
-		DSPdebugMessage("Bounding solution status: %d\n", solver->getStatus());
-
-		/** any heuristic solution */
-		if (solver->getBestPrimalObjective() < gUb) {
-			DSPdebugMessage("Found new upper bound %e\n", solver->getBestPrimalObjective());
-			DspNodeSolution* nodesol = new DspNodeSolution(solver->getNumCols(),
-					solver->getBestPrimalSolution(), solver->getBestPrimalObjective());
-			getKnowledgeBroker()->addKnowledge(AlpsKnowledgeTypeSolution,
-					nodesol, solver->getBestPrimalObjective());
-		}
-
-		if (solver->getStatus() != DSP_STAT_MW_RESOLVE)
-			break;
-
-		/** turn off heuristics for resolve */
-		//solver->setHeuristicRuns(false);
+	/** any heuristic solution */
+	if (solver->getBestPrimalObjective() < gUb) {
+		DSPdebugMessage("Found new upper bound %e\n", solver->getBestPrimalObjective());
+		DspNodeSolution* nodesol = new DspNodeSolution(solver->getNumCols(),
+				solver->getBestPrimalSolution(), solver->getBestPrimalObjective());
+		getKnowledgeBroker()->addKnowledge(AlpsKnowledgeTypeSolution,
+				nodesol, solver->getBestPrimalObjective());
+		wirteLog("heuristic", desc, solver->getBestPrimalObjective());
 	}
-
-	DSPdebugMessage("Node selection type: %d\n", getKnowledgeBroker()->getNodeSelection()->getType());
 
 	switch (solver->getStatus()) {
 	case DSP_STAT_OPTIMAL:
 	case DSP_STAT_FEASIBLE:{
 
-		double curLb = solver->getDualObjective();
+		quality_ = solver->getDualObjective();
 		double curUb = solver->getPrimalObjective();
-		gUb = getKnowledgeBroker()->getIncumbentValue();
 
-		/** update the best-known lower bound */
-		if (curLb > quality_)
-			quality_ = curLb;
-		DSPdebugMessage("curLb %e, curUb %e, bestUb %e, bestLb %e\n", curLb, curUb, gUb, quality_);
+		DSPdebugMessage("[%f] curLb %e, curUb %e, bestUb %e, bestLb %e\n",
+				getKnowledgeBroker()->timer().getWallClock(), quality_, curUb, gUb, gLb);
+
+		if (curUb - quality_ < -1.0e-8) {
+			setStatus(AlpsNodeStatusDiscarded);
+			wirteLog("fathomed", desc);
+			return AlpsReturnStatusErr;
+		}
 
 		/** fathom if LB is larger than UB. */
-		if (quality_ >= gUb)
+		if (quality_ >= gUb) {
 			setStatus(AlpsNodeStatusFathomed);
-		else {
+			wirteLog("fathomed", desc);
+		} else {
 			/** Branching otherwise */
 			bool hasObjs = solver->chooseBranchingObjects(branchingUp_, branchingDn_);
 
@@ -138,6 +127,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 				}
 				/** no branching object is found; we are done! */
 				setStatus(AlpsNodeStatusFathomed);
+				wirteLog("integer", desc);
 			}
 		}
 		break;
@@ -145,8 +135,10 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 	case DSP_STAT_PRIM_INFEASIBLE:
 		DSPdebugMessage("Fathom the current node.\n");
 		setStatus(AlpsNodeStatusFathomed);
+		wirteLog("infeasible", desc);
 		break;
 	default:
+		DSPdebugMessage("Unexpected solution status: %d.\n", solver->getStatus());
 		assert(0);
 		break;
 	}
@@ -156,37 +148,91 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 
 std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::branch() {
 
+	int ret, status;
+	int solver_loglevel;
+
 	/** retrieve objects */
 	DspNodeDesc* desc = dynamic_cast<DspNodeDesc*>(desc_);
 	DspModel* model = dynamic_cast<DspModel*>(desc->getModel());
-
-	/** TODO: do strong branching */
+	DecSolver* solver = model->getSolver();
 
 	/** new nodes to be returned */
 	std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > newNodes;
 	DspNodeDesc* node = NULL;
 
-	/** diving? */
-//	DSPdebugMessage("Diving? %s\n", diving_ ? "true" : "false");
+	/** set status */
+	setStatus(AlpsNodeStatusBranched);
+	wirteLog("branched", desc, getQuality(), 1.0, 1);
 
-	/** add branching-up node */
-	node = new DspNodeDesc(model, 1, branchingUp_);
-	newNodes.push_back(CoinMakeTriple(
-			static_cast<AlpsNodeDesc*>(node),
-			AlpsNodeStatusCandidate,
-			getQuality()));
-	node = NULL;
+	/** turn off display */
+	solver_loglevel = solver->getLogLevel();
+	solver->setLogLevel(0);
+	/** set other parameters */
+	solver->setIterLimit(1);
+	solver->setHeuristicRuns(false);
+
+	/** Do strong down-branching */
+	solver->setBranchingObjects(branchingDn_);
+	ret = solver->solve();
 
 	/** add branching-down node */
 	node = new DspNodeDesc(model, -1, branchingDn_);
-	newNodes.push_back(CoinMakeTriple(
-			static_cast<AlpsNodeDesc*>(node),
-			AlpsNodeStatusCandidate,
-			getQuality()));
+	if (ret != DSP_RTN_OK) {
+		newNodes.push_back(CoinMakeTriple(
+				static_cast<AlpsNodeDesc*>(node),
+				AlpsNodeStatusDiscarded,
+				ALPS_OBJ_MAX));
+	} else {
+		if (solver->getStatus() == DSP_STAT_PRIM_INFEASIBLE) {
+			newNodes.push_back(CoinMakeTriple(
+					static_cast<AlpsNodeDesc*>(node),
+					AlpsNodeStatusFathomed,
+					ALPS_OBJ_MAX));
+			wirteLog("infeasible", node);
+			DSPdebugMessage("Strong branching fathomed the child.\n");
+		} else {
+			newNodes.push_back(CoinMakeTriple(
+					static_cast<AlpsNodeDesc*>(node),
+					AlpsNodeStatusCandidate,
+					solver->getPrimalObjective()));
+			wirteLog("candidate", node, solver->getPrimalObjective());
+			DSPdebugMessage("Strong branching estimates objective value %e.\n", solver->getPrimalObjective());
+		}
+	}
 	node = NULL;
 
-	/** set status */
-	setStatus(AlpsNodeStatusBranched);
+	/** Do strong UP-branching */
+	solver->setBranchingObjects(branchingUp_);
+	ret = solver->solve();
+
+	/** add branching-UP node */
+	node = new DspNodeDesc(model, 1, branchingUp_);
+	if (ret != DSP_RTN_OK) {
+		newNodes.push_back(CoinMakeTriple(
+				static_cast<AlpsNodeDesc*>(node),
+				AlpsNodeStatusDiscarded,
+				ALPS_OBJ_MAX));
+	} else {
+		if (solver->getStatus() == DSP_STAT_PRIM_INFEASIBLE) {
+			newNodes.push_back(CoinMakeTriple(
+					static_cast<AlpsNodeDesc*>(node),
+					AlpsNodeStatusFathomed,
+					ALPS_OBJ_MAX));
+			wirteLog("infeasible", node);
+			DSPdebugMessage("Strong branching fathomed the child.\n");
+		} else {
+			newNodes.push_back(CoinMakeTriple(
+					static_cast<AlpsNodeDesc*>(node),
+					AlpsNodeStatusCandidate,
+					solver->getPrimalObjective()));
+			wirteLog("candidate", node, solver->getPrimalObjective());
+			DSPdebugMessage("Strong branching estimates objective value %e.\n", solver->getPrimalObjective());
+		}
+	}
+	node = NULL;
+
+	/** restore solver display option */
+	solver->setLogLevel(solver_loglevel);
 
 	return newNodes;
 }
@@ -196,8 +242,32 @@ DspTreeNode* DspTreeNode::createNewTreeNode(AlpsNodeDesc*& desc) const {
 	DspTreeNode* node = new DspTreeNode();
 	node->desc_ = desc;
 
-	/** diving? */
-//	DSPdebugMessage("Diving? %s\n", diving_ ? "true" : "false");
-
 	return node;
+}
+
+void DspTreeNode::wirteLog(const char* status, DspNodeDesc* desc, double lpbound, double infeas, int suminfeas) {
+#ifdef WRITELOG
+	logstream_ << getKnowledgeBroker()->timer().getWallClock() << " " << status << " ";
+	if (strcmp(status, "candidate") == 0) {
+		int nextindex = getKnowledgeBroker()->getNextNodeIndex();
+		if (desc->branchdir() > 0)
+			logstream_ << nextindex << " " << index_ << " ";
+		else
+			logstream_ << nextindex + 1 << " " << index_ << " ";
+	} else if (index_ == 0)
+		logstream_ << index_ << " " << index_ << " ";
+	else
+		logstream_ << index_ << " " << parentIndex_ << " ";
+	if (index_ == 0)
+		logstream_ << "M";
+	else if (desc->branchdir() > 0)
+		logstream_ << "L";
+	else
+		logstream_ << "R";
+	if (strcmp(status, "branched") == 0)
+		logstream_ << " " << lpbound << " " << infeas << " " << suminfeas;
+	else if (strcmp(status, "candidate") == 0 || strcmp(status, "heuristic") == 0)
+		logstream_ << " " << lpbound;
+	logstream_ << std::endl;
+#endif
 }

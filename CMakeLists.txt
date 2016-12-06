@@ -180,7 +180,7 @@ else(READ_CONF)
 	ExternalProject_Add(Alps
 		PREFIX ${ALPS_DIR}
 		DOWNLOAD_DIR ${EXTRA_DIR}
-		SVN_REPOSITORY https://projects.coin-or.org/svn/CHiPPS/Alps/stable/1.5
+		SVN_REPOSITORY https://projects.coin-or.org/svn/CHiPPS/Alps/trunk
 		SVN_TRUST_CERT 1
 		UPDATE_COMMAND ""
 		SOURCE_DIR ${ALPS_DIR}
