@@ -61,7 +61,7 @@ set(DSP_LIBS
 	${OOQP_DIR}/lib/libooqpsparse.a
 	${OOQP_DIR}/lib/libooqpbase.a
 	${HSL_LIBS}
-	/Users/kibaekkim/Applications/IBM/ILOG/CPLEX_Studio1261/cplex/lib/x86-64_osx/static_pic/libcplex.a
+	${CPLEXLIB_DIR}/libcplex.a
 	gfortran
 	${BLAS_LIBRARIES}
 	${LAPACK_LIBRARIES}

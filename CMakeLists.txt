@@ -205,8 +205,10 @@ else(READ_CONF)
 
 	# COIN-OR Smi
 	set(SMI_DIR ${EXTRA_DIR}/Smi)
-	set(LAZYCPLEX_INCDIR "/Users/kibaekkim/Applications/IBM/ILOG/CPLEX_Studio1261/cplex/include/ilcplex")
-	set(LAZYCPLEX_LIB "-L/Users/kibaekkim/Applications/IBM/ILOG/CPLEX_Studio1261/cplex/lib/x86-64_osx/static_pic -lcplex -lm -lpthread")
+	set(CPLEX_DIR "/Users/kibaekkim/Applications/IBM/ILOG/CPLEX_Studio1261/cplex")
+    set(CPLEXLIB_DIR "${CPLEX_DIR}/lib/x86-64_osx/static_pic")
+    set(LAZYCPLEX_INCDIR "${CPLEX_DIR}/include/ilcplex")
+    set(LAZYCPLEX_LIB "-L${CPLEXLIB_DIR} -lcplex -lm -lpthread")
 	ExternalProject_Add(Smi
 		PREFIX ${SMI_DIR}
 		DOWNLOAD_DIR ${EXTRA_DIR}
@@ -214,7 +216,7 @@ else(READ_CONF)
 		SVN_TRUST_CERT 1
 		UPDATE_COMMAND ""
 		SOURCE_DIR ${SMI_DIR}
-		CONFIGURE_COMMAND ${SMI_DIR}/configure --enable-static --disable-shared --with-cplex-incdir=${LAZYCPLEX_INCDIR} --with-cplex-lib=${LAZYCPLEX_LIB} ADD_CXXFLAGS=-fPIC CXX=${CMAKE_CXX_COMPILER}
+		CONFIGURE_COMMAND ${SMI_DIR}/configure --enable-static --disable-shared --with-cplex-incdir=${LAZYCPLEX_INCDIR} --with-cplex-lib=${LAZYCPLEX_LIB} --disable-cplex-libcheck ADD_CXXFLAGS=-fPIC CXX=${CMAKE_CXX_COMPILER}
 		BINARY_DIR ${SMI_DIR}
 		BUILD_COMMAND make
 		INSTALL_COMMAND make install)
