@@ -51,26 +51,56 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 	double gUb = curUb;
 	double gLb = getKnowledgeBroker()->getBestNode()->getQuality();
 	double gap = (gUb - gLb) / (fabs(gUb) + 1e-10);
-	DSPdebugMessage("Solving node %d, gUb %e, gLb %e, gap %.2f\n", index_, gUb, gLb, gap);
+	//printf("Solving node %d, gUb %e, gLb %e, gap %.2f\n", index_, gUb, gLb, gap);
 
-	/** quality_ represents the best-known lower bound */
-	if (isRoot) quality_ = -ALPS_OBJ_MAX;
+	if (isRoot) {
+		/** quality_ represents the best-known lower bound */
+		quality_ = -ALPS_OBJ_MAX;
 
-	/** fathom if the relative gap is small enough */
-	if (!isRoot && gap < relTol) {
-		setStatus(AlpsNodeStatusFathomed);
-		wirteLog("fathomed", desc);
-		return status;
+		/** set heuristics */
+		solver->setHeuristicRuns(true);
+	} else {
+		/** fathom if the relative gap is small enough */
+		if (gap < relTol) {
+			setStatus(AlpsNodeStatusFathomed);
+			wirteLog("fathomed", desc);
+			return status;
+		}
+
+		/** set heuristics */
+		if (gap > 0.01)
+			solver->setHeuristicRuns(true);
+		else
+			solver->setHeuristicRuns(false);
+		solver->setBranchingObjects(desc->getBranchingObject());
 	}
 
-	solver->setBranchingObjects(desc->getBranchingObject());
-	solver->setIterLimit(9999);
+	if (solver->getHeuristicRuns()) {
+		/** The very first run takes one iteration and explores primal solutions. */
+		solver->setIterLimit(1);
+		solver->setTimeLimit(10);
 
-	/** set heuristics */
-	if (isRoot || gap > 0.01)
-		solver->setHeuristicRuns(true);
-	else
-		solver->setHeuristicRuns(false);
+		/** solve the bounding problem */
+		ret = solver->solve();
+		if (ret != DSP_RTN_OK) {
+			setStatus(AlpsNodeStatusDiscarded);
+			wirteLog("fathomed", desc);
+			return AlpsReturnStatusErr;
+		}
+		DSPdebugMessage("Bounding solution status: %d\n", solver->getStatus());
+
+		/** any heuristic solution */
+		if (solver->getBestPrimalObjective() < gUb) {
+			DSPdebugMessage("Found new upper bound %e\n", solver->getBestPrimalObjective());
+			DspNodeSolution* nodesol = new DspNodeSolution(solver->getNumCols(),
+					solver->getBestPrimalSolution(), solver->getBestPrimalObjective());
+			getKnowledgeBroker()->addKnowledge(AlpsKnowledgeTypeSolution,
+					nodesol, solver->getBestPrimalObjective());
+			wirteLog("heuristic", desc, solver->getBestPrimalObjective());
+		}
+	}
+	solver->setIterLimit(9999);
+	solver->setTimeLimit(10);
 
 	/** solve the bounding problem */
 	ret = solver->solve();
@@ -93,7 +123,9 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 
 	switch (solver->getStatus()) {
 	case DSP_STAT_OPTIMAL:
-	case DSP_STAT_FEASIBLE:{
+	case DSP_STAT_FEASIBLE:
+	case DSP_STAT_LIM_ITERorTIME:
+	{
 
 		quality_ = solver->getDualObjective();
 		double curUb = solver->getPrimalObjective();
@@ -163,13 +195,14 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 	/** set status */
 	setStatus(AlpsNodeStatusBranched);
 	wirteLog("branched", desc, getQuality(), 1.0, 1);
-
+//#define STRONG_BRANCH
+#ifdef STRONG_BRANCH
 	/** turn off display */
 	solver_loglevel = solver->getLogLevel();
 	solver->setLogLevel(0);
 	/** set other parameters */
-	solver->setIterLimit(1);
 	solver->setHeuristicRuns(false);
+	solver->setIterLimit(10);
 
 	/** Do strong down-branching */
 	solver->setBranchingObjects(branchingDn_);
@@ -233,6 +266,23 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 
 	/** restore solver display option */
 	solver->setLogLevel(solver_loglevel);
+#else
+	/** add branching-down node */
+	node = new DspNodeDesc(model, -1, branchingDn_);
+	newNodes.push_back(CoinMakeTriple(
+			static_cast<AlpsNodeDesc*>(node),
+			AlpsNodeStatusCandidate, getQuality()));
+	wirteLog("candidate", node, getQuality());
+	node = NULL;
+
+	/** add branching-UP node */
+	node = new DspNodeDesc(model, 1, branchingUp_);
+	newNodes.push_back(CoinMakeTriple(
+			static_cast<AlpsNodeDesc*>(node),
+			AlpsNodeStatusCandidate, getQuality()));
+	wirteLog("candidate", node, getQuality());
+	node = NULL;
+#endif
 
 	return newNodes;
 }

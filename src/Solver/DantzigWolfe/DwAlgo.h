@@ -68,6 +68,12 @@ protected:
     /** guts of solve */
     virtual DSP_RTN_CODE gutsOfSolve();
 
+    /** restore columns: adding all the columns back */
+    virtual DSP_RTN_CODE restoreCols();
+
+    /** reduce columns (e.g., reduced cost fixing) */
+    virtual DSP_RTN_CODE reduceCols();
+
     /** generate columns */
     virtual DSP_RTN_CODE generateCols(
     		const double* price, /**< [in] price */
@@ -119,7 +125,7 @@ protected:
     virtual bool terminationTestColgen(std::vector<int>& statuses);
 
     /** run heuristics */
-    virtual DSP_RTN_CODE heuristics() {return DSP_RTN_OK;}
+    virtual DSP_RTN_CODE heuristics();
 
     bool useCpxBarrier_;
 
@@ -156,6 +162,8 @@ public:
     char* org_ctype_;
     double* org_rlbd_;
     double* org_rubd_;
+
+    int itercnt_;
 };
 
 #endif /* SRC_SOLVER_DANTZIGWOLFE_DWALGO_H_ */

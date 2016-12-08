@@ -42,6 +42,12 @@ protected:
     /** solve phase 2 */
     virtual DSP_RTN_CODE solvePhase2();
 
+    /** restore columns: adding all the columns back */
+    virtual DSP_RTN_CODE restoreCols();
+
+    /** reduce columns (e.g., reduced cost fixing) */
+    virtual DSP_RTN_CODE reduceCols();
+
 	/** update master */
 	virtual DSP_RTN_CODE updateModel(
     		const double* price, /**< [in] price */
@@ -49,6 +55,9 @@ protected:
 
     /** termination test */
     virtual bool terminationTest(int nnewcols, int itercnt, double relgap);
+
+    /** run all heuristics */
+    virtual DSP_RTN_CODE heuristics();
 
     /** pre-process for heuristics */
     virtual DSP_RTN_CODE preHeuristic(

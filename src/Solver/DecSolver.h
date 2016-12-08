@@ -117,6 +117,9 @@ public:
 	/** get log level */
 	virtual int getLogLevel() {return message_->logLevel_;}
 
+	/** get heuristic runs on/off */
+	virtual bool getHeuristicRuns() {return runHeuristics_;}
+
 	/** get model pointer */
 	virtual DecModel * getModelPtr() {return model_;}
 
@@ -191,6 +194,11 @@ public:
 	}
 
 protected:
+
+	/** update time stamp and time remains */
+	virtual void tic() {
+		tic_ = CoinGetTimeOfDay();
+	}
 
 	/** update time stamp and time remains */
 	virtual void ticToc() {

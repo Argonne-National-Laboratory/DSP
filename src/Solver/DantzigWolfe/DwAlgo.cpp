@@ -32,7 +32,8 @@ org_cubd_(NULL),
 org_obj_(NULL),
 org_ctype_(NULL),
 org_rlbd_(NULL),
-org_rubd_(NULL) {}
+org_rubd_(NULL),
+itercnt_(0) {}
 
 DwAlgo::~DwAlgo() {
 	for (unsigned i = 0; i < auxcols_.size(); ++i)
@@ -52,6 +53,8 @@ DwAlgo::~DwAlgo() {
 
 DSP_RTN_CODE DwAlgo::solve() {
 	BGN_TRY_CATCH
+
+	itercnt_ = 0;
 
 	if (phase_ == 2) {
 		DSP_RTN_CHECK_RTN_CODE(solvePhase2());
@@ -293,9 +296,10 @@ DSP_RTN_CODE DwAlgo::gutsOfSolve() {
 	if (!useCpxBarrier_)
 		si_->setHintParam(OsiDoDualInResolve, false);
 
-	int itercnt = 0;
-
 	while (status_ == DSP_STAT_OPTIMAL) {
+
+		/** column management */
+		DSP_RTN_CHECK_RTN_CODE(reduceCols());
 
 		/** generate columns */
 		stime = CoinGetTimeOfDay();
@@ -330,7 +334,7 @@ DSP_RTN_CODE DwAlgo::gutsOfSolve() {
 #endif
 
 		relgap = (primobj_-dualobj_)/(1.0e-10+fabs(primobj_))*100;
-		message_->print(1, "[Phase %d] Iteration %3d: Master objective %e, ", phase_, itercnt, primobj_);
+		message_->print(1, "[Phase %d] Iteration %3d: Master objective %e, ", phase_, itercnt_, primobj_);
 		if (phase_ == 2)
 			message_->print(1, "Lb %e (gap %.2f %%), ", dualobj_, relgap);
 		message_->print(1, "nrows %d, ncols %d (new cols %d), ", si_->getNumRows(), si_->getNumCols(), nColsAdded);
@@ -342,10 +346,13 @@ DSP_RTN_CODE DwAlgo::gutsOfSolve() {
 			DSP_RTN_CHECK_RTN_CODE(getWarmStartInfo(prevsol, ws));
 
 		/** termination test */
-		if (terminationTest(nColsAdded, itercnt, relgap))
+		if (terminationTest(nColsAdded, itercnt_, relgap))
 			break;
 
-		itercnt++;
+		itercnt_++;
+
+		/** run heuristics */
+//		DSP_RTN_CHECK_RTN_CODE(heuristics());
 
 #ifdef DSP_DEBUG1
 		char fname[128];
@@ -360,6 +367,18 @@ DSP_RTN_CODE DwAlgo::gutsOfSolve() {
 
 	return DSP_RTN_OK;
 #undef FREE_MEMORY
+}
+
+DSP_RTN_CODE DwAlgo::restoreCols() {
+	BGN_TRY_CATCH
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+	return DSP_RTN_OK;
+}
+
+DSP_RTN_CODE DwAlgo::reduceCols() {
+	BGN_TRY_CATCH
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+	return DSP_RTN_OK;
 }
 
 DSP_RTN_CODE DwAlgo::generateCols(
@@ -640,5 +659,9 @@ DSP_RTN_CODE DwAlgo::setWarmStartInfo(
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
+	return DSP_RTN_OK;
+}
+
+DSP_RTN_CODE DwAlgo::heuristics() {
 	return DSP_RTN_OK;
 }
