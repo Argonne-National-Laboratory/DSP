@@ -289,7 +289,10 @@ DSP_RTN_CODE DwMasterTr::solvePhase2() {
 	si_->resolve();
 	if (si_->isProvenOptimal() == false)
 		throw "Unexpected phase 2 status.";
-	primobj_ = si_->getObjValue();
+
+	/** calculate primal objective value */
+	DSP_RTN_CHECK_RTN_CODE(calculatePrimalObjective());
+
 	CoinCopyN(si_->getRowPrice(), nrows_, price);
 
 	/** get warm-start information */
@@ -351,6 +354,23 @@ DSP_RTN_CODE DwMasterTr::solvePhase2() {
 
 	return DSP_RTN_OK;
 #undef FREE_MEMORY
+}
+
+DSP_RTN_CODE DwMasterTr::calculatePrimalObjective() {
+	BGN_TRY_CATCH
+#if 0
+	if (phase_ == 1) {
+		primobj_ = si_->getObjValue();
+	} else {
+		primobj_ = 0.0;
+		for (int j = ncols_tr_; j < si_->getNumCols(); ++j)
+			primobj_ += si_->getObjCoefficients()[j] * si_->getColSolution()[j];
+	}
+#else
+	primobj_ = si_->getObjValue();
+#endif
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+	return DSP_RTN_OK;
 }
 
 DSP_RTN_CODE DwMasterTr::restoreCols() {
@@ -443,30 +463,17 @@ bool DwMasterTr::terminationTest(int nnewcols, int itercnt, double relgap) {
 	/** time ticking */
 	ticToc();
 
-	if (time_remains_ < 0) {
-		message_->print(1, "Time limit reached.\n");
-		status_ = DSP_STAT_LIM_ITERorTIME;
-		return false;
-	}
-
 	if (phase_ == 1) {
-		return DwAlgo::terminationTest(nnewcols, itercnt, relgap);
-	} else {
-#if DSP_DEBUG1
-		double tr_term = 0.0;
-		double g = 0.0;
-		for (int j = 0; j < nrows_orig_ + nrows_branch_; ++j) {
-			tr_term += si_->getObjCoefficients()[2*j] * si_->getColSolution()[2*j];
-			tr_term += si_->getObjCoefficients()[2*j+1] * si_->getColSolution()[2*j+1];
-//		if (si_->getColSolution()[2*j] + si_->getColSolution()[2*j+1] > 1.0e-10)
-//			DSPdebugMessage("row %d: obj [%e, %e], g [%e, %e]\n",
-//					2*j, si_->getObjCoefficients()[2*j], si_->getObjCoefficients()[2*j+1],
-//					si_->getColSolution()[2*j], si_->getColSolution()[2*j+1]);
-			g += si_->getColSolution()[2*j] + si_->getColSolution()[2*j+1];
+		if (time_remains_ < 0 || iterlim_ <= itercnt) {
+			status_ = DSP_STAT_LIM_ITERorTIME;
+			term = true;
+		} else if (si_->isProvenOptimal() && primobj_ < 1.0e-8) {
+			status_ = DSP_STAT_FEASIBLE;
+			DSPdebugMessage("Phase 1 found a feasible solution! %e < %e\n", si_->getObjValue(), 1.0e-8);
+			term = true;
 		}
-		DSPdebugMessage("g %e, tr_term %e, master objective w/t tr_term %e\n", g, tr_term, primobj_ - tr_term);
-#endif
-		if (iterlim_ <= itercnt) {
+	} else {
+		if (time_remains_ < 0 || iterlim_ <= itercnt) {
 			status_ = DSP_STAT_LIM_ITERorTIME;
 			term = true;
 		} else if (relgap < 0.01 - 1.0e-8 ||
@@ -490,7 +497,7 @@ DSP_RTN_CODE DwMasterTr::updateModel(
 		DwAlgo::updateModel(price, curLb);
 	else {
 		if (curLb >= dualobj_ + 1.0e-4 * (primobj_ - dualobj_)) {
-			message_->print(2, "  [TR] SERIOUS STEP: dual objective %e", curLb);
+			message_->print(3, "  [TR] SERIOUS STEP: dual objective %e", curLb);
 
 			if (dualobj_ > -COIN_DBL_MAX) {
 				/** increase trust region? */
@@ -510,7 +517,7 @@ DSP_RTN_CODE DwMasterTr::updateModel(
 			/** update dual bound */
 			dualobj_ = curLb;
 			tr_cnt_ = 0;
-			message_->print(2, "\n");
+			message_->print(3, "\n");
 		} else {
 			message_->print(3, "  [TR] null step: dual objective %e", curLb);
 			double rho = CoinMin(1.0, tr_size_) * (dualobj_ - curLb) / (primobj_ - dualobj_);
@@ -558,16 +565,8 @@ DSP_RTN_CODE DwMasterTr::heuristics() {
 
 	BGN_TRY_CATCH
 
-	/** allow many iterations */
-	int iterlim = iterlim_;
-	iterlim_ = 9999;
-
-	/** allow more time */
-	double time_remains = time_remains_;
-	time_remains_ = 300;
-
-	if (iterlim == 1) {
-		DSPdebugMessage("Running a trivial heuristic.\n");
+	if (iterlim_ == 1 && par_->getBoolParam("DW/HEURISTICS/TRIVIAL")) {
+		message_->print(1, "Heuristic (trivial) searches solutions...\n");
 		stime = CoinGetTimeOfDay();
 		DSP_RTN_CHECK_RTN_CODE(heuristicTrivial());
 		message_->print(1, "Heuristic (trivial) spent %.2f seconds [best %e].\n", CoinGetTimeOfDay() - stime, bestprimobj_);
@@ -583,13 +582,15 @@ DSP_RTN_CODE DwMasterTr::heuristics() {
 //	DSP_RTN_CHECK_RTN_CODE(heuristicFp(-1));
 //	message_->print(1, "Heuristic (FP-like[-1]) spent %.2f seconds [best %e].\n", CoinGetTimeOfDay() - stime, bestprimobj_);
 
-	stime = CoinGetTimeOfDay();
-	DSP_RTN_CHECK_RTN_CODE(heuristicDive());
-	message_->print(1, "Heuristic (dive) spent %.2f seconds [best %e].\n", CoinGetTimeOfDay() - stime, bestprimobj_);
+	if (par_->getBoolParam("DW/HEURISTICS/DIVE")) {
+		message_->print(1, "Heuristic (dive) searches solutions...\n");
+		stime = CoinGetTimeOfDay();
+		DSP_RTN_CHECK_RTN_CODE(heuristicDive());
+		message_->print(1, "Heuristic (dive) spent %.2f seconds [best %e].\n", CoinGetTimeOfDay() - stime, bestprimobj_);
+	}
 
 	/** restore the original settings */
-	iterlim_ = iterlim;
-	time_remains_ = time_remains;
+	iterlim_ = par_->getIntParam("DW/ITER_LIM");
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;
@@ -716,15 +717,21 @@ DSP_RTN_CODE DwMasterTr::heuristicTrivial() {
 
 	/** solve */
 	itercnt_ = 0;
+	iterlim_ = par_->getIntParam("DW/HEURISTICS/TRIVIAL/ITER_LIM");
+	time_remains_ = par_->getDblParam("DW/HEURISTICS/TRIVIAL/TIME_LIM");
 	DSP_RTN_CHECK_RTN_CODE(solvePhase1());
 
 	if (primobj_ > 1.0e-8)
 		status_ = DSP_STAT_PRIM_INFEASIBLE;
-	else
+	else {
+		itercnt_ = 0;
 		DSP_RTN_CHECK_RTN_CODE(solvePhase2());
+	}
 
 	/** collect solutions */
-	if (status_ == DSP_STAT_OPTIMAL || status_ == DSP_STAT_FEASIBLE) {
+	if (status_ == DSP_STAT_OPTIMAL ||
+			status_ == DSP_STAT_FEASIBLE ||
+			status_ == DSP_STAT_LIM_ITERorTIME) {
 		/** check integer feasibility */
 		bool fractional = false;
 		for (int i = 0; i < nrows_branch_; ++i) {
@@ -736,7 +743,7 @@ DSP_RTN_CODE DwMasterTr::heuristicTrivial() {
 			}
 		}
 		if (!fractional) {
-			DSPdebugMessage("Heuristic found an integer solution.\n");
+			message_->print(1, "Heuristic found an integer solution (objective %e).\n", primobj_);
 			if (bestprimobj_ > primobj_) {
 				bestprimobj_ = primobj_;
 				/** recover original solution */
@@ -750,7 +757,7 @@ DSP_RTN_CODE DwMasterTr::heuristicTrivial() {
 						bestprimsol_[xlam.getIndices()[i]] += xlam.getElements()[i];
 					j++;
 				}
-				DSPdebugMessage("Heuristic updated the best upper bound %e.\n", bestprimobj_);
+				message_->print(1, "Heuristic updated the best upper bound %e.\n", bestprimobj_);
 			}
 		}
 	} else if (status_ == DSP_STAT_DUAL_INFEASIBLE) {
@@ -823,34 +830,25 @@ DSP_RTN_CODE DwMasterTr::gutsOfDive(
 
 	while (1) {
 
-		itercnt_ = 0;
 		if (depth > 0) {
 			/** solve */
+			itercnt_ = 0;
+			iterlim_ = par_->getIntParam("DW/HEURISTICS/DIVE/ITER_LIM");
+			time_remains_ = par_->getDblParam("DW/HEURISTICS/DIVE/TIME_LIM");
 			DSP_RTN_CHECK_RTN_CODE(solvePhase1());
 
-			/** determine solution status */
-			if (primobj_ > 1.0e-8)
-				status_ = DSP_STAT_PRIM_INFEASIBLE;
-			else {
-				status_ = DSP_STAT_FEASIBLE;
-
-				/** recover original solution */
-				CoinZeroN(primsol_, ncols_orig_);
-				for (unsigned k = 0, j = ncols_tr_; k < cols_generated_.size(); ++k) {
-					/** do not consider inactive columns */
-					if (cols_generated_[k]->active_ == false)
-						continue;
-					CoinPackedVector xlam = cols_generated_[k]->x_ * si_->getColSolution()[j];
-					for (int i = 0; i < xlam.getNumElements(); ++i)
-						primsol_[xlam.getIndices()[i]] += xlam.getElements()[i];
-					j++;
-				}
+			/** recover original solution */
+			CoinZeroN(primsol_, ncols_orig_);
+			for (unsigned k = 0, j = ncols_tr_; k < cols_generated_.size(); ++k) {
+				/** do not consider inactive columns */
+				if (cols_generated_[k]->active_ == false)
+					continue;
+				CoinPackedVector xlam = cols_generated_[k]->x_ * si_->getColSolution()[j];
+				for (int i = 0; i < xlam.getNumElements(); ++i)
+					primsol_[xlam.getIndices()[i]] += xlam.getElements()[i];
+				j++;
 			}
-			DSPdebugMessage("Diving solution status %d\n", status_);
 		}
-
-		if (status_ == DSP_STAT_PRIM_INFEASIBLE)
-			break;
 
 		/** find a fractional */
 		findPhase = 0;
@@ -923,7 +921,7 @@ DSP_RTN_CODE DwMasterTr::gutsOfDive(
 			double rounded = round(branchValue);
 			si_->setRowBounds(nrows_orig_ + branchIndex, rounded, rounded);
 			worker_->setColBounds(1, &branch_row_to_col_[nrows_orig_ + branchIndex], &rounded, &rounded);
-			DSPdebugMessage("Diving fixed variable %d [%e] to %e (depth %d).\n", branchIndex, branchValue, rounded, depth);
+			message_->print(2, "Diving fixed variable %d [%e] to %e (discrepancy %u, depth %d).\n", branchIndex, branchValue, rounded, branchList.size(), depth);
 
 			/** recursive call */
 			status = status_;
@@ -943,9 +941,12 @@ DSP_RTN_CODE DwMasterTr::gutsOfDive(
 		} else if (!isInteger) {
 			break;
 		} else {
+			message_->print(1, "Diving found an integer solution.\n");
 #define FIX_NOW
 #ifdef FIX_NOW
 			/** backup and fix all bounds */
+			std::vector<int> branchIndices;
+			std::vector<double> branchBounds;
 			double* rlbd_tmp = new double [nrows_branch_];
 			double* rubd_tmp = new double [nrows_branch_];
 			CoinCopyN(si_->getRowLower() + nrows_orig_, nrows_branch_, rlbd_tmp);
@@ -953,20 +954,29 @@ DSP_RTN_CODE DwMasterTr::gutsOfDive(
 			for (int j = 0; j < nrows_branch_; ++j) {
 				double rounded = round(primsol_[branch_row_to_col_[nrows_orig_ + j]]);
 				si_->setRowBounds(nrows_orig_ + j, rounded, rounded);
+				branchIndices.push_back(branch_row_to_col_[nrows_orig_ + j]);
+				branchBounds.push_back(rounded);
 			}
+			worker_->setColBounds(branchIndices.size(), &branchIndices[0], &branchBounds[0], &branchBounds[0]);
 
 			/** solve */
+			itercnt_ = 0;
+			iterlim_ = par_->getIntParam("DW/HEURISTICS/DIVE/ITER_LIM");
+			time_remains_ = par_->getDblParam("DW/HEURISTICS/DIVE/TIME_LIM");
 			DSP_RTN_CHECK_RTN_CODE(solvePhase1());
 
 			/** determine solution status */
 			if (primobj_ > 1.0e-8) {
+				message_->print(1, "The integer solution is infeasible.\n");
 				status_ = DSP_STAT_PRIM_INFEASIBLE;
 				break;
 			} else
 				status_ = DSP_STAT_FEASIBLE;
 #endif
-
-			DSPdebugMessage("Diving found no fractional variables.\n");
+			message_->print(1, "Diving is evaluating the integer solution.\n");
+			itercnt_ = 0;
+			iterlim_ = par_->getIntParam("DW/HEURISTICS/DIVE/ITER_LIM");
+			time_remains_ = par_->getDblParam("DW/HEURISTICS/DIVE/TIME_LIM");
 			DSP_RTN_CHECK_RTN_CODE(solvePhase2());
 
 			/** collect solutions */
@@ -983,8 +993,9 @@ DSP_RTN_CODE DwMasterTr::gutsOfDive(
 						primsol_[xlam.getIndices()[i]] += xlam.getElements()[i];
 					j++;
 				}
-				/** check integer feasibility */
 				bool fractional = false;
+#ifndef FIX_NOW
+				/** check integer feasibility */
 				for (int i = 0; i < nrows_branch_; ++i) {
 					double x = primsol_[branch_row_to_col_[nrows_orig_ + i]];
 					if (fabs(x - floor(x + 0.5)) > 1.0e-10) {
@@ -993,15 +1004,16 @@ DSP_RTN_CODE DwMasterTr::gutsOfDive(
 						break;
 					}
 				}
+#endif
 				if (!fractional) {
-					DSPdebugMessage("Heuristic found an integer solution.\n");
 					primobj_ = 0.0;
 					for (int j = ncols_tr_; j < si_->getNumCols(); ++j)
 						primobj_ += si_->getObjCoefficients()[j] * si_->getColSolution()[j];
+					message_->print(1, "Diving found an integer solution (objective %e).\n", primobj_);
 					if (bestprimobj_ > primobj_) {
 						bestprimobj_ = primobj_;
 						CoinCopyN(primsol_, ncols_orig_, bestprimsol_);
-						DSPdebugMessage("Heuristic updated the best upper bound %e.\n", bestprimobj_);
+						message_->print(1, "Diving updated the best upper bound %e.\n", bestprimobj_);
 					}
 					terminateLoop = true;
 				}
@@ -1010,6 +1022,7 @@ DSP_RTN_CODE DwMasterTr::gutsOfDive(
 #ifdef FIX_NOW
 			for (int j = 0; j < nrows_branch_; ++j)
 				si_->setRowBounds(nrows_orig_ + j, rlbd_tmp[j], rubd_tmp[j]);
+			worker_->setColBounds(branchIndices.size(), &branchIndices[0], rlbd_tmp, rubd_tmp);
 			FREE_ARRAY_PTR(rlbd_tmp)
 			FREE_ARRAY_PTR(rubd_tmp)
 #endif
@@ -1034,7 +1047,7 @@ DSP_RTN_CODE DwMasterTr::preHeuristic(
 	BGN_TRY_CATCH
 
 #ifndef DSP_DEBUG
-	message_->logLevel_ = 0;
+	message_->logLevel_ = 1;
 #endif
 
 	/** save the original row bounds */

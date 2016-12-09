@@ -42,6 +42,9 @@ protected:
     /** solve phase 2 */
     virtual DSP_RTN_CODE solvePhase2();
 
+    /** calculate primal objective value */
+    virtual DSP_RTN_CODE calculatePrimalObjective();
+
     /** restore columns: adding all the columns back */
     virtual DSP_RTN_CODE restoreCols();
 

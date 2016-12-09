@@ -129,6 +129,10 @@ void DspParams::initBoolParams()
 
 	/** enable asynchronous parallelization */
 	BoolParams_.createParam("DD/ASYNC", false);
+
+	BoolParams_.createParam("DW/HEURISTICS", true);
+	BoolParams_.createParam("DW/HEURISTICS/TRIVIAL", true);
+	BoolParams_.createParam("DW/HEURISTICS/DIVE", true);
 }
 
 void DspParams::initIntParams()
@@ -137,7 +141,7 @@ void DspParams::initIntParams()
 	IntParams_.createParam("LOG_LEVEL", 1);
 
 	/** branch-and-cut node limit */
-	IntParams_.createParam("NODE_LIM", MAX_INT_NUM);
+	IntParams_.createParam("BD/NODE_LIM", MAX_INT_NUM);
 
 	/** number of cuts to the master per iteration */
 	IntParams_.createParam("BD/NUM_CUTS_PER_ITER", 1);
@@ -182,6 +186,14 @@ void DspParams::initIntParams()
 
 	/** display frequency */
 	IntParams_.createParam("SCIP/DISPLAY_FREQ", 100);
+
+	IntParams_.createParam("ALPS/SEARCH_STRATEGY", 0);
+	IntParams_.createParam("ALPS/NODE_LIM", 1000000);
+	IntParams_.createParam("ALPS/NODE_LOG_INTERVAL", 100);
+
+    IntParams_.createParam("DW/ITER_LIM", MAX_INT_NUM);
+    IntParams_.createParam("DW/HEURISTICS/TRIVIAL/ITER_LIM", MAX_INT_NUM);
+    IntParams_.createParam("DW/HEURISTICS/DIVE/ITER_LIM", MAX_INT_NUM);
 }
 
 void DspParams::initDblParams()
@@ -206,6 +218,12 @@ void DspParams::initDblParams()
 
 	/** time limit */
 	DblParams_.createParam("SCIP/TIME_LIM", 300);
+
+	DblParams_.createParam("ALPS/TIME_LIM", MAX_DBL_NUM);
+
+	DblParams_.createParam("DW/TIME_LIM", MAX_DBL_NUM);
+	DblParams_.createParam("DW/HEURISTICS/TRIVIAL/TIME_LIM", MAX_DBL_NUM);
+	DblParams_.createParam("DW/HEURISTICS/DIVE/TIME_LIM", MAX_DBL_NUM);
 }
 
 void DspParams::initStrParams()

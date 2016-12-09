@@ -45,6 +45,10 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 	DspNodeDesc* desc = dynamic_cast<DspNodeDesc*>(desc_);
 	DspModel* model = dynamic_cast<DspModel*>(desc_->getModel());
 	DecSolver* solver = model->getSolver();
+	DspParams* par = solver->getParPtr();
+
+	double alpsTimeRemain = par->getDblParam("ALPS/TIME_LIM") - getKnowledgeBroker()->timer().getWallClock();
+	double dwTimeLim = CoinMin(par->getDblParam("DW/TIME_LIM"), alpsTimeRemain);
 
 	/** bounds */
 	double curUb = getKnowledgeBroker()->getIncumbentValue();
@@ -58,7 +62,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 		quality_ = -ALPS_OBJ_MAX;
 
 		/** set heuristics */
-		solver->setHeuristicRuns(true);
+		solver->setHeuristicRuns(par->getBoolParam("DW/HEURISTICS"));
 	} else {
 		/** fathom if the relative gap is small enough */
 		if (gap < relTol) {
@@ -69,7 +73,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 
 		/** set heuristics */
 		if (gap > 0.01)
-			solver->setHeuristicRuns(true);
+			solver->setHeuristicRuns(par->getBoolParam("DW/HEURISTICS"));
 		else
 			solver->setHeuristicRuns(false);
 		solver->setBranchingObjects(desc->getBranchingObject());
@@ -78,7 +82,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 	if (solver->getHeuristicRuns()) {
 		/** The very first run takes one iteration and explores primal solutions. */
 		solver->setIterLimit(1);
-		solver->setTimeLimit(10);
+		solver->setTimeLimit(dwTimeLim);
 
 		/** solve the bounding problem */
 		ret = solver->solve();
@@ -99,8 +103,12 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 			wirteLog("heuristic", desc, solver->getBestPrimalObjective());
 		}
 	}
-	solver->setIterLimit(9999);
-	solver->setTimeLimit(10);
+
+	alpsTimeRemain = par->getDblParam("ALPS/TIME_LIM") - getKnowledgeBroker()->timer().getWallClock();
+	dwTimeLim = CoinMin(par->getDblParam("DW/TIME_LIM"), alpsTimeRemain);
+
+	solver->setIterLimit(par->getIntParam("DW/ITER_LIM"));
+	solver->setTimeLimit(dwTimeLim);
 
 	/** solve the bounding problem */
 	ret = solver->solve();

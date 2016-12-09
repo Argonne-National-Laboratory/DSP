@@ -116,7 +116,7 @@ void DspParam<T>::deleteParam(string name)
 	if (params_.find(name) != params_.end())
 		params_.erase(name);
 	else
-		printf("WARNING: There is no parameter <%s>\n.", name.c_str());
+		printf("WARNING: There is no parameter <%s>.\n", name.c_str());
 }
 
 /** set parameter */
@@ -126,7 +126,7 @@ void DspParam<T>::setParam(string name, T const & value)
 	if (params_.find(name) != params_.end())
 		params_[name] = value;
 	else
-		printf("WARNING: There is no parameter <%s>\n.", name.c_str());
+		printf("WARNING: There is no parameter <%s>.\n", name.c_str());
 }
 
 /** get parameter */
@@ -138,7 +138,7 @@ T DspParam<T>::getParam(string name) const
 		return found->second;
 	else
 	{
-		printf("WARNING: There is no parameter <%s>\n.", name.c_str());
+		printf("WARNING: There is no parameter <%s>.\n", name.c_str());
 		return T();
 	}
 }

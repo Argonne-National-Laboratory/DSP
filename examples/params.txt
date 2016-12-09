@@ -14,15 +14,41 @@ int  LOG_LEVEL          1    # Display level
 int  SCIP/DISPLAY_FREQ  100  # SCIP display frequency
 
 #
+# Alps parameters
+#
+
+int     ALPS/SEARCH_STRATEGY    0
+int     ALPS/NODE_LIM           1
+int     ALPS/NODE_LOG_INTERVAL  1
+double  ALPS/TIME_LIM           300
+
+#
+# Dantzig-Wolfe Decomposition
+#
+
+int     DW/ITER_LIM  100
+double  DW/TIME_LIM  60
+bool    DW/HEURISTICS                   true
+bool    DW/HEURISTICS/TRIVIAL           true
+int     DW/HEURISTICS/TRIVIAL/ITER_LIM  100
+double  DW/HEURISTICS/TRIVIAL/TIME_LIM  300
+bool    DW/HEURISTICS/DIVE              true
+int     DW/HEURISTICS/DIVE/ITER_LIM     300
+double  DW/HEURISTICS/DIVE/TIME_LIM     600
+
+#
 # Stopping criteria
 #
 
-int     NODE_LIM       1000000  # Branch-and-cut node limit
-int     ITER_LIM       1000000  # Iteration limit
-double  WALL_LIM       1000000  # Wall clock limit
-double  DD/STOP_TOL    0.00001  # Stopping tolerance
-double  SCIP/GAP_TOL   0.0      # Duality gap tolerance
-double  SCIP/TIME_LIM  1000000  # Time limit
+int     BD/NODE_LIM     1000000  # Branch-and-cut node limit
+int     DD/ITER_LIM     1000000  # Iteration limit
+int     BD/DD/ITER_LIM  1000000  # Iteration limit
+double  DE/WALL_LIM     1000000  # Wall clock limit
+double  BD/WALL_LIM     1000000  # Wall clock limit
+double  DD/WALL_LIM     1000000  # Wall clock limit
+double  DD/STOP_TOL     0.00001  # Stopping tolerance
+double  SCIP/GAP_TOL    0.0      # Duality gap tolerance
+double  SCIP/TIME_LIM   1000000  # Time limit
 
 # Benders lower bound method
 #   0 = solve separate LP relaxation problems

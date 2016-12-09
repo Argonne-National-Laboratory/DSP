@@ -281,9 +281,11 @@ DSP_RTN_CODE DwAlgo::gutsOfSolve() {
 	/** resolve */
 	stime = CoinGetTimeOfDay();
 	si_->resolve();
-	primobj_ = si_->getObjValue();
 	t_master += CoinGetTimeOfDay() - stime;
 	convertCoinToDspStatus(si_, status_);
+
+	/** calculate primal objective value */
+	DSP_RTN_CHECK_RTN_CODE(calculatePrimalObjective());
 
 	/** get price */
 	CoinCopyN(si_->getRowPrice(), si_->getNumRows(), price);
@@ -320,9 +322,11 @@ DSP_RTN_CODE DwAlgo::gutsOfSolve() {
 		/** re-optimize the master */
 		stime = CoinGetTimeOfDay();
 		si_->resolve();
-		primobj_ = si_->getObjValue();
 		t_master += CoinGetTimeOfDay() - stime;
 		convertCoinToDspStatus(si_, status_);
+
+		/** calculate primal objective value */
+		DSP_RTN_CHECK_RTN_CODE(calculatePrimalObjective());
 
 		/** get price */
 		CoinCopyN(si_->getRowPrice(), si_->getNumRows(), price);
@@ -334,11 +338,11 @@ DSP_RTN_CODE DwAlgo::gutsOfSolve() {
 #endif
 
 		relgap = (primobj_-dualobj_)/(1.0e-10+fabs(primobj_))*100;
-		message_->print(1, "[Phase %d] Iteration %3d: Master objective %e, ", phase_, itercnt_, primobj_);
+		message_->print(2, "[Phase %d] Iteration %3d: Master objective %e, ", phase_, itercnt_, primobj_);
 		if (phase_ == 2)
-			message_->print(1, "Lb %e (gap %.2f %%), ", dualobj_, relgap);
-		message_->print(1, "nrows %d, ncols %d (new cols %d), ", si_->getNumRows(), si_->getNumCols(), nColsAdded);
-		message_->print(1, "itercnt %d, timing (total %.2f, master %.2f, gencols %.2f), statue %d\n",
+			message_->print(2, "Lb %e (gap %.2f %%), ", dualobj_, relgap);
+		message_->print(2, "nrows %d, ncols %d (new cols %d), ", si_->getNumRows(), si_->getNumCols(), nColsAdded);
+		message_->print(2, "itercnt %d, timing (total %.2f, master %.2f, gencols %.2f), statue %d\n",
 				si_->getIterationCount(), CoinGetTimeOfDay() - t_total, t_master, t_gencols, status_);
 
 		/** get warm-start information */
@@ -367,6 +371,13 @@ DSP_RTN_CODE DwAlgo::gutsOfSolve() {
 
 	return DSP_RTN_OK;
 #undef FREE_MEMORY
+}
+
+DSP_RTN_CODE DwAlgo::calculatePrimalObjective() {
+	BGN_TRY_CATCH
+	primobj_ = si_->getObjValue();
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+	return DSP_RTN_OK;
 }
 
 DSP_RTN_CODE DwAlgo::restoreCols() {
@@ -529,11 +540,10 @@ DSP_RTN_CODE DwAlgo::getLagrangianBound(
 	/** calculate lower bound */
 #if 1
 	lb = 0.0;
-	const char* sense = si_->getRowSense();
 	const double* rlbd = si_->getRowLower();
 	const double* rubd = si_->getRowUpper();
 	for (int j = 0; j < nrows_orig_ + nrows_branch_; ++j) {
-		if (fabs(price[j]) < 1.0e-8)
+		if (fabs(price[j]) < 1.0e-10)
 			continue;
 		else if (price[j] > 0)
 			lb += price[j] * rlbd[j];

@@ -68,6 +68,9 @@ protected:
     /** guts of solve */
     virtual DSP_RTN_CODE gutsOfSolve();
 
+    /** calculate primal objective value */
+    virtual DSP_RTN_CODE calculatePrimalObjective();
+
     /** restore columns: adding all the columns back */
     virtual DSP_RTN_CODE restoreCols();
 
