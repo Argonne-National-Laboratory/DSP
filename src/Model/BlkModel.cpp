@@ -157,7 +157,7 @@ DSP_RTN_CODE BlkModel::updateBlocks() {
 			master_coupling_rows[i] = i;
 		master->setCouplingRows(master->getNumRows(), master_coupling_rows);
 		FREE_ARRAY_PTR(master_coupling_rows);
-
+#if 0
 		/** check if the full matrix is of a primal block angular form. */
 		primal_block_angular_ = true;
 		for (int j = 0; j < master->getNumCols(); ++j)
@@ -168,6 +168,7 @@ DSP_RTN_CODE BlkModel::updateBlocks() {
 			printf("The constraint matrix is of a primal block angular.\n");
 		if (dual_block_angular_ == true)
 			printf("The constraint matrix is of a dual block angular.\n");
+#endif
 	}
 	DSPdebugMessage("Update block time: %.4f\n", CoinGetTimeOfDay() - stime);
 

@@ -15,34 +15,49 @@
 #include <DantzigWolfe/DwMasterTr.h>
 
 DSP_RTN_CODE DwMasterTr::createProblem() {
-#define FREE_MEMORY       \
-	FREE_PTR(mat)
+#define FREE_MEMORY \
+	FREE_PTR(mat) \
+	FREE_ARRAY_PTR(obj) \
+	FREE_ARRAY_PTR(clbd) \
+	FREE_ARRAY_PTR(cubd) \
+	FREE_ARRAY_PTR(rlbd) \
+	FREE_ARRAY_PTR(rubd) \
+	FREE_ARRAY_PTR(starts_tr) \
+	FREE_ARRAY_PTR(rows_tr) \
+	FREE_ARRAY_PTR(elements_tr)
 
 	OsiCpxSolverInterface* cpx = NULL;
 
 	/** master problem */
 	CoinPackedMatrix * mat = NULL;
-	std::vector<double> obj;
-	std::vector<double> clbd;
-	std::vector<double> cubd;
-	std::vector<double> rlbd;
-	std::vector<double> rubd;
+	double* obj = NULL;
+	double* clbd = NULL;
+	double* cubd = NULL;
+	double* rlbd = NULL;
+	double* rubd = NULL;
+
+	/** trust-region columns */
+	int* starts_tr = NULL;
+	int* rows_tr = NULL;
+	double* elements_tr = NULL;
 
 	BGN_TRY_CATCH
 
 	/** number of initial columns */
 	ncols_tr_ = 2 * (nrows_orig_ + nrows_branch_);
-	int ncols = cols_generated_.size();
 
 	/** allocate memory */
-	obj.reserve(ncols_tr_ + ncols);
-	clbd.reserve(ncols_tr_ + ncols);
-	cubd.reserve(ncols_tr_ + ncols);
-	rlbd.reserve(nrows_branch_);
-	rubd.reserve(nrows_branch_);
+	obj = new double [ncols_tr_];
+	clbd = new double [ncols_tr_];
+	cubd = new double [ncols_tr_];
+	rlbd = new double [nrows_branch_];
+	rubd = new double [nrows_branch_];
 	rlbd_branch_ = new double [nrows_branch_];
 	rubd_branch_ = new double [nrows_branch_];
 	tr_center_ = new double [nrows_];
+	starts_tr = new int [ncols_tr_ + 1];
+	rows_tr = new int [ncols_tr_];
+	elements_tr = new double [ncols_tr_];
 
 	/** initial trust region center */
 	CoinZeroN(tr_center_, nrows_orig_ + nrows_branch_);
@@ -53,45 +68,35 @@ DSP_RTN_CODE DwMasterTr::createProblem() {
 	mat->setDimensions(nrows_, 0);
 
 	/** add variables related to trust region */
-	for (int j = 0; j < nrows_orig_ + nrows_branch_; ++j) {
-		clbd.push_back(0.0);
-		cubd.push_back(COIN_DBL_MAX);
-		obj.push_back(tr_size_);
-		double vecelem = 1.0;
-		mat->appendCol(1, &j, &vecelem);
-
-		clbd.push_back(0.0);
-		cubd.push_back(COIN_DBL_MAX);
-		obj.push_back(tr_size_);
-		vecelem = -1.0;
-		mat->appendCol(1, &j, &vecelem);
+	CoinFillN(obj, ncols_tr_, tr_size_);
+	CoinZeroN(clbd, ncols_tr_);
+	CoinFillN(cubd, ncols_tr_, COIN_DBL_MAX);
+	for (int j = 0, k = 0; j < nrows_orig_ + nrows_branch_; ++j) {
+		starts_tr[k] = k;
+		rows_tr[k] = j;
+		elements_tr[k] = 1.0;
+		starts_tr[k+1] = k+1;
+		rows_tr[k+1] = j;
+		elements_tr[k+1] = -1.0;
+		k += 2;
 	}
+	starts_tr[ncols_tr_] = ncols_tr_;
+	mat->appendCols(ncols_tr_, starts_tr, rows_tr, elements_tr);
 
-	/** add initial columns */
-	for (int j = 0; j < ncols; ++j) {
-		clbd.push_back(cols_generated_[j]->lb_);
-		cubd.push_back(cols_generated_[j]->ub_);
-		obj.push_back(cols_generated_[j]->obj_);
-		mat->appendCol(cols_generated_[j]->col_);
-	}
 	DSPdebug(mat->verifyMtx(4));
 
 	/** Set row bounds */
-	for (int i = 0; i < nrows_orig_; ++i) {
-		rlbd.push_back(org_rlbd_[i]);
-		rubd.push_back(org_rubd_[i]);
-	}
+	CoinCopyN(org_rlbd_, nrows_orig_, rlbd);
+	CoinCopyN(org_rubd_, nrows_orig_, rubd);
 	for (int i = 0; i < nrows_branch_; ++i) {
 		int j = branch_row_to_col_[nrows_orig_ + i];
-		rlbd.push_back(org_clbd_[j]);
-		rubd.push_back(org_cubd_[j]);
+		rlbd[nrows_orig_ + i] = org_clbd_[j];
+		rubd[nrows_orig_ + i] = org_cubd_[j];
 		rlbd_branch_[i] = org_clbd_[j];
 		rubd_branch_[i] = org_cubd_[j];
 	}
-	for (int i = 0; i < nrows_conv_; ++i) {
-		rlbd.push_back(1.0);
-		rubd.push_back(1.0);
-	}
+	CoinFillN(rlbd + nrows_orig_ + nrows_branch_, nrows_conv_, 1.0);
+	CoinFillN(rubd + nrows_orig_ + nrows_branch_, nrows_conv_, 1.0);
 
 	/** create solver */
 	si_ = new OsiCpxSolverInterface();
@@ -103,7 +108,7 @@ DSP_RTN_CODE DwMasterTr::createProblem() {
 	//DSPdebug(si_->messageHandler()->logLevel(4));
 
 	/** load problem data */
-	si_->loadProblem(*mat, &clbd[0], &cubd[0], &obj[0], &rlbd[0], &rubd[0]);
+	si_->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
 
 	/** write mps */
 	DSPdebug(si_->writeMps("master"));
@@ -358,7 +363,7 @@ DSP_RTN_CODE DwMasterTr::solvePhase2() {
 
 DSP_RTN_CODE DwMasterTr::calculatePrimalObjective() {
 	BGN_TRY_CATCH
-#if 0
+#if 1
 	if (phase_ == 1) {
 		primobj_ = si_->getObjValue();
 	} else {
