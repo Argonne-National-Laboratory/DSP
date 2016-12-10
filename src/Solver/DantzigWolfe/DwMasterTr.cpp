@@ -50,8 +50,8 @@ DSP_RTN_CODE DwMasterTr::createProblem() {
 	obj = new double [ncols_tr_];
 	clbd = new double [ncols_tr_];
 	cubd = new double [ncols_tr_];
-	rlbd = new double [nrows_branch_];
-	rubd = new double [nrows_branch_];
+	rlbd = new double [nrows_];
+	rubd = new double [nrows_];
 	rlbd_branch_ = new double [nrows_branch_];
 	rubd_branch_ = new double [nrows_branch_];
 	tr_center_ = new double [nrows_];
