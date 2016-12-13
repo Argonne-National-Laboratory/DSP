@@ -130,6 +130,8 @@ protected:
     /** run heuristics */
     virtual DSP_RTN_CODE heuristics();
 
+protected:
+
     bool useCpxBarrier_;
 
     int phase_; /**< phase 1 or 2? */

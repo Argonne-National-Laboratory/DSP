@@ -248,7 +248,7 @@ DSP_RTN_CODE DwMasterTr::solvePhase1() {
 
 		if (primobj_ > 1.0e-10) {
 			/** do column generation for phase 1 */
-			DSP_RTN_CHECK_RTN_CODE(DwAlgo::gutsOfSolve());
+			DSP_RTN_CHECK_RTN_CODE(gutsOfSolve());
 		}
 	} else
 		primobj_ = COIN_DBL_MAX;
@@ -329,7 +329,7 @@ DSP_RTN_CODE DwMasterTr::solvePhase2() {
 				DSP_RTN_CHECK_RTN_CODE(setWarmStartInfo(prevsol, ws));
 
 			/** solve */
-			DSP_RTN_CHECK_RTN_CODE(DwAlgo::gutsOfSolve());
+			DSP_RTN_CHECK_RTN_CODE(gutsOfSolve());
 		} else {
 			dualobj_ = primobj_;
 		}
@@ -346,7 +346,7 @@ DSP_RTN_CODE DwMasterTr::solvePhase2() {
 			dualobj_ = -COIN_DBL_MAX;
 
 			/** solve with TR */
-			DSP_RTN_CHECK_RTN_CODE(DwAlgo::gutsOfSolve());
+			DSP_RTN_CHECK_RTN_CODE(gutsOfSolve());
 
 			/** turn on the TR device */
 			for (int j = 0; j < ncols_tr_; ++j)
@@ -501,7 +501,7 @@ DSP_RTN_CODE DwMasterTr::updateModel(
 	//DSPdebugMessage("current primobj %e\n", primobj_);
 
 	if (phase_ == 1)
-		DwAlgo::updateModel(price, curLb);
+		DwMaster::updateModel(price, curLb);
 	else {
 		if (curLb >= dualobj_ + 1.0e-4 * (primobj_ - dualobj_)) {
 			message_->print(3, "  [TR] SERIOUS STEP: dual objective %e", curLb);

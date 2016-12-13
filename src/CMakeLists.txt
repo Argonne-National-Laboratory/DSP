@@ -8,7 +8,6 @@ set(DSP_SRC_FILES
 	Model/DetModel.cpp
 	Model/StoModel.cpp
 	Model/TssModel.cpp
-	Solver/DantzigWolfe/DwAlgo.cpp
 	Solver/DantzigWolfe/DwMaster.cpp
 	Solver/DantzigWolfe/DwMasterTr.cpp
 	Solver/DantzigWolfe/DwSolverSerial.cpp
