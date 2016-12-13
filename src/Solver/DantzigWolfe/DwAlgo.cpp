@@ -22,6 +22,7 @@ rlbd_branch_(NULL),
 rubd_branch_(NULL),
 worker_(worker),
 ncols_orig_(0),
+ncols_start_(0),
 nrows_(0),
 nrows_orig_(0),
 nrows_branch_(0),
@@ -77,7 +78,10 @@ DSP_RTN_CODE DwAlgo::solve() {
 	}
 
 	/** collect solutions */
-	if (status_ == DSP_STAT_OPTIMAL || status_ == DSP_STAT_FEASIBLE) {
+	/** collect solutions */
+	if (status_ == DSP_STAT_OPTIMAL ||
+		status_ == DSP_STAT_FEASIBLE ||
+		status_ == DSP_STAT_LIM_ITERorTIME) {
 #if 1
 		/** recover original solution */
 		CoinZeroN(primsol_, ncols_orig_);

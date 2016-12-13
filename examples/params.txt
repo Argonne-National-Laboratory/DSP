@@ -36,6 +36,8 @@ double  DW/HEURISTICS/TRIVIAL/TIME_LIM  300
 bool    DW/HEURISTICS/DIVE              true
 int     DW/HEURISTICS/DIVE/ITER_LIM     300
 double  DW/HEURISTICS/DIVE/TIME_LIM     600
+bool    DW/HEURISTICS/FP1               false
+bool    DW/HEURISTICS/FP2               false
 
 #
 # Stopping criteria

@@ -150,6 +150,7 @@ protected:
 public:
 
     int ncols_orig_; /**< number of columns in the original master */
+    int ncols_start_; /**< index that generated columns start added. */
 
     int nrows_;        /**< number of rows */
     int nrows_orig_;   /**< number of rows in the original master */

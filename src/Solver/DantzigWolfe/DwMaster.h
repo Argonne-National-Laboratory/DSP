@@ -41,6 +41,38 @@ protected:
     /** Run heuristics */
     virtual DSP_RTN_CODE heuristics();
 
+    /** pre-process for heuristics */
+    virtual DSP_RTN_CODE preHeuristic(
+    		double*& rlbd,    /**< [out] original row lower bounds */
+    		double*& rubd,    /**< [out] original row lower bounds */
+    		double*& primsol, /**< [out] original primal solution */
+    		double& primobj,  /**< [out] original primal objective */
+    		double& dualobj,  /**< [out] original dual objective */
+    		int& status       /**< [out] original solution status */);
+
+    /** post-process for heuristics */
+    virtual DSP_RTN_CODE postHeuristic(
+    		double*& rlbd,    /**< [out] original row lower bounds */
+    		double*& rubd,    /**< [out] original row lower bounds */
+    		double*& primsol, /**< [out] original primal solution */
+    		double& primobj,  /**< [out] original primal objective */
+    		double& dualobj,  /**< [out] original dual objective */
+    		int& status       /**< [out] original solution status */);
+
+    /** trivial heuristic */
+    virtual DSP_RTN_CODE heuristicTrivial();
+
+    /** FP-type heuristic */
+    virtual DSP_RTN_CODE heuristicFp(int direction);
+
+    /** Dive heuristic */
+    virtual DSP_RTN_CODE heuristicDive();
+
+    /** guts of Dive heuristic */
+    virtual DSP_RTN_CODE gutsOfDive(
+    		std::vector<CoinTriple<int,int,double> > branchList,
+    		int depth);
+
     /** Solve the master with integrality */
     DSP_RTN_CODE solveMip();
 

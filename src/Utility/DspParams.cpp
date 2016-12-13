@@ -134,6 +134,8 @@ void DspParams::initBoolParams()
 	BoolParams_.createParam("DW/HEURISTICS", true);
 	BoolParams_.createParam("DW/HEURISTICS/TRIVIAL", true);
 	BoolParams_.createParam("DW/HEURISTICS/DIVE", true);
+	BoolParams_.createParam("DW/HEURISTICS/FP1", false);
+	BoolParams_.createParam("DW/HEURISTICS/FP2", false);
 }
 
 void DspParams::initIntParams()
