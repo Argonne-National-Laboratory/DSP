@@ -130,6 +130,7 @@ void DspParams::initBoolParams()
 	/** enable asynchronous parallelization */
 	BoolParams_.createParam("DD/ASYNC", false);
 
+	BoolParams_.createParam("DW/TRUST_REGION", true);
 	BoolParams_.createParam("DW/HEURISTICS", true);
 	BoolParams_.createParam("DW/HEURISTICS/TRIVIAL", true);
 	BoolParams_.createParam("DW/HEURISTICS/DIVE", true);

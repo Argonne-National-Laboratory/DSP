@@ -26,8 +26,9 @@ double  ALPS/TIME_LIM           300
 # Dantzig-Wolfe Decomposition
 #
 
-int     DW/ITER_LIM  100
-double  DW/TIME_LIM  60
+int     DW/ITER_LIM                     100
+double  DW/TIME_LIM                     60
+bool    DW/TRUST_REGION                 true
 bool    DW/HEURISTICS                   true
 bool    DW/HEURISTICS/TRIVIAL           true
 int     DW/HEURISTICS/TRIVIAL/ITER_LIM  100
