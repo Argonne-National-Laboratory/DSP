@@ -8,6 +8,7 @@
 /** Coin */
 #include "OsiClpSolverInterface.hpp"
 #include "OsiCpxSolverInterface.hpp"
+#include "CoinUtility.hpp"
 /** Dsp */
 #include "Utility/DspUtility.h"
 #include "Solver/DantzigWolfe/DwMaster.h"

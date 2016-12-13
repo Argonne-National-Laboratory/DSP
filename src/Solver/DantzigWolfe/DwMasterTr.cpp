@@ -10,7 +10,6 @@
 #include "cplex.h"
 /** Coin */
 #include "OsiCpxSolverInterface.hpp"
-#include "CoinUtility.hpp"
 /** Dsp */
 #include <DantzigWolfe/DwMasterTr.h>
 
