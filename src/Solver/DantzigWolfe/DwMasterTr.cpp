@@ -119,7 +119,7 @@ DSP_RTN_CODE DwMasterTr::createProblem() {
 	phase_ = 2;
 
 	/** set hint parameters */
-	useCpxBarrier_ = false;
+	useCpxBarrier_ = par_->getBoolParam("DW/MASTER/IPM");
 
 	cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
 	if (cpx)

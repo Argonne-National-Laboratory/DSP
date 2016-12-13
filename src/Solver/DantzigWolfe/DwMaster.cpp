@@ -232,7 +232,7 @@ DSP_RTN_CODE DwMaster::createProblem() {
 	DSPdebug(si_->writeMps("master"));
 
 	/** set hint parameters */
-	useCpxBarrier_ = false;
+	useCpxBarrier_ = par_->getBoolParam("DW/MASTER/IPM");
 	cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
 
 	if (useCpxBarrier_ && cpx) {
