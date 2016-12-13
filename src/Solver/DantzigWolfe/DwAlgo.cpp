@@ -346,8 +346,10 @@ DSP_RTN_CODE DwAlgo::gutsOfSolve() {
 		if (phase_ == 2)
 			message_->print(2, "Lb %e (gap %.2f %%), ", dualobj_, relgap);
 		message_->print(2, "nrows %d, ncols %d (new cols %d), ", si_->getNumRows(), si_->getNumCols(), nColsAdded);
-		message_->print(2, "itercnt %d, timing (total %.2f, master %.2f, gencols %.2f), statue %d\n",
-				si_->getIterationCount(), CoinGetTimeOfDay() - t_total, t_master, t_gencols, status_);
+		if (!useCpxBarrier_)
+			message_->print(2, "itercnt %d, ", si_->getIterationCount());
+		message_->print(2, "timing (total %.2f, master %.2f, gencols %.2f), statue %d\n",
+				CoinGetTimeOfDay() - t_total, t_master, t_gencols, status_);
 
 		/** get warm-start information */
 		if (hasBasis)

@@ -25,7 +25,10 @@ DwSolverSerial::~DwSolverSerial() {
 DSP_RTN_CODE DwSolverSerial::init() {
 	BGN_TRY_CATCH
 	worker_ = new DwWorker(model_, par_, message_);
-	master_ = new DwMasterTr(worker_);
+	if (par_->getBoolParam("DW/TRUST_REGION"))
+		master_ = new DwMasterTr(worker_);
+	else
+		master_ = new DwMaster(worker_);
 	DSP_RTN_CHECK_THROW(master_->init());
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;

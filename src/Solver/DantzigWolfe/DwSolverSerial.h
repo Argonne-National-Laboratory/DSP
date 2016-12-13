@@ -86,6 +86,11 @@ public:
 		return master_->getDualObjective();
 	}
 
+	/** get heuristic runs on/off */
+	virtual bool getHeuristicRuns() {
+		return master_->getHeuristicRuns();
+	}
+
 	/** get log level */
 	virtual int getLogLevel() {
 		return master_->getLogLevel();
