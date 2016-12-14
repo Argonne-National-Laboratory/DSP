@@ -440,8 +440,14 @@ DSP_RTN_CODE DwMasterTr::reduceCols() {
 		std::vector<int> delcols;
 		for (unsigned k = 0, j = ncols_tr_; k < cols_generated_.size(); ++k) {
 			if (cols_generated_[k]->active_) {
+				/** age? */
+				if (si_->getReducedCost()[j] < 1.0e-8)
+					cols_generated_[k]->age_ = 0;
+				else
+					cols_generated_[k]->age_++;
 				/** reduced cost fixing */
-				if (dualobj_ + si_->getReducedCost()[j] - bestprimobj_ > -1.0e-10) {
+				if (cols_generated_[k]->age_ >= par_->getIntParam("DW/MASTER/COL_AGE_LIM") ||
+						dualobj_ + si_->getReducedCost()[j] - bestprimobj_ > -1.0e-10) {
 					cols_generated_[k]->active_ = false;
 					delcols.push_back(j);
 				}
