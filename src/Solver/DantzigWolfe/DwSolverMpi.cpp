@@ -8,6 +8,7 @@
 #define DSP_DEBUG
 #include <DantzigWolfe/DwSolverMpi.h>
 #include <DantzigWolfe/DwMasterTr.h>
+#include <DantzigWolfe/DwMasterTrLight.h>
 #include <DantzigWolfe/DwWorkerMpi.h>
 
 DwSolverMpi::DwSolverMpi(
@@ -28,9 +29,12 @@ DSP_RTN_CODE DwSolverMpi::init() {
 	BGN_TRY_CATCH
 	worker_ = new DwWorkerMpi(model_, par_, message_, comm_);
 	if (comm_rank_ == 0) {
-		if (par_->getBoolParam("DW/TRUST_REGION"))
-			master_ = new DwMasterTr(worker_);
-		else
+		if (par_->getBoolParam("DW/TRUST_REGION")) {
+			if (par_->getBoolParam("DW/MASTER/BRANCH_ROWS"))
+				master_ = new DwMasterTr(worker_);
+			else
+				master_ = new DwMasterTrLight(worker_);
+		} else
 			master_ = new DwMaster(worker_);
 		DSP_RTN_CHECK_THROW(master_->init());
 	}

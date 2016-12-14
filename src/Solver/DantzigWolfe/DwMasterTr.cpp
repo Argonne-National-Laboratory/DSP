@@ -180,12 +180,12 @@ DSP_RTN_CODE DwMasterTr::solve() {
 				/** recover original solution */
 				CoinZeroN(primsol_, ncols_orig_);
 				for (unsigned k = 0, j = ncols_tr_; k < cols_generated_.size(); ++k) {
-					/** do not consider inactive columns */
-					if (cols_generated_[k]->active_ == false) continue;
-					CoinPackedVector xlam = cols_generated_[k]->x_ * si_->getColSolution()[j];
-					for (int i = 0; i < xlam.getNumElements(); ++i)
-						primsol_[xlam.getIndices()[i]] += xlam.getElements()[i];
-					j++;
+					if (cols_generated_[k]->active_) {
+						CoinPackedVector xlam = cols_generated_[k]->x_ * si_->getColSolution()[j];
+						for (int i = 0; i < xlam.getNumElements(); ++i)
+							primsol_[xlam.getIndices()[i]] += xlam.getElements()[i];
+						j++;
+					}
 				}
 
 				/** heuristics */
@@ -552,7 +552,8 @@ bool DwMasterTr::isTrBoundary(const double* price) {
 
 	BGN_TRY_CATCH
 
-	for (int j = 0; j < nrows_orig_ + nrows_branch_; ++j) {
+	int half_ncols_tr = ncols_tr_ * 0.5;
+	for (int j = 0; j < half_ncols_tr; ++j) {
 		if (price[2*j] + price[2*j+1] > 1.0e-10) {
 			isBoundary = true;
 			break;
@@ -567,7 +568,8 @@ bool DwMasterTr::isTrBoundary(const double* price) {
 DSP_RTN_CODE DwMasterTr::updateTrustRegion() {
 	BGN_TRY_CATCH
 
-	for (int j = 0; j < nrows_orig_ + nrows_branch_; ++j) {
+	int half_ncols_tr = ncols_tr_ * 0.5;
+	for (int j = 0; j < half_ncols_tr; ++j) {
 		si_->setObjCoeff(j*2, tr_center_[j] + tr_size_);
 		si_->setObjCoeff(j*2+1, -tr_center_[j] + tr_size_);
 	}

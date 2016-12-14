@@ -30,6 +30,7 @@ int     DW/ITER_LIM                     100
 double  DW/TIME_LIM                     60
 bool    DW/TRUST_REGION                 true
 bool    DW/MASTER/IPM                   false
+bool    DW/MASTER/BRANCH_ROWS           false
 bool    DW/HEURISTICS                   true
 bool    DW/HEURISTICS/TRIVIAL           true
 int     DW/HEURISTICS/TRIVIAL/ITER_LIM  100

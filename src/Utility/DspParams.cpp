@@ -131,6 +131,7 @@ void DspParams::initBoolParams()
 	BoolParams_.createParam("DD/ASYNC", false);
 
 	BoolParams_.createParam("DW/MASTER/IPM", false);
+	BoolParams_.createParam("DW/MASTER/BRANCH_ROWS", false);
 	BoolParams_.createParam("DW/TRUST_REGION", true);
 	BoolParams_.createParam("DW/HEURISTICS", true);
 	BoolParams_.createParam("DW/HEURISTICS/TRIVIAL", true);

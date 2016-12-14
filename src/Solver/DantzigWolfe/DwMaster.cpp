@@ -763,10 +763,6 @@ DSP_RTN_CODE DwMaster::addCols(
 				if (fabs(Ax[i]) > 1.0e-10)
 					colvec.insert(i, Ax[i]);
 
-			/** skip zero column */
-//			if (colvec.getNumElements() == 0)
-//				continue;
-
 			/** branching constraints */
 			for (int i = 0; i < nrows_branch_; ++i) {
 				int j = branch_row_to_col_[nrows_orig_+i];
@@ -780,8 +776,6 @@ DSP_RTN_CODE DwMaster::addCols(
 			/** convex combination constraints */
 			if (statuses[s] != DSP_STAT_DUAL_INFEASIBLE)
 				colvec.insert(nrows_orig_ + nrows_branch_ + sind, 1.0);
-//			DSPdebugMessage("new column from subproblem %d (objcoef %e):\n", sind, newcoef);
-//			DSPdebug(DspMessage::printArray(&colvec));
 
 			/** add the column vector */
 			if (phase_ == 1)
@@ -1308,7 +1302,6 @@ DSP_RTN_CODE DwMaster::gutsOfDive(
 		mindist = 1.0;
 		isInteger = true;
 		while (findPhase < 2 && branchIndex < 0) {
-			findPhase++;
 			for (int i = 0; i < nrows_branch_; ++i) {
 				int colind = branch_row_to_col_[nrows_orig_ + i];
 				/** do not consider those with non-negative objective coefficients */
@@ -1361,6 +1354,7 @@ DSP_RTN_CODE DwMaster::gutsOfDive(
 					branchValue = candValue;
 				}
 			}
+			findPhase++;
 		}
 
 		/** found a fractional variable */
@@ -1552,6 +1546,7 @@ bool DwMaster::chooseBranchingObjects(
 		DspBranch*& branchingUp, /**< [out] branching-up object */
 		DspBranch*& branchingDn  /**< [out] branching-down object */) {
 
+	int findPhase = 0;
 	bool branched = false;
 	double dist, maxdist = 1.0e-6;
 	int branchingIndex = -1;
@@ -1593,24 +1588,15 @@ bool DwMaster::chooseBranchingObjects(
 			}
 		}
 	} else {
-#define EXPERIMENTAL
-		/** most fractional value */
-		for (int j = 0; j < ncols_orig_; ++j) {
-			if (org_ctype_[j] == 'C') continue;
-			if (org_obj_[j] >= 0.0) continue;
-			dist = fabs(primsol_[j] - floor(primsol_[j] + 0.5));
-			if (dist > maxdist) {
-				maxdist = dist;
-				branchingIndex = j;
-				branchingValue = primsol_[j];
-			}
-		}
-
-		if (branchingIndex < 0) {
+		findPhase = 0;
+		while (findPhase < 2 && branchingIndex < 0) {
 			/** most fractional value */
 			for (int j = 0; j < ncols_orig_; ++j) {
 				if (org_ctype_[j] == 'C') continue;
-				if (org_obj_[j] < 0.0) continue;
+				/** do not consider those with non-negative objective coefficients */
+				if (findPhase == 0 && org_obj_[j] >= 0) continue;
+				/** do not consider those with negative objective coefficients */
+				if (findPhase == 1 && org_obj_[j] < 0) continue;
 				dist = fabs(primsol_[j] - floor(primsol_[j] + 0.5));
 				if (dist > maxdist) {
 					maxdist = dist;
@@ -1618,20 +1604,8 @@ bool DwMaster::chooseBranchingObjects(
 					branchingValue = primsol_[j];
 				}
 			}
+			findPhase++;
 		}
-#ifdef EXPERIMENTAL
-#else
-		/** most fractional value */
-		for (int j = 0; j < ncols_orig_; ++j) {
-			if (org_ctype_[j] == 'C') continue;
-			dist = fabs(primsol_[j] - floor(primsol_[j] + 0.5));
-			if (dist > maxdist) {
-				maxdist = dist;
-				branchingIndex = j;
-				branchingValue = primsol_[j];
-			}
-		}
-#endif
 	}
 
 	if (branchingIndex > -1) {

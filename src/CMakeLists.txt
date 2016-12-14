@@ -10,6 +10,7 @@ set(DSP_SRC_FILES
 	Model/TssModel.cpp
 	Solver/DantzigWolfe/DwMaster.cpp
 	Solver/DantzigWolfe/DwMasterTr.cpp
+	Solver/DantzigWolfe/DwMasterTrLight.cpp
 	Solver/DantzigWolfe/DwSolverSerial.cpp
 	Solver/DantzigWolfe/DwWorker.cpp
 	SolverInterface/OoqpEps.cpp

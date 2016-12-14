@@ -59,7 +59,7 @@ protected:
     /** termination test */
     virtual bool terminationTest(int nnewcols, int itercnt, double relgap);
 
-private:
+protected:
 
 	/** Check if the current dual is on the trust region boundary */
 	bool isTrBoundary(const double* price);
