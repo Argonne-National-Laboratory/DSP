@@ -302,6 +302,7 @@ DSP_RTN_CODE DdMasterAtr::updateTrustRegion()
 	}
 #endif
 
+#if 0
 	/** is solution boundary? */
 	if (isSolutionBoundary())
 	{
@@ -312,6 +313,7 @@ DSP_RTN_CODE DdMasterAtr::updateTrustRegion()
 		/** set trust region */
 		setTrustRegion(stability_param_, stability_center_);
 	}
+#endif
 
 #if 0
 	/**
