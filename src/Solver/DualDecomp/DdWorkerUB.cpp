@@ -6,47 +6,161 @@
  */
 
 //#define DSP_DEBUG
+#include "Model/TssModel.h"
 #include <Solver/DualDecomp/DdWorkerUB.h>
+#include "SolverInterface/SolverInterfaceScip.h"
 
-DdWorkerUB::DdWorkerUB(DspParams * par, DecModel * model, DspMessage * message):
-DdWorkerLB(par, model, message), ub_(0.0)
-{
-	// TODO Auto-generated constructor stub
-
-}
+DdWorkerUB::DdWorkerUB(
+		DspParams * par,
+		DecModel * model,
+		DspMessage * message):
+DdWorker(par, model, message),
+mat_mp_(NULL),
+rlbd_org_(NULL),
+rubd_org_(NULL),
+si_(NULL),
+objvals_(NULL),
+statuses_(NULL),
+ub_(0.0) {}
 
 DdWorkerUB::~DdWorkerUB() {
-	// TODO Auto-generated destructor stub
+	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), mat_mp_);
+	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), rlbd_org_);
+	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), rubd_org_);
+	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), si_);
+	FREE_ARRAY_PTR(objvals_);
+	FREE_ARRAY_PTR(statuses_);
 }
 
-double DdWorkerUB::evaluate(CoinPackedVector* solution)
-{
+DSP_RTN_CODE DdWorkerUB::init() {
 	BGN_TRY_CATCH
-
-	DSP_RTN_CHECK_RTN_CODE(fixCouplingVariableValues(solution));
-	DSP_RTN_CHECK_RTN_CODE(solve());
-
-	END_TRY_CATCH_RTN(;,COIN_DBL_MAX)
-
-	return ub_;
+	/** status */
+	status_ = DSP_STAT_MW_CONTINUE;
+	/** create problem */
+	DSP_RTN_CHECK_THROW(createProblem());
+	END_TRY_CATCH_RTN(;, DSP_RTN_ERR)
+	return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE DdWorkerUB::fixCouplingVariableValues(CoinPackedVector * val)
-{
+DSP_RTN_CODE DdWorkerUB::createProblem() {
+#define FREE_MEMORY            \
+	FREE_PTR(mat_reco)         \
+	FREE_ARRAY_PTR(clbd_reco)  \
+	FREE_ARRAY_PTR(cubd_reco)  \
+	FREE_ARRAY_PTR(ctype_reco) \
+	FREE_ARRAY_PTR(obj_reco)
+
+	/** recourse problem data */
+	CoinPackedMatrix * mat_reco = NULL;
+	double * clbd_reco   = NULL;
+	double * cubd_reco   = NULL;
+	double * obj_reco    = NULL;
+	char *   ctype_reco  = NULL;
+
+	TssModel* tss = NULL;
+
 	BGN_TRY_CATCH
 
-	for (unsigned s = 0; s < subprobs_.size(); ++s)
-	{
-		int ncols = model_->getNumSubproblemCouplingCols(subprobs_[s]->sind_);
-		double * denseval = val->denseVector(ncols);
-		for (int j = 0; j < ncols; ++j)
-			subprobs_[s]->si_->setColBounds(j, denseval[j], denseval[j]);
-		FREE_ARRAY_PTR(denseval);
-	}
+	int nsubprobs = par_->getIntPtrParamSize("ARR_PROC_IDX");
+	tss = dynamic_cast<TssModel*>(model_);
+	if (tss == NULL)
+		throw "This is not a stochastic programming problem.";
 
-	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+	/** allocate memory */
+	mat_mp_    = new CoinPackedMatrix * [nsubprobs];
+	rlbd_org_  = new double * [nsubprobs];
+	rubd_org_  = new double * [nsubprobs];
+	si_        = new SolverInterface * [nsubprobs];
+	objvals_   = new double [nsubprobs];
+	statuses_  = new int [nsubprobs];
+
+	for (int s = 0; s < nsubprobs; ++s) {
+
+		/** copy recourse problem */
+		DSP_RTN_CHECK_THROW(tss->copyRecoProb(par_->getIntPtrParam("ARR_PROC_IDX")[s],
+				mat_mp_[s], mat_reco, clbd_reco, cubd_reco, ctype_reco,
+				obj_reco, rlbd_org_[s], rubd_org_[s]));
+
+		/** creating solver interface */
+		si_[s] = new SolverInterfaceScip(par_);
+
+	    /** no display */
+	    si_[s]->setPrintLevel(0);
+
+	    /** load problem */
+	    si_[s]->loadProblem(mat_reco, clbd_reco, cubd_reco, obj_reco, ctype_reco, rlbd_org_[s], rubd_org_[s]);
+	    DSPdebug(mat_reco->verifyMtx(4));
+    }
+	END_TRY_CATCH_RTN(FREE_MEMORY, DSP_RTN_ERR)
+
+	FREE_MEMORY
 
 	return DSP_RTN_OK;
+#undef FREE_MEMORY
+}
+
+double DdWorkerUB::evaluate(CoinPackedVector* solution) {
+#define FREE_MEMORY \
+	FREE_ARRAY_PTR(Tx) \
+	FREE_ARRAY_PTR(x)
+
+	double * Tx = NULL;
+	double* x = NULL;
+	TssModel* tss = NULL;
+
+	BGN_TRY_CATCH
+
+	tss = dynamic_cast<TssModel*>(model_);
+	if (tss == NULL)
+		throw "This is not a stochastic programming problem.";
+
+	int nrows = mat_mp_[0]->getNumRows(); /** retrieve the number of rows in subproblem */
+	int nsubprobs = par_->getIntPtrParamSize("ARR_PROC_IDX");
+
+	/** allocate memory */
+	x = solution->denseVector(tss->getNumCols(0));
+	for (int s = nsubprobs - 1; s >= 0; --s) {
+		/** calculate Tx */
+		Tx = new double [mat_mp_[s]->getNumRows()];
+		mat_mp_[s]->times(x, Tx);
+
+		/** set time limit */
+		si_[s]->setTimeLimit(
+				CoinMin(CoinMax(0.01, time_remains_),
+						par_->getDblParam("SCIP/TIME_LIM")));
+
+		/** adjust row bounds */
+		const double* rlbd = si_[s]->getRowLower();
+		const double* rubd = si_[s]->getRowUpper();
+		for (int i = si_[s]->getNumRows() - 1; i >= 0; --i) {
+			if (rlbd_org_[s][i] > -COIN_DBL_MAX)
+				si_[s]->setRowLower(i, rlbd[i] - Tx[i]);
+			if (rubd_org_[s][i] < COIN_DBL_MAX)
+				si_[s]->setRowUpper(i, rubd[i] - Tx[i]);
+		}
+
+		FREE_ARRAY_PTR(Tx)
+	}
+
+	DSP_RTN_CHECK_RTN_CODE(solve());
+
+	/** restore row bounds */
+	for (int s = nsubprobs - 1; s >= 0; --s) {
+		const double* rlbd = si_[s]->getRowLower();
+		const double* rubd = si_[s]->getRowUpper();
+		for (int i = si_[s]->getNumRows() - 1; i >= 0; --i) {
+			if (rlbd_org_[s][i] > -COIN_DBL_MAX)
+				si_[s]->setRowLower(i, rlbd_org_[s][i]);
+			if (rubd_org_[s][i] < COIN_DBL_MAX)
+				si_[s]->setRowUpper(i, rubd_org_[s][i]);
+		}
+	}
+
+	END_TRY_CATCH_RTN(FREE_MEMORY,COIN_DBL_MAX)
+	FREE_MEMORY
+
+	return ub_;
+#undef FREE_MEMORY
 }
 
 DSP_RTN_CODE DdWorkerUB::solve() {
@@ -59,21 +173,18 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 	double dualobj = 0.0;
 	double total_cputime = 0.0;
 	double total_walltime = 0.0;
+	int nsubprobs = par_->getIntPtrParamSize("ARR_PROC_IDX");
 
-	for (unsigned s = 0; s < subprobs_.size(); ++s)
+	for (unsigned s = 0; s < nsubprobs; ++s)
 	{
 		cputime = CoinCpuTime();
 		walltime = CoinGetTimeOfDay();
 
-		/** set time limit */
-		subprobs_[s]->setTimeLimit(
-				CoinMin(CoinMax(0.01, time_remains_),
-						par_->getDblParam("SCIP/TIME_LIM")));
 		/** solve */
-		subprobs_[s]->solve();
+		si_[s]->solve();
 
 		/** check status. there might be unexpected results. */
-		switch (subprobs_[s]->si_->getStatus()) {
+		switch (si_[s]->getStatus()) {
 		case DSP_STAT_OPTIMAL:
 		case DSP_STAT_LIM_ITERorTIME:
 		case DSP_STAT_STOPPED_GAP:
@@ -84,14 +195,14 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 			status_ = DSP_STAT_MW_STOP;
 			message_->print(0,
 					"Warning: subproblem %d solution status is %d\n", s,
-					subprobs_[s]->si_->getStatus());
+					si_[s]->getStatus());
 			break;
 		}
 		if (status_ == DSP_STAT_MW_STOP)
 			break;
 
-		primobj += subprobs_[s]->si_->getPrimalBound();
-		dualobj += subprobs_[s]->si_->getDualBound();
+		primobj += si_[s]->getPrimalBound();
+		dualobj += si_[s]->getDualBound();
 		total_cputime += CoinCpuTime() - cputime;
 		total_walltime += CoinGetTimeOfDay() - walltime;
 

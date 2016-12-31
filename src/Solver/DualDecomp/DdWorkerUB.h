@@ -8,9 +8,14 @@
 #ifndef SRC_SOLVER_DUALDECOMP_DDWORKERUB_H_
 #define SRC_SOLVER_DUALDECOMP_DDWORKERUB_H_
 
-#include <Solver/DualDecomp/DdWorkerLB.h>
+#include <Solver/DualDecomp/DdWorker.h>
 
-class DdWorkerUB: public DdWorkerLB {
+class DdWorkerUB: public DdWorker {
+
+	friend class DdMWSerial;
+	friend class DdMWSync;
+	friend class DdMWAsync;
+
 public:
 
 	/** constructor */
@@ -19,19 +24,33 @@ public:
 	/** destructor */
 	virtual ~DdWorkerUB();
 
-	/** evaluate solution */
-	double evaluate(CoinPackedVector * solution);
+	/** initialize */
+	virtual DSP_RTN_CODE init();
 
 	/** solve */
 	virtual DSP_RTN_CODE solve();
 
+public:
+
+	/** evaluate solution */
+	double evaluate(CoinPackedVector * solution);
+
 	virtual int getType() {return UB;}
 
-	/** fix coupling variable values */
-	DSP_RTN_CODE fixCouplingVariableValues(CoinPackedVector * val);
+protected:
+
+	/** create problem */
+	virtual DSP_RTN_CODE createProblem();
 
 private:
 
+	CoinPackedMatrix ** mat_mp_;
+	double** rlbd_org_;
+	double** rubd_org_;
+
+	SolverInterface ** si_;
+	double * objvals_;
+	int * statuses_;
 	double ub_; /**< upper bound */
 };
 
