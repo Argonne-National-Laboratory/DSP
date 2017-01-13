@@ -269,21 +269,7 @@ DSP_RTN_CODE DwMaster::createProblem() {
 	/** write mps */
 	DSPdebug(si_->writeMps("master"));
 
-	/** set hint parameters */
-	useCpxBarrier_ = par_->getBoolParam("DW/MASTER/IPM");
-	cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
-
-	if (useCpxBarrier_ && cpx) {
-		/** use barrier */
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_LPMETHOD, CPX_ALG_BARRIER);
-		/** no crossover */
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARCROSSALG, -1);
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARDISPLAY, 0);
-	} else {
-		si_->setHintParam(OsiDoPresolveInResolve, true);
-		si_->setHintParam(OsiDoDualInResolve, false);
-		si_->setHintParam(OsiDoInBranchAndCut, false);
-	}
+	DSP_RTN_CHECK_RTN_CODE(initialOsiSolver());
 
 	/** initial solve */
 	si_->initialSolve();
@@ -317,6 +303,37 @@ DSP_RTN_CODE DwMaster::createProblem() {
 
 	return DSP_RTN_OK;
 #undef FREE_MEMORY
+}
+
+DSP_RTN_CODE DwMaster::initialOsiSolver() {
+	BGN_TRY_CATCH
+	/** set hint parameters */
+	useCpxBarrier_ = par_->getBoolParam("DW/MASTER/IPM");
+	OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
+	if (cpx)
+		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, 1);
+
+	if (useCpxBarrier_ && cpx) {
+		/** use barrier */
+		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_LPMETHOD, CPX_ALG_BARRIER);
+		/** no crossover */
+		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARCROSSALG, -1);
+		/** use standard barrier; the others result in numerical instability. */
+		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARALG, 3);
+		if (par_->getIntParam("LOG_LEVEL") <= 2) {
+			/** turn off all the messages (Barrier produce some even when loglevel = 0;) */
+			si_->messageHandler()->setLogLevel(-1);
+			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARDISPLAY, 0);
+		} else {
+			si_->messageHandler()->setLogLevel(1);
+			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARDISPLAY, 1);
+		}
+	} else {
+		si_->setHintParam(OsiDoPresolveInResolve, false);
+		si_->setHintParam(OsiDoDualInResolve, false);
+	}
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+	return DSP_RTN_OK;
 }
 
 DSP_RTN_CODE DwMaster::solve() {
@@ -358,8 +375,10 @@ DSP_RTN_CODE DwMaster::solve() {
 			if (cols_generated_[k]->active_ == false)
 				continue;
 			CoinPackedVector xlam = cols_generated_[k]->x_ * si_->getColSolution()[j];
-			for (int i = 0; i < xlam.getNumElements(); ++i)
-				primsol_[xlam.getIndices()[i]] += xlam.getElements()[i];
+			for (int i = 0; i < xlam.getNumElements(); ++i) {
+				if (xlam.getIndices()[i] < ncols_orig_)
+					primsol_[xlam.getIndices()[i]] += xlam.getElements()[i];
+			}
 			j++;
 		}
 
@@ -596,17 +615,15 @@ DSP_RTN_CODE DwMaster::gutsOfSolve() {
 		t_master += CoinGetTimeOfDay() - stime;
 		convertCoinToDspStatus(si_, status_);
 
+		/** use primal simplex after column generation */
+		if (!useCpxBarrier_)
+			si_->setHintParam(OsiDoDualInResolve, false);
+
 		/** calculate primal objective value */
 		DSP_RTN_CHECK_RTN_CODE(calculatePrimalObjective());
 
 		/** get price */
 		CoinCopyN(si_->getRowPrice(), si_->getNumRows(), price);
-#ifdef DSP_DEBUG
-		double tr_terms = 0.0;
-		for (int j = 0; j < 2 * (nrows_branch_ + nrows_orig_); ++j)
-			tr_terms += si_->getObjCoefficients()[j] * si_->getColSolution()[j];
-		DSPdebugMessage("master obj %e, obj w/o tr %e\n", primobj_, primobj_ - tr_terms);
-#endif
 
 		relgap = (primobj_-dualobj_)/(1.0e-10+fabs(primobj_))*100;
 		message_->print(2, "[Phase %d] Iteration %3d: Master objective %e, ", phase_, itercnt_, primobj_);
@@ -852,9 +869,9 @@ bool DwMaster::terminationTest(int nnewcols, int itercnt, double relgap) {
 		}
 	}
 	if (phase_ == 2) {
-		if (iterlim_ <= itercnt /*||
+		if (iterlim_ <= itercnt ||
 			relgap < 0.01 ||
-			dualobj_ >= bestprimobj_*/) {
+			dualobj_ >= bestprimobj_) {
 			status_ = DSP_STAT_FEASIBLE;
 			term = true;
 		}
@@ -913,7 +930,7 @@ DSP_RTN_CODE DwMaster::getWarmStartInfo(
 	BGN_TRY_CATCH
 
 	/** store previous solution and basis */
-	CoinCopyN(si_->getColSolution(), si_->getNumCols(), &sol[0]);
+	//CoinCopyN(si_->getColSolution(), si_->getNumCols(), &sol[0]);
 	ws = dynamic_cast<CoinWarmStartBasis*>(si_->getWarmStart());
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
@@ -927,8 +944,8 @@ DSP_RTN_CODE DwMaster::setWarmStartInfo(
 	BGN_TRY_CATCH
 
 	/** set previous solution and basis */
-	sol.resize(si_->getNumCols(), 0.0);
-	si_->setColSolution(&sol[0]);
+	//sol.resize(si_->getNumCols(), 0.0);
+	//si_->setColSolution(&sol[0]);
 
 	ws->resize(si_->getNumRows(), si_->getNumCols());
 	si_->setWarmStart(ws);
@@ -1116,8 +1133,10 @@ DSP_RTN_CODE DwMaster::heuristicTrivial() {
 					if (cols_generated_[k]->active_ == false)
 						continue;
 					CoinPackedVector xlam = cols_generated_[k]->x_ * si_->getColSolution()[j];
-					for (int i = 0; i < xlam.getNumElements(); ++i)
-						bestprimsol_[xlam.getIndices()[i]] += xlam.getElements()[i];
+					for (int i = 0; i < xlam.getNumElements(); ++i) {
+						if (xlam.getIndices()[i] < ncols_orig_)
+							bestprimsol_[xlam.getIndices()[i]] += xlam.getElements()[i];
+					}
 					j++;
 				}
 				message_->print(1, "Heuristic updated the best upper bound %e.\n", bestprimobj_);
@@ -1200,8 +1219,10 @@ DSP_RTN_CODE DwMaster::heuristicFp(int direction) {
 					if (cols_generated_[k]->active_ == false)
 						continue;
 					CoinPackedVector xlam = cols_generated_[k]->x_ * si_->getColSolution()[j];
-					for (int i = 0; i < xlam.getNumElements(); ++i)
-						bestprimsol_[xlam.getIndices()[i]] += xlam.getElements()[i];
+					for (int i = 0; i < xlam.getNumElements(); ++i) {
+						if (xlam.getIndices()[i] < ncols_orig_)
+							bestprimsol_[xlam.getIndices()[i]] += xlam.getElements()[i];
+					}
 					j++;
 				}
 				DSPdebugMessage("Heuristic updated the best upper bound %e.\n", bestprimobj_);
@@ -1290,8 +1311,10 @@ DSP_RTN_CODE DwMaster::gutsOfDive(
 				if (cols_generated_[k]->active_ == false)
 					continue;
 				CoinPackedVector xlam = cols_generated_[k]->x_ * si_->getColSolution()[j];
-				for (int i = 0; i < xlam.getNumElements(); ++i)
-					primsol_[xlam.getIndices()[i]] += xlam.getElements()[i];
+				for (int i = 0; i < xlam.getNumElements(); ++i) {
+					if (xlam.getIndices()[i] < ncols_orig_)
+						primsol_[xlam.getIndices()[i]] += xlam.getElements()[i];
+				}
 				j++;
 			}
 		}
@@ -1435,8 +1458,10 @@ DSP_RTN_CODE DwMaster::gutsOfDive(
 					if (cols_generated_[k]->active_ == false)
 						continue;
 					CoinPackedVector xlam = cols_generated_[k]->x_ * si_->getColSolution()[j];
-					for (int i = 0; i < xlam.getNumElements(); ++i)
-						primsol_[xlam.getIndices()[i]] += xlam.getElements()[i];
+					for (int i = 0; i < xlam.getNumElements(); ++i) {
+						if (xlam.getIndices()[i] < ncols_orig_)
+							primsol_[xlam.getIndices()[i]] += xlam.getElements()[i];
+					}
 					j++;
 				}
 				bool fractional = false;
@@ -1528,8 +1553,10 @@ DSP_RTN_CODE DwMaster::solveMip() {
 			if (cols_generated_[k]->active_ == false)
 				continue;
 			CoinPackedVector xlam = cols_generated_[k]->x_ * si->getColSolution()[j];
-			for (int i = 0; i < xlam.getNumElements(); ++i)
-				bestprimsol_[xlam.getIndices()[i]] += xlam.getElements()[i];
+			for (int i = 0; i < xlam.getNumElements(); ++i) {
+				if (xlam.getIndices()[i] < ncols_orig_)
+					bestprimsol_[xlam.getIndices()[i]] += xlam.getElements()[i];
+			}
 			j++;
 		}
 	}

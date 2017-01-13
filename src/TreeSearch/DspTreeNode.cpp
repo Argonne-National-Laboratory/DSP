@@ -31,6 +31,8 @@ DspTreeNode::DspTreeNode() :
 }
 
 DspTreeNode::~DspTreeNode() {
+	FREE_PTR(branchingUp_);
+	FREE_PTR(branchingDn_);
 #ifdef WRITELOG
 	logstream_.close();
 #endif

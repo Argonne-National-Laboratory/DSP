@@ -59,8 +59,8 @@ DwWorker::DwWorker(DecModel * model, DspParams * par, DspMessage * message) :
 
 		int nccols = model_->getNumSubproblemCouplingCols(parProcIdx_[i]);
 		const int* ccols = model_->getSubproblemCouplingColIndices(parProcIdx_[i]);
-		//DSPdebugMessage("Subproblem(%d) coupling columns:\n", parProcIdx_[i]);
-		//DSPdebug(DspMessage::printArray(nccols, ccols));
+		DSPdebugMessage("Subproblem(%d) coupling columns:\n", parProcIdx_[i]);
+		DSPdebug(DspMessage::printArray(nccols, ccols));
 		for (int j = 0; j < nccols; ++j)
 			coupled_[i][ccols[j]] = true;
 	}
@@ -106,6 +106,7 @@ DSP_RTN_CODE DwWorker::createSubproblems() {
 		} else {
 			DSP_RTN_CHECK_RTN_CODE(
 					model_->copySubprob(parProcIdx_[s], mat, sub_clbd_[s], sub_cubd_[s], ctype, sub_objs_[s], rlbd, rubd));
+			DSPdebug(mat->verifyMtx(4));
 
 			/** fix zeros for non-coupling columns */
 			for (int j = 0; j < model_->getNumCouplingCols(); ++j) {
@@ -116,8 +117,8 @@ DSP_RTN_CODE DwWorker::createSubproblems() {
 				}
 			}
 		}
-		//DSPdebugMessage("sub_objs_[%d]:\n", parProcIdx_[s]);
-		//DSPdebug(DspMessage::printArray(model_->getNumCouplingCols(), sub_objs_[s]));
+		DSPdebugMessage("sub_objs_[%d]:\n", parProcIdx_[s]);
+		DSPdebug(DspMessage::printArray(model_->getNumCouplingCols(), sub_objs_[s]));
 
 		/** load problem to si */
 		si_[s]->loadProblem(*mat, sub_clbd_[s], sub_cubd_[s], sub_objs_[s], rlbd, rubd);
@@ -131,21 +132,18 @@ DSP_RTN_CODE DwWorker::createSubproblems() {
 			}
 		}
 
-
-		/** quiet */
-		//dynamic_cast<SI*>(si_[s])->getModelPtr()->setLogLevel(1);
-
 		si_[s]->messageHandler()->setLogLevel(0);
-		si_[s]->initialSolve();
-
-		if (nintegers > 0)
-			dynamic_cast<OsiCpxSolverInterface*>(si_[s])->switchToMIP();
 
 		OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_[s]);
-		if (cpx)
+		if (cpx) {
 			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, 1);
+			if (nintegers > 0)
+				cpx->switchToMIP();
+		}
 
-#ifdef DSP_DEBUG1
+		si_[s]->initialSolve();
+
+#ifdef DSP_DEBUG
 		if (s >= 0) {
 			/** write MPS */
 			char ofname[128];
@@ -315,7 +313,7 @@ DSP_RTN_CODE DwWorker::adjustObjFunction(
 		nscen = tss->getNumScenarios();
 	}
 
-	//DSPdebugMessage("adjustObjFunction is in phase %d.\n", phase);
+	DSPdebugMessage("adjustObjFunction is in phase %d.\n", phase);
 	for (int s = 0; s < parProcIdxSize_; ++s) {
 		/** actual subproblem index */
 		int sind = parProcIdx_[s];
@@ -335,15 +333,23 @@ DSP_RTN_CODE DwWorker::adjustObjFunction(
 			}
 		} else {
 			if (phase == 1) {
-				for (int j = 0; j < si_[s]->getNumCols(); ++j)
-					si_[s]->setObjCoeff(j, -piA[j]);
+				for (int j = 0; j < si_[s]->getNumCols(); ++j) {
+					if (j < model_->getNumCouplingCols())
+						si_[s]->setObjCoeff(j, -piA[j]);
+					else
+						si_[s]->setObjCoeff(j, 0.0);
+				}
 			} else if (phase == 2) {
-				for (int j = 0; j < si_[s]->getNumCols(); ++j)
-					si_[s]->setObjCoeff(j, sub_objs_[s][j] - piA[j]);
+				for (int j = 0; j < si_[s]->getNumCols(); ++j) {
+					if (j < model_->getNumCouplingCols())
+						si_[s]->setObjCoeff(j, sub_objs_[s][j] - piA[j]);
+					else
+						si_[s]->setObjCoeff(j, sub_objs_[s][j]);
+				}
 			}
 		}
-//		DSPdebugMessage("[Phase %d] Set objective coefficients for subproblem %d:\n", phase, sind);
-//		DSPdebug(DspMessage::printArray(si_[s]->getNumCols(), si_[s]->getObjCoefficients()));
+		DSPdebugMessage("[Phase %d] Set objective coefficients for subproblem %d:\n", phase, sind);
+		DSPdebug(DspMessage::printArray(si_[s]->getNumCols(), si_[s]->getObjCoefficients()));
 	}
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
