@@ -13,15 +13,17 @@
 
 /** DSP */
 #include "DspCInterface.h"
-#include "DspDriver.h"
+//#include "DspDriver.h"
 #include "Utility/DspMacros.h"
 //#include "Solver/Deterministic/DeDriver.h"
 //#include "Solver/Benders/BdDriverSerial.h"
 //#include "Solver/DualDecomp/DdDriverSerial.h"
+#include "Solver/DantzigWolfe/DwSolverSerial.h"
 #ifdef DSP_HAS_MPI
 //#include "Solver/Benders/BdDriverMpi.h"
 //#include "Solver/DualDecomp/DdDriverMpi.h"
-#include "DspDriverMpi.h"
+//#include "DspDriverMpi.h"
+#include "Solver/DantzigWolfe/DwSolverMpi.h"
 #endif
 #include "Model/DecTssModel.h"
 #include "Model/DecBlkModel.h"
@@ -223,18 +225,20 @@ void setSolution(
 
 /** solve Dantzig-Wolfe decomposition */
 void solveDw(DspApiEnv * env) {
-	env->solver_ = new DspDriver(env->model_, env->par_);
+	env->solver_ = new DwSolverSerial(env->model_, env->par_, env->message_);
+	//env->solver_ = new DspDriver(env->model_, env->par_);
 	DSP_RTN_CHECK_RTN(env->solver_->init());
-	env->solver_->run();
+	env->solver_->solve();
 	env->solver_->finalize();
 }
 
 #ifdef DSP_HAS_MPI
 /** solve Dantzig-Wolfe decomposition */
 void solveDwMpi(DspApiEnv * env, MPI_Comm comm) {
-	env->solver_ = new DspDriverMpi(env->model_, env->par_, comm);
+	env->solver_ = new DwSolverMpi(env->model_, env->par_, env->message_, comm);
+	//env->solver_ = new DspDriverMpi(env->model_, env->par_, comm);
 	DSP_RTN_CHECK_RTN(env->solver_->init());
-	env->solver_->run();
+	env->solver_->solve();
 	env->solver_->finalize();
 }
 #endif
@@ -244,6 +248,7 @@ void readParamFile(DspApiEnv * env, const char * param_file)
 {
 	DSP_API_CHECK_ENV();
 	env->par_->readParamFile(param_file);
+	env->message_->logLevel_ = env->par_->getIntParam("LOG_LEVEL");
 }
 
 /** set boolean parameter */
@@ -383,14 +388,14 @@ int getStatus(DspApiEnv * env)
 double getPrimalBound(DspApiEnv * env)
 {
 	DSP_API_CHECK_SOLVER(0.0);
-	return env->solver_->getPrimalObjectiveValue();
+	return env->solver_->getBestPrimalObjective();
 }
 
 /** get objective value */
 double getDualBound(DspApiEnv * env)
 {
 	DSP_API_CHECK_SOLVER(0.0);
-	return env->solver_->getDualObjectiveValue();
+	return env->solver_->getDualObjective();
 }
 
 /** get solution */
