@@ -68,6 +68,9 @@ protected:
     /** This creates a master problem. */
 	virtual DSP_RTN_CODE createProblem();
 
+	/** initial solver setting */
+	virtual DSP_RTN_CODE initialOsiSolver();
+
     /** solve phase 1 */
     virtual DSP_RTN_CODE solvePhase1();
 
@@ -76,6 +79,9 @@ protected:
 
     /** guts of solve */
     virtual DSP_RTN_CODE gutsOfSolve();
+
+    /** solver master */
+    virtual DSP_RTN_CODE solveMaster();
 
     /** calculate primal objective value */
     virtual DSP_RTN_CODE calculatePrimalObjective();
@@ -131,7 +137,7 @@ protected:
     		CoinWarmStartBasis*& ws   /**< [out] warmstart basis */);
 
     /** termination test */
-    virtual bool terminationTest(int nnewcols, int itercnt, double relgap);
+    virtual bool terminationTest(int nnewcols);
 
     /** termination test after column generation*/
     virtual bool terminationTestColgen(std::vector<int>& statuses);
@@ -171,23 +177,18 @@ protected:
     		std::vector<CoinTriple<int,int,double> > branchList,
     		int depth);
 
+    /** print iteration information */
+    virtual void printIterInfo();
+
     /** Solve the master with integrality */
     DSP_RTN_CODE solveMip();
 
 protected:
 
-    bool useCpxBarrier_;
+    bool useBarrier_;
 
     int phase_; /**< phase 1 or 2? */
-    std::vector<CoinPackedVector*> auxcols_;
     std::vector<int> auxcolindices_;
-
-    /**@name original row bounds of the branching constraints,
-     * which is equivalent to the original integer column bounds. */
-    //@{
-    double* rlbd_branch_;
-    double* rubd_branch_;
-    //@}
 
     DwWorker* worker_; /**< subproblem solver */
 
@@ -200,8 +201,9 @@ public:
 
     int nrows_;        /**< number of rows */
     int nrows_orig_;   /**< number of rows in the original master */
-    int nrows_branch_; /**< number of rows representing integer columns in the original master */
     int nrows_conv_;   /**< number of rows representing the convexification constraints */
+    int nrows_core_;   /**< nrows_orig_ + nrows_conv_ */
+    int nrows_branch_; /**< number of rows representing integer columns in the original master */
     std::map<int,int> branch_row_to_col_; /**< maps each branching row to column in the original master */
 
     /**@name original master problem data */
@@ -213,7 +215,15 @@ public:
     double* org_rlbd_;
     double* org_rubd_;
 
+	double* node_clbd_; /** current column lower bounds */
+	double* node_cubd_; /** current column upper bounds */
+
     int itercnt_;
+
+    /**@name Time stamps */
+    double t_total_; /**< total time */
+    double t_master_; /**< master solution time */
+    double t_colgen_; /**< column generation time */
 
 };
 
