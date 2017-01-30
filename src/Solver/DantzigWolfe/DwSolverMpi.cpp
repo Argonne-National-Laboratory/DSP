@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-#define DSP_DEBUG
+//#define DSP_DEBUG
 #include <DantzigWolfe/DwSolverMpi.h>
 #include <DantzigWolfe/DwMasterTr.h>
 #include <DantzigWolfe/DwMasterTrLight.h>
@@ -55,6 +55,11 @@ DSP_RTN_CODE DwSolverMpi::solve() {
 	BGN_TRY_CATCH
 	if (comm_rank_ == 0) {
 		DSP_RTN_CHECK_THROW(alps_->solve());
+
+		/** send signal */
+		int sig = DwWorkerMpi::sig_terminate;
+		MPI_Bcast(&sig, 1, MPI_INT, 0, comm_);
+		DSPdebugMessage("Rank 0 sent signal %d.\n", sig);
 	} else {
 		DSP_RTN_CHECK_THROW(dynamic_cast<DwWorkerMpi*>(worker_)->receiver());
 	}

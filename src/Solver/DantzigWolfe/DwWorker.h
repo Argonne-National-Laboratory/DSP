@@ -45,9 +45,6 @@ public:
 	virtual int getNumSubprobs() {return nsubprobs_;}
 
 	/** set column bounds */
-	virtual void setColBounds(int j, double lb, double ub);
-
-	/** set column bounds */
 	virtual void setColBounds(int size, const int* indices, const double* lbs, const double* ubs);
 
 	/** set time limit */
@@ -55,6 +52,11 @@ public:
 
 	/** set gap tolerance */
 	virtual void setGapTolerance(double gaptol);
+
+private:
+
+	/** set column bounds */
+	virtual void setColBounds(int j, double lb, double ub);
 
 protected:
 
