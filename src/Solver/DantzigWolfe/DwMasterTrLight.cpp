@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+#define DSP_DEBUG
 
 #include "cplex.h"
 /** Coin */
@@ -15,14 +15,9 @@
 #include "Model/TssModel.h"
 
 DwMasterTrLight::DwMasterTrLight(DwWorker* worker):
-DwMasterTr(worker),
-node_clbd_(NULL),
-node_cubd_(NULL) {}
+	DwMasterTr(worker) {}
 
-DwMasterTrLight::~DwMasterTrLight() {
-	FREE_ARRAY_PTR(node_clbd_);
-	FREE_ARRAY_PTR(node_cubd_);
-}
+DwMasterTrLight::~DwMasterTrLight() {}
 
 bool DwMasterTrLight::chooseBranchingObjects(
 		DspBranch*& branchingUp, /**< [out] branching-up object */
@@ -115,14 +110,168 @@ bool DwMasterTrLight::chooseBranchingObjects(
 }
 
 void DwMasterTrLight::setBranchingObjects(const DspBranch* branchobj) {
+#define FREE_MEMORY \
+	FREE_ARRAY_PTR(delrows) \
+	FREE_ARRAY_PTR(delcols) \
+	FREE_ARRAY_PTR(obj_tr) \
+	FREE_ARRAY_PTR(clbd_tr) \
+	FREE_ARRAY_PTR(cubd_tr) \
+	FREE_ARRAY_PTR(starts_tr) \
+	FREE_ARRAY_PTR(rows_tr) \
+	FREE_ARRAY_PTR(elements_tr) \
+	FREE_ARRAY_PTR(densecol) \
+	FREE_ARRAY_PTR(col_inds) \
+	FREE_ARRAY_PTR(col_elems)
+
+	int* delrows = NULL;
+	int* delcols = NULL;
+
+	/** trust-region columns */
+	double* obj_tr = NULL;
+	double* clbd_tr = NULL;
+	double* cubd_tr = NULL;
+	int* starts_tr = NULL;
+	int* rows_tr = NULL;
+	double* elements_tr = NULL;
+
+	/** adding columns */
+	double* densecol = NULL;
+	int col_size = 0;
+	int* col_inds = NULL;
+	double* col_elems = NULL;
+
 	BGN_TRY_CATCH
+
 	if (branchobj) {
-		/** restore column bounds */
-		for (int j = 0; j < ncols_orig_; ++j) {
-			if (org_ctype_[j] == 'C') continue;
-			node_clbd_[j] = org_clbd_[j];
-			node_cubd_[j] = org_cubd_[j];
+		/** remove all the branching rows */
+		if (nrows_branch_ > 0) {
+			delrows = new int [nrows_branch_];
+			for (int i = nrows_core_; i < nrows_; ++i)
+				delrows[i-nrows_core_] = i;
+			si_->deleteRows(nrows_branch_, delrows);
+			DSPdebugMessage("Deleted %d rows in the master.\n", nrows_branch_);
 		}
+
+		/** remove all the columns except the core TR columns */
+		int ncols_tr_core = nrows_orig_*2;
+		int ndelcols = si_->getNumCols() - ncols_tr_core;
+		delcols = new int [ndelcols];
+		for (int j = ncols_tr_core; j < si_->getNumCols(); ++j)
+			delcols[j - ncols_tr_core] = j;
+		si_->deleteCols(ndelcols, delcols);
+		DSPdebugMessage("Deleted %d columns in the master.\n", ndelcols);
+
+		/** count nrows_branch_ */
+		nrows_branch_ = 0;
+		for (unsigned j = 0; j < branchobj->index_.size(); ++j) {
+			if (branchobj->lb_[j] > org_clbd_[branchobj->index_[j]]) {
+				branch_row_to_col_[nrows_core_ + nrows_branch_] = branchobj->index_[j];
+				si_->addRow(0, NULL, NULL, branchobj->lb_[j], COIN_DBL_MAX);
+				nrows_branch_++;
+			}
+			if (branchobj->ub_[j] < org_cubd_[branchobj->index_[j]]) {
+				branch_row_to_col_[nrows_core_ + nrows_branch_] = branchobj->index_[j];
+				si_->addRow(0, NULL, NULL, -COIN_DBL_MAX, branchobj->ub_[j]);
+				nrows_branch_++;
+			}
+		}
+		DSPdebugMessage("Found %d branching rows.\n", nrows_branch_);
+
+		/** update number of rows */
+		nrows_ = nrows_core_ + nrows_branch_;
+
+		/** change trust region */
+		double* tr_center = tr_center_;
+		ncols_tr_ = (nrows_orig_ + nrows_branch_) * 2;
+		tr_center_ = NULL;
+		tr_center_ = new double [ncols_tr_];
+		CoinCopyN(tr_center, ncols_tr_core, tr_center_);
+		CoinZeroN(tr_center_ + ncols_tr_core, nrows_branch_ * 2);
+		FREE_ARRAY_PTR(tr_center);
+
+		obj_tr = new double [nrows_branch_*2];
+		clbd_tr = new double [nrows_branch_*2];
+		cubd_tr = new double [nrows_branch_*2];
+		CoinFillN(obj_tr, nrows_branch_*2, tr_size_);
+		CoinZeroN(clbd_tr, nrows_branch_*2);
+		CoinFillN(cubd_tr, nrows_branch_*2, COIN_DBL_MAX);
+
+		starts_tr = new int [nrows_branch_*2 + 1];
+		rows_tr = new int [nrows_branch_*2];
+		elements_tr = new double [nrows_branch_*2];
+		for (int j = 0, k = 0; j < nrows_branch_; ++j) {
+			starts_tr[k] = k;
+			rows_tr[k] = nrows_core_ + j;
+			elements_tr[k] = 1.0;
+			starts_tr[k+1] = k+1;
+			rows_tr[k+1] = nrows_core_ + j;
+			elements_tr[k+1] = -1.0;
+			k += 2;
+		}
+		starts_tr[nrows_branch_*2] = nrows_branch_*2;
+		si_->addCols(nrows_branch_*2, starts_tr, rows_tr, elements_tr, clbd_tr, cubd_tr, obj_tr);
+		DSPdebugMessage("Appended %d trust-region columns in the master (%d cols).\n", nrows_branch_*2, si_->getNumCols());
+		si_->writeMps("cols");
+
+		/** add branching rows */
+		for (unsigned k = 0; k < cols_generated_.size(); ++k) {
+			if (cols_generated_[k]->active_) {
+				col_inds = new int [nrows_];
+				col_elems = new double [nrows_];
+				/** get a core-row column */
+				densecol = cols_generated_[k]->col_.denseVector(nrows_core_);
+				/** create a column for core rows */
+				col_size = 0;
+				for (int i = 0; i < nrows_core_; ++i) {
+					if (fabs(densecol[i]) > 1.0e-10) {
+						col_inds[col_size] = i;
+						col_elems[col_size] = densecol[i];
+						col_size++;
+					}
+				}
+				FREE_ARRAY_PTR(densecol);
+				/** append column elements for the branching rows */
+				for (unsigned j = 0, i = 0; j < branchobj->index_.size(); ++j) {
+					int sparse_index = -1;
+					if (branchobj->lb_[j] > org_clbd_[branchobj->index_[j]]) {
+						sparse_index = cols_generated_[k]->x_.findIndex(j);
+						if (sparse_index > -1) {
+							double val = cols_generated_[k]->x_.getElements()[sparse_index];
+							if (fabs(val) > 1.0e-10) {
+								col_inds[col_size] = nrows_core_ + i;
+								col_elems[col_size] = val;
+								col_size++;
+							}
+						}
+						i++;
+					}
+					if (branchobj->ub_[j] < org_cubd_[branchobj->index_[j]]) {
+						if (sparse_index == -1)
+							sparse_index = cols_generated_[k]->x_.findIndex(j);
+						if (sparse_index > -1) {
+							double val = cols_generated_[k]->x_.getElements()[sparse_index];
+							if (fabs(val) > 1.0e-10) {
+								col_inds[col_size] = nrows_core_ + i;
+								col_elems[col_size] = val;
+								col_size++;
+							}
+						}
+						i++;
+					}
+				}
+				/** assign the core-row column */
+				cols_generated_[k]->col_.clear();
+				cols_generated_[k]->col_.assignVector(col_size, col_inds, col_elems);
+				/** add column */
+				si_->addCol(cols_generated_[k]->col_, 0.0, COIN_DBL_MAX, cols_generated_[k]->obj_);
+			}
+		}
+		DSPdebugMessage("Appended dynamic columns in the master (%d cols).\n", si_->getNumCols());
+		si_->writeMps("master");
+
+		/** restore column bounds */
+		CoinCopyN(org_clbd_, ncols_orig_, node_clbd_);
+		CoinCopyN(org_cubd_, ncols_orig_, node_cubd_);
 
 		/** update column bounds at the current node */
 		for (unsigned j = 0; j < branchobj->index_.size(); ++j) {
@@ -133,20 +282,10 @@ void DwMasterTrLight::setBranchingObjects(const DspBranch* branchobj) {
 		/** apply column bounds */
 		worker_->setColBounds(branchobj->index_.size(),
 				&branchobj->index_[0], &branchobj->lb_[0], &branchobj->ub_[0]);
-
-		/** filter generated columns */
-		for (unsigned k = 0; k < cols_generated_.size(); ++k) {
-			for (int j = 0; j < ncols_orig_; ++j) {
-				if (org_ctype_[j] == 'C') continue;
-				double xval = cols_generated_[k]->x_.isExistingIndex(j) ? cols_generated_[k]->x_[j] : 0.0;
-				if (xval < node_clbd_[j] || xval > node_cubd_[j])
-					cols_generated_[k]->active_ = false;
-				else
-					cols_generated_[k]->active_ = true;
-			}
-		}
 	}
-	END_TRY_CATCH(;)
+	END_TRY_CATCH(FREE_MEMORY)
+	FREE_MEMORY
+#undef FREE_MEMORY
 }
 
 DSP_RTN_CODE DwMasterTrLight::createProblem() {
@@ -185,7 +324,7 @@ DSP_RTN_CODE DwMasterTrLight::createProblem() {
 	ncols_start_ = ncols_tr_;
 
 	/** do add consider branch rows */
-	nrows_ -= nrows_branch_;
+	nrows_ = nrows_core_;
 	nrows_branch_ = 0;
 
 	/** allocate memory */
@@ -194,7 +333,7 @@ DSP_RTN_CODE DwMasterTrLight::createProblem() {
 	cubd = new double [ncols_tr_];
 	rlbd = new double [nrows_];
 	rubd = new double [nrows_];
-	tr_center_ = new double [nrows_];
+	tr_center_ = new double [ncols_orig_];
 	starts_tr = new int [ncols_tr_ + 1];
 	rows_tr = new int [ncols_tr_];
 	elements_tr = new double [ncols_tr_];
@@ -205,7 +344,6 @@ DSP_RTN_CODE DwMasterTrLight::createProblem() {
 
 	/** initial trust region center */
 	CoinZeroN(tr_center_, nrows_orig_);
-	CoinFillN(tr_center_ + nrows_orig_, nrows_conv_, COIN_DBL_MAX);
 
 	/** create column-wise matrix and set number of rows */
 	mat = new CoinPackedMatrix(true, 0, 0);
@@ -251,24 +389,7 @@ DSP_RTN_CODE DwMasterTrLight::createProblem() {
 	/** NOTE: This does not go to Phase 1. */
 	phase_ = 2;
 
-	/** set hint parameters */
-	useCpxBarrier_ = par_->getBoolParam("DW/MASTER/IPM");
-
-	cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
-	if (cpx)
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, 1);
-
-	if (useCpxBarrier_) {
-		/** use barrier */
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_LPMETHOD, CPX_ALG_BARRIER);
-		/** no crossover */
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARCROSSALG, -1);
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARDISPLAY, 0);
-	} else {
-		si_->setHintParam(OsiDoPresolveInResolve, true);
-		si_->setHintParam(OsiDoDualInResolve, false);
-		si_->setHintParam(OsiDoInBranchAndCut, false);
-	}
+	DSP_RTN_CHECK_RTN_CODE(initialOsiSolver());
 
 	/** TODO: what should be primal solution? in the original? or the restricted? */
 	/** allocate memory for solution */

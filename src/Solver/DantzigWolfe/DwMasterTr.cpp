@@ -54,22 +54,20 @@ DSP_RTN_CODE DwMasterTr::createProblem() {
 	cubd = new double [ncols_tr_];
 	rlbd = new double [nrows_];
 	rubd = new double [nrows_];
-	rlbd_branch_ = new double [nrows_branch_];
-	rubd_branch_ = new double [nrows_branch_];
-	tr_center_ = new double [nrows_];
+	tr_center_ = new double [nrows_orig_ + nrows_branch_];
 	starts_tr = new int [ncols_tr_ + 1];
 	rows_tr = new int [ncols_tr_];
 	elements_tr = new double [ncols_tr_];
 
 	/** initial trust region center */
 	CoinZeroN(tr_center_, nrows_orig_ + nrows_branch_);
-	CoinFillN(tr_center_ + nrows_orig_ + nrows_branch_, nrows_conv_, COIN_DBL_MAX);
 
 	/** create column-wise matrix and set number of rows */
 	mat = new CoinPackedMatrix(true, 0, 0);
 	mat->setDimensions(nrows_, 0);
 
 	/** add variables related to trust region */
+	tr_size_ = par_->getDblParam("DW/TR/SIZE");
 	CoinFillN(obj, ncols_tr_, tr_size_);
 	CoinZeroN(clbd, ncols_tr_);
 	CoinFillN(cubd, ncols_tr_, COIN_DBL_MAX);
@@ -90,24 +88,19 @@ DSP_RTN_CODE DwMasterTr::createProblem() {
 	/** Set row bounds */
 	CoinCopyN(org_rlbd_, nrows_orig_, rlbd);
 	CoinCopyN(org_rubd_, nrows_orig_, rubd);
+	CoinFillN(rlbd + nrows_orig_, nrows_conv_, 1.0);
+	CoinFillN(rubd + nrows_orig_, nrows_conv_, 1.0);
 	for (int i = 0; i < nrows_branch_; ++i) {
-		int j = branch_row_to_col_[nrows_orig_ + i];
-		rlbd[nrows_orig_ + i] = org_clbd_[j];
-		rubd[nrows_orig_ + i] = org_cubd_[j];
-		rlbd_branch_[i] = org_clbd_[j];
-		rubd_branch_[i] = org_cubd_[j];
+		int j = branch_row_to_col_[nrows_core_ + i];
+		rlbd[nrows_core_ + i] = org_clbd_[j];
+		rubd[nrows_core_ + i] = org_cubd_[j];
 	}
-	CoinFillN(rlbd + nrows_orig_ + nrows_branch_, nrows_conv_, 1.0);
-	CoinFillN(rubd + nrows_orig_ + nrows_branch_, nrows_conv_, 1.0);
 
 	/** create solver */
 	si_ = new OsiCpxSolverInterface();
 
 	/** message setting */
-	//dynamic_cast<OsiClpSolverInterface*>(si_)->getModelPtr()->setLogLevel(0);
-	si_->messageHandler()->logLevel(0);
-	//si_->passInMessageHandler(si_->messageHandler());
-	//DSPdebug(si_->messageHandler()->logLevel(4));
+	si_->messageHandler()->logLevel(1);
 
 	/** load problem data */
 	si_->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
@@ -118,24 +111,7 @@ DSP_RTN_CODE DwMasterTr::createProblem() {
 	/** NOTE: This does not go to Phase 1. */
 	phase_ = 2;
 
-	/** set hint parameters */
-	useCpxBarrier_ = par_->getBoolParam("DW/MASTER/IPM");
-
-	cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
-	if (cpx)
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, 1);
-
-	if (useCpxBarrier_) {
-		/** use barrier */
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_LPMETHOD, CPX_ALG_BARRIER);
-		/** no crossover */
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARCROSSALG, -1);
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARDISPLAY, 0);
-	} else {
-		si_->setHintParam(OsiDoPresolveInResolve, true);
-		si_->setHintParam(OsiDoDualInResolve, false);
-		si_->setHintParam(OsiDoInBranchAndCut, false);
-	}
+	DSP_RTN_CHECK_RTN_CODE(initialOsiSolver());
 
 	/** initial solve */
 	//si_->initialSolve();
@@ -162,38 +138,30 @@ DSP_RTN_CODE DwMasterTr::solve() {
 	tic();
 
 	itercnt_ = 0;
+	while (1) {
+		status_ = DSP_STAT_FEASIBLE;
+		DSP_RTN_CHECK_RTN_CODE(solvePhase2());
 
-	DSP_RTN_CHECK_RTN_CODE(solvePhase1());
-
-	if (primobj_ > 1.0e-8)
-		status_ = DSP_STAT_PRIM_INFEASIBLE;
-	else {
-
-		while (1) {
-			status_ = DSP_STAT_FEASIBLE;
-			DSP_RTN_CHECK_RTN_CODE(solvePhase2());
-
-			/** collect solutions */
-			if (status_ == DSP_STAT_OPTIMAL ||
-					status_ == DSP_STAT_FEASIBLE ||
-					status_ == DSP_STAT_LIM_ITERorTIME) {
-				/** recover original solution */
-				CoinZeroN(primsol_, ncols_orig_);
-				for (unsigned k = 0, j = ncols_tr_; k < cols_generated_.size(); ++k) {
-					if (cols_generated_[k]->active_) {
-						CoinPackedVector xlam = cols_generated_[k]->x_ * si_->getColSolution()[j];
-						for (int i = 0; i < xlam.getNumElements(); ++i)
-							primsol_[xlam.getIndices()[i]] += xlam.getElements()[i];
-						j++;
-					}
+		/** collect solutions */
+		if (status_ == DSP_STAT_OPTIMAL ||
+				status_ == DSP_STAT_FEASIBLE ||
+				status_ == DSP_STAT_LIM_ITERorTIME) {
+			/** recover original solution */
+			CoinZeroN(primsol_, ncols_orig_);
+			for (unsigned k = 0, j = ncols_tr_; k < cols_generated_.size(); ++k) {
+				if (cols_generated_[k]->active_) {
+					CoinPackedVector xlam = cols_generated_[k]->x_ * si_->getColSolution()[j];
+					for (int i = 0; i < xlam.getNumElements(); ++i)
+						primsol_[xlam.getIndices()[i]] += xlam.getElements()[i];
+					j++;
 				}
+			}
 
-				/** heuristics */
-				DSP_RTN_CHECK_RTN_CODE(heuristics());
-				break;
-			} else if (status_ == DSP_STAT_DUAL_INFEASIBLE)
-				break;
-		}
+			/** heuristics */
+			DSP_RTN_CHECK_RTN_CODE(heuristics());
+			break;
+		} else if (status_ == DSP_STAT_DUAL_INFEASIBLE)
+			break;
 	}
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
@@ -202,63 +170,10 @@ DSP_RTN_CODE DwMasterTr::solve() {
 }
 
 DSP_RTN_CODE DwMasterTr::solvePhase1() {
-#define FREE_MEMORY \
-	FREE_ARRAY_PTR(price) \
-	FREE_ARRAY_PTR(piA)
-
-	double* price = NULL;
-	double* piA = NULL;
-
 	BGN_TRY_CATCH
-
-	phase_ = 1;
-	status_ = DSP_STAT_FEASIBLE;
-
-	/** set the objective function coefficient for phase 1 */
-	for (int j = 0; j < ncols_tr_; ++j) {
-		si_->setObjCoeff(j, 1.0);
-		si_->setColUpper(j, COIN_DBL_MAX);
-	}
-	for (int j = ncols_tr_; j < si_->getNumCols(); ++j)
-		si_->setObjCoeff(j, 0.0);
-
-	if (ncols_tr_ == si_->getNumCols()) {
-		DSPdebugMessage("Generate initial columns.\n");
-
-		/** allocate memory */
-		price = new double [nrows_];
-		piA = new double [ncols_orig_];
-		CoinZeroN(price, nrows_ - nrows_conv_);
-		CoinFillN(price + nrows_ - nrows_conv_, nrows_conv_, COIN_DBL_MAX);
-
-		/** generate columns */
-		double dummy_lb;
-		int nColsAdded = 0;
-		DSP_RTN_CHECK_RTN_CODE(generateCols(price, piA, dummy_lb, nColsAdded));
-		DSPdebugMessage("%d initial columns were added.\n", nColsAdded);
-	}
-
-	if (status_ == DSP_STAT_FEASIBLE) {
-		/** solve */
-		si_->resolve();
-		if (si_->isProvenOptimal() == false)
-			throw "Unexpected phase 1 status.";
-		primobj_ = si_->getObjValue();
-		DSPdebugMessage("Initial phase1 objective value is %e.\n", primobj_);
-
-		if (primobj_ > 1.0e-10) {
-			/** do column generation for phase 1 */
-			DSP_RTN_CHECK_RTN_CODE(gutsOfSolve());
-		}
-	} else
-		primobj_ = COIN_DBL_MAX;
-
-	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
-
-	FREE_MEMORY
-
+	DSP_RTN_CHECK_RTN_CODE(solvePhase2());
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;
-#undef FREE_MEMORY
 }
 
 DSP_RTN_CODE DwMasterTr::solvePhase2() {
@@ -270,70 +185,64 @@ DSP_RTN_CODE DwMasterTr::solvePhase2() {
 	double* price = NULL;
 	double* piA = NULL;
 	int nColsAdded = 0;
+	double curlb = 0.0;
 
-	std::vector<double> prevsol;
 	CoinWarmStartBasis* ws = NULL;
 
 	BGN_TRY_CATCH
 
 	phase_ = 2;
-
-	/** set the objective function coefficient for phase 2 */
-	for (int j = 0; j < ncols_tr_; ++j) {
-		si_->setObjCoeff(j, 0.0);
-		si_->setColUpper(j, 0.0);
-	}
-	for (unsigned k = 0, j = ncols_tr_; k < cols_generated_.size(); ++k)
-		if (cols_generated_[k]->active_)
-			si_->setObjCoeff(j++, cols_generated_[k]->obj_);
+	primobj_ = +COIN_DBL_MAX;
+	dualobj_ = -COIN_DBL_MAX;
 
 	/** allocate memory */
 	price = new double [nrows_];
 	piA = new double [ncols_orig_];
-	prevsol.reserve(si_->getNumCols());
 
-	/** solve without the dual trust-region */
-	si_->resolve();
-	if (si_->isProvenOptimal() == false)
-		throw "Unexpected phase 2 status.";
+	/** initialize trust region */
+	tr_size_ = par_->getDblParam("DW/TR/SIZE");
 
-	/** calculate primal objective value */
-	DSP_RTN_CHECK_RTN_CODE(calculatePrimalObjective());
+	/** initial price */
+	CoinZeroN(price, nrows_);
+	CoinFillN(price + nrows_orig_, nrows_conv_, COIN_DBL_MAX);
 
-	CoinCopyN(si_->getRowPrice(), nrows_, price);
+	/** generate initial columns */
+	DSP_RTN_CHECK_RTN_CODE(generateCols(price, piA, curlb, nColsAdded));
 
-	/** get warm-start information */
-	if (!useCpxBarrier_)
-		DSP_RTN_CHECK_RTN_CODE(getWarmStartInfo(prevsol, ws));
-
-	/** generate columns */
-	DSP_RTN_CHECK_RTN_CODE(generateCols(price, piA, dualobj_, nColsAdded));
-
-	/** termination test: subproblem solution may decalre infeasible. */
+	/** termination test: subproblem solution may declare infeasible. */
 	if (status_ == DSP_STAT_OPTIMAL || status_ == DSP_STAT_FEASIBLE) {
 		DSPdebugMessage("%d initial columns were added.\n", nColsAdded);
-		DSPdebugMessage("master objective value %e, lower bound %e\n", primobj_, dualobj_);
+		DSPdebugMessage("master objective value %e, lower bound %e\n", primobj_, curlb);
 
 		if (nColsAdded > 0) {
-			/** put the trust-region variables back */
-			for (int j = 0; j < ncols_tr_; ++j)
-				si_->setColUpper(j, COIN_DBL_MAX);
+#if 1
+			/** update master */
+//			DSP_RTN_CHECK_RTN_CODE(updateModel(price, curlb));
+			CoinZeroN(tr_center_, nrows_ - nrows_conv_);
+			updateTrustRegion();
+			dualobj_ = curlb;
 
-			/** set trust region */
-			tr_size_ = 10.0;
-			CoinCopyN(price, nrows_, tr_center_);
-			DSP_RTN_CHECK_RTN_CODE(updateTrustRegion());
-
-			/** set warm-start information */
-			if (!useCpxBarrier_)
-				DSP_RTN_CHECK_RTN_CODE(setWarmStartInfo(prevsol, ws));
-
+//			/** use primal simplex after column generation */
+//			if (!useCpxBarrier_)
+//				si_->setHintParam(OsiDoDualInResolve, false);
+//
+//			/** resolve */
+//			si_->resolve();
+//
+//			/** calculate primal objective value */
+//			DSP_RTN_CHECK_RTN_CODE(calculatePrimalObjective());
+//
+//			double relgap = (primobj_-dualobj_)/(1.0e-10+fabs(primobj_))*100;
+//			message_->print(2, "[Phase %d] Iteration %3d: Master objective %e, ", phase_, itercnt_, primobj_);
+//			if (phase_ == 2)
+//				message_->print(2, "Lb %e (gap %.2f %%), ", dualobj_, relgap);
+#endif
 			/** solve */
 			DSP_RTN_CHECK_RTN_CODE(gutsOfSolve());
 		} else {
 			dualobj_ = primobj_;
 		}
-
+#if 0
 		/** TODO: Why do we have this situation? Let's turn off the dual trust region for now. */
 		if ((status_ == DSP_STAT_OPTIMAL || status_ == DSP_STAT_FEASIBLE)
 				&& primobj_ - dualobj_ < -1.0e-6) {
@@ -352,6 +261,8 @@ DSP_RTN_CODE DwMasterTr::solvePhase2() {
 			for (int j = 0; j < ncols_tr_; ++j)
 				si_->setColUpper(j, COIN_DBL_MAX);
 		}
+#endif
+
 	} else
 		status_ = DSP_STAT_PRIM_INFEASIBLE;
 
@@ -365,7 +276,7 @@ DSP_RTN_CODE DwMasterTr::solvePhase2() {
 
 DSP_RTN_CODE DwMasterTr::calculatePrimalObjective() {
 	BGN_TRY_CATCH
-#if 1
+#if 0
 	if (phase_ == 1) {
 		primobj_ = si_->getObjValue();
 	} else {
@@ -375,6 +286,16 @@ DSP_RTN_CODE DwMasterTr::calculatePrimalObjective() {
 	}
 #else
 	primobj_ = si_->getObjValue();
+#endif
+	/** get the sum of TR variable values. */
+	tr_sumval_ = 0.0;
+	for (int j = 0; j < ncols_tr_; ++j)
+		tr_sumval_ += si_->getColSolution()[j];
+
+#if 0
+	for (int i = 0; i < nrows_orig_ + nrows_branch_; ++i)
+		if (fabs(si_->getRowPrice()[i] - tr_center_[i]) >= tr_size_)
+			printf("TR[%d]: |%e - %e| > [%e]\n", i, si_->getRowPrice()[i], tr_center_[i], tr_size_);
 #endif
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;
@@ -454,13 +375,16 @@ DSP_RTN_CODE DwMasterTr::reduceCols() {
 				j++;
 			}
 		}
-		if (delcols.size() > 0) {
+		if (delcols.size() > 0 && useBarrier_ == false) {
 			CoinWarmStartBasis* ws = dynamic_cast<CoinWarmStartBasis*>(si_->getWarmStart());
 			ws->deleteColumns(delcols.size(), &delcols[0]);
 			si_->deleteCols(delcols.size(), &delcols[0]);
 			si_->setWarmStart(ws);
 			FREE_PTR(ws)
 			//message_->print(1, "  Deleted %u columns.\n", delcols.size());
+
+			si_->resolve();
+			ws = dynamic_cast<CoinWarmStartBasis*>(si_->getWarmStart());
 		}
 	}
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
@@ -471,29 +395,28 @@ DSP_RTN_CODE DwMasterTr::reduceCols() {
 bool DwMasterTr::terminationTest(int nnewcols, int itercnt, double relgap) {
 
 	bool term = false;
-	int heuristicFreq = 10;
+	/** TODO: parameterize */
+	double gaplim = 0.0001;
 
 	/** time ticking */
 	ticToc();
 
-	if (phase_ == 1) {
+	if (!isTrBoundary()) {
 		if (time_remains_ < 0 || iterlim_ <= itercnt) {
 			status_ = DSP_STAT_LIM_ITERorTIME;
 			term = true;
-		} else if (si_->isProvenOptimal() && primobj_ < 1.0e-8) {
-			status_ = DSP_STAT_FEASIBLE;
-			DSPdebugMessage("Phase 1 found a feasible solution! %e < %e\n", si_->getObjValue(), 1.0e-8);
-			term = true;
-		}
-	} else {
-		if (time_remains_ < 0 || iterlim_ <= itercnt) {
-			status_ = DSP_STAT_LIM_ITERorTIME;
-			term = true;
-		} else if (relgap < 0.01 - 1.0e-8 ||
-			(phase_ == 2 && dualobj_ - bestprimobj_ > -1.0e-10)) {
+		} else if (nnewcols == 0 ||
+				relgap < gaplim ||
+				dualobj_ - bestprimobj_ > -1.0e-10) {
 			status_ = DSP_STAT_FEASIBLE;
 			term = true;
 		}
+	}
+
+	if (!term && relgap < gaplim) {
+		tr_size_ = CoinMin(2. * tr_size_, 1.0e+4);
+		updateTrustRegion();
+		message_->print(3, "Termination test: increased trust region size %e\n", tr_size_);
 	}
 
 	return term;
@@ -506,33 +429,38 @@ DSP_RTN_CODE DwMasterTr::updateModel(
 
 	//DSPdebugMessage("current primobj %e\n", primobj_);
 
-	if (phase_ == 1)
-		DwMaster::updateModel(price, curLb);
-	else {
-		if (curLb >= dualobj_ + 1.0e-4 * (primobj_ - dualobj_)) {
-			message_->print(3, "  [TR] SERIOUS STEP: dual objective %e", curLb);
+	if (curLb >= dualobj_ + 1.0e-4 * (primobj_ - dualobj_)) {
+		message_->print(3, "  [TR] SERIOUS STEP: dual objective %e", curLb);
 
-			if (dualobj_ > -COIN_DBL_MAX) {
-				/** increase trust region? */
-				if (isTrBoundary(price) && curLb >= dualobj_ + 0.5 * (primobj_ - dualobj_)) {
-					tr_size_ = CoinMin(2. * tr_size_, 1.0e+4);
-					message_->print(3, ", increased trust region size %e", tr_size_);
-				}
+		/** increase trust region? */
+		if (isTrBoundary() && curLb >= dualobj_ + 0.5 * (primobj_ - dualobj_)) {
+			tr_size_ = CoinMin(2. * tr_size_, 1.0e+4);
+			message_->print(3, ", increased trust region size %e", tr_size_);
+		}
 
-				/** update proximal point */
-				CoinCopyN(price, nrows_, tr_center_);
-				message_->print(3, ", updated proximal point");
+		/** update proximal point */
+		CoinCopyN(price, nrows_orig_, tr_center_);
+		CoinCopyN(price + nrows_core_, nrows_branch_, tr_center_ + nrows_orig_);
+		message_->print(3, ", updated proximal point");
 
+		/** update trust region */
+		updateTrustRegion();
+
+		/** update dual bound */
+		dualobj_ = curLb;
+		tr_cnt_ = 0;
+		message_->print(3, "\n");
+	} else {
+		message_->print(3, "  [TR] null step: dual objective %e", curLb);
+		if (isTrBoundary()) {
+			/** increase trust region? */
+			if (primobj_ < dualobj_) {
+				tr_size_ = CoinMin(2.0 * tr_size_, 1.0e+4);
+				message_->print(3, ", increased trust region size %e", tr_size_);
 				/** update trust region */
 				updateTrustRegion();
 			}
-
-			/** update dual bound */
-			dualobj_ = curLb;
-			tr_cnt_ = 0;
-			message_->print(3, "\n");
 		} else {
-			message_->print(3, "  [TR] null step: dual objective %e", curLb);
 			double rho = CoinMin(1.0, tr_size_) * (dualobj_ - curLb) / (primobj_ - dualobj_);
 			if (rho > 0) tr_cnt_++;
 			if (rho >= 3 || (tr_cnt_ >= 3 && fabs(rho - 2.) < 1.0))
@@ -545,30 +473,12 @@ DSP_RTN_CODE DwMasterTr::updateModel(
 				/** update trust region */
 				updateTrustRegion();
 			}
-			message_->print(3, "\n");
 		}
+		message_->print(3, "\n");
 	}
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;
-}
-
-bool DwMasterTr::isTrBoundary(const double* price) {
-	bool isBoundary = false;
-
-	BGN_TRY_CATCH
-
-	int half_ncols_tr = ncols_tr_ * 0.5;
-	for (int j = 0; j < half_ncols_tr; ++j) {
-		if (price[2*j] + price[2*j+1] > 1.0e-10) {
-			isBoundary = true;
-			break;
-		}
-	}
-
-	END_TRY_CATCH_RTN(;,isBoundary)
-
-	return isBoundary;
 }
 
 DSP_RTN_CODE DwMasterTr::updateTrustRegion() {

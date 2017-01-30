@@ -17,8 +17,9 @@ public:
 		DwMaster(worker),
 		ncols_tr_(0),
 		tr_cnt_(0),
-		tr_size_(0.01),
-		tr_center_(NULL) {}
+		tr_size_(0.1),
+		tr_center_(NULL),
+		tr_sumval_(0.0) {}
 
     /** default destructor */
 	virtual ~DwMasterTr() {
@@ -62,7 +63,9 @@ protected:
 protected:
 
 	/** Check if the current dual is on the trust region boundary */
-	bool isTrBoundary(const double* price);
+	bool isTrBoundary() {
+		return (tr_sumval_ > 1.0e-8);
+	}
 
 	/** update trust region and model */
 	DSP_RTN_CODE updateTrustRegion();
@@ -71,6 +74,7 @@ protected:
 	int tr_cnt_; /**< null step counter */
 	double tr_size_; /**< trust region size */
 	double* tr_center_; /**< trust region center */
+	double tr_sumval_; /**< sum of the TR variable values */
 };
 
 #endif /* SRC_SOLVER_DANTZIGWOLFE_DWMASTERTR_H_ */

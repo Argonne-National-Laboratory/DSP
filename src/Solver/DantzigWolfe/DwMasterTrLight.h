@@ -30,11 +30,6 @@ protected:
 
     /** This creates a master problem. */
 	virtual DSP_RTN_CODE createProblem();
-
-private:
-
-	double* node_clbd_; /** current column lower bounds */
-	double* node_cubd_; /** current column upper bounds */
 };
 
 #endif /* SRC_SOLVER_DANTZIGWOLFE_DWMASTERTRLIGHT_H_ */
