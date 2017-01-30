@@ -41,13 +41,13 @@ DspTreeNode::~DspTreeNode() {
 int DspTreeNode::process(bool isRoot, bool rampUp) {
 	int status = AlpsReturnStatusOk;
 	int ret; /**< solver return */
-	double relTol = 0.0001;
 
 	/** retrieve objects */
 	DspNodeDesc* desc = dynamic_cast<DspNodeDesc*>(desc_);
 	DspModel* model = dynamic_cast<DspModel*>(desc_->getModel());
 	DecSolver* solver = model->getSolver();
 	DspParams* par = solver->getParPtr();
+	double relTol = par->getDblParam("DW/GAPTOL");
 
 	double alpsTimeRemain = par->getDblParam("ALPS/TIME_LIM") - getKnowledgeBroker()->timer().getWallClock();
 	double dwTimeLim = CoinMin(par->getDblParam("DW/TIME_LIM"), alpsTimeRemain);

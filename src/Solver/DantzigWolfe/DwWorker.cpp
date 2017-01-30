@@ -134,6 +134,9 @@ DSP_RTN_CODE DwWorker::createSubproblems() {
 
 		si_[s]->messageHandler()->setLogLevel(0);
 
+		/** set parameters */
+		setGapTolerance(par_->getDblParam("DW/GAPTOL"));
+		setTimeLimit(par_->getDblParam("DW/SUB/TIME_LIM"));
 		OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_[s]);
 		if (cpx) {
 			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, 1);
@@ -203,6 +206,7 @@ DSP_RTN_CODE DwWorker::generateCols(
 		tss = dynamic_cast<TssModel*>(model_);
 
 	for (int s = 0; s < parProcIdxSize_; ++s) {
+		OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_[s]);
 		int sind = parProcIdx_[s];
 
 		/** add subproblem index */
@@ -254,7 +258,8 @@ DSP_RTN_CODE DwWorker::generateCols(
 				const double* x = si_[s]->getColSolution();
 
 				/** subproblem objective value */
-				objval = si_[s]->getObjValue();
+				//objval = si_[s]->getObjValue();
+				CPXgetbestobjval(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), &objval);
 				cx = 0.0;
 				for (int j = 0; j < si_[s]->getNumCols(); ++j)
 					cx += sub_objs_[s][j] * x[j];
@@ -433,6 +438,22 @@ DSP_RTN_CODE DwWorker::solveSubproblems() {
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
+}
+
+void DwWorker::setTimeLimit(double limit) {
+	for (int s = 0; s < parProcIdxSize_; ++s) {
+		OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_[s]);
+		if (cpx)
+			CPXsetdblparam(cpx->getEnvironmentPtr(), CPX_PARAM_TILIM, limit);
+	}
+}
+
+void DwWorker::setGapTolerance(double gaptol) {
+	for (int s = 0; s < parProcIdxSize_; ++s) {
+		OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_[s]);
+		if (cpx)
+			CPXsetdblparam(cpx->getEnvironmentPtr(), CPX_PARAM_EPGAP, gaptol);
+	}
 }
 
 DSP_RTN_CODE DwWorker::resetSubproblems() {

@@ -50,6 +50,12 @@ public:
 	/** set column bounds */
 	virtual void setColBounds(int size, const int* indices, const double* lbs, const double* ubs);
 
+	/** set time limit */
+	virtual void setTimeLimit(double limit);
+
+	/** set gap tolerance */
+	virtual void setGapTolerance(double gaptol);
+
 protected:
 
 	/** create subproblems */
