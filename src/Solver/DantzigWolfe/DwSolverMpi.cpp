@@ -27,8 +27,12 @@ DwSolverMpi::~DwSolverMpi() {
 
 DSP_RTN_CODE DwSolverMpi::init() {
 	BGN_TRY_CATCH
+
+	/** create worker */
 	worker_ = new DwWorkerMpi(model_, par_, message_, comm_);
+
 	if (comm_rank_ == 0) {
+		/** create master */
 		if (par_->getBoolParam("DW/TRUST_REGION")) {
 			if (par_->getBoolParam("DW/MASTER/BRANCH_ROWS"))
 				master_ = new DwMasterTr(worker_);
@@ -36,7 +40,12 @@ DSP_RTN_CODE DwSolverMpi::init() {
 				master_ = new DwMasterTrLight(worker_);
 		} else
 			master_ = new DwMaster(worker_);
+
+		/** initialize master */
 		DSP_RTN_CHECK_THROW(master_->init());
+
+		/** create an Alps model */
+		alps_ = new DspModel(master_);
 	}
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;
@@ -45,7 +54,7 @@ DSP_RTN_CODE DwSolverMpi::init() {
 DSP_RTN_CODE DwSolverMpi::solve() {
 	BGN_TRY_CATCH
 	if (comm_rank_ == 0) {
-		DSP_RTN_CHECK_THROW(master_->solve());
+		DSP_RTN_CHECK_THROW(alps_->solve());
 	} else {
 		DSP_RTN_CHECK_THROW(dynamic_cast<DwWorkerMpi*>(worker_)->receiver());
 	}
@@ -59,22 +68,4 @@ DSP_RTN_CODE DwSolverMpi::finalize() {
 		DSP_RTN_CHECK_THROW(master_->finalize());
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;
-}
-
-bool DwSolverMpi::chooseBranchingObjects(
-		DspBranch*& branchingUp, /**< [out] branching-up object */
-		DspBranch*& branchingDn  /**< [out] branching-down object */) {
-	int branched = 0;
-	if (comm_rank_ == 0)
-		branched = master_->chooseBranchingObjects(branchingUp, branchingDn);
-	return branched;
-}
-
-void DwSolverMpi::setBranchingObjects(const DspBranch* branchobj) {
-	BGN_TRY_CATCH
-
-	if (comm_rank_ == 0)
-		master_->setBranchingObjects(branchobj);
-
-	END_TRY_CATCH(;)
 }

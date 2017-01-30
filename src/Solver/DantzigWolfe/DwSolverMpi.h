@@ -32,14 +32,6 @@ public:
 	/** finalize */
 	virtual DSP_RTN_CODE finalize();
 
-	/** The function chooses branching objects and returns the pointers. */
-	virtual bool chooseBranchingObjects(
-			DspBranch*& branchingUp, /**< [out] branching-up object */
-			DspBranch*& branchingDn  /**< [out] branching-down object */);
-
-	/** set branching objects */
-	virtual void setBranchingObjects(const DspBranch* branchobj);
-
 protected:
 
 	MPI_Comm comm_;
