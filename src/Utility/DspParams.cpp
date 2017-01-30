@@ -132,8 +132,8 @@ void DspParams::initBoolParams()
 
 	BoolParams_.createParam("DW/MASTER/IPM", false);
 	BoolParams_.createParam("DW/MASTER/BRANCH_ROWS", false);
-	BoolParams_.createParam("DW/TRUST_REGION", true);
-	BoolParams_.createParam("DW/HEURISTICS", true);
+	BoolParams_.createParam("DW/TRUST_REGION", false);
+	BoolParams_.createParam("DW/HEURISTICS", false);
 	BoolParams_.createParam("DW/HEURISTICS/TRIVIAL", true);
 	BoolParams_.createParam("DW/HEURISTICS/DIVE", true);
 	BoolParams_.createParam("DW/HEURISTICS/FP1", false);
@@ -214,7 +214,8 @@ void DspParams::initDblParams()
 	DblParams_.createParam("DD/WALL_LIM", MAX_DBL_NUM);
 
 	/** initial trust region size */
-	DblParams_.createParam("DD/TR/SIZE", 1);
+	DblParams_.createParam("DD/TR/SIZE", 0.1);
+	DblParams_.createParam("DW/TR/SIZE", 0.1);
 
 	/** stopping tolerance */
 	DblParams_.createParam("DD/STOP_TOL", 0.00001);
@@ -227,6 +228,8 @@ void DspParams::initDblParams()
 
 	DblParams_.createParam("ALPS/TIME_LIM", MAX_DBL_NUM);
 
+	DblParams_.createParam("DW/SUB/TIME_LIM", 300);
+	DblParams_.createParam("DW/GAPTOL", 0.0001);
 	DblParams_.createParam("DW/TIME_LIM", MAX_DBL_NUM);
 	DblParams_.createParam("DW/HEURISTICS/TRIVIAL/TIME_LIM", MAX_DBL_NUM);
 	DblParams_.createParam("DW/HEURISTICS/DIVE/TIME_LIM", MAX_DBL_NUM);
