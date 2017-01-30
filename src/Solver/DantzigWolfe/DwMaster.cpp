@@ -257,26 +257,6 @@ DSP_RTN_CODE DwMaster::solve() {
 
 	//dualobj_ = -COIN_DBL_MAX;
 
-	/** always start with phase 2 */
-	if (phase_ == 1) {
-		/** delete auxiliary columns */
-		si_->deleteCols(auxcolindices_.size(), &auxcolindices_[0]);
-		auxcolindices_.clear();
-		DSPdebugMessage("Phase 2 has %d rows and %d columns.\n", si_->getNumRows(), si_->getNumCols());
-
-		/** set objective function coefficients */
-		for (unsigned k = 0, j = 0; k < cols_generated_.size(); ++k)
-			if (cols_generated_[k]->active_) {
-				if (j >= si_->getNumCols()) {
-					message_->print(0, "Trying to access invalid column index %d (ncols %d)\n", j, si_->getNumCols());
-					return DSP_RTN_ERR;
-				}
-				si_->setObjCoeff(j, cols_generated_[k]->obj_);
-				j++;
-			}
-		phase_ = 2;
-	}
-
 	if (cols_generated_.size() == 0) {
 		/** generate initial columns */
 		DSP_RTN_CHECK_RTN_CODE(initialColumns());
@@ -307,10 +287,6 @@ DSP_RTN_CODE DwMaster::solve() {
 				DSPdebugMessage("Converting to Phase 2.\n");
 				DSP_RTN_CHECK_RTN_CODE(solvePhase2());
 			}
-		} else if (status_ == DSP_STAT_PRIM_INFEASIBLE) {
-			CoinError("Unexpected solution status: Phase 1 should not be primal infeasible.",
-					"solve", "DwMaster");
-			return DSP_RTN_ERR;
 		}
 	}
 
@@ -338,6 +314,26 @@ DSP_RTN_CODE DwMaster::solve() {
 		//DSPdebug(si_->writeMps("master"));
 	}
 
+	/** always start with phase 2 */
+	if (phase_ == 1) {
+		/** delete auxiliary columns */
+		si_->deleteCols(auxcolindices_.size(), &auxcolindices_[0]);
+		auxcolindices_.clear();
+		DSPdebugMessage("Phase 2 has %d rows and %d columns.\n", si_->getNumRows(), si_->getNumCols());
+
+		/** set objective function coefficients */
+		for (unsigned k = 0, j = 0; k < cols_generated_.size(); ++k)
+			if (cols_generated_[k]->active_) {
+				if (j >= si_->getNumCols()) {
+					message_->print(0, "Trying to access invalid column index %d (ncols %d)\n", j, si_->getNumCols());
+					return DSP_RTN_ERR;
+				}
+				si_->setObjCoeff(j, cols_generated_[k]->obj_);
+				j++;
+			}
+		phase_ = 2;
+	}
+
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
@@ -352,6 +348,9 @@ DSP_RTN_CODE DwMaster::initialColumns() {
 	int nColsAdded;
 
 	BGN_TRY_CATCH
+
+	/** should consider phase 2 */
+	phase_ = 2;
 
 	/** allocate memory */
 	std::vector<double> price(nrows_orig_ + nrows_conv_);
@@ -1656,25 +1655,16 @@ bool DwMaster::chooseBranchingObjects(
 }
 
 void DwMaster::setBranchingObjects(const DspBranch* branchobj) {
-#define FREE_MEMORY \
-	FREE_ARRAY_PTR(delrows) \
-	FREE_ARRAY_PTR(delcols) \
-	FREE_ARRAY_PTR(densecol) \
-	FREE_ARRAY_PTR(col_inds) \
-	FREE_ARRAY_PTR(col_elems)
-
 	/** shouldn't be null */
 	if (branchobj == NULL)
 		return;
 
-	int* delrows = NULL;
-	int* delcols = NULL;
+	std::vector<int> delrows;
+	std::vector<int> delcols;
 
 	/** adding columns */
-	double* densecol = NULL;
-	int col_size = 0;
-	int* col_inds = NULL;
-	double* col_elems = NULL;
+	std::vector<int> col_inds;
+	std::vector<double> col_elems;
 
 	bool violated = false;
 
@@ -1682,23 +1672,23 @@ void DwMaster::setBranchingObjects(const DspBranch* branchobj) {
 
 	/** remove all the branching rows */
 	if (nrows_branch_ > 0) {
-		delrows = new int [nrows_branch_];
+		delrows.reserve(nrows_branch_);
 		for (int i = nrows_core_; i < nrows_; ++i)
-			delrows[i-nrows_core_] = i;
-		si_->deleteRows(nrows_branch_, delrows);
+			delrows.push_back(i);
+		si_->deleteRows(nrows_branch_, &delrows[0]);
 		DSPdebugMessage("Deleted %d rows in the master.\n", nrows_branch_);
+		nrows_branch_ = 0;
 	}
 
 	/** remove all columns */
 	int ndelcols = si_->getNumCols();
-	delcols = new int [ndelcols];
+	delcols.reserve(ndelcols);
 	for (int j = 0; j < ndelcols; ++j)
-		delcols[j] = j;
-	si_->deleteCols(ndelcols, delcols);
+		delcols.push_back(j);
+	si_->deleteCols(ndelcols, &delcols[0]);
 	DSPdebugMessage("Deleted %d columns in the master.\n", ndelcols);
 
 	/** count nrows_branch_ */
-	nrows_branch_ = 0;
 	for (unsigned j = 0; j < branchobj->index_.size(); ++j) {
 		if (branchobj->lb_[j] > org_clbd_[branchobj->index_[j]]) {
 			branch_row_to_col_[nrows_core_ + nrows_branch_] = branchobj->index_[j];
@@ -1711,32 +1701,33 @@ void DwMaster::setBranchingObjects(const DspBranch* branchobj) {
 			nrows_branch_++;
 		}
 	}
-	DSPdebugMessage("Found %d branching rows.\n", nrows_branch_);
 
 	/** update number of rows */
 	nrows_ = nrows_core_ + nrows_branch_;
+	DSPdebugMessage("nrows_ %d nrows_core_ %d nrows_branch_ %d\n", nrows_, nrows_core_, nrows_branch_);
+
+	/** reserve vector sizes */
+	col_inds.reserve(nrows_);
+	col_elems.reserve(nrows_);
 
 	/** add branching rows */
 	for (unsigned k = 0; k < cols_generated_.size(); ++k) {
 		if (cols_generated_[k]->active_) {
 
-			/** TODO: count the size of arrays */
-
-			col_inds = new int [nrows_];
-			col_elems = new double [nrows_];
+			/** clear column vectors */
+			col_inds.clear();
+			col_elems.clear();
 
 			/** get a core-row column */
-			int lengthOfDenseVector = CoinMax(cols_generated_[k]->col_.getMaxIndex() + 1, nrows_core_);
-			densecol = cols_generated_[k]->col_.denseVector(lengthOfDenseVector);
+			int lengthOfDenseVector = cols_generated_[k]->col_.getMaxIndex() + 1;
+			double* densecol = cols_generated_[k]->col_.denseVector(lengthOfDenseVector);
 
 			/** create a column for core rows */
-			col_size = 0;
 			for (int i = 0; i < lengthOfDenseVector; ++i) {
 				if (i >= nrows_core_) break;
 				if (fabs(densecol[i]) > 1.0e-10) {
-					col_inds[col_size] = i;
-					col_elems[col_size] = densecol[i];
-					col_size++;
+					col_inds.push_back(i);
+					col_elems.push_back(densecol[i]);
 				}
 			}
 			FREE_ARRAY_PTR(densecol);
@@ -1746,6 +1737,7 @@ void DwMaster::setBranchingObjects(const DspBranch* branchobj) {
 			for (unsigned j = 0, i = 0; j < branchobj->index_.size(); ++j) {
 				int sparse_index = cols_generated_[k]->x_.findIndex(branchobj->index_[j]);
 				double val = 0.0;
+#if 0
 				if (sparse_index > -1) {
 					val = cols_generated_[k]->x_.getElements()[sparse_index];
 					if (branchobj->lb_[j] > val || branchobj->ub_[j] < val) {
@@ -1753,41 +1745,38 @@ void DwMaster::setBranchingObjects(const DspBranch* branchobj) {
 						break;
 					}
 				}
+#endif
 				if (branchobj->lb_[j] > org_clbd_[branchobj->index_[j]]) {
 					if (fabs(val) > 1.0e-10) {
-						col_inds[col_size] = nrows_core_ + i;
-						col_elems[col_size] = val;
-						col_size++;
+						col_inds.push_back(nrows_core_+i);
+						col_elems.push_back(val);
 					}
 					i++;
 				}
 				if (branchobj->ub_[j] < org_cubd_[branchobj->index_[j]]) {
 					if (fabs(val) > 1.0e-10) {
-						col_inds[col_size] = nrows_core_ + i;
-						col_elems[col_size] = val;
-						col_size++;
+						col_inds.push_back(nrows_core_+i);
+						col_elems.push_back(val);
 					}
 					i++;
 				}
 			}
-
+#if 0
 			/** make inactive if violated */
 			if (violated) {
 				cols_generated_[k]->active_ = false;
-				FREE_ARRAY_PTR(col_inds);
-				FREE_ARRAY_PTR(col_elems);
 				continue;
 			}
-
+#endif
 			/** assign the core-row column */
 			cols_generated_[k]->col_.clear();
-			cols_generated_[k]->col_.assignVector(col_size, col_inds, col_elems);
+			cols_generated_[k]->col_.setVector(col_inds.size(), &col_inds[0], &col_elems[0]);
 
 			/** add column */
 			si_->addCol(cols_generated_[k]->col_, 0.0, COIN_DBL_MAX, cols_generated_[k]->obj_);
 		}
 	}
-	DSPdebugMessage("Appended dynamic columns in the master (%d cols).\n", si_->getNumCols());
+	DSPdebugMessage("Appended dynamic columns in the master (%d / %u cols).\n", si_->getNumCols(), cols_generated_.size());
 
 	/** restore column bounds */
 	CoinCopyN(org_clbd_, ncols_orig_, node_clbd_);
@@ -1797,6 +1786,7 @@ void DwMaster::setBranchingObjects(const DspBranch* branchobj) {
 	for (unsigned j = 0; j < branchobj->index_.size(); ++j) {
 		node_clbd_[branchobj->index_[j]] = branchobj->lb_[j];
 		node_cubd_[branchobj->index_[j]] = branchobj->ub_[j];
+		DSPdebugMessage("Branch Obj: index %d lb %e ub %e\n", branchobj->index_[j], branchobj->lb_[j], branchobj->ub_[j]);
 	}
 
 	/** apply column bounds */
@@ -1806,9 +1796,7 @@ void DwMaster::setBranchingObjects(const DspBranch* branchobj) {
 	/** set known best bound */
 	dualobj_ = branchobj->bestBound_;
 
-	END_TRY_CATCH(FREE_MEMORY)
-	FREE_MEMORY
-#undef FREE_MEMORY
+	END_TRY_CATCH(;)
 }
 
 void DwMaster::printIterInfo() {
