@@ -28,6 +28,9 @@ public:
 	/** solve */
 	virtual DSP_RTN_CODE solve();
 
+	/** finalize */
+	virtual DSP_RTN_CODE finalize() {return DSP_RTN_OK;}
+
 	/** update problem */
 	virtual DSP_RTN_CODE updateProblem();
 
