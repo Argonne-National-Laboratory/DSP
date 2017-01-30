@@ -83,9 +83,6 @@ protected:
     /** solver master */
     virtual DSP_RTN_CODE solveMaster();
 
-    /** calculate primal objective value */
-    virtual DSP_RTN_CODE calculatePrimalObjective();
-
     /** restore columns: adding all the columns back */
     virtual DSP_RTN_CODE restoreCols();
 
@@ -125,16 +122,6 @@ protected:
     virtual DSP_RTN_CODE updateModel(
     		const double* price, /**< [in] price */
 			double curLb         /**< [in] current lower bound */);
-
-    /** get warm-start information */
-    virtual DSP_RTN_CODE getWarmStartInfo(
-    		std::vector<double>& sol, /**< [out] current solution */
-    		CoinWarmStartBasis*& ws   /**< [out] warmstart basis */);
-
-    /** set warm-start information */
-    virtual DSP_RTN_CODE setWarmStartInfo(
-    		std::vector<double>& sol, /**< [out] current solution */
-    		CoinWarmStartBasis*& ws   /**< [out] warmstart basis */);
 
     /** termination test */
     virtual bool terminationTest(int nnewcols);

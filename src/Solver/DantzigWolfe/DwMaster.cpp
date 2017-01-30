@@ -300,14 +300,31 @@ DSP_RTN_CODE DwMaster::solve() {
 			/** do not consider inactive columns */
 			if (cols_generated_[k]->active_ == false)
 				continue;
-			CoinPackedVector xlam = cols_generated_[k]->x_ * si_->getColSolution()[j];
-			for (int i = 0; i < xlam.getNumElements(); ++i) {
-				if (xlam.getIndices()[i] < ncols_orig_)
-					primsol_[xlam.getIndices()[i]] += xlam.getElements()[i];
-			}
+			DwCol* col = cols_generated_[k];
+			for (int i = 0; i < col->x_.getNumElements(); ++i)
+				if (col->x_.getIndices()[i] < ncols_orig_)
+					primsol_[col->x_.getIndices()[i]] += col->x_.getElements()[i] * si_->getColSolution()[j];
+			col = NULL;
 			j++;
 		}
+//#define DSP_DEBUG_MORE
+#ifdef DSP_DEBUG_MORE
+		for (int i = nrows_core_; i < nrows_; ++i) {
+			CoinShallowPackedVector row = si_->getMatrixByRow()->getVector(i);
+			for (int j = 0; j < row.getNumElements(); ++j)
+				printf("col %d x [%e] lambda [%e]\n", row.getIndices()[j], row.getElements()[j], si_->getColSolution()[row.getIndices()[j]]);
+			message_->print(0, "RowActivity[%d] %e in [%e %e] (ncols_inds %d)\n",
+					i, si_->getRowActivity()[i], si_->getRowLower()[i], si_->getRowUpper()[i], branch_row_to_col_[i]);
+		}
 
+		for (int j = 0; j < ncols_orig_; ++j)
+			if (primsol_[j] < node_clbd_[j] - 1.0e-6 || primsol_[j] > node_cubd_[j] + 1.0e-6) {
+				message_->print(0, "Error: primsol_[%d] %e not in [%e %e].\n", j, primsol_[j], node_clbd_[j], node_cubd_[j]);
+				CoinError("Solution violates bound constraints", "solve", "DwMaster");
+				si_->writeMps("debug");
+				return DSP_RTN_ERR;
+			}
+#endif
 		/** heuristics */
 		DSP_RTN_CHECK_RTN_CODE(heuristics());
 	} else if (status_ == DSP_STAT_DUAL_INFEASIBLE) {
@@ -508,9 +525,6 @@ DSP_RTN_CODE DwMaster::gutsOfSolve() {
 		/** get price */
 		CoinCopyN(si_->getRowPrice(), si_->getNumRows(), price);
 
-		/** get warm-start information */
-		DSP_RTN_CHECK_RTN_CODE(getWarmStartInfo(prevsol, ws));
-
 		/** column management */
 		DSP_RTN_CHECK_RTN_CODE(reduceCols());
 
@@ -525,9 +539,6 @@ DSP_RTN_CODE DwMaster::gutsOfSolve() {
 
 		/** update master */
 		DSP_RTN_CHECK_RTN_CODE(updateModel(price, curLb));
-
-		/** set warm-start information */
-		DSP_RTN_CHECK_RTN_CODE(setWarmStartInfo(prevsol, ws));
 
 		/** solver the master problem */
 		DSP_RTN_CHECK_RTN_CODE(solveMaster());
@@ -558,6 +569,12 @@ DSP_RTN_CODE DwMaster::gutsOfSolve() {
 DSP_RTN_CODE DwMaster::solveMaster() {
 	BGN_TRY_CATCH
 
+	if (!useBarrier_) {
+//		ws->resize(si_->getNumRows(), si_->getNumCols());
+//		si_->setWarmStart(ws);
+//		FREE_PTR(ws);
+	}
+
 	/** resolve */
 	double stime = CoinGetTimeOfDay();
 	si_->resolve();
@@ -581,17 +598,15 @@ DSP_RTN_CODE DwMaster::solveMaster() {
 	DSPdebugMessage("master status: %d\n", status_);
 
 	/** calculate primal objective value */
-	DSP_RTN_CHECK_RTN_CODE(calculatePrimalObjective());
-
-	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
-	return DSP_RTN_OK;
-}
-
-DSP_RTN_CODE DwMaster::calculatePrimalObjective() {
-	BGN_TRY_CATCH
 	primobj_ = si_->getObjValue();
 	absgap_ = fabs(primobj_-dualobj_);
 	relgap_ = absgap_/(1.0e-10+fabs(primobj_));
+
+	/** store previous solution and basis */
+	if (!useBarrier_) {
+//		ws = dynamic_cast<CoinWarmStartBasis*>(si_->getWarmStart());
+	}
+
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;
 }
@@ -833,7 +848,7 @@ DSP_RTN_CODE DwMaster::getLagrangianBound(
 
 bool DwMaster::terminationTest(int nnewcols) {
 
-	if (nnewcols == 0)
+	if (nnewcols == 0 || si_->getIterationCount() == 0)
 		return true;
 
 	bool term = false;
@@ -900,44 +915,6 @@ bool DwMaster::terminationTestColgen(std::vector<int>& statuses) {
 		term = true;
 	}
 	return term;
-}
-
-DSP_RTN_CODE DwMaster::getWarmStartInfo(
-		std::vector<double>& sol, /**< [out] current solution */
-		CoinWarmStartBasis*& ws   /**< [out] warmstart basis */) {
-	if (useBarrier_)
-		return DSP_RTN_OK;
-
-	BGN_TRY_CATCH
-
-	/** store previous solution and basis */
-	//CoinCopyN(si_->getColSolution(), si_->getNumCols(), &sol[0]);
-	ws = dynamic_cast<CoinWarmStartBasis*>(si_->getWarmStart());
-
-	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
-
-	return DSP_RTN_OK;
-}
-
-DSP_RTN_CODE DwMaster::setWarmStartInfo(
-		std::vector<double>& sol, /**< [out] current solution */
-		CoinWarmStartBasis*& ws   /**< [out] warmstart basis */) {
-	if (useBarrier_)
-		return DSP_RTN_OK;
-
-	BGN_TRY_CATCH
-
-	/** set previous solution and basis */
-	//sol.resize(si_->getNumCols(), 0.0);
-	//si_->setColSolution(&sol[0]);
-
-	ws->resize(si_->getNumRows(), si_->getNumCols());
-	si_->setWarmStart(ws);
-	FREE_PTR(ws);
-
-	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
-
-	return DSP_RTN_OK;
 }
 
 DSP_RTN_CODE DwMaster::heuristics() {
@@ -1666,8 +1643,6 @@ void DwMaster::setBranchingObjects(const DspBranch* branchobj) {
 	std::vector<int> col_inds;
 	std::vector<double> col_elems;
 
-	bool violated = false;
-
 	BGN_TRY_CATCH
 
 	/** remove all the branching rows */
@@ -1733,19 +1708,11 @@ void DwMaster::setBranchingObjects(const DspBranch* branchobj) {
 			FREE_ARRAY_PTR(densecol);
 
 			/** append column elements for the branching rows */
-			violated = false;
 			for (unsigned j = 0, i = 0; j < branchobj->index_.size(); ++j) {
 				int sparse_index = cols_generated_[k]->x_.findIndex(branchobj->index_[j]);
 				double val = 0.0;
-#if 0
-				if (sparse_index > -1) {
+				if (sparse_index > -1)
 					val = cols_generated_[k]->x_.getElements()[sparse_index];
-					if (branchobj->lb_[j] > val || branchobj->ub_[j] < val) {
-						violated = true;
-						break;
-					}
-				}
-#endif
 				if (branchobj->lb_[j] > org_clbd_[branchobj->index_[j]]) {
 					if (fabs(val) > 1.0e-10) {
 						col_inds.push_back(nrows_core_+i);
@@ -1761,13 +1728,7 @@ void DwMaster::setBranchingObjects(const DspBranch* branchobj) {
 					i++;
 				}
 			}
-#if 0
-			/** make inactive if violated */
-			if (violated) {
-				cols_generated_[k]->active_ = false;
-				continue;
-			}
-#endif
+
 			/** assign the core-row column */
 			cols_generated_[k]->col_.clear();
 			cols_generated_[k]->col_.setVector(col_inds.size(), &col_inds[0], &col_elems[0]);
@@ -1790,8 +1751,9 @@ void DwMaster::setBranchingObjects(const DspBranch* branchobj) {
 	}
 
 	/** apply column bounds */
-	for (int j=0, k=0; j < ncols_orig_; ++j)
-		worker_->setColBounds(j, node_clbd_[j], node_cubd_[j]);
+	std::vector<int> ncols_inds(ncols_orig_);
+	CoinIotaN(&ncols_inds[0], ncols_orig_, 0);
+	worker_->setColBounds(ncols_orig_, &ncols_inds[0], node_clbd_, node_cubd_);
 
 	/** set known best bound */
 	dualobj_ = branchobj->bestBound_;

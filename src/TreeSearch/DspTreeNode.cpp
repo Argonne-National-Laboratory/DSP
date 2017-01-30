@@ -47,7 +47,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 	DspModel* model = dynamic_cast<DspModel*>(desc_->getModel());
 	DecSolver* solver = model->getSolver();
 	DspParams* par = solver->getParPtr();
-	double relTol = par->getDblParam("DW/GAPTOL");
+	double relTol = 0.0001;//par->getDblParam("DW/GAPTOL");
 
 	double alpsTimeRemain = par->getDblParam("ALPS/TIME_LIM") - getKnowledgeBroker()->timer().getWallClock();
 	double dwTimeLim = CoinMin(par->getDblParam("DW/TIME_LIM"), alpsTimeRemain);
@@ -326,7 +326,7 @@ void DspTreeNode::wirteLog(const char* status, DspNodeDesc* desc, double lpbound
 		logstream_ << "R";
 	if (strcmp(status, "branched") == 0)
 		logstream_ << " " << lpbound << " " << infeas << " " << suminfeas;
-	else if (strcmp(status, "candidate") == 0 || strcmp(status, "heuristic") == 0)
+	else if (strcmp(status, "candidate") == 0 || strcmp(status, "heuristic") == 0 || strcmp(status, "integer") == 0)
 		logstream_ << " " << lpbound;
 	logstream_ << std::endl;
 #endif
