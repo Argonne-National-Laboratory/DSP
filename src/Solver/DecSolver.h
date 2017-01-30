@@ -38,8 +38,14 @@ public:
 			bestprimobj_(COIN_DBL_MAX),
 			primobj_(COIN_DBL_MAX),
 			dualobj_(-COIN_DBL_MAX),
+			absgap_(COIN_DBL_MAX),
+			relgap_(COIN_DBL_MAX),
+			cputime_(0.0),
+			walltime_(0.0),
 			time_remains_(COIN_DBL_MAX),
 			tic_(0.0),
+			numIterations_(0),
+			numNodes_(0),
 			iterlim_(COIN_INT_MAX),
 			runHeuristics_(true) {
 		/** nothing to do */
@@ -132,6 +138,16 @@ public:
 	/** get solver interface */
 	virtual OsiSolverInterface* getSiPtr() {return si_;}
 
+	/** get solution time */
+	virtual double getCpuTime() {return cputime_;}
+	virtual double getWallTime() {return walltime_;}
+
+	/** get number of iterations */
+	virtual int getNumIterations() {return numIterations_;}
+
+	/** get number of branch-and-bound nodes */
+	virtual int getNumNodes() {return numNodes_;}
+
 	//@}
 
 	/**@name Set functions */
@@ -221,9 +237,15 @@ protected:
 	double bestprimobj_;   /**< best primal objective */
 	double primobj_;       /**< primal objective */
 	double dualobj_;       /**< dual objective */
+	double absgap_;        /**< absolute primal-dual gap */
+	double relgap_;        /**< relative primal-dual gap */
 
+	double cputime_;    /**< cpu time */
+	double walltime_;   /**< wall time */
 	double time_remains_;  /**< time limit */
 	double tic_;           /**< time stamp */
+	int numIterations_; /**< number of iterations for a given method */
+	int numNodes_;      /**< number of branch-and-bound tree nodes */
 
 	int iterlim_; /**< iteration limits */
 	bool runHeuristics_; /**< indicate whether heuristics should run or not */
