@@ -8,9 +8,10 @@
 #ifndef DSPAPIENV_H_
 #define DSPAPIENV_H_
 
-#include "DspDriver.h"
+#include "Solver/DecSolver.h"
 #include "DecModel.h"
 #include "DspParams.h"
+#include "Utility/DspMessage.h"
 
 class DspApiEnv
 {
@@ -19,9 +20,10 @@ public:
 	virtual ~DspApiEnv();
 
 public:
-	DspDriver * solver_;
+	DecSolver * solver_;
 	DecModel * model_;
 	DspParams * par_;
+	DspMessage * message_;
 };
 
 #endif /* DSPAPIENV_H_ */
