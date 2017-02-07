@@ -40,7 +40,7 @@ void OoqpEps::resolve() {
 		resid_ = (QpGenResiduals*)qpgen_->makeResiduals(prob_);
 
 		/** create solver */
-		//solver_ = new GondzioSolver(qp_, prob_);
+		//solver_ = new GondzioSolver(qpgen_, prob_);
 		solver_ = new MehrotraSolver(qpgen_, prob_);
 
 		/** assign my status */
