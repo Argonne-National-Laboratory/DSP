@@ -136,18 +136,17 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 	case DSP_STAT_FEASIBLE:
 	case DSP_STAT_LIM_ITERorTIME:
 	{
-
 		quality_ = solver->getDualObjective();
 		double curUb = solver->getPrimalObjective();
 
 		DSPdebugMessage("[%f] curLb %e, curUb %e, bestUb %e, bestLb %e\n",
 				getKnowledgeBroker()->timer().getWallClock(), quality_, curUb, gUb, gLb);
 
-		if (curUb - quality_ < -1.0e-8) {
-			setStatus(AlpsNodeStatusDiscarded);
-			wirteLog("fathomed", desc);
-			return AlpsReturnStatusErr;
-		}
+//		if (curUb - quality_ < -1.0e-6) {
+//			setStatus(AlpsNodeStatusDiscarded);
+//			wirteLog("fathomed", desc);
+//			return AlpsReturnStatusErr;
+//		}
 
 		/** fathom if LB is larger than UB. */
 		if (quality_ >= gUb) {

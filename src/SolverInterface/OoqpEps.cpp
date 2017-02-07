@@ -5,8 +5,11 @@
  *      Author: kibaekkim
  */
 
+//#define DSP_DEBUG
+
 /** DSP */
 #include "Utility/DspMacros.h"
+#include "Utility/DspMessage.h"
 #include "SolverInterface/OoqpEps.h"
 #include "SolverInterface/OoqpStatus.h"
 /** Ooqp */
@@ -28,7 +31,7 @@ void OoqpEps::resolve() {
 
 		/** convert Osi data to Ooqp data */
 		convertOsiToOoqp(qpgen_, prob_);
-		//prob_->print();
+		DSPdebug(prob_->print());
 
 		/** declare variables */
 		vars_ = (QpGenVars*)qpgen_->makeVariables(prob_);
