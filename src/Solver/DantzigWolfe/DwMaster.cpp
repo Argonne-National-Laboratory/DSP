@@ -331,12 +331,14 @@ DSP_RTN_CODE DwMaster::solve() {
 		}
 #endif
 
+#ifdef DSP_DEBUG
 		for (int j = 0; j < ncols_orig_; ++j)
 			if (primsol_[j] < node_clbd_[j] - 1.0e-6 || primsol_[j] > node_cubd_[j] + 1.0e-6) {
 				status_ = DSP_STAT_UNKNOWN;
 				printf("Col %d: primsol_ %e, clbd %e, cubd %e\n", j, primsol_[j], node_clbd_[j], node_cubd_[j]);
 				throw CoinError("Primal solution violates the column bounds.", "solve", "DwMaster");
 			}
+#endif
 
 #ifdef DSP_DEBUG_MORE
 		for (int i = nrows_core_; i < nrows_; ++i) {
