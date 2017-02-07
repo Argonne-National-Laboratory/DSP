@@ -181,6 +181,8 @@ protected:
 
     std::vector<DwCol*> cols_generated_; /**< columns generated */
 
+    const double feastol_ = 1.0e-6;
+
 public:
 
     int ncols_orig_; /**< number of columns in the original master */

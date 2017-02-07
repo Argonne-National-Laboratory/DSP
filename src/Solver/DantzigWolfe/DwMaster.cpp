@@ -286,7 +286,7 @@ DSP_RTN_CODE DwMaster::solve() {
 
 	if (phase_ == 1) {
 		if (status_ == DSP_STAT_FEASIBLE || status_ == DSP_STAT_OPTIMAL) {
-			if (primobj_ > 1.0e-8)
+			if (primobj_ > feastol_)
 				status_ = DSP_STAT_PRIM_INFEASIBLE;
 			else {
 				DSPdebugMessage("Converting to Phase 2.\n");
@@ -464,8 +464,8 @@ DSP_RTN_CODE DwMaster::solvePhase1() {
 	}
 
 	/** set parameters */
-	worker_->setGapTolerance(0.0001);
-	worker_->setTimeLimit(1.0e+20);
+	worker_->setGapTolerance(0.0);
+	//worker_->setTimeLimit(1.0e+20);
 
 	DSP_RTN_CHECK_RTN_CODE(gutsOfSolve());
 
@@ -582,9 +582,9 @@ DSP_RTN_CODE DwMaster::gutsOfSolve() {
 		if (terminationTest(nColsAdded))
 			break;
 
-#ifdef DSP_DEBUG1
+#ifdef DSP_DEBUG_CPX
 		char fname[128];
-		sprintf(fname, "master%d", itercnt);
+		sprintf(fname, "master%d", itercnt_);
 		si_->writeMps(fname);
 #endif
 	}
@@ -687,7 +687,10 @@ DSP_RTN_CODE DwMaster::restoreCols() {
 
 DSP_RTN_CODE DwMaster::reduceCols() {
 	BGN_TRY_CATCH
-	if (phase_ == 2) {
+	/** FIXME:
+	 * Be careful! Phase 2 can be infeasible by deleting columns.
+	 * Do I really want to have this situation? */
+	if (phase_ == -1) {
 		std::vector<int> delcols;
 		for (unsigned k = 0, j = 0; k < cols_generated_.size(); ++k) {
 			if (cols_generated_[k]->active_) {
@@ -900,10 +903,9 @@ bool DwMaster::terminationTest(int nnewcols) {
 	bool term = false;
 
 	if (phase_ == 1) {
-		double feastol = 1.0e-6;
-		if (si_->isProvenOptimal() && primobj_ < feastol) {
+		if (si_->isProvenOptimal() && primobj_ < feastol_) {
 			status_ = DSP_STAT_FEASIBLE;
-			DSPdebugMessage("Phase 1 found a feasible solution! %e < %e\n", si_->getObjValue(), feastol);
+			DSPdebugMessage("Phase 1 found a feasible solution! %e < %e\n", si_->getObjValue(), feastol_);
 			term = true;
 		}
 	}
