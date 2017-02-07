@@ -5,10 +5,13 @@
  *      Author: kibaekkim
  */
 
+//#define DSP_DEBUG
+
 /** Coin */
 #include "CoinHelperFunctions.hpp"
 #include "OsiCuts.hpp"
 /** Dsp */
+#include "DspMessage.h"
 #include "SolverInterface/OsiOoqpSolverInterface.h"
 /** Ooqp */
 #include "Status.h"
@@ -49,26 +52,26 @@ inline void freeCacheMatrix(CoinPackedMatrix*& ptr) {
 }
 
 void OsiOoqpSolverInterface::freeCachedResults() {
-	freeCacheDouble(x_);
-	freeCacheDouble(price_);
-	freeCacheDouble(reduced_);
-	freeCacheDouble(activity_);
+	x_.clear();
+	price_.clear();
+	reduced_.clear();
+	activity_.clear();
 }
 
 void OsiOoqpSolverInterface::freeCachedData() {
-	freeCacheDouble(dQ_);
 	freeCacheMatrix(mat_);
-	freeCacheDouble(clbd_);
-	freeCacheDouble(cubd_);
-	freeCacheDouble(obj_);
-	freeCacheDouble(rlbd_);
-	freeCacheDouble(rubd_);
-	freeCacheChar(sense_);
-	freeCacheDouble(rhs_);
-	freeCacheDouble(range_);
+	clbd_.clear();
+	cubd_.clear();
+	obj_.clear();
+	rlbd_.clear();
+	rubd_.clear();
+	sense_.clear();
+	rhs_.clear();
+	range_.clear();
 	nnzQ_ = 0;
-	freeCacheInt(irowQ_);
-	freeCacheInt(jcolQ_);
+	irowQ_.clear();
+	jcolQ_.clear();
+	dQ_.clear();
 }
 
 void OsiOoqpSolverInterface::freeCachedOoqp() {
@@ -96,15 +99,15 @@ void OsiOoqpSolverInterface::freeCachedOoqp() {
 
 void OsiOoqpSolverInterface::initializeProblem(const CoinPackedMatrix& matrix) {
 	/** TODO Quadratic term */
-	mat_   = new CoinPackedMatrix(matrix);
-	clbd_  = new double [mat_->getNumCols()];
-	cubd_  = new double [mat_->getNumCols()];
-	obj_   = new double [mat_->getNumCols()];
-	rlbd_  = new double [mat_->getNumRows()];
-	rubd_  = new double [mat_->getNumRows()];
-	sense_ = new char [mat_->getNumRows()];
-	rhs_   = new double [mat_->getNumRows()];
-	range_ = new double [mat_->getNumRows()];
+	mat_ = new CoinPackedMatrix(matrix);
+	clbd_.resize(mat_->getNumCols());
+	cubd_.resize(mat_->getNumCols());
+	obj_.resize(mat_->getNumCols());
+	rlbd_.resize(mat_->getNumRows());
+	rubd_.resize(mat_->getNumRows());
+	sense_.resize(mat_->getNumRows());
+	rhs_.resize(mat_->getNumRows());
+	range_.resize(mat_->getNumRows());
 }
 
 void OsiOoqpSolverInterface::loadProblem(const CoinPackedMatrix& matrix,
@@ -209,12 +212,9 @@ void OsiOoqpSolverInterface::setQuadraticObjective(
 		const int* jcol,    /**< [in] column indices */
 		const double* value /**< [in] matrix elements */) {
 	nnzQ_ = nnz;
-	irowQ_ = new int [nnzQ_];
-	jcolQ_ = new int [nnzQ_];
-	dQ_ = new double [nnzQ_];
-	CoinCopyN(irow, nnz, irowQ_);
-	CoinCopyN(jcol, nnz, jcolQ_);
-	CoinCopyN(value, nnz, dQ_);
+	irowQ_.assign(irow, irow + nnz);
+	jcolQ_.assign(jcol, jcol + nnz);
+	dQ_.assign(value, value + nnz);
 }
 
 void OsiOoqpSolverInterface::writeMps(const char* filename,
@@ -231,112 +231,141 @@ void OsiOoqpSolverInterface::convertOsiToOoqp(QpGen*& qpgen, QpGenData*& prob) {
 
 	/** row-wise matrix */
 	const CoinPackedMatrix* mat = getMatrixByRow();
+	DSPdebug(mat->verifyMtx(4));
 
 	/** count nonzeros */
+	my_empty_.clear();
+	mz_empty_.clear();
 	for (int i = 0; i < mat->getNumRows(); ++i) {
 		const CoinShallowPackedVector row = mat->getVector(i);
 		if (sense_[i] == 'E') {
-			my++;
-			nnzA += row.getNumElements();
+			if (row.getNumElements() > 0) {
+				my++;
+				nnzA += row.getNumElements();
+			} else
+				my_empty_.push_back(i);
 		} else {
-			mz++;
-			nnzC += row.getNumElements();
+			if (row.getNumElements() > 0) {
+				mz++;
+				nnzC += row.getNumElements();
+			} else
+				mz_empty_.push_back(i);
 		}
 	}
+#ifdef DSP_DEBUG_MORE
+	printf("nx(# of cols) %d, my(# of Eq.) %d, mz (# of Ineq.) %d, nnzQ_ %d, nnzA %d, nnzC %d, empty rows %u\n",
+			nx, my, mz, nnzQ_, nnzA, nnzC, my_empty_.size() + mz_empty_.size());
+#endif
 
 	/** create QP generator */
 	qpgen = new QpGenSparseMa27(nx, my, mz, nnzQ_, nnzA, nnzC);
 	//qpgen = new QpGenSparseMa57(nx, my, mz, nnzQ_, nnzA, nnzC);
 
-	/** allocate memory */
-	double * xlow  = new double [nx]; /**< variable lower bounds */
-	char *   ixlow = new char [nx];   /**< 1 if variable lower bound exists; 0 otherwise. */
-	double * xupp  = new double [nx]; /**< variable upper bounds */
-	char *   ixupp = new char [nx];   /**< 1 if variable upper bound exists; 0 otherwise. */
-	int * irowA    = new int [nnzA];
-	int * jcolA    = new int [nnzA];
-	double * dA    = new double [nnzA];
-	double * b     = new double [my];
-	int * irowC    = new int [nnzC];
-	int * jcolC    = new int [nnzC];
-	double * dC    = new double [nnzC];
-	double * clow  = new double [mz];
-	char * iclow   = new char [mz];
-	double * cupp  = new double [mz];
-	char * icupp   = new char [mz];
+	std::vector<double> xlow(nx, 0.0);
+	std::vector<char> ixlow(nx, 0);
+	std::vector<double> xupp(nx, 0.0);
+	std::vector<char> ixupp(nx, 0);
+	std::vector<int> irowA;
+	std::vector<int> jcolA;
+	std::vector<double> dA;
+	std::vector<double> b;
+	std::vector<int> irowC;
+	std::vector<int> jcolC;
+	std::vector<double> dC;
+	std::vector<double> clow;
+	std::vector<char> iclow;
+	std::vector<double> cupp;
+	std::vector<char> icupp;
+
+	/** reserve memory */
+	irowA.reserve(nnzA);
+	jcolA.reserve(nnzA);
+	dA.reserve(nnzA);
+	b.reserve(my);
+	irowC.reserve(nnzC);
+	jcolC.reserve(nnzC);
+	dC.reserve(nnzC);
+	clow.reserve(mz);
+	iclow.reserve(mz);
+	cupp.reserve(mz);
+	icupp.reserve(mz);
 
 	double inf = getInfinity();
-	for (int j = 0; j < mat->getNumCols(); ++j) {
-		xlow[j] = clbd_[j];
-		ixlow[j] = 1;
-		xupp[j] = cubd_[j];
-		ixupp[j] = 1;
-		if (clbd_[j] <= -inf) {
-			xlow[j] = 0.0;
-			ixlow[j] = 0;
+	for (int j = 0; j < nx; ++j) {
+		if (clbd_[j] > -inf) {
+			xlow[j] = clbd_[j];
+			ixlow[j] = 1;
 		}
-		if (cubd_[j] >= inf) {
-			xupp[j] = 0.0;
-			ixupp[j] = 0;
+		if (cubd_[j] < inf) {
+			xupp[j] = cubd_[j];
+			ixupp[j] = 1;
 		}
+#ifdef DSP_DEBUG_MORE
+		printf("j %d, xlow %e, ixlow %u, clbd_ %e, xupp %e, ixupp %u, cubd_ %e\n",
+				j, xlow[j], ixlow[j], clbd_[j], xupp[j], ixupp[j], cubd_[j]);
+#endif
 	}
 
-	int posA = 0;
-	int posC = 0;
+	int iposA = 0, iposC = 0;
 	for (int i = 0; i < mat->getNumRows(); ++i) {
 		const CoinShallowPackedVector row = mat->getVector(i);
+		if (row.getNumElements() == 0) continue;
 		if (sense_[i] == 'E') {
 			for (int j = 0; j < row.getNumElements(); ++j) {
-				irowA[posA] = i;
-				jcolA[posA] = row.getIndices()[j];
-				dA[posA] = row.getElements()[j];
-				posA++;
+				irowA.push_back(iposA);
+				jcolA.push_back(row.getIndices()[j]);
+				dA.push_back(row.getElements()[j]);
+#ifdef DSP_DEBUG_MORE
+				printf("irowA %d, jcolA %d, dA %e\n", iposA, row.getIndices()[j], row.getElements()[j]);
+#endif
 			}
-			b[i] = rhs_[i];
+			b.push_back(rhs_[i]);
+			iposA++;
+#ifdef DSP_DEBUG_MORE
+			printf("b %e\n", rhs_[i]);
+#endif
 		} else {
 			for (int j = 0; j < row.getNumElements(); ++j) {
-				irowC[posC] = i;
-				jcolC[posC] = row.getIndices()[j];
-				dC[posC] = row.getElements()[j];
-				posC++;
+				irowC.push_back(iposC);
+				jcolC.push_back(row.getIndices()[j]);
+				dC.push_back(row.getElements()[j]);
 			}
-			clow[i] = rlbd_[i];
-			iclow[i] = 1;
-			cupp[i] = rubd_[i];
-			icupp[i] = 1;
 			if (sense_[i] == 'L') {
-				clow[i] = 0.0;
-				iclow[i] = 0;
+				clow.push_back(0.0);
+				iclow.push_back(0);
+				cupp.push_back(rubd_[i]);
+				icupp.push_back(1);
 			} else if (sense_[i] == 'G') {
-				cupp[i] = 0.0;
-				icupp[i] = 0;
+				clow.push_back(rlbd_[i]);
+				iclow.push_back(1);
+				cupp.push_back(0.0);
+				icupp.push_back(0);
+			} else if (sense_[i] == 'R') {
+				clow.push_back(rlbd_[i]);
+				iclow.push_back(1);
+				cupp.push_back(rubd_[i]);
+				icupp.push_back(1);
 			}
+			iposC++;
+#ifdef DSP_DEBUG_MORE
+			int endpos = clow.size()-1;
+			printf("i %d, clow %e, iclow %u, rlbd_ %e, cupp %e, icupp %u, rubd_ %e\n",
+					i, clow[endpos], iclow[endpos], rlbd_[i], cupp[endpos], icupp[endpos], rubd_[i]);
+#endif
 		}
 	}
+#ifdef DSP_DEBUG_MORE
+	printf("irowA.size() %u irowC.size() %u clow.size() %u\n", irowA.size(), irowC.size(), clow.size());
+	DspMessage::printArray(nx, &obj_[0]);
+#endif
 
 	prob = (QpGenData*)dynamic_cast<QpGenSparseSeq*>(qpgen)->copyDataFromSparseTriple(
-			obj_,  irowQ_, nnzQ_, jcolQ_, dQ_,
-			xlow,  ixlow,  xupp,  ixupp,
-			irowA, nnzA,   jcolA, dA,     b,
-			irowC, nnzC,   jcolC, dC,
-			clow,  iclow,  cupp,  icupp);
-
-	/** release memory */
-	freeCacheDouble(xlow);
-	freeCacheChar(ixlow);
-	freeCacheDouble(xupp);
-	freeCacheChar(ixupp);
-	freeCacheInt(irowA);
-	freeCacheInt(jcolA);
-	freeCacheDouble(dA);
-	freeCacheDouble(b);
-	freeCacheInt(irowC);
-	freeCacheInt(jcolC);
-	freeCacheDouble(dC);
-	freeCacheDouble(clow);
-	freeCacheChar(iclow);
-	freeCacheDouble(cupp);
-	freeCacheChar(icupp);
+			&obj_[0],  &irowQ_[0], nnzQ_,     &jcolQ_[0], &dQ_[0],
+			&xlow[0],  &ixlow[0],  &xupp[0],  &ixupp[0],
+			&irowA[0], nnzA,       &jcolA[0], &dA[0],     &b[0],
+			&irowC[0], nnzC,       &jcolC[0], &dC[0],
+			&clow[0],  &iclow[0],  &cupp[0],  &icupp[0]);
+//	prob->print();
 }
 
 void OsiOoqpSolverInterface::initialSolve() {
@@ -346,7 +375,6 @@ void OsiOoqpSolverInterface::initialSolve() {
 
 	/** convert Osi data to Ooqp data */
 	convertOsiToOoqp(qpgen_, prob_);
-	//prob_->print();
 
 	/** declare variables */
 	vars_ = (QpGenVars*)qpgen_->makeVariables(prob_);
@@ -371,58 +399,78 @@ void OsiOoqpSolverInterface::resolve() {
 
 void OsiOoqpSolverInterface::gutsOfSolve() {
 	/** solve */
-	status_ = solver_->solve(prob_, vars_, resid_);
-	if (handler_->logLevel() >= 4)
+	if (messageHandler()->logLevel() >= 4)
 		solver_->monitorSelf();
+	status_ = solver_->solve(prob_, vars_, resid_);
+	DSPdebugMessage("logLevel %d, OOQP status %d\n", messageHandler()->logLevel(), status_);
 
 	if (status_ == SUCCESSFUL_TERMINATION || status_ == MAX_ITS_EXCEEDED) {
 		/** allocate memory for OOQP solutions */
-		double * y      = new double [prob_->my]; /**< dual variables corresponding to equality constraints */
-		double * lambda = new double [prob_->mz]; /**< dual variables corresponding to inequality (>=) constraints */
-		double * pi     = new double [prob_->mz]; /**< dual variables corresponding to inequality (<=) constraints */
-		double * gamma  = new double [prob_->nx]; /**< dual variables corresponding to column lower bounds */
-		double * phi    = new double [prob_->nx]; /**< dual variables corresponding to column upper bounds */
+		std::vector<double> y(prob_->my);      /**< dual variables corresponding to equality constraints */
+		std::vector<double> lambda(prob_->mz); /**< dual variables corresponding to inequality (>=) constraints */
+		std::vector<double> pi(prob_->mz);     /**< dual variables corresponding to inequality (<=) constraints */
+		std::vector<double> gamma(prob_->nx);  /**< dual variables corresponding to column lower bounds */
+		std::vector<double> phi(prob_->nx);    /**< dual variables corresponding to column upper bounds */
 
 		/** allocate memory for Osi solutions */
 		freeCachedResults();
-		x_ = new double [prob_->nx];
-		price_ = new double [mat_->getNumRows()];
-		reduced_ = new double [mat_->getNumRows()];
-		activity_ = new double [mat_->getNumRows()];
+		x_.resize(prob_->nx);
+		reduced_.resize(mat_->getNumCols());
+		activity_.resize(mat_->getNumRows());
+		price_.resize(mat_->getNumRows());
 
 		/** retrieve OOQP solutions */
 		objval_ = prob_->objectiveValue(vars_);
-		vars_->x->copyIntoArray(x_);
-		vars_->y->copyIntoArray(y);
-		vars_->lambda->copyIntoArray(lambda);
-		vars_->pi->copyIntoArray(pi);
-		vars_->gamma->copyIntoArray(gamma);
-		vars_->phi->copyIntoArray(phi);
+		vars_->x->copyIntoArray(&x_[0]);
+		vars_->y->copyIntoArray(&y[0]);
+		vars_->lambda->copyIntoArray(&lambda[0]);
+		vars_->pi->copyIntoArray(&pi[0]);
+		vars_->gamma->copyIntoArray(&gamma[0]);
+		vars_->phi->copyIntoArray(&phi[0]);
 		nIters_ = solver_->iter;
 
 		/** convert OOQP solutions to Osi solutions */
-		int pos1 = 0, pos2 = 0, pos3 = 0;
-		for (int i = 0; i < mat_->getNumRows(); ++i) {
+		int pos1 = 0, pos2 = 0;
+		for (int i = 0, iy = 0, iz = 0; i < mat_->getNumRows(); ++i) {
+			price_[i] = 0.0;
+			if (my_empty_.size() > iy && my_empty_[iy] == i) {
+				iy++;
+				continue;
+			}
+			if (mz_empty_.size() > iz && mz_empty_[iz] == i) {
+				iz++;
+				continue;
+			}
 			if (sense_[i] == 'E')
 				price_[i] = y[pos1++];
 			else if (sense_[i] == 'G')
 				price_[i] = lambda[pos2++];
 			else if (sense_[i] == 'L')
-				price_[i] = pi[pos3++];
+				price_[i] = -pi[pos2++];
 			else if (sense_[i] == 'R')
-				price_[i] = lambda[pos2++] - pi[pos3++];
+				price_[i] = lambda[pos2++] - pi[pos2++];
+#ifdef DSP_DEBUG_MORE
+			printf("sense %c price %e, ", sense_[i], price_[i]);
+			switch (sense_[i]) {
+			case 'E':
+				printf("y %d %e\n", pos1-1, y[pos1-1]);
+				break;
+			default:
+				printf("lambda %d %e pi %e\n", pos2-1, lambda[pos2-1], pi[pos2-1]);
+				break;
+			}
+#endif
 		}
+#ifdef DSP_DEBUG_MORE
+		double pix = 0.0;
+		for (int i = 0; i < mat_->getNumRows(); ++i)
+			pix += price_[i] * rhs_[i];
+		printf("c^T x = %e, pi^T b = %e.\n", objval_, pix);
+#endif
 		for (int j = 0; j < mat_->getNumCols(); ++j) {
 			reduced_[j] = gamma[j] - phi[j];
 		}
 		/** TODO: Implement assigning activity */
-
-		/** release memory */
-		freeCacheDouble(y);
-		freeCacheDouble(lambda);
-		freeCacheDouble(pi);
-		freeCacheDouble(gamma);
-		freeCacheDouble(phi);
 	}
 	/** say the model is old. */
 	updated_ = false;
@@ -484,36 +532,36 @@ int OsiOoqpSolverInterface::getNumElements() const {
 }
 
 const double* OsiOoqpSolverInterface::getColLower() const {
-	return clbd_;
+	return &clbd_[0];
 }
 
 const double* OsiOoqpSolverInterface::getColUpper() const {
-	return cubd_;
+	return &cubd_[0];
 }
 
 const char* OsiOoqpSolverInterface::getRowSense() const {
-	return sense_;
+	return &sense_[0];
 }
 
 const double* OsiOoqpSolverInterface::getRightHandSide() const {
-	return rhs_;
+	return &rhs_[0];
 }
 
 const double* OsiOoqpSolverInterface::getRowRange() const {
-	return range_;
+	return &range_[0];
 }
 
 const double* OsiOoqpSolverInterface::getRowLower() const {
-	return rlbd_;
+	return &rlbd_[0];
 }
 
 const double* OsiOoqpSolverInterface::getRowUpper() const {
-	return rubd_;
+	return &rubd_[0];
 }
 
 /** TODO: Returns linear objective coefficients only */
 const double* OsiOoqpSolverInterface::getObjCoefficients() const {
-	return obj_;
+	return &obj_[0];
 }
 
 double OsiOoqpSolverInterface::getObjSense() const {
@@ -541,19 +589,19 @@ double OsiOoqpSolverInterface::getInfinity() const {
 }
 
 const double* OsiOoqpSolverInterface::getColSolution() const {
-	return x_;
+	return &x_[0];
 }
 
 const double* OsiOoqpSolverInterface::getRowPrice() const {
-	return price_;
+	return &price_[0];
 }
 
 const double* OsiOoqpSolverInterface::getReducedCost() const {
-	return reduced_;
+	return &reduced_[0];
 }
 
 const double* OsiOoqpSolverInterface::getRowActivity() const {
-	return activity_;
+	return &activity_[0];
 }
 
 double OsiOoqpSolverInterface::getObjValue() const {
@@ -581,7 +629,7 @@ std::vector<double*> OsiOoqpSolverInterface::getPrimalRays(int maxNumRays) const
 void OsiOoqpSolverInterface::setObjCoeff(
 		int elementIndex,
 		double elementValue) {
-	if (elementIndex < mat_->getNumCols())
+	if (elementIndex < obj_.size())
 		obj_[elementIndex] = elementValue;
 	else
 		CoinError("Column index is out of range.", "setObjCoeff", "OsiOoqpSolverInterface");
@@ -597,7 +645,7 @@ void OsiOoqpSolverInterface::setObjSense(double s) {
 
 void OsiOoqpSolverInterface::setColLower(int elementIndex,
 		double elementValue) {
-	if (elementIndex < mat_->getNumCols())
+	if (elementIndex < clbd_.size())
 		clbd_[elementIndex] = elementValue;
 	else
 		CoinError("Column index is out of range.", "setColLower", "OsiOoqpSolverInterface");
@@ -607,7 +655,7 @@ void OsiOoqpSolverInterface::setColLower(int elementIndex,
 
 void OsiOoqpSolverInterface::setColUpper(int elementIndex,
 		double elementValue) {
-	if (elementIndex < mat_->getNumCols())
+	if (elementIndex < cubd_.size())
 		cubd_[elementIndex] = elementValue;
 	else
 		CoinError("Column index is out of range.", "setColUpper", "OsiOoqpSolverInterface");
@@ -617,7 +665,7 @@ void OsiOoqpSolverInterface::setColUpper(int elementIndex,
 
 void OsiOoqpSolverInterface::setRowLower(int elementIndex,
 		double elementValue) {
-	if (elementIndex < mat_->getNumRows())
+	if (elementIndex < rlbd_.size())
 		rlbd_[elementIndex] = elementValue;
 	else
 		CoinError("Row index is out of range.", "setRowLower", "OsiOoqpSolverInterface");
@@ -627,8 +675,8 @@ void OsiOoqpSolverInterface::setRowLower(int elementIndex,
 
 void OsiOoqpSolverInterface::setRowUpper(int elementIndex,
 		double elementValue) {
-	if (elementIndex < mat_->getNumRows())
-		rlbd_[elementIndex] = elementValue;
+	if (elementIndex < rubd_.size())
+		rubd_[elementIndex] = elementValue;
 	else
 		CoinError("Row index is out of range.", "setRowUpper", "OsiOoqpSolverInterface");
 	/** say the model is updated. */
@@ -673,31 +721,11 @@ void OsiOoqpSolverInterface::addCol(
 		const double obj) {
 	/** add a column */
 	mat_->appendCol(vec);
-	/** store original data */
-	double* clbd0 = clbd_;
-	double* cubd0 = cubd_;
-	double* obj0 = obj_;
-	/** reallocate memory */
-	clbd_ = NULL;
-	cubd_ = NULL;
-	obj_ = NULL;
-	delete [] x_; x_ = NULL;
-	clbd_ = new double [mat_->getNumCols()];
-	cubd_ = new double [mat_->getNumCols()];
-	obj_  = new double [mat_->getNumCols()];
-	x_    = new double [mat_->getNumCols()];
-	/** copy original data */
-	CoinCopyN(clbd0, mat_->getNumCols()-1, clbd_);
-	CoinCopyN(cubd0, mat_->getNumCols()-1, cubd_);
-	CoinCopyN(obj0, mat_->getNumCols()-1, obj_);
-	/** add new data */
-	clbd_[mat_->getNumCols()-1] = collb;
-	cubd_[mat_->getNumCols()-1] = colub;
-	obj_[mat_->getNumCols()-1] = obj;
-	/** release original memory */
-	freeCacheDouble(clbd0);
-	freeCacheDouble(cubd0);
-	freeCacheDouble(obj0);
+	clbd_.push_back(collb);
+	cubd_.push_back(colub);
+	obj_.push_back(obj);
+	x_.push_back(0);
+	reduced_.push_back(0);
 	/** say the model is updated. */
 	updated_ = true;
 }
@@ -705,21 +733,24 @@ void OsiOoqpSolverInterface::addCol(
 void OsiOoqpSolverInterface::deleteCols(const int num, const int* colIndices) {
 	/** number of columns before deleted */
 	int nints0 = mat_->getNumCols();
+
 	/** delete columns */
 	mat_->deleteCols(num, colIndices);
+
 	/** store original data */
-	double* clbd0 = clbd_;
-	double* cubd0 = cubd_;
-	double* obj0 = obj_;
+	std::vector<double> clbd0(clbd_);
+	std::vector<double> cubd0(cubd_);
+	std::vector<double> obj0(obj_);
+
 	/** reallocate memory */
-	clbd_ = NULL;
-	cubd_ = NULL;
-	obj_ = NULL;
-	delete [] x_; x_ = NULL;
-	clbd_ = new double [mat_->getNumCols()];
-	cubd_ = new double [mat_->getNumCols()];
-	obj_  = new double [mat_->getNumCols()];
-	x_    = new double [mat_->getNumCols()];
+	clbd_.clear();
+	cubd_.clear();
+	obj_.clear();
+	clbd_.reserve(mat_->getNumCols());
+	cubd_.reserve(mat_->getNumCols());
+	obj_.reserve(mat_->getNumCols());
+	x_.resize(mat_->getNumCols());
+	reduced_.resize(mat_->getNumCols());
 
 	/** column indices to delete */
 	std::vector<int> delCols;
@@ -734,15 +765,10 @@ void OsiOoqpSolverInterface::deleteCols(const int num, const int* colIndices) {
 			k++;
 			continue;
 		}
-		clbd_[j-k] = clbd0[j];
-		cubd_[j-k] = cubd0[j];
-		obj_[j-k] = obj0[j];
+		clbd_.push_back(clbd0[j]);
+		cubd_.push_back(cubd0[j]);
+		obj_.push_back(obj0[j]);
 	}
-
-	/** release original memory */
-	freeCacheDouble(clbd0);
-	freeCacheDouble(cubd0);
-	freeCacheDouble(obj0);
 
 	/** say the model is updated. */
 	updated_ = true;
@@ -754,46 +780,16 @@ void OsiOoqpSolverInterface::addRow(
 		const double rowub) {
 	/** append row */
 	mat_->appendRow(vec);
-	/** store original data */
-	double* rlbd0 = rlbd_;
-	double* rubd0 = rubd_;
-	char* sense0 = sense_;
-	double* rhs0 = rhs_;
-	double* range0 = range_;
-	/** reallocate memory */
-	rlbd_ = NULL;
-	rubd_ = NULL;
-	sense_ = NULL;
-	rhs_ = NULL;
-	range_ = NULL;
-	delete [] price_; price_ = NULL;
-	delete [] reduced_; reduced_ = NULL;
-	delete [] activity_; activity_ = NULL;
-	rlbd_ = new double [mat_->getNumRows()];
-	rubd_ = new double [mat_->getNumRows()];
-	sense_ = new char [mat_->getNumRows()];
-	rhs_ = new double [mat_->getNumRows()];
-	range_ = new double [mat_->getNumRows()];
-	price_ = new double [mat_->getNumRows()];
-	reduced_  = new double [mat_->getNumRows()];
-	activity_ = new double [mat_->getNumRows()];
-	/** copy original data */
-	CoinCopyN(rlbd0, mat_->getNumRows()-1, rlbd_);
-	CoinCopyN(rubd0, mat_->getNumRows()-1, rubd_);
-	CoinCopyN(sense0, mat_->getNumRows()-1, sense_);
-	CoinCopyN(rhs0, mat_->getNumRows()-1, rhs_);
-	CoinCopyN(range0, mat_->getNumRows()-1, range_);
-	/** add new data */
-	rlbd_[mat_->getNumRows()-1] = rowlb;
-	rubd_[mat_->getNumRows()-1] = rowub;
+	rlbd_.push_back(rowlb);
+	rubd_.push_back(rowub);
+	price_.push_back(0);
+	activity_.push_back(0);
+	sense_.push_back('L');
+	rhs_.push_back(0);
+	range_.push_back(0);
 	convertBoundToSense(rowlb, rowub, sense_[mat_->getNumRows()-1],
 			rhs_[mat_->getNumRows()-1], range_[mat_->getNumRows()-1]);
-	/** release original memory */
-	freeCacheDouble(rlbd0);
-	freeCacheDouble(rubd0);
-	freeCacheChar(sense0);
-	freeCacheDouble(rhs0);
-	freeCacheDouble(range0);
+
 	/** say the model is updated. */
 	updated_ = true;
 }
@@ -816,29 +812,25 @@ void OsiOoqpSolverInterface::deleteRows(const int num, const int* rowIndices) {
 	mat_->deleteRows(num, rowIndices);
 
 	/** store original data */
-	double* rlbd0 = rlbd_;
-	double* rubd0 = rubd_;
-	char* sense0 = sense_;
-	double* rhs0 = rhs_;
-	double* range0 = range_;
+	std::vector<double> rlbd0(rlbd_);
+	std::vector<double> rubd0(rubd_);
+	std::vector<char> sense0(sense_);
+	std::vector<double> rhs0(rhs_);
+	std::vector<double> range0(range_);
 
 	/** reallocate memory */
-	rlbd_ = NULL;
-	rubd_ = NULL;
-	sense_ = NULL;
-	rhs_ = NULL;
-	range_ = NULL;
-	delete [] price_; price_ = NULL;
-	delete [] reduced_; reduced_ = NULL;
-	delete [] activity_; activity_ = NULL;
-	rlbd_ = new double [mat_->getNumRows()];
-	rubd_ = new double [mat_->getNumRows()];
-	sense_ = new char [mat_->getNumRows()];
-	rhs_ = new double [mat_->getNumRows()];
-	range_ = new double [mat_->getNumRows()];
-	price_ = new double [mat_->getNumRows()];
-	reduced_  = new double [mat_->getNumRows()];
-	activity_ = new double [mat_->getNumRows()];
+	rlbd_.clear();
+	rubd_.clear();
+	sense_.clear();
+	rhs_.clear();
+	range_.clear();
+	rlbd_.reserve(mat_->getNumRows());
+	rubd_.reserve(mat_->getNumRows());
+	sense_.reserve(mat_->getNumRows());
+	rhs_.reserve(mat_->getNumRows());
+	range_.reserve(mat_->getNumRows());
+	price_.resize(mat_->getNumRows());
+	activity_.resize(mat_->getNumRows());
 
 	/** row indices to delete */
 	std::vector<int> delRows;
@@ -853,19 +845,12 @@ void OsiOoqpSolverInterface::deleteRows(const int num, const int* rowIndices) {
 			k++;
 			continue;
 		}
-		rlbd_[j-k] = rlbd0[j];
-		rubd_[j-k] = rubd0[j];
-		sense_[j-k] = sense0[j];
-		rhs_[j-k] = rhs0[j];
-		range_[j-k] = range0[j];
+		rlbd_.push_back(rlbd0[j]);
+		rubd_.push_back(rubd0[j]);
+		sense_.push_back(sense0[j]);
+		rhs_.push_back(rhs0[j]);
+		range_.push_back(range0[j]);
 	}
-
-	/** release original memory */
-	freeCacheDouble(rlbd0);
-	freeCacheDouble(rubd0);
-	freeCacheChar(sense0);
-	freeCacheDouble(rhs0);
-	freeCacheDouble(range0);
 
 	/** say the model is updated. */
 	updated_ = true;
@@ -879,13 +864,18 @@ void OsiOoqpSolverInterface::loadProblem(const CoinPackedMatrix& matrix,
 	/** allocate memory */
 	initializeProblem(matrix);
 	/** copy data */
-	CoinCopyN(collb, mat_->getNumCols(), clbd_);
-	CoinCopyN(colub, mat_->getNumCols(), cubd_);
-	CoinCopyN(obj,   mat_->getNumCols(), obj_);
-	CoinCopyN(rowlb, mat_->getNumRows(), rlbd_);
-	CoinCopyN(rowub, mat_->getNumRows(), rubd_);
-	for (int i = 0; i < mat_->getNumRows(); ++i)
+	clbd_.assign(collb, collb + mat_->getNumCols());
+	cubd_.assign(colub, colub + mat_->getNumCols());
+	obj_.assign(obj, obj + mat_->getNumCols());
+	rlbd_.assign(rowlb, rowlb + mat_->getNumRows());
+	rubd_.assign(rowub, rowub + mat_->getNumRows());
+	sense_.resize(mat_->getNumRows());
+	rhs_.resize(mat_->getNumRows());
+	range_.resize(mat_->getNumRows());
+	for (int i = 0; i < mat_->getNumRows(); ++i) {
+		DSPdebugMessage("Load row %d: rlbd [%e] rubd [%e]\n", i, rowlb[i], rowub[i]);
 		convertBoundToSense(rowlb[i], rowub[i], sense_[i], rhs_[i], range_[i]);
+	}
 	/** say the model is updated. */
 	updated_ = true;
 }
@@ -910,12 +900,14 @@ void OsiOoqpSolverInterface::loadProblem(const CoinPackedMatrix& matrix,
 	/** allocate memory */
 	initializeProblem(matrix);
 	/** copy data */
-	CoinCopyN(collb, mat_->getNumCols(), clbd_);
-	CoinCopyN(colub, mat_->getNumCols(), cubd_);
-	CoinCopyN(obj,   mat_->getNumCols(), obj_);
-	CoinCopyN(rowsen, mat_->getNumRows(), sense_);
-	CoinCopyN(rowrhs, mat_->getNumRows(), rhs_);
-	CoinCopyN(rowrng, mat_->getNumRows(), range_);
+	clbd_.assign(collb, collb + mat_->getNumCols());
+	cubd_.assign(colub, colub + mat_->getNumCols());
+	obj_.assign(obj, obj + mat_->getNumCols());
+	sense_.assign(rowsen, rowsen + mat_->getNumRows());
+	rhs_.assign(rowrhs, rowrhs + mat_->getNumRows());
+	range_.assign(rowrng, rowrng + mat_->getNumRows());
+	rlbd_.resize(mat_->getNumRows());
+	rubd_.resize(mat_->getNumRows());
 	for (int i = 0; i < mat_->getNumRows(); ++i)
 		convertSenseToBound(sense_[i], rhs_[i], range_[i], rlbd_[i], rubd_[i]);
 	/** say the model is updated. */
@@ -976,20 +968,8 @@ void OsiOoqpSolverInterface::loadProblem(const int numcols, const int numrows,
 OsiOoqpSolverInterface::OsiOoqpSolverInterface() :
 	obj_sense_(1.0),
 	mat_(NULL),
-	clbd_(NULL),
-	cubd_(NULL),
-	obj_(NULL),
-	rlbd_(NULL),
-	rubd_(NULL),
-	sense_(NULL),
-	rhs_(NULL),
-	range_(NULL),
 	status_(UNKNOWN),
 	objval_(0.0),
-	x_(NULL),
-	price_(NULL),
-	reduced_(NULL),
-	activity_(NULL),
 	nIters_(0),
 	qpgen_(NULL),
 	prob_(NULL),
@@ -997,9 +977,6 @@ OsiOoqpSolverInterface::OsiOoqpSolverInterface() :
 	resid_(NULL),
 	solver_(NULL),
 	nnzQ_(0),
-	irowQ_(NULL),
-	jcolQ_(NULL),
-	dQ_(NULL),
 	updated_(true) {
 	/**< nothing to do */
 }
@@ -1021,17 +998,13 @@ OsiOoqpSolverInterface::OsiOoqpSolverInterface(const OsiOoqpSolverInterface& rhs
 	solver_(NULL),
 	updated_(true) {
 	/** load problem */
-	loadProblem(*(rhs.mat_), rhs.clbd_, rhs.cubd_, rhs.obj_,
-			rhs.nnzQ_, rhs.irowQ_, rhs.jcolQ_, rhs.dQ_, rhs.rlbd_, rhs.rubd_);
+	loadProblem(*(rhs.mat_), &rhs.clbd_[0], &rhs.cubd_[0], &rhs.obj_[0],
+			rhs.nnzQ_, &rhs.irowQ_[0], &rhs.jcolQ_[0], &rhs.dQ_[0], &rhs.rlbd_[0], &rhs.rubd_[0]);
 	/** copy solution data */
-	x_ = new double [mat_->getNumCols()];
-	price_ = new double [mat_->getNumRows()];
-	reduced_ = new double [mat_->getNumRows()];
-	activity_ = new double [mat_->getNumRows()];
-	CoinCopyN(rhs.x_, mat_->getNumCols(), x_);
-	CoinCopyN(rhs.price_, mat_->getNumRows(), price_);
-	CoinCopyN(rhs.reduced_, mat_->getNumRows(), reduced_);
-	CoinCopyN(rhs.activity_, mat_->getNumRows(), activity_);
+	x_ = rhs.x_;
+	reduced_ = rhs.reduced_;
+	price_ = rhs.price_;
+	activity_ = rhs.activity_;
 }
 
 OsiOoqpSolverInterface& OsiOoqpSolverInterface::operator =(
@@ -1046,17 +1019,13 @@ OsiOoqpSolverInterface& OsiOoqpSolverInterface::operator =(
 		nIters_ = rhs.nIters_;
 		updated_ = rhs.updated_;
 		/** load problem */
-		loadProblem(*(rhs.mat_), rhs.clbd_, rhs.cubd_, rhs.obj_,
-				rhs.nnzQ_, rhs.irowQ_, rhs.jcolQ_, rhs.dQ_, rhs.rlbd_, rhs.rubd_);
+		loadProblem(*(rhs.mat_), &rhs.clbd_[0], &rhs.cubd_[0], &rhs.obj_[0],
+				rhs.nnzQ_, &rhs.irowQ_[0], &rhs.jcolQ_[0], &rhs.dQ_[0], &rhs.rlbd_[0], &rhs.rubd_[0]);
 		/** copy solution data */
-		x_ = new double [mat_->getNumCols()];
-		price_ = new double [mat_->getNumRows()];
-		reduced_ = new double [mat_->getNumRows()];
-		activity_ = new double [mat_->getNumRows()];
-		CoinCopyN(rhs.x_, mat_->getNumCols(), x_);
-		CoinCopyN(rhs.price_, mat_->getNumRows(), price_);
-		CoinCopyN(rhs.reduced_, mat_->getNumRows(), reduced_);
-		CoinCopyN(rhs.activity_, mat_->getNumRows(), activity_);
+		x_ = rhs.x_;
+		reduced_ = rhs.reduced_;
+		price_ = rhs.price_;
+		activity_ = rhs.activity_;
 	}
 	return *this;
 }

@@ -8,6 +8,8 @@
 #ifndef SRC_SOLVERINTERFACE_OSIOOQPSOLVERINTERFACE_H_
 #define SRC_SOLVERINTERFACE_OSIOOQPSOLVERINTERFACE_H_
 
+#define USE_VECTOR
+
 /** Coin */
 #include "OsiSolverInterface.hpp"
 /** Ooqp */
@@ -427,24 +429,24 @@ protected:
 	//@{
 	double obj_sense_;       /**< objective sense */
 	CoinPackedMatrix * mat_; /**< constraint matrix */
-	double * clbd_;     /**< column lower bounds */
-	double * cubd_;     /**< column upper bounds */
-	double * obj_;      /**< objective coefficients */
-	double * rlbd_;     /**< row lower bounds */
-	double * rubd_;     /**< row upper bounds */
-	char *   sense_;    /**< row sense */
-	double * rhs_;      /**< right-hand side */
-	double * range_;    /**< range value = rubd_ - rlbd_ */
+	std::vector<double> clbd_;  /**< column lower bounds */
+	std::vector<double> cubd_;  /**< column upper bounds */
+	std::vector<double> obj_;   /**< objective coefficients */
+	std::vector<double> rlbd_;  /**< row lower bounds */
+	std::vector<double> rubd_;  /**< row upper bounds */
+	std::vector<char> sense_;   /**< row sense */
+	std::vector<double> rhs_;   /**< right-hand side */
+	std::vector<double> range_; /**< range value = rubd_ - rlbd_ */
 	//@}
 
 	/**@name Osi solution data */
 	//@{
 	int status_;    /**< solution status */
 	double objval_; /**< objective value */
-	double * x_;        /**< primal solution */
-	double * price_;    /**< row price */
-	double * reduced_;  /**< reduced cost */
-	double * activity_; /**< row lhs */
+	std::vector<double> x_;        /**< primal solution */
+	std::vector<double> price_;    /**< row price */
+	std::vector<double> reduced_;  /**< reduced cost */
+	std::vector<double> activity_; /**< row lhs */
 	//@}
 
 	int nIters_; /**< number of iterations */
@@ -529,10 +531,13 @@ protected:
 	/**@name Lower triangular matrix of the quadratic objective function */
 	//@{
 	int nnzQ_;
-	int * irowQ_;
-	int * jcolQ_;
-	double * dQ_;
+	std::vector<int> irowQ_;
+	std::vector<int> jcolQ_;
+	std::vector<double> dQ_;
 	//@}
+
+	std::vector<int> my_empty_; /**< empty equality row indices */
+	std::vector<int> mz_empty_; /**< empty inequality row indices */
 
 	bool updated_; /**< indicate if the model is updated */
 };
