@@ -18,6 +18,7 @@
 #include "QpGenSparseMa27.h"
 #include "GondzioSolver.h"
 #include "MehrotraSolver.h"
+#include "SimpleVector.h"
 
 // Free memory pointer to by a int pointer
 inline void freeCacheInt(int*& ptr) {
@@ -383,7 +384,7 @@ void OsiOoqpSolverInterface::initialSolve() {
 	resid_ = (QpGenResiduals*)qpgen_->makeResiduals(prob_);
 
 	/** create solver */
-	//solver_ = new GondzioSolver(qp_, prob_);
+	//solver_ = new GondzioSolver(qpgen_, prob_);
 	solver_ = new MehrotraSolver(qpgen_, prob_);
 
 	/** actual solve */
@@ -405,34 +406,35 @@ void OsiOoqpSolverInterface::gutsOfSolve() {
 	DSPdebugMessage("logLevel %d, OOQP status %d\n", messageHandler()->logLevel(), status_);
 
 	if (status_ == SUCCESSFUL_TERMINATION || status_ == MAX_ITS_EXCEEDED) {
-		/** allocate memory for OOQP solutions */
-		std::vector<double> y(prob_->my);      /**< dual variables corresponding to equality constraints */
-		std::vector<double> lambda(prob_->mz); /**< dual variables corresponding to inequality (>=) constraints */
-		std::vector<double> pi(prob_->mz);     /**< dual variables corresponding to inequality (<=) constraints */
-		std::vector<double> gamma(prob_->nx);  /**< dual variables corresponding to column lower bounds */
-		std::vector<double> phi(prob_->nx);    /**< dual variables corresponding to column upper bounds */
+
+		nIters_ = solver_->iter;
 
 		/** allocate memory for Osi solutions */
 		freeCachedResults();
 		x_.resize(prob_->nx);
-		reduced_.resize(mat_->getNumCols());
-		activity_.resize(mat_->getNumRows());
-		price_.resize(mat_->getNumRows());
+		reduced_.resize(mat_->getNumCols(), 0.0);
+		activity_.resize(mat_->getNumRows(), 0.0);
+		price_.resize(mat_->getNumRows(), 0.0);
 
 		/** retrieve OOQP solutions */
 		objval_ = prob_->objectiveValue(vars_);
 		vars_->x->copyIntoArray(&x_[0]);
-		vars_->y->copyIntoArray(&y[0]);
-		vars_->lambda->copyIntoArray(&lambda[0]);
-		vars_->pi->copyIntoArray(&pi[0]);
-		vars_->gamma->copyIntoArray(&gamma[0]);
-		vars_->phi->copyIntoArray(&phi[0]);
-		nIters_ = solver_->iter;
+
+		double* iclow  = dynamic_cast<SimpleVector*>(prob_->iclow.ptr())->elements();
+		double* icupp  = dynamic_cast<SimpleVector*>(prob_->icupp.ptr())->elements();
+		double* ixlow  = dynamic_cast<SimpleVector*>(prob_->ixlow.ptr())->elements();
+		double* ixupp  = dynamic_cast<SimpleVector*>(prob_->ixupp.ptr())->elements();
+		double* y      = dynamic_cast<SimpleVector*>(vars_->y.ptr())->elements();      /**< dual variables corresponding to equality constraints */
+		double* lambda = dynamic_cast<SimpleVector*>(vars_->lambda.ptr())->elements(); /**< dual variables corresponding to inequality (>=) constraints */
+		double* pi     = dynamic_cast<SimpleVector*>(vars_->pi.ptr())->elements();     /**< dual variables corresponding to inequality (<=) constraints */
+		double* gamma  = dynamic_cast<SimpleVector*>(vars_->gamma.ptr())->elements();  /**< dual variables corresponding to column lower bounds */
+		double* phi    = dynamic_cast<SimpleVector*>(vars_->phi.ptr())->elements();    /**< dual variables corresponding to column upper bounds */
+		double* t      = dynamic_cast<SimpleVector*>(vars_->t.ptr())->elements();      /**< residuals corresponding to inequality (>=) constraints */
+		double* u      = dynamic_cast<SimpleVector*>(vars_->u.ptr())->elements();      /**< residuals corresponding to inequality (<=) constraints */
 
 		/** convert OOQP solutions to Osi solutions */
 		int pos1 = 0, pos2 = 0;
 		for (int i = 0, iy = 0, iz = 0; i < mat_->getNumRows(); ++i) {
-			price_[i] = 0.0;
 			if (my_empty_.size() > iy && my_empty_[iy] == i) {
 				iy++;
 				continue;
@@ -441,14 +443,20 @@ void OsiOoqpSolverInterface::gutsOfSolve() {
 				iz++;
 				continue;
 			}
-			if (sense_[i] == 'E')
+			if (sense_[i] == 'E') {
+				activity_[i] = rhs_[i];
 				price_[i] = y[pos1++];
-			else if (sense_[i] == 'G')
-				price_[i] = lambda[pos2++];
-			else if (sense_[i] == 'L')
-				price_[i] = -pi[pos2++];
-			else if (sense_[i] == 'R')
-				price_[i] = lambda[pos2++] - pi[pos2++];
+			} else {
+				if (iclow[pos2] > 0) {
+					activity_[i] = t[pos2] + rhs_[i];
+					price_[i] += lambda[pos2];
+				}
+				if (icupp[pos2] > 0) {
+					activity_[i] = u[pos2] + rhs_[i];
+					price_[i] -= pi[pos2];
+				}
+				pos2++;
+			}
 #ifdef DSP_DEBUG_MORE
 			printf("sense %c price %e, ", sense_[i], price_[i]);
 			switch (sense_[i]) {
@@ -467,8 +475,12 @@ void OsiOoqpSolverInterface::gutsOfSolve() {
 			pix += price_[i] * rhs_[i];
 		printf("c^T x = %e, pi^T b = %e.\n", objval_, pix);
 #endif
+
 		for (int j = 0; j < mat_->getNumCols(); ++j) {
-			reduced_[j] = gamma[j] - phi[j];
+			if (ixlow[j] > 0)
+				reduced_[j] += gamma[j];
+			if (ixupp[j] > 0)
+				reduced_[j] -= phi[j];
 		}
 		/** TODO: Implement assigning activity */
 	}
