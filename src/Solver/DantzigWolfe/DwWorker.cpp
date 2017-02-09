@@ -132,7 +132,7 @@ DSP_RTN_CODE DwWorker::createSubproblems() {
 			}
 		}
 
-		si_[s]->messageHandler()->setLogLevel(0);
+		si_[s]->messageHandler()->setLogLevel(par_->getIntParam("DW/SUB/LOG_LEVEL"));
 
 		/** set parameters */
 		setGapTolerance(par_->getDblParam("DW/GAPTOL"));
@@ -215,10 +215,19 @@ DSP_RTN_CODE DwWorker::generateCols(
 		/** store solution status */
 		int status;
 		convertCoinToDspStatus(si_[s], status);
+
+		/** FIXME: It may be terminated due to time limit. */
+		if (status == DSP_STAT_UNKNOWN) {
+			int cpxstat = CPXgetstat(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
+			if (cpxstat == CPXMIP_TIME_LIM_FEAS) {
+				message_->print(1, "Subproblem %d terminated due to time limit.\n", sind);
+				status = DSP_STAT_LIM_ITERorTIME;
+			}
+		}
 		DSPdebugMessage("sind %d status %d\n", sind, status);
 		statuses.push_back(status);
 
-		if (si_[s]->isProvenOptimal() || si_[s]->isProvenDualInfeasible()) {
+		if (!si_[s]->isAbandoned() && !si_[s]->isProvenPrimalInfeasible()) {
 			sol = new CoinPackedVector;
 			sol->reserve(si_[s]->getNumCols());
 
@@ -254,7 +263,7 @@ DSP_RTN_CODE DwWorker::generateCols(
 
 				/** free ray */
 				FREE_ARRAY_PTR(ray);
-			} else if (si_[s]->isProvenOptimal()){
+			} else /*if (si_[s]->isProvenOptimal())*/ {
 				const double* x = si_[s]->getColSolution();
 
 				/** subproblem objective value */
@@ -286,7 +295,7 @@ DSP_RTN_CODE DwWorker::generateCols(
 			sols.push_back(sol);
 			sol = NULL;
 		} else {
-			DSPdebugMessage("Subproblem %d: status %d\n", sind, status);
+			message_->print(0, "Unexpected subproblem status (block: %d, status: %d)\n", sind, status);
 			/** store dummies */
 			cxs.push_back(0.0);
 			objs.push_back(0.0);
@@ -412,9 +421,6 @@ DSP_RTN_CODE DwWorker::solveSubproblems() {
 
 		/** do branch-and-bound if there are integer variables */
 		if (si_[s]->getNumIntegers() > 0 && si_[s]->isProvenOptimal()) {
-//			OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_[s]);
-//			if (cpx)
-//				CPXsetdblparam(cpx->getEnvironmentPtr(), CPX_PARAM_TILIM, 300);
 			/** solve */
 			si_[s]->branchAndBound();
 //			DSPdebugMessage("Subproblem(%d) solution:\n", parProcIdx_[s]);
