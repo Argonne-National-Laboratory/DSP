@@ -7,6 +7,8 @@
 
 //#define DSP_DEBUG
 
+#include <memory>
+
 /** Coin */
 #include "CoinHelperFunctions.hpp"
 #include "OsiCuts.hpp"
@@ -225,42 +227,121 @@ void OsiOoqpSolverInterface::writeMps(const char* filename,
 
 void OsiOoqpSolverInterface::convertOsiToOoqp(QpGen*& qpgen, QpGenData*& prob) {
 	int nx = mat_->getNumCols();
-	int my = 0; /**< number of equality constraints */
-	int mz = 0; /**< number of inequality constraints */
-	int nnzA = 0; /**< number of nonzeros in the equality constraint matrix */
-	int nnzC = 0; /**< number of nonzeros in the inequality constraint matrix */
+	int my = 0;   /**< # of equality constraints */
+	int mz = 0;   /**< # of inequality constraints */
+	int nnzA = 0; /**< # of nonzero elements of the equality constraints */
+	int nnzC = 0; /**< # of nonzero elements of the inequality constraints */
 
 	/** row-wise matrix */
 	const CoinPackedMatrix* mat = getMatrixByRow();
 	DSPdebug(mat->verifyMtx(4));
 
-	/** count nonzeros */
-	my_empty_.clear();
-	mz_empty_.clear();
+	/**
+	 * The duplicate rows of the matrix will be removed,
+	 * as OOQP may result in numerical issues with the duplicates.
+	 * The resulting matrix will be stored in reduced_mat with mapping rows.
+	 */
+
+	/** create a matrix after reduction */
+	std::shared_ptr<CoinPackedMatrix> reduced_mat(new CoinPackedMatrix(false, 0, 0));
+	reduced_mat->setDimensions(0, nx);
+
+	/** map the reduced matrix row index to the original matrix row index */
+	std::map<int,int> redmat_to_orglow, redmat_to_orgupp;
+	/** row bounds of the reduced matrix */
+	std::vector<double> reduced_rlbd, reduced_rubd;
+
+	/** check duplicate rows; and create the reduced matrix */
 	for (int i = 0; i < mat->getNumRows(); ++i) {
+		bool dup = false;
 		const CoinShallowPackedVector row = mat->getVector(i);
-		if (sense_[i] == 'E') {
-			if (row.getNumElements() > 0) {
-				my++;
-				nnzA += row.getNumElements();
-			} else
-				my_empty_.push_back(i);
+		if (row.getNumElements() == 0) continue;
+		for (int ired = 0; ired < reduced_mat->getNumRows(); ++ired) {
+			const CoinShallowPackedVector urow = reduced_mat->getVector(ired);
+			double scale_factor = 1.0;
+
+			/** found a duplicate? */
+			if (urow.getNumElements() == row.getNumElements() &&
+					std::equal(urow.getIndices(),
+							urow.getIndices() + urow.getNumElements(),
+							row.getIndices())) {
+				if (std::equal(urow.getElements(),
+							urow.getElements() + urow.getNumElements(),
+							row.getElements()))
+					dup = true;
+				else {
+					/** Need scaling */
+					scale_factor = urow.getElements()[0] / row.getElements()[0];
+					dup = true;
+					for (int j = 0; j < urow.getNumElements(); ++j) {
+						double coef_diff = urow.getElements()[j] - scale_factor * row.getElements()[j];
+						if (fabs(coef_diff) > 1.0e-8) {
+							dup = false;
+							break;
+						}
+					}
+				}
+			}
+
+			if (dup) {
+				double scaled_rlbd, scaled_rubd;
+				if (scale_factor > 0) {
+					scaled_rlbd = scale_factor * rlbd_[i];
+					scaled_rubd = scale_factor * rubd_[i];
+				} else {
+					scaled_rlbd = scale_factor * rubd_[i];
+					scaled_rubd = scale_factor * rlbd_[i];
+				}
+				/** found a tighter lower bound? */
+				if (reduced_rlbd[ired] < scaled_rlbd) {
+					reduced_rlbd[ired] = scaled_rlbd;
+					redmat_to_orglow[ired] = i;
+				}
+				/** found a tighter upper bound? */
+				if (reduced_rubd[ired] > scaled_rubd) {
+					reduced_rubd[ired] = scaled_rubd;
+					redmat_to_orgupp[ired] = i;
+				}
+				break;
+			}
+		}
+		/** found a unique row? */
+		if (!dup) {
+			reduced_mat->appendRow(row.getNumElements(), row.getIndices(), row.getElements());
+			reduced_rlbd.push_back(rlbd_[i]);
+			reduced_rubd.push_back(rubd_[i]);
+			redmat_to_orglow[reduced_mat->getNumRows()-1] = i;
+			redmat_to_orgupp[reduced_mat->getNumRows()-1] = i;
+		}
+	}
+
+	/** count nonzeros; and create the row maps */
+	ia_to_orglow_.clear();
+	ia_to_orgupp_.clear();
+	iclow_to_org_.clear();
+	icupp_to_org_.clear();
+	for (int i = 0; i < reduced_mat->getNumRows(); ++i) {
+		const CoinShallowPackedVector row = reduced_mat->getVector(i);
+		if (reduced_rlbd[i] == reduced_rubd[i]) {
+			ia_to_orglow_.push_back(redmat_to_orglow[i]);
+			ia_to_orgupp_.push_back(redmat_to_orgupp[i]);
+			my++;
+			nnzA += row.getNumElements();
 		} else {
-			if (row.getNumElements() > 0) {
-				mz++;
-				nnzC += row.getNumElements();
-			} else
-				mz_empty_.push_back(i);
+			iclow_to_org_.push_back(redmat_to_orglow[i]);
+			icupp_to_org_.push_back(redmat_to_orgupp[i]);
+			mz++;
+			nnzC += row.getNumElements();
 		}
 	}
 #ifdef DSP_DEBUG_MORE
-	printf("nx(# of cols) %d, my(# of Eq.) %d, mz (# of Ineq.) %d, nnzQ_ %d, nnzA %d, nnzC %d, empty rows %u\n",
-			nx, my, mz, nnzQ_, nnzA, nnzC, my_empty_.size() + mz_empty_.size());
+	for (int i = 0; i < reduced_mat->getNumRows(); ++i)
+		printf("i [%d]: redmat_to_orglow %d, redmat_to_orgupp %d, reduced_rlbd %+e, reduced_rubd %+e, # of elements %d\n",
+				i, redmat_to_orglow[i], redmat_to_orgupp[i], reduced_rlbd[i], reduced_rubd[i], reduced_mat->getVector(i).getNumElements());
 #endif
 
-	/** create QP generator */
-	qpgen = new QpGenSparseMa27(nx, my, mz, nnzQ_, nnzA, nnzC);
-	//qpgen = new QpGenSparseMa57(nx, my, mz, nnzQ_, nnzA, nnzC);
+	DSPdebugMessage("nx(# of cols) %d, my(# of Eq.) %d, mz (# of Ineq.) %d, nnzA %d, nnzC %d, unique rows %d\n",
+			nx, my, mz, nnzA, nnzC, reduced_mat->getNumRows());
 
 	std::vector<double> xlow(nx, 0.0);
 	std::vector<char> ixlow(nx, 0);
@@ -269,27 +350,22 @@ void OsiOoqpSolverInterface::convertOsiToOoqp(QpGen*& qpgen, QpGenData*& prob) {
 	std::vector<int> irowA;
 	std::vector<int> jcolA;
 	std::vector<double> dA;
-	std::vector<double> b;
+	std::vector<double> b(my, 0.0);
 	std::vector<int> irowC;
 	std::vector<int> jcolC;
 	std::vector<double> dC;
-	std::vector<double> clow;
-	std::vector<char> iclow;
-	std::vector<double> cupp;
-	std::vector<char> icupp;
+	std::vector<double> clow(mz, 0.0);
+	std::vector<char> iclow(mz, 0);
+	std::vector<double> cupp(mz, 0.0);
+	std::vector<char> icupp(mz, 0);
 
 	/** reserve memory */
 	irowA.reserve(nnzA);
 	jcolA.reserve(nnzA);
 	dA.reserve(nnzA);
-	b.reserve(my);
 	irowC.reserve(nnzC);
 	jcolC.reserve(nnzC);
 	dC.reserve(nnzC);
-	clow.reserve(mz);
-	iclow.reserve(mz);
-	cupp.reserve(mz);
-	icupp.reserve(mz);
 
 	double inf = getInfinity();
 	for (int j = 0; j < nx; ++j) {
@@ -301,29 +377,24 @@ void OsiOoqpSolverInterface::convertOsiToOoqp(QpGen*& qpgen, QpGenData*& prob) {
 			xupp[j] = cubd_[j];
 			ixupp[j] = 1;
 		}
-#ifdef DSP_DEBUG_MORE
-		printf("j %d, xlow %e, ixlow %u, clbd_ %e, xupp %e, ixupp %u, cubd_ %e\n",
-				j, xlow[j], ixlow[j], clbd_[j], xupp[j], ixupp[j], cubd_[j]);
-#endif
 	}
 
 	int iposA = 0, iposC = 0;
-	for (int i = 0; i < mat->getNumRows(); ++i) {
-		const CoinShallowPackedVector row = mat->getVector(i);
-		if (row.getNumElements() == 0) continue;
-		if (sense_[i] == 'E') {
+	for (int i = 0; i < reduced_mat->getNumRows(); ++i) {
+		const CoinShallowPackedVector row = reduced_mat->getVector(i);
+		if (reduced_rlbd[i] == reduced_rubd[i]) {
 			for (int j = 0; j < row.getNumElements(); ++j) {
 				irowA.push_back(iposA);
 				jcolA.push_back(row.getIndices()[j]);
 				dA.push_back(row.getElements()[j]);
 #ifdef DSP_DEBUG_MORE
-				printf("irowA %d, jcolA %d, dA %e\n", iposA, row.getIndices()[j], row.getElements()[j]);
+				printf("i %d, irowA %d, jcolA %d, dA %e\n", i, iposA, row.getIndices()[j], row.getElements()[j]);
 #endif
 			}
-			b.push_back(rhs_[i]);
+			b[iposA] = reduced_rlbd[i];
 			iposA++;
 #ifdef DSP_DEBUG_MORE
-			printf("b %e\n", rhs_[i]);
+			printf("b %e\n", reduced_rlbd[i]);
 #endif
 		} else {
 			for (int j = 0; j < row.getNumElements(); ++j) {
@@ -331,34 +402,21 @@ void OsiOoqpSolverInterface::convertOsiToOoqp(QpGen*& qpgen, QpGenData*& prob) {
 				jcolC.push_back(row.getIndices()[j]);
 				dC.push_back(row.getElements()[j]);
 			}
-			if (sense_[i] == 'L') {
-				clow.push_back(0.0);
-				iclow.push_back(0);
-				cupp.push_back(rubd_[i]);
-				icupp.push_back(1);
-			} else if (sense_[i] == 'G') {
-				clow.push_back(rlbd_[i]);
-				iclow.push_back(1);
-				cupp.push_back(0.0);
-				icupp.push_back(0);
-			} else if (sense_[i] == 'R') {
-				clow.push_back(rlbd_[i]);
-				iclow.push_back(1);
-				cupp.push_back(rubd_[i]);
-				icupp.push_back(1);
+			if (reduced_rubd[i] < inf) {
+				cupp[iposC] = reduced_rubd[i];
+				icupp[iposC] = 1;
+			}
+			if (reduced_rlbd[i] > -inf) {
+				clow[iposC] = reduced_rlbd[i];
+				iclow[iposC] = 1;
 			}
 			iposC++;
-#ifdef DSP_DEBUG_MORE
-			int endpos = clow.size()-1;
-			printf("i %d, clow %e, iclow %u, rlbd_ %e, cupp %e, icupp %u, rubd_ %e\n",
-					i, clow[endpos], iclow[endpos], rlbd_[i], cupp[endpos], icupp[endpos], rubd_[i]);
-#endif
 		}
 	}
-#ifdef DSP_DEBUG_MORE
-	printf("irowA.size() %u irowC.size() %u clow.size() %u\n", irowA.size(), irowC.size(), clow.size());
-	DspMessage::printArray(nx, &obj_[0]);
-#endif
+
+	/** create QP generator */
+	qpgen = new QpGenSparseMa27(nx, my, mz, nnzQ_, dA.size(), dC.size());
+	//qpgen = new QpGenSparseMa57(nx, my, mz, nnzQ_, nnzA, nnzC);
 
 	prob = (QpGenData*)dynamic_cast<QpGenSparseSeq*>(qpgen)->copyDataFromSparseTriple(
 			&obj_[0],  &irowQ_[0], nnzQ_,     &jcolQ_[0], &dQ_[0],
@@ -366,7 +424,7 @@ void OsiOoqpSolverInterface::convertOsiToOoqp(QpGen*& qpgen, QpGenData*& prob) {
 			&irowA[0], nnzA,       &jcolA[0], &dA[0],     &b[0],
 			&irowC[0], nnzC,       &jcolC[0], &dC[0],
 			&clow[0],  &iclow[0],  &cupp[0],  &icupp[0]);
-//	prob->print();
+	//prob->print();
 }
 
 void OsiOoqpSolverInterface::initialSolve() {
@@ -399,9 +457,12 @@ void OsiOoqpSolverInterface::resolve() {
 }
 
 void OsiOoqpSolverInterface::gutsOfSolve() {
-	/** solve */
+
+	/** FIXME: Why doesn't this work? */
 	if (messageHandler()->logLevel() >= 4)
 		solver_->monitorSelf();
+
+	/** solve */
 	status_ = solver_->solve(prob_, vars_, resid_);
 	DSPdebugMessage("logLevel %d, OOQP status %d\n", messageHandler()->logLevel(), status_);
 
@@ -412,7 +473,7 @@ void OsiOoqpSolverInterface::gutsOfSolve() {
 		/** allocate memory for Osi solutions */
 		freeCachedResults();
 		x_.resize(prob_->nx);
-		reduced_.resize(mat_->getNumCols(), 0.0);
+		reduced_.resize(prob_->nx, 0.0);
 		activity_.resize(mat_->getNumRows(), 0.0);
 		price_.resize(mat_->getNumRows(), 0.0);
 
@@ -429,54 +490,27 @@ void OsiOoqpSolverInterface::gutsOfSolve() {
 		double* pi     = dynamic_cast<SimpleVector*>(vars_->pi.ptr())->elements();     /**< dual variables corresponding to inequality (<=) constraints */
 		double* gamma  = dynamic_cast<SimpleVector*>(vars_->gamma.ptr())->elements();  /**< dual variables corresponding to column lower bounds */
 		double* phi    = dynamic_cast<SimpleVector*>(vars_->phi.ptr())->elements();    /**< dual variables corresponding to column upper bounds */
-		double* t      = dynamic_cast<SimpleVector*>(vars_->t.ptr())->elements();      /**< residuals corresponding to inequality (>=) constraints */
-		double* u      = dynamic_cast<SimpleVector*>(vars_->u.ptr())->elements();      /**< residuals corresponding to inequality (<=) constraints */
 
-		/** convert OOQP solutions to Osi solutions */
-		int pos1 = 0, pos2 = 0;
-		for (int i = 0, iy = 0, iz = 0; i < mat_->getNumRows(); ++i) {
-			if (my_empty_.size() > iy && my_empty_[iy] == i) {
-				iy++;
-				continue;
-			}
-			if (mz_empty_.size() > iz && mz_empty_[iz] == i) {
-				iz++;
-				continue;
-			}
-			if (sense_[i] == 'E') {
-				activity_[i] = rhs_[i];
-				price_[i] = y[pos1++];
-			} else {
-				if (iclow[pos2] > 0) {
-					activity_[i] = t[pos2] + rhs_[i];
-					price_[i] += lambda[pos2];
-				}
-				if (icupp[pos2] > 0) {
-					activity_[i] = u[pos2] + rhs_[i];
-					price_[i] -= pi[pos2];
-				}
-				pos2++;
-			}
-#ifdef DSP_DEBUG_MORE
-			printf("sense %c price %e, ", sense_[i], price_[i]);
-			switch (sense_[i]) {
-			case 'E':
-				printf("y %d %e\n", pos1-1, y[pos1-1]);
-				break;
-			default:
-				printf("lambda %d %e pi %e\n", pos2-1, lambda[pos2-1], pi[pos2-1]);
-				break;
-			}
-#endif
+		/** calculate activity */
+		mat_->times(&x_[0], &activity_[0]);
+
+		/** calculate price */
+		for (int i = 0; i < prob_->my; ++i) {
+			//printf("y[%d] %+e: ia_to_orglow_ %d, ia_to_orgupp_ %d\n", i, y[i], ia_to_orglow_[i], ia_to_orgupp_[i]);
+			if (y[i] > 0)
+				price_[ia_to_orglow_[i]] += y[i];
+			else
+				price_[ia_to_orgupp_[i]] += y[i];
 		}
-#ifdef DSP_DEBUG_MORE
-		double pix = 0.0;
-		for (int i = 0; i < mat_->getNumRows(); ++i)
-			pix += price_[i] * rhs_[i];
-		printf("c^T x = %e, pi^T b = %e.\n", objval_, pix);
-#endif
+		for (int i = 0; i < prob_->mz; ++i) {
+			//printf("mz[%d]: lambda %+e, pi %+e, iclow_to_org_ %d, icupp_to_org_ %d\n", i, lambda[i], pi[i], iclow_to_org_[i], icupp_to_org_[i]);
+			if (iclow[i] > 0)
+				price_[iclow_to_org_[i]] += lambda[i];
+			if (icupp[i] > 0)
+				price_[icupp_to_org_[i]] -= pi[i];
+		}
 
-		for (int j = 0; j < mat_->getNumCols(); ++j) {
+		for (int j = 0; j < prob_->nx; ++j) {
 			if (ixlow[j] > 0)
 				reduced_[j] += gamma[j];
 			if (ixupp[j] > 0)
@@ -758,9 +792,6 @@ void OsiOoqpSolverInterface::deleteCols(const int num, const int* colIndices) {
 	clbd_.clear();
 	cubd_.clear();
 	obj_.clear();
-	clbd_.reserve(mat_->getNumCols());
-	cubd_.reserve(mat_->getNumCols());
-	obj_.reserve(mat_->getNumCols());
 	x_.resize(mat_->getNumCols());
 	reduced_.resize(mat_->getNumCols());
 
@@ -781,6 +812,9 @@ void OsiOoqpSolverInterface::deleteCols(const int num, const int* colIndices) {
 		cubd_.push_back(cubd0[j]);
 		obj_.push_back(obj0[j]);
 	}
+
+	if (obj_.size() != mat_->getNumCols())
+		throw CoinError("obj_ size is not compatible to the number of columns in the matrix", "deleteCols", "OsiOoqpSolverInterface");
 
 	/** say the model is updated. */
 	updated_ = true;
@@ -885,7 +919,9 @@ void OsiOoqpSolverInterface::loadProblem(const CoinPackedMatrix& matrix,
 	rhs_.resize(mat_->getNumRows());
 	range_.resize(mat_->getNumRows());
 	for (int i = 0; i < mat_->getNumRows(); ++i) {
-		DSPdebugMessage("Load row %d: rlbd [%e] rubd [%e]\n", i, rowlb[i], rowub[i]);
+#ifdef DSP_DEBUG_MORE
+		printf("Load row %d: rlbd [%e] rubd [%e]\n", i, rowlb[i], rowub[i]);
+#endif
 		convertBoundToSense(rowlb[i], rowub[i], sense_[i], rhs_[i], range_[i]);
 	}
 	/** say the model is updated. */

@@ -536,8 +536,14 @@ protected:
 	std::vector<double> dQ_;
 	//@}
 
-	std::vector<int> my_empty_; /**< empty equality row indices */
-	std::vector<int> mz_empty_; /**< empty inequality row indices */
+	/**
+	 * The original matrix may contain empty or duplicate rows.
+	 * So, we remove them and pass the reduced matrix to the solver. Doing so may tighten some row bounds.
+	 */
+	std::vector<int> ia_to_orglow_; /**< map matrix A row index to the original row index with lower bound */
+	std::vector<int> ia_to_orgupp_; /**< map matrix A row index to the original row index with upper bound */
+	std::vector<int> iclow_to_org_; /**< map matrix C row index with lower bound to the original row index */
+	std::vector<int> icupp_to_org_; /**< map matrix C row index with upper bound to the original row index */
 
 	bool updated_; /**< indicate if the model is updated */
 };
