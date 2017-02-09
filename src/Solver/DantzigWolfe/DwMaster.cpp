@@ -462,7 +462,7 @@ DSP_RTN_CODE DwMaster::solvePhase1() {
 		for (unsigned j = ncols; j < si_->getNumCols(); ++j)
 			auxcolindices_.push_back(j);
 		phase_ = 1;
-		DSPdebugMessage("Phase 1 has %d rows and %d columns.\n", si_->getNumRows(), si_->getNumCols());
+		message_->print(3, "Phase 1 has %d rows and %d columns.\n", si_->getNumRows(), si_->getNumCols());
 	}
 
 	/** set parameters */
@@ -482,7 +482,7 @@ DSP_RTN_CODE DwMaster::solvePhase2() {
 		/** delete auxiliary columns */
 		si_->deleteCols(auxcolindices_.size(), &auxcolindices_[0]);
 		auxcolindices_.clear();
-		DSPdebugMessage("Phase 2 has %d rows and %d columns.\n", si_->getNumRows(), si_->getNumCols());
+		message_->print(3, "Phase 2 has %d rows and %d columns.\n", si_->getNumRows(), si_->getNumCols());
 
 		/** set objective function coefficients */
 		for (unsigned k = 0, j = 0; k < cols_generated_.size(); ++k)
@@ -617,7 +617,7 @@ DSP_RTN_CODE DwMaster::solveMaster() {
 	}
 
 	/** resolve */
-	DSPdebugMessage("solve master problem.\n");
+	DSPdebugMessage("solve master problem (nrows %d, ncols %d).\n", si_->getNumRows(), si_->getNumCols());
 	double stime = CoinGetTimeOfDay();
 	si_->resolve();
 	t_master_ += CoinGetTimeOfDay() - stime;
@@ -692,7 +692,7 @@ DSP_RTN_CODE DwMaster::reduceCols() {
 	/** FIXME:
 	 * Be careful! Phase 2 can be infeasible by deleting columns.
 	 * Do I really want to have this situation? */
-	if (phase_ == -1) {
+	if (phase_ == 2) {
 		std::vector<int> delcols;
 		for (unsigned k = 0, j = 0; k < cols_generated_.size(); ++k) {
 			if (cols_generated_[k]->active_) {
@@ -702,11 +702,18 @@ DSP_RTN_CODE DwMaster::reduceCols() {
 				else
 					cols_generated_[k]->age_++;
 				/** reduced cost fixing */
-				if (cols_generated_[k]->age_ >= par_->getIntParam("DW/MASTER/COL_AGE_LIM") ||
-						dualobj_ + si_->getReducedCost()[j] - bestprimobj_ > -1.0e-10) {
+				if (dualobj_ + si_->getReducedCost()[j] - bestprimobj_ > -1.0e-10) {
 					cols_generated_[k]->active_ = false;
 					delcols.push_back(j);
 				}
+#if 0
+				/** delete old cuts */
+				if (cols_generated_[k]->active_ &&
+						cols_generated_[k]->age_ >= par_->getIntParam("DW/MASTER/COL_AGE_LIM")) {
+					cols_generated_[k]->active_ = false;
+					delcols.push_back(j);
+				}
+#endif
 				j++;
 			}
 		}
@@ -721,7 +728,7 @@ DSP_RTN_CODE DwMaster::reduceCols() {
 				si_->setWarmStart(ws);
 				FREE_PTR(ws)
 			}
-			DSPdebugMessage("Deleted %u columns.\n", delcols.size());
+			message_->print(1, "Reduced cost fixing: removed %u columns.\n", delcols.size());
 
 			si_->resolve();
 			if (useBarrier_ == false)
@@ -954,7 +961,9 @@ bool DwMaster::terminationTestColgen(std::vector<int>& statuses) {
 	bool term = false;
 	status_ = DSP_STAT_FEASIBLE;
 	for (unsigned s = 0; s < statuses.size(); ++s) {
-		if (statuses[s] != DSP_STAT_OPTIMAL && statuses[s] != DSP_STAT_DUAL_INFEASIBLE) {
+		if (statuses[s] != DSP_STAT_OPTIMAL &&
+				statuses[s] != DSP_STAT_DUAL_INFEASIBLE &&
+				statuses[s] != DSP_STAT_LIM_ITERorTIME) {
 			status_ = DSP_STAT_PRIM_INFEASIBLE;
 			break;
 		}

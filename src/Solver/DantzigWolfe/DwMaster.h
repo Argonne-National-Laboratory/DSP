@@ -181,7 +181,7 @@ protected:
 
     std::vector<DwCol*> cols_generated_; /**< columns generated */
 
-    const double feastol_ = 1.0e-6;
+    const double feastol_ = 1.0e-5;
 
 public:
 
