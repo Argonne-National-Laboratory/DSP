@@ -263,17 +263,17 @@ DSP_RTN_CODE DwMaster::initialOsiSolver() {
 DSP_RTN_CODE DwMaster::solve() {
 	BGN_TRY_CATCH
 
-	//dualobj_ = -COIN_DBL_MAX;
-
-	if (cols_generated_.size() == 0) {
-		/** generate initial columns */
-		DSP_RTN_CHECK_RTN_CODE(initialColumns());
-	}
-
 	itercnt_ = 0;
 	t_total_ = CoinGetTimeOfDay();
 	t_master_ = 0.0;
 	t_colgen_ = 0.0;
+
+	if (cols_generated_.size() == 0) {
+		/** generate initial columns */
+		DSP_RTN_CHECK_RTN_CODE(initialColumns());
+
+		DSP_RTN_CHECK_RTN_CODE(solvePhase1());
+	}
 
 	if (phase_ == 2) {
 		DSP_RTN_CHECK_RTN_CODE(solvePhase2());
