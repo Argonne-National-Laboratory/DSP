@@ -256,11 +256,18 @@ void OsiOoqpSolverInterface::convertOsiToOoqp(QpGen*& qpgen, QpGenData*& prob) {
 		bool dup = false;
 		const CoinShallowPackedVector row = mat->getVector(i);
 		if (row.getNumElements() == 0) continue;
+#ifdef DSP_DEBUG
+		printf("row %d: ", i);
+		for (int j = 0; j < row.getNumElements(); ++j)
+			printf("[%d] %+e ", row.getIndices()[j], row.getElements()[j]);
+		printf("rlbd %+e rubd %+e\n", rlbd_[i], rubd_[i]);
+#endif
 		for (int ired = 0; ired < reduced_mat->getNumRows(); ++ired) {
 			const CoinShallowPackedVector urow = reduced_mat->getVector(ired);
 			double scale_factor = 1.0;
 
 			/** found a duplicate? */
+			dup = false;
 			if (urow.getNumElements() == row.getNumElements() &&
 					std::equal(urow.getIndices(),
 							urow.getIndices() + urow.getNumElements(),
@@ -292,18 +299,28 @@ void OsiOoqpSolverInterface::convertOsiToOoqp(QpGen*& qpgen, QpGenData*& prob) {
 					scaled_rlbd = scale_factor * rubd_[i];
 					scaled_rubd = scale_factor * rlbd_[i];
 				}
-				/** found a tighter lower bound? */
-				if (reduced_rlbd[ired] < scaled_rlbd) {
-					reduced_rlbd[ired] = scaled_rlbd;
-					redmat_to_orglow[ired] = i;
+
+				if (reduced_rlbd[ired] < reduced_rubd[ired]) {
+					/** found a tighter lower bound? */
+					if (reduced_rlbd[ired] < scaled_rlbd) {
+						reduced_rlbd[ired] = scaled_rlbd;
+						redmat_to_orglow[ired] = i;
+					}
+					/** found a tighter upper bound? */
+					if (reduced_rubd[ired] > scaled_rubd) {
+						reduced_rubd[ired] = scaled_rubd;
+						redmat_to_orgupp[ired] = i;
+					}
+				} else if (reduced_rlbd[ired] >= scaled_rlbd - 1.0e-8 &&
+						reduced_rlbd[ired] <= scaled_rubd + 1.0e-8) {
+					/** nothing to do */
+				} else {
+					/** force to add and trigger infeasibility */
+					dup = false;
 				}
-				/** found a tighter upper bound? */
-				if (reduced_rubd[ired] > scaled_rubd) {
-					reduced_rubd[ired] = scaled_rubd;
-					redmat_to_orgupp[ired] = i;
-				}
-				break;
 			}
+
+			if (dup) break;
 		}
 		/** found a unique row? */
 		if (!dup) {
@@ -334,10 +351,18 @@ void OsiOoqpSolverInterface::convertOsiToOoqp(QpGen*& qpgen, QpGenData*& prob) {
 			nnzC += row.getNumElements();
 		}
 	}
-#ifdef DSP_DEBUG_MORE
+#ifdef DSP_DEBUG
 	for (int i = 0; i < reduced_mat->getNumRows(); ++i)
 		printf("i [%d]: redmat_to_orglow %d, redmat_to_orgupp %d, reduced_rlbd %+e, reduced_rubd %+e, # of elements %d\n",
 				i, redmat_to_orglow[i], redmat_to_orgupp[i], reduced_rlbd[i], reduced_rubd[i], reduced_mat->getVector(i).getNumElements());
+
+	for (int i = 0; i < reduced_mat->getNumRows(); ++i) {
+		const CoinShallowPackedVector row = reduced_mat->getVector(i);
+		printf("row %d: ", i);
+		for (int j = 0; j < row.getNumElements(); ++j)
+			printf("[%d] %+e ", row.getIndices()[j], row.getElements()[j]);
+		printf("rlbd %+e rubd %+e\n", reduced_rlbd[i], reduced_rubd[i]);
+	}
 #endif
 
 	DSPdebugMessage("nx(# of cols) %d, my(# of Eq.) %d, mz (# of Ineq.) %d, nnzA %d, nnzC %d, unique rows %d\n",
@@ -424,7 +449,7 @@ void OsiOoqpSolverInterface::convertOsiToOoqp(QpGen*& qpgen, QpGenData*& prob) {
 			&irowA[0], nnzA,       &jcolA[0], &dA[0],     &b[0],
 			&irowC[0], nnzC,       &jcolC[0], &dC[0],
 			&clow[0],  &iclow[0],  &cupp[0],  &icupp[0]);
-	//prob->print();
+	DSPdebug(prob->print());
 }
 
 void OsiOoqpSolverInterface::initialSolve() {
