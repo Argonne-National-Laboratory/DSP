@@ -10,7 +10,7 @@
 
 #include <DecSolver.h>
 #include <DantzigWolfe/DwMaster.h>
-#include "TreeSearch/DspModel.h"
+#include <DantzigWolfe/DwModel.h>
 
 class DwSolverSerial: public DecSolver {
 public:
@@ -36,7 +36,7 @@ protected:
 
 	DwMaster* master_;
 	DwWorker* worker_;
-	DspModel * alps_; /**< Alps model pointer */
+	DwModel * alps_; /**< Alps model pointer */
 
 };
 

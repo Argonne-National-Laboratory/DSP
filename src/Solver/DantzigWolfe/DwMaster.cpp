@@ -120,10 +120,12 @@ DSP_RTN_CODE DwMaster::init() {
     	org_obj_ = new double [ncols];
     	org_rlbd_ = new double [org_mat_->getNumRows()];
     	org_rubd_ = new double [org_mat_->getNumRows()];
+    	CoinCopyN(org_ctype, ncols_first_stage, org_ctype_);
+    	CoinFillN(org_ctype_ + ncols_first_stage, ncols - ncols_first_stage, 'C');
 		for (int s = 0; s < nscen; ++s) {
 			CoinCopyN(org_clbd, ncols_first_stage, org_clbd_ + s * ncols_first_stage);
 			CoinCopyN(org_cubd, ncols_first_stage, org_cubd_ + s * ncols_first_stage);
-			CoinCopyN(org_ctype, ncols_first_stage, org_ctype_ + s * ncols_first_stage);
+//			CoinCopyN(org_ctype, ncols_first_stage, org_ctype_ + s * ncols_first_stage);
 	    	for (int j = 0; j < ncols_first_stage; ++j)
 	    		org_obj_[s * ncols_first_stage + j] = org_obj[j] * probability[s];
 		}
@@ -131,8 +133,8 @@ DSP_RTN_CODE DwMaster::init() {
 				org_clbd_ + nscen * ncols_first_stage);
 		CoinCopyN(org_cubd + ncols_first_stage,  ncols - nscen * ncols_first_stage,
 				org_cubd_ + nscen * ncols_first_stage);
-		CoinCopyN(org_ctype + ncols_first_stage, ncols - nscen * ncols_first_stage,
-				org_ctype_ + nscen * ncols_first_stage);
+//		CoinCopyN(org_ctype + ncols_first_stage, ncols - nscen * ncols_first_stage,
+//				org_ctype_ + nscen * ncols_first_stage);
 		CoinZeroN(org_obj_ + nscen * ncols_first_stage, ncols - nscen * ncols_first_stage);
 		CoinZeroN(org_rlbd_, org_mat_->getNumRows());
 		CoinZeroN(org_rubd_, org_mat_->getNumRows());
@@ -358,7 +360,7 @@ DSP_RTN_CODE DwMaster::solve() {
 			}
 #endif
 		/** heuristics */
-		DSP_RTN_CHECK_RTN_CODE(heuristics());
+		//DSP_RTN_CHECK_RTN_CODE(heuristics());
 	} else if (status_ == DSP_STAT_DUAL_INFEASIBLE) {
 		//DSPdebug(si_->writeMps("master"));
 	}
@@ -798,16 +800,12 @@ DSP_RTN_CODE DwMaster::addCols(
 
 	double* Ax = NULL;
 	CoinPackedVector colvec;
-	TssModel* tss = NULL;
 
 	BGN_TRY_CATCH
 
 	/** allocate memory */
 	Ax = new double [nrows_orig_];
 	colvec.reserve(nrows_);
-
-	if (model_->isStochastic())
-		tss = dynamic_cast<TssModel*>(model_);
 
 	/** reset counter */
 	nadded = 0;
@@ -919,10 +917,14 @@ bool DwMaster::terminationTest(int nnewcols) {
 		}
 	}
 	if (phase_ == 2) {
-		if (iterlim_ <= itercnt_ ||
-			relgap_ < par_->getDblParam("DW/GAPTOL") ||
-			dualobj_ >= bestprimobj_) {
+		if (iterlim_ <= itercnt_) {
+			status_ = DSP_STAT_LIM_ITERorTIME;
+			term = true;
+		} else if (dualobj_ >= bestprimobj_) {
 			status_ = DSP_STAT_FEASIBLE;
+			term = true;
+		} else if (relgap_ < par_->getDblParam("DW/GAPTOL")) {
+			status_ = DSP_STAT_OPTIMAL;
 			term = true;
 		}
 	}
@@ -976,8 +978,10 @@ bool DwMaster::terminationTestColgen(std::vector<int>& statuses) {
 	return term;
 }
 
+#if 0
+
 DSP_RTN_CODE DwMaster::heuristics() {
-	if (!runHeuristics_)
+	if (true)
 		return DSP_RTN_OK;
 
 	double stime;
@@ -1534,65 +1538,14 @@ DSP_RTN_CODE DwMaster::gutsOfDive(
 	return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE DwMaster::solveMip() {
-#define FREE_MEMORY \
-	FREE_PTR(si)
+#endif
 
-	OsiSolverInterface* si = NULL;
+void DwMaster::setBestPrimalSolution(const double* solution) {
+	CoinCopyN(solution, ncols_orig_, bestprimsol_);
+}
 
-	BGN_TRY_CATCH
-
-	/** copy si */
-	si = si_->clone(true);
-
-	/** set solution */
-	si->setColSolution(si_->getColSolution());
-
-	int ncols = si->getNumCols();
-	for (int i = 0; i < nrows_branch_; ++i) {
-		int row = nrows_core_ + i;
-		double elem = -1.0;
-		/** add auxiliary integer variables */
-		si->addCol(1, &row, &elem,
-				si->getRowLower()[row],
-				si->getRowUpper()[row], 0.0);
-		/** modify row bounds for branching constraints */
-		si->setRowBounds(row, 0.0, 0.0);
-		/** set integer */
-		si->setInteger(ncols+i);
-	}
-
-	OsiCpxSolverInterface*cpx = dynamic_cast<OsiCpxSolverInterface*>(si);
-	if (cpx) cpx->switchToMIP();
-
-	DSPdebug(si->writeMps("MasterMip"));
-
-	/** solve */
-	si->branchAndBound();
-
-	if (si->isProvenOptimal()) {
-		bestprimobj_ = si->getObjValue();
-		/** recover original solution */
-		CoinZeroN(bestprimsol_, ncols_orig_);
-		for (unsigned k = 0, j = 0; k < cols_generated_.size(); ++k) {
-			/** do not consider inactive columns */
-			if (cols_generated_[k]->active_ == false)
-				continue;
-			CoinPackedVector xlam = cols_generated_[k]->x_ * si->getColSolution()[j];
-			for (int i = 0; i < xlam.getNumElements(); ++i) {
-				if (xlam.getIndices()[i] < ncols_orig_)
-					bestprimsol_[xlam.getIndices()[i]] += xlam.getElements()[i];
-			}
-			j++;
-		}
-	}
-
-	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
-
-	FREE_MEMORY
-
-	return DSP_RTN_OK;
-#undef FREE_MEMORY
+void DwMaster::setPrimalSolution(const double* solution) {
+	CoinCopyN(solution, ncols_orig_, primsol_);
 }
 
 bool DwMaster::chooseBranchingObjects(

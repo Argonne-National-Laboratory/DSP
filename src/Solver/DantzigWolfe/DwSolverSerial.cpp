@@ -5,10 +5,9 @@
  *      Author: kibaekkim
  */
 
+#include "AlpsKnowledgeBrokerSerial.h"
 #include <DantzigWolfe/DwSolverSerial.h>
 #include <DantzigWolfe/DwMaster.h>
-#include <DantzigWolfe/DwMasterTr.h>
-#include <DantzigWolfe/DwMasterTrLight.h>
 #include <DantzigWolfe/DwWorker.h>
 
 DwSolverSerial::DwSolverSerial(
@@ -33,19 +32,20 @@ DSP_RTN_CODE DwSolverSerial::init() {
 	worker_ = new DwWorker(model_, par_, message_);
 
 	/** create master */
-	if (par_->getBoolParam("DW/TRUST_REGION")) {
-		if (par_->getBoolParam("DW/MASTER/BRANCH_ROWS"))
-			master_ = new DwMasterTr(worker_);
-		else
-			master_ = new DwMasterTrLight(worker_);
-	} else
-		master_ = new DwMaster(worker_);
+	master_ = new DwMaster(worker_);
 
 	/** initialize master */
 	DSP_RTN_CHECK_THROW(master_->init());
 
 	/** create an Alps model */
-	alps_ = new DspModel(master_);
+	alps_ = new DwModel(master_);
+
+	/** parameter setting */
+	DspParams* par = alps_->getSolver()->getParPtr();
+	alps_->AlpsPar()->setEntry(AlpsParams::searchStrategy, par->getIntParam("ALPS/SEARCH_STRATEGY"));
+	alps_->AlpsPar()->setEntry(AlpsParams::nodeLogInterval, par->getIntParam("ALPS/NODE_LOG_INTERVAL"));
+	alps_->AlpsPar()->setEntry(AlpsParams::nodeLimit, par->getIntParam("ALPS/NODE_LIM"));
+	alps_->AlpsPar()->setEntry(AlpsParams::timeLimit, par->getDblParam("ALPS/TIME_LIM"));
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;
@@ -53,7 +53,14 @@ DSP_RTN_CODE DwSolverSerial::init() {
 
 DSP_RTN_CODE DwSolverSerial::solve() {
 	BGN_TRY_CATCH
-	DSP_RTN_CHECK_THROW(alps_->solve());
+
+	/** solve */
+	AlpsKnowledgeBrokerSerial alpsBroker(0, NULL, *alps_);
+    alpsBroker.search(alps_);
+
+//    DspNodeSolution* solution = dynamic_cast<DspNodeSolution*>(alpsBroker.getBestKnowledge(AlpsKnowledgeTypeSolution).first);
+//    solution->print(std::cout);
+
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;
 }

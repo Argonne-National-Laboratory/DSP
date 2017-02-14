@@ -44,7 +44,7 @@ int OoqpStatus::doIt(
 		double dualityGap = resids->dualityGap();
 
 		if (dualityGap > 0) {
-			const double gamma = 0.5;
+			const double gamma = 0.2;
 			bool wellcentered = true;
 
 			/** retrieve OOQP data and variables */
@@ -69,9 +69,9 @@ int OoqpStatus::doIt(
 				}
 			}
 
-#ifdef DSP_DEBUG_MORE
-			printf("OoqpStatus: mu %e, gamma %e, objval %e, lowerBound %e, dualityGap %e (%e), epsilon %e, %s\n",
-					mu, gamma, objval, lowerBound_, dualityGap, relDualityGap, epsilon_, wellcentered ? "centered" : "not");
+#ifdef DSP_DEBUG
+			printf("OoqpStatus: mu %e, gamma %e, lowerBound %e, dualityGap %e, epsilon %e, %s\n",
+					mu, gamma, lowerBound_, dualityGap, epsilon_, wellcentered ? "centered" : "not");
 #endif
 
 			if (wellcentered) {

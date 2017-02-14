@@ -45,8 +45,8 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 	/** retrieve objects */
 	DspNodeDesc* desc = dynamic_cast<DspNodeDesc*>(desc_);
 	DspModel* model = dynamic_cast<DspModel*>(desc_->getModel());
-	DecSolver* solver = model->getSolver();
-	DspParams* par = solver->getParPtr();
+	//DecSolver* solver = model->getSolver();
+	DspParams* par = model->getParPtr();
 	double relTol = 0.0001;//par->getDblParam("DW/GAPTOL");
 
 	double alpsTimeRemain = par->getDblParam("ALPS/TIME_LIM") - getKnowledgeBroker()->timer().getWallClock();
@@ -62,9 +62,6 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 	if (isRoot) {
 		/** quality_ represents the best-known lower bound */
 		quality_ = -ALPS_OBJ_MAX;
-
-		/** set heuristics */
-		solver->setHeuristicRuns(par->getBoolParam("DW/HEURISTICS"));
 	} else {
 		/** fathom if the relative gap is small enough */
 		if (gap < relTol) {
@@ -72,81 +69,45 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 			wirteLog("fathomed", desc);
 			return status;
 		}
-
-		/** set heuristics */
-		if (gap > 0.01)
-			solver->setHeuristicRuns(par->getBoolParam("DW/HEURISTICS"));
-		else
-			solver->setHeuristicRuns(false);
-		solver->setBranchingObjects(desc->getBranchingObject());
-	}
-
-	if (solver->getHeuristicRuns()) {
-		/** The very first run takes one iteration and explores primal solutions. */
-		solver->setIterLimit(1);
-		solver->setTimeLimit(dwTimeLim);
-
-		/** solve the bounding problem */
-		ret = solver->solve();
-		if (ret != DSP_RTN_OK) {
-			setStatus(AlpsNodeStatusDiscarded);
-			wirteLog("fathomed", desc);
-			return AlpsReturnStatusErr;
-		}
-		DSPdebugMessage("Bounding solution status: %d\n", solver->getStatus());
-
-		/** any heuristic solution */
-		if (solver->getBestPrimalObjective() < gUb) {
-			DSPdebugMessage("Found new upper bound %e\n", solver->getBestPrimalObjective());
-			DspNodeSolution* nodesol = new DspNodeSolution(solver->getNumCols(),
-					solver->getBestPrimalSolution(), solver->getBestPrimalObjective());
-			getKnowledgeBroker()->addKnowledge(AlpsKnowledgeTypeSolution,
-					nodesol, solver->getBestPrimalObjective());
-			wirteLog("heuristic", desc, solver->getBestPrimalObjective());
-		}
+		/** set branching objects */
+		model->setBranchingObjects(desc->getBranchingObject());
 	}
 
 	alpsTimeRemain = par->getDblParam("ALPS/TIME_LIM") - getKnowledgeBroker()->timer().getWallClock();
 	dwTimeLim = CoinMin(par->getDblParam("DW/TIME_LIM"), alpsTimeRemain);
 
-	solver->setIterLimit(par->getIntParam("DW/ITER_LIM"));
-	solver->setTimeLimit(dwTimeLim);
+	model->setIterLimit(par->getIntParam("DW/ITER_LIM"));
+	model->setTimeLimit(dwTimeLim);
 
 	/** solve the bounding problem */
-	ret = solver->solve();
+	ret = model->solve();
 	if (ret != DSP_RTN_OK) {
 		setStatus(AlpsNodeStatusDiscarded);
 		wirteLog("fathomed", desc);
 		return AlpsReturnStatusErr;
 	}
-	DSPdebugMessage("Bounding solution status: %d\n", solver->getStatus());
+	DSPdebugMessage("Bounding solution status: %d\n", model->getStatus());
 
 	/** any heuristic solution */
-	if (solver->getBestPrimalObjective() < gUb) {
-		DSPdebugMessage("Found new upper bound %e\n", solver->getBestPrimalObjective());
-		DspNodeSolution* nodesol = new DspNodeSolution(solver->getNumCols(),
-				solver->getBestPrimalSolution(), solver->getBestPrimalObjective());
+	if (model->getBestPrimalObjective() < gUb) {
+		DSPdebugMessage("Found new upper bound %e\n", model->getBestPrimalObjective());
+		DspNodeSolution* nodesol = new DspNodeSolution(model->getNumCols(),
+				model->getBestPrimalSolution(), model->getBestPrimalObjective());
 		getKnowledgeBroker()->addKnowledge(AlpsKnowledgeTypeSolution,
-				nodesol, solver->getBestPrimalObjective());
-		wirteLog("heuristic", desc, solver->getBestPrimalObjective());
+				nodesol, model->getBestPrimalObjective());
+		wirteLog("heuristic", desc, model->getBestPrimalObjective());
 	}
 
-	switch (solver->getStatus()) {
+	switch (model->getStatus()) {
 	case DSP_STAT_OPTIMAL:
 	case DSP_STAT_FEASIBLE:
 	case DSP_STAT_LIM_ITERorTIME:
 	{
-		quality_ = solver->getDualObjective();
-		double curUb = solver->getPrimalObjective();
+		quality_ = model->getDualObjective();
+		double curUb = model->getPrimalObjective();
 
 		DSPdebugMessage("[%f] curLb %e, curUb %e, bestUb %e, bestLb %e\n",
 				getKnowledgeBroker()->timer().getWallClock(), quality_, curUb, gUb, gLb);
-
-//		if (curUb - quality_ < -1.0e-6) {
-//			setStatus(AlpsNodeStatusDiscarded);
-//			wirteLog("fathomed", desc);
-//			return AlpsReturnStatusErr;
-//		}
 
 		/** fathom if LB is larger than UB. */
 		if (quality_ >= gUb) {
@@ -154,7 +115,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 			wirteLog("fathomed", desc);
 		} else {
 			/** Branching otherwise */
-			bool hasObjs = solver->chooseBranchingObjects(branchingUp_, branchingDn_);
+			bool hasObjs = model->chooseBranchingObjects(branchingUp_, branchingDn_);
 
 			if (hasObjs) {
 				DSPdebugMessage("Branching on the current node.\n");
@@ -163,7 +124,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 				DSPdebugMessage("The current node has feasible solution.\n");
 				if (curUb < gUb) {
 					DspNodeSolution* nodesol = new DspNodeSolution(
-							solver->getNumCols(), solver->getPrimalSolution(), curUb);
+							model->getNumCols(), model->getPrimalSolution(), curUb);
 					getKnowledgeBroker()->addKnowledge(AlpsKnowledgeTypeSolution, nodesol, curUb);
 				}
 				/** no branching object is found; we are done! */
@@ -179,7 +140,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 		wirteLog("infeasible", desc);
 		break;
 	default:
-		DSPdebugMessage("Unexpected solution status: %d.\n", solver->getStatus());
+		DSPdebugMessage("Unexpected solution status: %d.\n", model->getStatus());
 		assert(0);
 		break;
 	}

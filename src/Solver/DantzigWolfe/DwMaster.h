@@ -60,6 +60,12 @@ public:
 	/** set branching objects */
 	void setBranchingObjects(const DspBranch* branchobj);
 
+	/** set best primal solution */
+	void setBestPrimalSolution(const double* solution);
+
+	/** set primal solution */
+	void setPrimalSolution(const double* solution);
+
 protected:
 
 	/** Generate initial columns */
@@ -128,7 +134,7 @@ protected:
 
     /** termination test after column generation*/
     virtual bool terminationTestColgen(std::vector<int>& statuses);
-
+#if 0
     /** Run heuristics */
     virtual DSP_RTN_CODE heuristics();
 
@@ -163,12 +169,9 @@ protected:
     virtual DSP_RTN_CODE gutsOfDive(
     		std::vector<CoinTriple<int,int,double> > branchList,
     		int depth);
-
+#endif
     /** print iteration information */
     virtual void printIterInfo();
-
-    /** Solve the master with integrality */
-    DSP_RTN_CODE solveMip();
 
 protected:
 
@@ -178,8 +181,6 @@ protected:
     std::vector<int> auxcolindices_;
 
     DwWorker* worker_; /**< subproblem solver */
-
-    std::vector<DwCol*> cols_generated_; /**< columns generated */
 
     const double feastol_ = 1.0e-5;
 
@@ -194,6 +195,8 @@ public:
     int nrows_core_;   /**< nrows_orig_ + nrows_conv_ */
     int nrows_branch_; /**< number of rows representing integer columns in the original master */
     std::map<int,int> branch_row_to_col_; /**< maps each branching row to column in the original master */
+
+    std::vector<DwCol*> cols_generated_; /**< columns generated */
 
     /**@name original master problem data */
     CoinPackedMatrix* org_mat_; /**< constraint matrix */
