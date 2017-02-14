@@ -8,9 +8,9 @@ set(DSP_SRC_FILES
 	Model/DetModel.cpp
 	Model/StoModel.cpp
 	Model/TssModel.cpp
+	Solver/DantzigWolfe/DwModel.cpp
 	Solver/DantzigWolfe/DwMaster.cpp
-	Solver/DantzigWolfe/DwMasterTr.cpp
-	Solver/DantzigWolfe/DwMasterTrLight.cpp
+	Solver/DantzigWolfe/DwHeuristic.cpp
 	Solver/DantzigWolfe/DwSolverSerial.cpp
 	Solver/DantzigWolfe/DwWorker.cpp
 	SolverInterface/OoqpEps.cpp

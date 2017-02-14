@@ -46,8 +46,7 @@ public:
 			tic_(0.0),
 			numIterations_(0),
 			numNodes_(0),
-			iterlim_(COIN_INT_MAX),
-			runHeuristics_(true) {
+			iterlim_(COIN_INT_MAX) {
 		/** nothing to do */
 	}
 
@@ -123,9 +122,6 @@ public:
 	/** get log level */
 	virtual int getLogLevel() {return message_->logLevel_;}
 
-	/** get heuristic runs on/off */
-	virtual bool getHeuristicRuns() {return runHeuristics_;}
-
 	/** get model pointer */
 	virtual DecModel * getModelPtr() {return model_;}
 
@@ -177,11 +173,11 @@ public:
 	/** set iteration limit */
 	virtual void setIterLimit(int n) {iterlim_ = n;}
 
-	/** set heuristic runs on/off */
-	virtual void setHeuristicRuns(bool on) {runHeuristics_ = on;}
-
 	/** set log level */
 	virtual void setLogLevel(int level) {message_->logLevel_ = level;}
+
+	/** set status */
+	void setStatus(int status) {status_ = status;}
 
 	//@}
 
@@ -248,7 +244,6 @@ protected:
 	int numNodes_;      /**< number of branch-and-bound tree nodes */
 
 	int iterlim_; /**< iteration limits */
-	bool runHeuristics_; /**< indicate whether heuristics should run or not */
 
 public:
 
