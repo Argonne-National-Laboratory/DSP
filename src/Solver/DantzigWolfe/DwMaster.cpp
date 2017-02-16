@@ -365,25 +365,8 @@ DSP_RTN_CODE DwMaster::solve() {
 		//DSPdebug(si_->writeMps("master"));
 	}
 
-	/** always start with phase 2 */
-	if (phase_ == 1) {
-		/** delete auxiliary columns */
-		si_->deleteCols(auxcolindices_.size(), &auxcolindices_[0]);
-		auxcolindices_.clear();
-		DSPdebugMessage("Phase 2 has %d rows and %d columns.\n", si_->getNumRows(), si_->getNumCols());
-
-		/** set objective function coefficients */
-		for (unsigned k = 0, j = 0; k < cols_generated_.size(); ++k)
-			if (cols_generated_[k]->active_) {
-				if (j >= si_->getNumCols()) {
-					message_->print(0, "Trying to access invalid column index %d (ncols %d)\n", j, si_->getNumCols());
-					return DSP_RTN_ERR;
-				}
-				si_->setObjCoeff(j, cols_generated_[k]->obj_);
-				j++;
-			}
-		phase_ = 2;
-	}
+	/** switch to phase 2 */
+	DSP_RTN_CHECK_RTN_CODE(switchToPhase2());
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -480,25 +463,8 @@ DSP_RTN_CODE DwMaster::solvePhase1() {
 DSP_RTN_CODE DwMaster::solvePhase2() {
 	BGN_TRY_CATCH
 
-	if (phase_ == 1) {
-		/** delete auxiliary columns */
-		si_->deleteCols(auxcolindices_.size(), &auxcolindices_[0]);
-		auxcolindices_.clear();
-		message_->print(3, "Phase 2 has %d rows and %d columns.\n", si_->getNumRows(), si_->getNumCols());
-
-		/** set objective function coefficients */
-		for (unsigned k = 0, j = 0; k < cols_generated_.size(); ++k)
-			if (cols_generated_[k]->active_) {
-				if (j >= si_->getNumCols()) {
-					message_->print(0, "Trying to access invalid column index %d (ncols %d)\n", j, si_->getNumCols());
-					return DSP_RTN_ERR;
-				}
-				si_->setObjCoeff(j, cols_generated_[k]->obj_);
-				j++;
-			}
-		phase_ = 2;
-		//DSPdebug(si_->writeMps("initialPhase2"));
-	}
+	/** switch to phase 2 */
+	DSP_RTN_CHECK_RTN_CODE(switchToPhase2());
 
 	/** set parameters */
 	worker_->setGapTolerance(par_->getDblParam("DW/GAPTOL"));
@@ -1787,4 +1753,28 @@ void DwMaster::printIterInfo() {
 		message_->print(2, "itercnt %d, ", si_->getIterationCount());
 	message_->print(2, "timing (total %.2f, master %.2f, gencols %.2f), statue %d\n",
 			CoinGetTimeOfDay() - t_total_, t_master_, t_colgen_, status_);
+}
+
+DSP_RTN_CODE DwMaster::switchToPhase2() {
+	BGN_TRY_CATCH
+	if (phase_ == 1) {
+		/** delete auxiliary columns */
+		si_->deleteCols(auxcolindices_.size(), &auxcolindices_[0]);
+		auxcolindices_.clear();
+		DSPdebugMessage("Phase 2 has %d rows and %d columns.\n", si_->getNumRows(), si_->getNumCols());
+
+		/** set objective function coefficients */
+		for (unsigned k = 0, j = 0; k < cols_generated_.size(); ++k)
+			if (cols_generated_[k]->active_) {
+				if (j >= si_->getNumCols()) {
+					message_->print(0, "Trying to access invalid column index %d (ncols %d)\n", j, si_->getNumCols());
+					return DSP_RTN_ERR;
+				}
+				si_->setObjCoeff(j, cols_generated_[k]->obj_);
+				j++;
+			}
+		phase_ = 2;
+	}
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+	return DSP_RTN_OK;
 }

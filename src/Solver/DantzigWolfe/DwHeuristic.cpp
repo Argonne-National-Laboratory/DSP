@@ -77,5 +77,8 @@ int DwRounding::solution(double &objective, std::vector<double> &solution) {
 	master->setPrimalSolution(&primsol[0]);
 	master->setStatus(status);
 
+	/** switch to phase 2 */
+	DSP_RTN_CHECK_RTN_CODE(master->switchToPhase2());
+
 	return found;
 }

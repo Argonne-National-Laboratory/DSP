@@ -52,6 +52,9 @@ public:
     /** finalize */
     virtual DSP_RTN_CODE finalize() {return DSP_RTN_OK;}
 
+    /** switch to phase 2 */
+    DSP_RTN_CODE switchToPhase2();
+
 	/** The function chooses branching objects and returns the pointers. */
 	virtual bool chooseBranchingObjects(
 			DspBranch*& branchingUp, /**< [out] branching-up object */
