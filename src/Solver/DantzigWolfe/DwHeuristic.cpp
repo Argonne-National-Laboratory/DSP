@@ -14,6 +14,7 @@ DspHeuristic(name, solver) {}
 int DwRounding::solution(double &objective, std::vector<double> &solution) {
 
 	int found = 0;
+	std::vector<int> rowadded;
 	std::vector<int> rowind;
 	std::vector<double> rowval;
 	double rounded;
@@ -50,6 +51,7 @@ int DwRounding::solution(double &objective, std::vector<double> &solution) {
 					pos++;
 				}
 			}
+			rowadded.push_back(si->getNumRows());
 			si->addRow(rowind.size(), &rowind[0], &rowval[0], rounded, rounded);
 		}
 	}
@@ -70,15 +72,18 @@ int DwRounding::solution(double &objective, std::vector<double> &solution) {
 		break;
 	}
 
+	/** switch to phase 2 */
+	DSP_RTN_CHECK_RTN_CODE(master->switchToPhase2());
+
+	/** delete rows added */
+	si->deleteRows(rowadded.size(), &rowadded[0]);
+
 	/** restore original problem data */
 	master->setBestPrimalObjective(objective);
 	master->setPrimalObjective(primobj);
 	master->setDualObjective(dualobj);
 	master->setPrimalSolution(&primsol[0]);
 	master->setStatus(status);
-
-	/** switch to phase 2 */
-	DSP_RTN_CHECK_RTN_CODE(master->switchToPhase2());
 
 	return found;
 }
