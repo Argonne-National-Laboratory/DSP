@@ -8,9 +8,11 @@
 #include <DantzigWolfe/DwModel.h>
 #include <DantzigWolfe/DwHeuristic.h>
 
-DwModel::DwModel(): DspModel() {}
+DwModel::DwModel(): DspModel(), master_(NULL) {}
 
 DwModel::DwModel(DecSolver* solver): DspModel(solver) {
+	master_ = dynamic_cast<DwMaster*>(solver_);
+	primsol_.resize(master_->ncols_orig_);
 	heuristics_.push_back(new DwRounding("Rounding", *solver_));
 }
 
@@ -20,31 +22,121 @@ DwModel::~DwModel() {
 }
 
 DSP_RTN_CODE DwModel::solve() {
-	double bestprimobj = COIN_DBL_MAX;
-	std::vector<double> solution;
-
 	BGN_TRY_CATCH
 
+	/** solve master */
 	solver_->solve();
 
-	if (par_->getBoolParam("DW/HEURISTICS")) {
-		switch (solver_->getStatus()) {
-		case DSP_STAT_OPTIMAL:
-		case DSP_STAT_FEASIBLE:
-		case DSP_STAT_LIM_ITERorTIME:
+	status_ = solver_->getStatus();
+
+	switch (status_) {
+	case DSP_STAT_OPTIMAL:
+	case DSP_STAT_FEASIBLE:
+	case DSP_STAT_LIM_ITERorTIME: {
+
+		primobj_ = master_->getPrimalObjective();
+		dualobj_ = -master_->getBestDualObjective();
+
+		/** parse solution */
+		int cpos = 0;
+		CoinZeroN(&primsol_[0], master_->ncols_orig_);
+		for (auto it = master_->cols_generated_.begin(); it != master_->cols_generated_.end(); it++) {
+			if ((*it)->active_) {
+				for (int i = 0; i < (*it)->x_.getNumElements(); ++i) {
+					if ((*it)->x_.getIndices()[i] < master_->ncols_orig_)
+						primsol_[(*it)->x_.getIndices()[i]] += (*it)->x_.getElements()[i] * master_->getPrimalSolution()[cpos];
+				}
+				cpos++;
+			}
+		}
+		//DspMessage::printArray(cpos, master_->getPrimalSolution());
+
+		//DspMessage::printArray(master_->ncols_orig_, &solution_[0]);
+		for (int j = 0; j < master_->ncols_orig_; ++j) {
+			double viol = std::max(master_->clbd_node_[j] - primsol_[j], primsol_[j] - master_->cubd_node_[j]);
+			if (viol > 1.0e-6) {
+				printf("Violated variable at %d by %e (%+e <= %+e <= %+e)\n", j, viol,
+						master_->clbd_node_[j], primsol_[j], master_->cubd_node_[j]);
+			}
+		}
+
+		/** run heuristics */
+		if (par_->getBoolParam("DW/HEURISTICS")) {
+			/** FIXME */
+			bestprimobj_ = COIN_DBL_MAX;
 			for (auto it = heuristics_.begin(); it != heuristics_.end(); it++) {
 				printf("Running %s heuristic:\n", (*it)->name());
-				int found = (*it)->solution(bestprimobj, solution);
-				printf("found %d bestprimobj %+e\n", found, bestprimobj);
+				int found = (*it)->solution(bestprimobj_, bestprimsol_);
+				printf("found %d bestprimobj %+e\n", found, bestprimobj_);
 			}
-			break;
-		default:
-			break;
 		}
+		break;
+	}
+	default:
+		break;
 	}
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
+}
+
+bool DwModel::chooseBranchingObjects(
+		DspBranch*& branchingUp, /**< [out] branching-up object */
+		DspBranch*& branchingDn  /**< [out] branching-down object */) {
+	int findPhase = 0;
+	bool branched = false;
+	double dist, maxdist = 1.0e-6;
+	int branchingIndex = -1;
+	double branchingValue;
+
+	BGN_TRY_CATCH
+
+	/** cleanup */
+	FREE_PTR(branchingUp)
+	FREE_PTR(branchingDn)
+
+	findPhase = 0;
+	while (findPhase < 2 && branchingIndex < 0) {
+		/** most fractional value */
+		for (int j = 0; j < master_->ncols_orig_; ++j) {
+			if (master_->ctype_orig_[j] == 'C') continue;
+			dist = fabs(primsol_[j] - floor(primsol_[j] + 0.5));
+			if (dist > maxdist) {
+				maxdist = dist;
+				branchingIndex = j;
+				branchingValue = primsol_[j];
+			}
+		}
+		findPhase++;
+	}
+
+	if (branchingIndex > -1) {
+		DSPdebugMessage("Creating branch objects on column %d (value %e).\n", branchingIndex, branchingValue);
+		branched = true;
+
+		/** creating branching objects */
+		branchingUp = new DspBranch();
+		branchingDn = new DspBranch();
+		for (int j = 0; j < master_->ncols_orig_; ++j) {
+			if (master_->ctype_orig_[j] == 'C') continue;
+			if (branchingIndex == j) {
+				branchingUp->push_back(j, ceil(branchingValue), master_->cubd_node_[j]);
+				branchingDn->push_back(j, master_->clbd_node_[j], floor(branchingValue));
+			} else if (master_->clbd_node_[j] > master_->clbd_orig_[j] || master_->cubd_node_[j] < master_->cubd_orig_[j]) {
+				/** store any bound changes made in parent nodes */
+				branchingUp->push_back(j, master_->clbd_node_[j], master_->cubd_node_[j]);
+				branchingDn->push_back(j, master_->clbd_node_[j], master_->cubd_node_[j]);
+			}
+		}
+		branchingUp->bestBound_ = master_->getBestDualObjective();
+		branchingDn->bestBound_ = master_->getBestDualObjective();
+	} else {
+		DSPdebugMessage("No branch object is found.\n");
+	}
+
+	END_TRY_CATCH_RTN(;,false)
+
+	return branched;
 }
 

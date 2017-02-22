@@ -45,17 +45,19 @@ public:
     DecSolver* getSolver() {return solver_;}
 
     DspParams* getParPtr() {return par_;}
-    int getStatus() {return solver_->getStatus();}
-    int getNumCols() {return solver_->getNumCols();}
-    double getBestPrimalObjective() {return solver_->getBestPrimalObjective();}
-    double getPrimalObjective() {return solver_->getPrimalObjective();}
-    double getDualObjective() {return solver_->getDualObjective();}
-    const double* getBestPrimalSolution() {return solver_->getBestPrimalSolution();}
-    const double* getPrimalSolution() {return solver_->getPrimalSolution();}
+    int getStatus() {return status_;}
+    double getBestPrimalObjective() {return bestprimobj_;}
+    double getPrimalObjective() {return primobj_;}
+    double getBestDualObjective() {return bestdualobj_;}
+    double getDualObjective() {return dualobj_;}
+    std::vector<double>& getBestPrimalSolution() {return bestprimsol_;}
+    std::vector<double>& getPrimalSolution() {return primsol_;}
 
-    bool chooseBranchingObjects(
+    virtual bool chooseBranchingObjects(
     			DspBranch*& branchingUp, /**< [out] branching-up object */
-    			DspBranch*& branchingDn  /**< [out] branching-down object */);
+    			DspBranch*& branchingDn  /**< [out] branching-down object */) {
+    	return false;
+    }
 
     void setIterLimit(int n) {solver_->setIterLimit(n);}
     void setTimeLimit(double t) {solver_->setTimeLimit(t);}
@@ -78,10 +80,15 @@ protected:
     std::vector<double> clbd_node_;
     std::vector<double> cubd_node_;
 
-    double bestprimobj_;
-    double bestdualobj_;
     std::vector<double> primsol_;
 #endif
+    int status_;
+    double bestprimobj_;
+    double bestdualobj_;
+    double primobj_;
+    double dualobj_;
+    std::vector<double> bestprimsol_; /**< integer feasible primal solution */
+    std::vector<double> primsol_; /**< primal solution (may not be integer feasible) */
 };
 
 #endif /* SRC_TREESEARCH_DSPMODEL_H_ */

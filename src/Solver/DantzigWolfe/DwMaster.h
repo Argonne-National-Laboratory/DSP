@@ -55,13 +55,8 @@ public:
     /** switch to phase 2 */
     DSP_RTN_CODE switchToPhase2();
 
-	/** The function chooses branching objects and returns the pointers. */
-	virtual bool chooseBranchingObjects(
-			DspBranch*& branchingUp, /**< [out] branching-up object */
-			DspBranch*& branchingDn  /**< [out] branching-down object */);
-
 	/** set branching objects */
-	void setBranchingObjects(const DspBranch* branchobj);
+	virtual void setBranchingObjects(const DspBranch* branchobj);
 
 	/** set best primal solution */
 	void setBestPrimalSolution(const double* solution);
@@ -100,19 +95,14 @@ protected:
 
     /** generate columns */
     virtual DSP_RTN_CODE generateCols(
-    		const double* price, /**< [in] price */
-			double*& piA,        /**< [out] pi^T A */
-			double& lb,          /**< [out] lower bound (only for phase 2) */
-			int& ncols           /**< [out] number of columns generated */);
+			int& ncols /**< [out] number of columns generated */);
 
     /** calculate piA */
     virtual DSP_RTN_CODE calculatePiA(
-    		const double* price, /**< [in] price */
-			double*& piA         /**< [out] pi^T A */);
+			std::vector<double>& piA /**< [out] pi^T A */);
 
     /** Add columns */
     virtual DSP_RTN_CODE addCols(
-    		const double* price,                  /**< [in] price */
     		const double* piA,                    /**< [in] pi^T A */
     		std::vector<int>& indices,            /**< [in] subproblem indices corresponding to cols*/
 			std::vector<int>& statuses,           /**< [in] subproblem solution status */
@@ -123,14 +113,10 @@ protected:
 
     /** Calculate Lagrangian bound */
     virtual DSP_RTN_CODE getLagrangianBound(
-    		const double* price,       /**< [in] price */
-			std::vector<double>& objs, /**< [in] subproblem objective values */
-			double& lb                 /**< [out] lower bound */);
+			std::vector<double>& objs /**< [in] subproblem objective values */);
 
     /** update master */
-    virtual DSP_RTN_CODE updateModel(
-    		const double* price, /**< [in] price */
-			double curLb         /**< [in] current lower bound */);
+    virtual DSP_RTN_CODE updateModel();
 
     /** termination test */
     virtual bool terminationTest(int nnewcols);
@@ -202,16 +188,16 @@ public:
     std::vector<DwCol*> cols_generated_; /**< columns generated */
 
     /**@name original master problem data */
-    CoinPackedMatrix* org_mat_; /**< constraint matrix */
-    double* org_clbd_;
-    double* org_cubd_;
-    double* org_obj_;
-    char* org_ctype_;
-    double* org_rlbd_;
-    double* org_rubd_;
+    CoinPackedMatrix* mat_orig_; /**< constraint matrix */
+    double* clbd_orig_;
+    double* cubd_orig_;
+    double* obj_orig_;
+    char* ctype_orig_;
+    double* rlbd_orig_;
+    double* rubd_orig_;
 
-	double* node_clbd_; /** current column lower bounds */
-	double* node_cubd_; /** current column upper bounds */
+	double* clbd_node_; /** current column lower bounds */
+	double* cubd_node_; /** current column upper bounds */
 
     int itercnt_;
 

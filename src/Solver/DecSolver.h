@@ -32,11 +32,9 @@ public:
 			message_(message),
 			si_(NULL),
 			status_(DSP_STAT_UNKNOWN),
-			bestprimsol_(NULL),
-			primsol_(NULL),
-			dualsol_(NULL),
 			bestprimobj_(COIN_DBL_MAX),
 			primobj_(COIN_DBL_MAX),
+			bestdualobj_(-COIN_DBL_MAX),
 			dualobj_(-COIN_DBL_MAX),
 			absgap_(COIN_DBL_MAX),
 			relgap_(COIN_DBL_MAX),
@@ -53,8 +51,6 @@ public:
 	/** default destructor */
 	virtual ~DecSolver() {
 		FREE_PTR(si_);
-		FREE_ARRAY_PTR(bestprimsol_);
-		FREE_ARRAY_PTR(primsol_);
 		for (unsigned i = 0; i < s_primsols_.size(); ++i)
 			FREE_ARRAY_PTR(s_primsols_[i]);
 		message_ = NULL;
@@ -70,13 +66,6 @@ public:
 
 	/** finalize */
 	virtual DSP_RTN_CODE finalize() = 0;
-
-	/** The function chooses branching objects and returns the pointers. */
-	virtual bool chooseBranchingObjects(
-			DspBranch*& branchingUp, /**< [out] branching-up object */
-			DspBranch*& branchingDn  /**< [out] branching-down object */) {
-		return false;
-	}
 
 public:
 
@@ -102,19 +91,22 @@ public:
 	virtual DSP_RTN_CODE getStatus() {return status_;}
 
 	/** get best primal solution */
-	virtual const double * getBestPrimalSolution() {return bestprimsol_;}
+	virtual const double * getBestPrimalSolution() {return &bestprimsol_[0];}
 
 	/** get primal solution */
-	virtual const double * getPrimalSolution() {return primsol_;}
+	virtual const double * getPrimalSolution() {return &primsol_[0];}
 
 	/** get dual solution */
-	virtual const double * getDualSolution() {return dualsol_;}
+	virtual const double * getDualSolution() {return &dualsol_[0];}
 
 	/** get best primal objective */
 	virtual double getBestPrimalObjective() {return bestprimobj_;}
 
 	/** get primal objective */
 	virtual double getPrimalObjective() {return primobj_;}
+
+	/** get best dual objective */
+	virtual double getBestDualObjective() {return bestdualobj_;}
 
 	/** get dual objective */
 	virtual double getDualObjective() {return dualobj_;}
@@ -163,6 +155,9 @@ public:
 
 	/** set primal objective */
 	virtual void setPrimalObjective(double primobj) {primobj_=primobj;}
+
+	/** set dual objective */
+	virtual void setBestDualObjective(double obj) {bestdualobj_=obj;}
 
 	/** set dual objective */
 	virtual void setDualObjective(double dualobj) {dualobj_=dualobj;}
@@ -227,11 +222,13 @@ protected:
 	OsiSolverInterface* si_; /**< Coin-Osi */
 
 	DSP_RTN_CODE status_;  /**< solution status */
-	double * bestprimsol_; /**< best primal solution */
-	double * primsol_;     /**< primal solution */
-	double * dualsol_;     /**< dual solution */
+	std::vector<double> bestprimsol_; /**< best primal solution */
+	std::vector<double> primsol_;     /**< primal solution */
+	std::vector<double> bestdualsol_; /**< bestdual solution */
+	std::vector<double> dualsol_;     /**< dual solution */
 	double bestprimobj_;   /**< best primal objective */
 	double primobj_;       /**< primal objective */
+	double bestdualobj_;   /**< best dual objective */
 	double dualobj_;       /**< dual objective */
 	double absgap_;        /**< absolute primal-dual gap */
 	double relgap_;        /**< relative primal-dual gap */

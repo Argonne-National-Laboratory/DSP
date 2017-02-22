@@ -15,34 +15,26 @@
 
 class DspNodeSolution: public AlpsSolution {
 protected:
-	int len_;          /**< length of solution array */
-	double* solution_; /**< solution */
+	std::vector<double> solution_; /**< solution */
 	double objvalue_;  /**< objective value */
 
 public:
 	/** default constructor */
 	DspNodeSolution():
 		AlpsSolution(),
-		len_(0),
-		solution_(NULL),
 		objvalue_(COIN_DBL_MAX) {}
 
-	DspNodeSolution(int len, const double* sol, double obj):
+	DspNodeSolution(std::vector<double>& sol, double obj):
 		AlpsSolution(),
-		len_(len),
-		objvalue_(obj) {
-		solution_ = new double [len_];
-		CoinCopyN(sol, len, solution_);
-	}
+		solution_(sol),
+		objvalue_(obj) {}
 
 	/** default destructor */
-	virtual ~DspNodeSolution() {
-		FREE_ARRAY_PTR(solution_)
-	}
+	virtual ~DspNodeSolution() {}
 
 	virtual void print(std::ostream& os) const {
-	//	os << "Objective value = " << objvalue_ << std::endl;
-		for (int j = 0; j < len_; ++j) {
+		os << "Objective value = " << objvalue_ << std::endl;
+		for (unsigned j = 0; j < solution_.size(); ++j) {
 			if (fabs(solution_[j]) > 1.0e-8)
 				os << "x[" << j << "] = " << solution_[j] << std::endl;
 		}

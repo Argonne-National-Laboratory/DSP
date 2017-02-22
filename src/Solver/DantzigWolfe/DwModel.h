@@ -9,6 +9,7 @@
 #define SRC_SOLVER_DANTZIGWOLFE_DWMODEL_H_
 
 #include <TreeSearch/DspModel.h>
+#include <DantzigWolfe/DwMaster.h>
 
 class DwModel: public DspModel {
 public:
@@ -23,6 +24,14 @@ public:
 
 	/** solve model */
     virtual DSP_RTN_CODE solve();
+
+    virtual bool chooseBranchingObjects(
+    			DspBranch*& branchingUp, /**< [out] branching-up object */
+    			DspBranch*& branchingDn  /**< [out] branching-down object */);
+
+private:
+
+    DwMaster* master_;
 };
 
 #endif /* SRC_SOLVER_DANTZIGWOLFE_DWMODEL_H_ */

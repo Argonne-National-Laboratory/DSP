@@ -45,7 +45,6 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 	/** retrieve objects */
 	DspNodeDesc* desc = dynamic_cast<DspNodeDesc*>(desc_);
 	DspModel* model = dynamic_cast<DspModel*>(desc_->getModel());
-	//DecSolver* solver = model->getSolver();
 	DspParams* par = model->getParPtr();
 	double relTol = 0.0001;//par->getDblParam("DW/GAPTOL");
 
@@ -91,18 +90,15 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 	/** any heuristic solution */
 	if (model->getBestPrimalObjective() < gUb) {
 		DSPdebugMessage("Found new upper bound %e\n", model->getBestPrimalObjective());
-		DspNodeSolution* nodesol = new DspNodeSolution(model->getNumCols(),
-				model->getBestPrimalSolution(), model->getBestPrimalObjective());
-		getKnowledgeBroker()->addKnowledge(AlpsKnowledgeTypeSolution,
-				nodesol, model->getBestPrimalObjective());
+		DspNodeSolution* nodesol = new DspNodeSolution(model->getBestPrimalSolution(), model->getBestPrimalObjective());
+		getKnowledgeBroker()->addKnowledge(AlpsKnowledgeTypeSolution, nodesol, model->getBestPrimalObjective());
 		wirteLog("heuristic", desc, model->getBestPrimalObjective());
 	}
 
 	switch (model->getStatus()) {
 	case DSP_STAT_OPTIMAL:
 	case DSP_STAT_FEASIBLE:
-	case DSP_STAT_LIM_ITERorTIME:
-	{
+	case DSP_STAT_LIM_ITERorTIME: {
 		quality_ = model->getDualObjective();
 		double curUb = model->getPrimalObjective();
 
@@ -123,8 +119,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 			} else {
 				DSPdebugMessage("The current node has feasible solution.\n");
 				if (curUb < gUb) {
-					DspNodeSolution* nodesol = new DspNodeSolution(
-							model->getNumCols(), model->getPrimalSolution(), curUb);
+					DspNodeSolution* nodesol = new DspNodeSolution(model->getPrimalSolution(), curUb);
 					getKnowledgeBroker()->addKnowledge(AlpsKnowledgeTypeSolution, nodesol, curUb);
 				}
 				/** no branching object is found; we are done! */
@@ -156,7 +151,6 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 	/** retrieve objects */
 	DspNodeDesc* desc = dynamic_cast<DspNodeDesc*>(desc_);
 	DspModel* model = dynamic_cast<DspModel*>(desc->getModel());
-	DecSolver* solver = model->getSolver();
 
 	/** new nodes to be returned */
 	std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > newNodes;
