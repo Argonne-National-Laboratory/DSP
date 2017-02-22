@@ -5,18 +5,19 @@
  *      Author: kibaekkim
  */
 
+#include <memory>
 #include <DantzigWolfe/DwHeuristic.h>
-#include "Solver/DantzigWolfe/DwMaster.h"
+#include <DantzigWolfe/DwMaster.h>
 
 DwRounding::DwRounding(std::string name, DecSolver &solver):
 DspHeuristic(name, solver) {}
 
 int DwRounding::solution(double &objective, std::vector<double> &solution) {
 
+	/** create branching objects */
+	std::shared_ptr<DspBranch> branch(new DspBranch);
+
 	int found = 0;
-	std::vector<int> rowadded;
-	std::vector<int> rowind;
-	std::vector<double> rowval;
 	double rounded;
 
 	DwMaster* master = dynamic_cast<DwMaster*>(solver_);
@@ -25,34 +26,20 @@ int DwRounding::solution(double &objective, std::vector<double> &solution) {
 	double primobj = master->getPrimalObjective();
 	double dualobj = master->getDualObjective();
 	int status = master->getStatus();
-	std::vector<double> primsol(master->getPrimalSolution(),
-			master->getPrimalSolution() + master->ncols_orig_);
+	std::vector<double> primsol(master->getPrimalSolution(), master->getPrimalSolution() + master->ncols_orig_);
 
 	master->setPrimalObjective(COIN_DBL_MAX);
 
 	for (int j = 0; j < master->ncols_orig_; ++j) {
-		if (master->org_ctype_[j] != 'C') {
+		if (master->ctype_orig_[j] != 'C') {
 			/** round */
 			rounded = round(primsol[j]);
-			rounded = std::min(rounded, master->node_cubd_[j]);
-			rounded = std::max(rounded, master->node_clbd_[j]);
+			rounded = std::min(rounded, master->cubd_node_[j]);
+			rounded = std::max(rounded, master->clbd_node_[j]);
 			/** fix */
-			rowind.clear();
-			rowval.clear();
-			int pos = 0;
-			for (auto it = master->cols_generated_.begin();
-					it != master->cols_generated_.end(); it++) {
-				if ((*it)->active_) {
-					int sparse_index = (*it)->x_.findIndex(j);
-					if (sparse_index > -1) {
-						rowind.push_back(pos);
-						rowval.push_back((*it)->x_.getElements()[sparse_index]);
-					}
-					pos++;
-				}
-			}
-			rowadded.push_back(si->getNumRows());
-			si->addRow(rowind.size(), &rowind[0], &rowval[0], rounded, rounded);
+			branch->index_.push_back(j);
+			branch->lb_.push_back(rounded);
+			branch->ub_.push_back(rounded);
 		}
 	}
 
@@ -63,7 +50,7 @@ int DwRounding::solution(double &objective, std::vector<double> &solution) {
 	case DSP_STAT_FEASIBLE:
 	case DSP_STAT_LIM_ITERorTIME:
 		if (master->getPrimalObjective() < objective) {
-			objective = master->getPrimalObjective();
+			objective = master->getBestDualObjective();
 			solution.assign(master->getPrimalSolution(), master->getPrimalSolution() + master->ncols_orig_);
 			found = 1;
 		}
@@ -74,9 +61,6 @@ int DwRounding::solution(double &objective, std::vector<double> &solution) {
 
 	/** switch to phase 2 */
 	DSP_RTN_CHECK_RTN_CODE(master->switchToPhase2());
-
-	/** delete rows added */
-	si->deleteRows(rowadded.size(), &rowadded[0]);
 
 	/** restore original problem data */
 	master->setBestPrimalObjective(objective);
