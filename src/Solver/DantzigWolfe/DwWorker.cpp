@@ -7,6 +7,7 @@
 
 //#define DSP_DEBUG
 
+#include "omp.h"
 #include "cplex.h"
 /** Coin */
 #include "OsiCbcSolverInterface.hpp"
@@ -412,7 +413,12 @@ DSP_RTN_CODE DwWorker::solveSubproblems() {
 	BGN_TRY_CATCH
 
 	/** TODO: That's it? Dual infeasible??? */
+	omp_set_num_threads(4);
+#pragma omp parallel for
 	for (int s = 0; s < parProcIdxSize_; ++s) {
+		int nthreads = omp_get_num_threads();
+		int tid = omp_get_thread_num();
+		printf("nthreads %d id %d\n", nthreads, tid);
 		/** reset problem status */
 		const OsiCbcSolverInterface* cbc = dynamic_cast<OsiCbcSolverInterface*>(si_[s]);
 		if (cbc)
@@ -432,7 +438,6 @@ DSP_RTN_CODE DwWorker::solveSubproblems() {
 				 * in which case presolve determines unboundedness without solve.
 				 */
 				si_[s]->resolve();
-				DSPdebug(si_[s]->writeLp("sub"));
 			}
 		} else {
 			/** solve LP relaxation */
