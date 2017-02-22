@@ -8,6 +8,7 @@
 #include "AlpsKnowledgeBrokerSerial.h"
 #include <DantzigWolfe/DwSolverSerial.h>
 #include <DantzigWolfe/DwMaster.h>
+#include <DantzigWolfe/DwBundleDual.h>
 #include <DantzigWolfe/DwWorker.h>
 
 DwSolverSerial::DwSolverSerial(
@@ -32,7 +33,8 @@ DSP_RTN_CODE DwSolverSerial::init() {
 	worker_ = new DwWorker(model_, par_, message_);
 
 	/** create master */
-	master_ = new DwMaster(worker_);
+	//master_ = new DwMaster(worker_);
+	master_ = new DwBundleDual(worker_);
 
 	/** initialize master */
 	DSP_RTN_CHECK_THROW(master_->init());

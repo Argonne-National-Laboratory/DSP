@@ -9,6 +9,7 @@
 #include "AlpsKnowledgeBrokerSerial.h"
 #include <DantzigWolfe/DwSolverMpi.h>
 #include <DantzigWolfe/DwMaster.h>
+#include <DantzigWolfe/DwBundleDual.h>
 #include <DantzigWolfe/DwWorkerMpi.h>
 
 DwSolverMpi::DwSolverMpi(
@@ -33,7 +34,7 @@ DSP_RTN_CODE DwSolverMpi::init() {
 
 	if (comm_rank_ == 0) {
 		/** create master */
-		master_ = new DwMaster(worker_);
+		master_ = new DwBundleDual(worker_);
 
 		/** initialize master */
 		DSP_RTN_CHECK_THROW(master_->init());

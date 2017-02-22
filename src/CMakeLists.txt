@@ -10,6 +10,7 @@ set(DSP_SRC_FILES
 	Model/TssModel.cpp
 	Solver/DantzigWolfe/DwModel.cpp
 	Solver/DantzigWolfe/DwMaster.cpp
+	Solver/DantzigWolfe/DwBundleDual.cpp
 	Solver/DantzigWolfe/DwHeuristic.cpp
 	Solver/DantzigWolfe/DwSolverSerial.cpp
 	Solver/DantzigWolfe/DwWorker.cpp
