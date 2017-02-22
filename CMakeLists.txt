@@ -107,6 +107,7 @@ if (PYDSP_COMPILE)
 else()
 	message(WARNING "${Red}Python interface will not be compiled.${ColourReset}")
 endif()
+set(PYDSP_COMPILE OFF)
 
 ##################################################
 # option for enabling ma57 (not working well)
