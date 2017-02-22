@@ -68,6 +68,9 @@ DwWorker::DwWorker(DecModel * model, DspParams * par, DspMessage * message) :
 
 	/** create subproblems */
 	DSP_RTN_CHECK_THROW(createSubproblems());
+
+	/** set number of cores */
+	omp_set_num_threads(par_->getIntParam("NUM_CORES"));
 }
 
 DwWorker::~DwWorker() {
@@ -413,12 +416,8 @@ DSP_RTN_CODE DwWorker::solveSubproblems() {
 	BGN_TRY_CATCH
 
 	/** TODO: That's it? Dual infeasible??? */
-	omp_set_num_threads(4);
 #pragma omp parallel for
 	for (int s = 0; s < parProcIdxSize_; ++s) {
-		int nthreads = omp_get_num_threads();
-		int tid = omp_get_thread_num();
-		printf("nthreads %d id %d\n", nthreads, tid);
 		/** reset problem status */
 		const OsiCbcSolverInterface* cbc = dynamic_cast<OsiCbcSolverInterface*>(si_[s]);
 		if (cbc)

@@ -153,7 +153,7 @@ void DspParams::initIntParams()
 	IntParams_.createParam("BD/NUM_CUTS_PER_ITER", 1);
 
 	/** number of cores used in OpenMP library (Benders only) */
-	IntParams_.createParam("BD/NUM_CORES", 1);
+	IntParams_.createParam("NUM_CORES", 1);
 
 	/** Benders cut priority (refer CONSHDLR_SEPAPRIORITY of SCIP constraint handler */
 	IntParams_.createParam("BD/CUT_PRIORITY", -200000);

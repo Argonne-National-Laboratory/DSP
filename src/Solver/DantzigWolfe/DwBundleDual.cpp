@@ -139,6 +139,11 @@ DSP_RTN_CODE DwBundleDual::createDualProblem() {
 	/** create solver */
 	si_ = new OsiCpxSolverInterface();
 
+	OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
+	if (cpx) {
+		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("NUM_CORES"));
+	}
+
 	/** display */
 	si_->messageHandler()->setLogLevel(-1);
 
