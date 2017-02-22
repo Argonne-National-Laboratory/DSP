@@ -362,8 +362,8 @@ DSP_RTN_CODE DwWorker::adjustObjFunction(
 				}
 			}
 		}
-		DSPdebugMessage("[Phase %d] Set objective coefficients for subproblem %d:\n", phase, sind);
-		DSPdebug(DspMessage::printArray(si_[s]->getNumCols(), si_[s]->getObjCoefficients()));
+		//DSPdebugMessage("[Phase %d] Set objective coefficients for subproblem %d:\n", phase, sind);
+		//DSPdebug(DspMessage::printArray(si_[s]->getNumCols(), si_[s]->getObjCoefficients()));
 	}
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
@@ -378,18 +378,24 @@ void DwWorker::setColBounds(int j, double lb, double ub) {
 		for (int s = 0; s < parProcIdxSize_; ++s) {
 			if (j < tss->getNumScenarios() * tss->getNumCols(0)) {
 				si_[s]->setColBounds(j % tss->getNumCols(0), lb, ub);
-				//DSPdebugMessage("subproblem %d changed column bounds: %d [%e %e]\n", parProcIdx_[s], j % tss->getNumCols(0), lb, ub);
+				sub_clbd_[s][j % tss->getNumCols(0)] = lb;
+				sub_cubd_[s][j % tss->getNumCols(0)] = ub;
+				DSPdebugMessage("subproblem %d changed column bounds: %d [%e %e]\n", parProcIdx_[s], j % tss->getNumCols(0), lb, ub);
 			} else {
 				int jj = j - tss->getNumScenarios() * tss->getNumCols(0);
 				si_[s]->setColBounds(tss->getNumCols(0) + jj % tss->getNumCols(1), lb, ub);
-				//DSPdebugMessage("subproblem %d changed column bounds: %d [%e %e]\n", parProcIdx_[s], tss->getNumCols(0) + jj % tss->getNumCols(1), lb, ub);
+				sub_clbd_[s][tss->getNumCols(0) + jj % tss->getNumCols(1)] = lb;
+				sub_cubd_[s][tss->getNumCols(0) + jj % tss->getNumCols(1)] = ub;
+				DSPdebugMessage("subproblem %d changed column bounds: %d [%e %e]\n", parProcIdx_[s], tss->getNumCols(0) + jj % tss->getNumCols(1), lb, ub);
 			}
 		}
 	} else {
 		for (int s = 0; s < parProcIdxSize_; ++s) {
 			if (coupled_[s][j] == true) {
 				si_[s]->setColBounds(j, lb, ub);
-				//DSPdebugMessage("subproblem %d changed column bounds: %d [%e %e]\n", parProcIdx_[s], j, lb, ub);
+				sub_clbd_[s][j] = lb;
+				sub_cubd_[s][j] = ub;
+				DSPdebugMessage("subproblem %d changed column bounds: %d [%e %e]\n", parProcIdx_[s], j, lb, ub);
 			}
 		}
 	}
@@ -412,32 +418,29 @@ DSP_RTN_CODE DwWorker::solveSubproblems() {
 		if (cbc)
 			cbc->getModelPtr()->setProblemStatus(-1);
 
-		/** solve LP relaxation */
-		si_[s]->resolve();
-#ifdef DSP_DEBUG
-		convertCoinToDspStatus(si_[s], status);
-		DSPdebugMessage("LP relaxation subproblem %d status %d\n", parProcIdx_[s], status);
-#endif
-
-		/** do branch-and-bound if there are integer variables */
-		if (si_[s]->getNumIntegers() > 0 && si_[s]->isProvenOptimal()) {
+		if (si_[s]->getNumIntegers() > 0) {
 			/** solve */
 			si_[s]->branchAndBound();
-//			DSPdebugMessage("Subproblem(%d) solution:\n", parProcIdx_[s]);
-//			DSPdebug(DspMessage::printArray(si_[s]->getNumCols(), si_[s]->getColSolution()));
-
 #ifdef DSP_DEBUG
 			convertCoinToDspStatus(si_[s], status);
 			DSPdebugMessage("MILP subproblem %d status %d\n", parProcIdx_[s], status);
 #endif
-		} else if (si_[s]->isProvenDualInfeasible()) {
-			/** If primal unbounded, ray may not be immediately available.
-			 * But, it becomes available if it is solved one more time.
-			 * This is probably because the resolve() above behaved as initialSolve(),
-			 * in which case presolve determines unboundedness without solve.
-			 */
+			if (si_[s]->isProvenDualInfeasible()) {
+				/** If primal unbounded, ray may not be immediately available.
+				 * But, it becomes available if it is solved one more time.
+				 * This is probably because the resolve() above behaved as initialSolve(),
+				 * in which case presolve determines unboundedness without solve.
+				 */
+				si_[s]->resolve();
+				DSPdebug(si_[s]->writeLp("sub"));
+			}
+		} else {
+			/** solve LP relaxation */
 			si_[s]->resolve();
-			DSPdebug(si_[s]->writeLp("sub"));
+#ifdef DSP_DEBUG
+			convertCoinToDspStatus(si_[s], status);
+			DSPdebugMessage("LP relaxation subproblem %d status %d\n", parProcIdx_[s], status);
+#endif
 		}
 	}
 
