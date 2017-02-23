@@ -201,6 +201,7 @@ void DspParams::initIntParams()
     IntParams_.createParam("DW/ITER_LIM", MAX_INT_NUM);
     IntParams_.createParam("DW/HEURISTICS/TRIVIAL/ITER_LIM", MAX_INT_NUM);
     IntParams_.createParam("DW/HEURISTICS/DIVE/ITER_LIM", MAX_INT_NUM);
+    IntParams_.createParam("DW/SUB/THREADS", 1);
 }
 
 void DspParams::initDblParams()
