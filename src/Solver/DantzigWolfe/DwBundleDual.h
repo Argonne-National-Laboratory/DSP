@@ -9,6 +9,7 @@
 #define SRC_SOLVER_DANTZIGWOLFE_DWBUNDLEDUAL_H_
 
 #include <memory>
+#include <algorithm>
 #include <DantzigWolfe/DwMaster.h>
 
 class DwBundleDual: public DwMaster {
@@ -78,6 +79,11 @@ private:
 
     /** create dual master problem */
     DSP_RTN_CODE createDualProblem();
+
+    typedef std::pair<int,double> pairIntDbl;
+    static bool compPair ( const pairIntDbl& l, const pairIntDbl& r) {
+    	return l.second < r.second;
+    }
 
 private:
 

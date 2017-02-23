@@ -40,6 +40,30 @@ DSP_RTN_CODE DwBundleDual::solve() {
 	DSP_RTN_CHECK_RTN_CODE(initialColumns());
 	bestdualobj_ = std::min(bestdualobj_, dualobj_);
 
+	/**
+	 * The codes below are experimental to see if deactivating some dual variables would help convergence.
+	 */
+#if 0
+	/** deactivate some dual variables (by fixed to zeros) */
+	std::vector<pairIntDbl> weight;
+	const CoinPackedMatrix* mat = si_->getMatrixByCol();
+	for (int j = nrows_conv_; j < si_->getNumCols(); ++j) {
+		const CoinShallowPackedVector col = mat->getVector(j);
+		double val = 0.0;
+		for (int i = 0; i < col.getNumElements(); ++i)
+			val -= col.getElements()[i];
+		weight.push_back(std::make_pair(j,val));
+	}
+	std::sort(weight.begin(), weight.end(), compPair);
+
+	/** FIXME: Let's try 90% activation */
+	int ndeactive = nrows_orig_ - floor(nrows_orig_*0.9);
+	for (int j = 0; j < ndeactive; ++j) {
+		//printf("Fixed column(%d) bounds to zeros.\n", weight[j].first);
+		si_->setColBounds(weight[j].first, 0.0, 0.0);
+	}
+#endif
+
 	DSP_RTN_CHECK_RTN_CODE(gutsOfSolve());
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
@@ -101,20 +125,15 @@ DSP_RTN_CODE DwBundleDual::createDualProblem() {
 
 	/** master problem */
 	std::shared_ptr<CoinPackedMatrix> mat(nullptr);
-	std::vector<double> clbd, cubd, obj;
-
-	/** allocate memory */
-	clbd.resize(nrows_);
-	cubd.resize(nrows_);
-	obj.resize(nrows_);
+	std::vector<double> clbd(nrows_), cubd(nrows_), obj(nrows_);
 
 	/** necessary dual variables */
 	bestdualsol_.resize(nrows_);
 	dualsol_.resize(nrows_);
-	CoinFillN(&bestdualsol_[0], nrows_conv_, COIN_DBL_MAX);
-	CoinZeroN(&bestdualsol_[nrows_conv_], nrows_orig_);
-	CoinFillN(&dualsol_[0], nrows_conv_, COIN_DBL_MAX);
-	CoinZeroN(&dualsol_[nrows_conv_], nrows_orig_);
+	std::fill(bestdualsol_.begin(), bestdualsol_.begin() + nrows_conv_, COIN_DBL_MAX);
+	std::fill(bestdualsol_.begin() + nrows_conv_, bestdualsol_.end(), 0.0);
+	std::fill(dualsol_.begin(), dualsol_.begin() + nrows_conv_, COIN_DBL_MAX);
+	std::fill(dualsol_.begin() + nrows_conv_, dualsol_.end(), 0.0);
 
 	/** other initialization */
 	p_.resize(nrows_orig_);
@@ -123,9 +142,9 @@ DSP_RTN_CODE DwBundleDual::createDualProblem() {
 	mat.reset(new CoinPackedMatrix(false, 0, 0));
 	mat->setDimensions(0, nrows_);
 
-	CoinFillN(&clbd[0], nrows_conv_, -COIN_DBL_MAX);
-	CoinFillN(&cubd[0], nrows_conv_, +COIN_DBL_MAX);
-	CoinFillN(&obj[0], nrows_conv_, -1.0);
+	std::fill(clbd.begin(), clbd.begin() + nrows_conv_, -COIN_DBL_MAX);
+	std::fill(cubd.begin(), cubd.begin() + nrows_conv_, +COIN_DBL_MAX);
+	std::fill(obj.begin(), obj.begin() + nrows_conv_, -1.0);
 	for (int i = 0; i < nrows_orig_; ++i) {
 		clbd[nrows_conv_+i] = 0.0;
 		cubd[nrows_conv_+i] = 0.0;
@@ -145,7 +164,7 @@ DSP_RTN_CODE DwBundleDual::createDualProblem() {
 	}
 
 	/** display */
-	si_->messageHandler()->setLogLevel(-1);
+	si_->messageHandler()->setLogLevel(std::max(-1,par_->getIntParam("LOG_LEVEL")-4));
 
 	/** load problem data */
 	si_->loadProblem(*mat, &clbd[0], &cubd[0], &obj[0], NULL, NULL);
