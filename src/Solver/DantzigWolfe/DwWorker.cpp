@@ -100,6 +100,8 @@ DSP_RTN_CODE DwWorker::createSubproblems() {
 	if (model_->isStochastic())
 		tss = dynamic_cast<TssModel*>(model_);
 
+	num_timelim_stops_.resize(parProcIdxSize_, 0);
+
 	for (int s = 0; s < parProcIdxSize_; ++s) {
 		if (model_->isStochastic()) {
 			DSP_RTN_CHECK_RTN_CODE(
@@ -143,7 +145,7 @@ DSP_RTN_CODE DwWorker::createSubproblems() {
 		setTimeLimit(par_->getDblParam("DW/SUB/TIME_LIM"));
 		OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_[s]);
 		if (cpx) {
-			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, 1);
+			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("DW/SUB/THREADS"));
 			if (nintegers > 0)
 				cpx->switchToMIP();
 		}
@@ -226,8 +228,13 @@ DSP_RTN_CODE DwWorker::generateCols(
 			if (cpxstat == CPXMIP_TIME_LIM_FEAS) {
 				message_->print(1, "Subproblem %d terminated due to time limit.\n", sind);
 				status = DSP_STAT_LIM_ITERorTIME;
+				num_timelim_stops_[s]++;
 			}
+		} else {
+			num_timelim_stops_[s] = 0;
+			setTimeLimit(par_->getDblParam("DW/SUB/TIME_LIM"));
 		}
+
 		DSPdebugMessage("sind %d status %d\n", sind, status);
 		statuses.push_back(status);
 
@@ -424,6 +431,14 @@ DSP_RTN_CODE DwWorker::solveSubproblems() {
 			cbc->getModelPtr()->setProblemStatus(-1);
 
 		if (si_[s]->getNumIntegers() > 0) {
+
+			/** increase time limit */
+			if (num_timelim_stops_[s] > 0) {
+				double timlim = par_->getDblParam("DW/SUB/TIME_LIM") * (num_timelim_stops_[s]+1);
+				setTimeLimit(timlim);
+				message_->print(3, "Increased the time limit to %f for subproblem %d\n", timlim, parProcIdx_[s]);
+			}
+
 			/** solve */
 			si_[s]->branchAndBound();
 #ifdef DSP_DEBUG

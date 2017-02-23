@@ -96,6 +96,10 @@ protected:
 	int * parProcIdx_;   /**< subproblem indices for this worker */
 
 	int nsubprobs_; /**< number of total subproblems */
+
+private:
+
+	std::vector<int> num_timelim_stops_; /**< number of stops due to time limit */
 };
 
 #endif /* SRC_SOLVER_DANTZIGWOLFE_DWWORKER_H_ */
