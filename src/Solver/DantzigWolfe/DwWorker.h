@@ -53,6 +53,9 @@ public:
 	/** set gap tolerance */
 	virtual void setGapTolerance(double gaptol);
 
+	/** reset time increment */
+	virtual void resetTimeIncrement();
+
 private:
 
 	/** set column bounds */

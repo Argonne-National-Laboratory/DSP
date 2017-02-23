@@ -37,6 +37,11 @@ public:
 	/** set column bounds */
 	virtual void setColBounds(int size, const int* indices, const double* lbs, const double* ubs);
 
+	/** reset time increment */
+	virtual void resetTimeIncrement() {
+		resetTimeIncrement_ = 1;
+	}
+
 	/** In this function, non-root processes receive signals
 	 * from the root process and do proper processing. */
 	DSP_RTN_CODE receiver();
@@ -55,6 +60,7 @@ private:
 
 	int npiA_; /**< size of piA vector */
 	double* piA_; /**< local piA vector */
+	int resetTimeIncrement_;
 };
 
 #endif /* SRC_SOLVER_DANTZIGWOLFE_DWWORKERMPI_H_ */

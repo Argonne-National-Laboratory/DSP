@@ -226,7 +226,7 @@ DSP_RTN_CODE DwWorker::generateCols(
 		if (status == DSP_STAT_UNKNOWN) {
 			int cpxstat = CPXgetstat(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
 			if (cpxstat == CPXMIP_TIME_LIM_FEAS) {
-				message_->print(1, "Subproblem %d terminated due to time limit.\n", sind);
+				message_->print(2, "  Subproblem %d terminated due to time limit.\n", sind);
 				status = DSP_STAT_LIM_ITERorTIME;
 				num_timelim_stops_[s]++;
 			}
@@ -422,6 +422,13 @@ DSP_RTN_CODE DwWorker::solveSubproblems() {
 
 	BGN_TRY_CATCH
 
+	double timlim = par_->getDblParam("DW/SUB/TIME_LIM");
+	int max_stops = *std::max_element(num_timelim_stops_.begin(), num_timelim_stops_.end());
+	if (max_stops > 0) {
+		timlim *= (max_stops+1);
+		message_->print(3, "  Increased the time limit to %f for subproblems\n", timlim);
+	}
+
 	/** TODO: That's it? Dual infeasible??? */
 #pragma omp parallel for
 	for (int s = 0; s < parProcIdxSize_; ++s) {
@@ -433,11 +440,8 @@ DSP_RTN_CODE DwWorker::solveSubproblems() {
 		if (si_[s]->getNumIntegers() > 0) {
 
 			/** increase time limit */
-			if (num_timelim_stops_[s] > 0) {
-				double timlim = par_->getDblParam("DW/SUB/TIME_LIM") * (num_timelim_stops_[s]+1);
+			if (max_stops > 0)
 				setTimeLimit(timlim);
-				message_->print(3, "Increased the time limit to %f for subproblem %d\n", timlim, parProcIdx_[s]);
-			}
 
 			/** solve */
 			si_[s]->branchAndBound();
@@ -482,6 +486,10 @@ void DwWorker::setGapTolerance(double gaptol) {
 		if (cpx)
 			CPXsetdblparam(cpx->getEnvironmentPtr(), CPX_PARAM_EPGAP, gaptol);
 	}
+}
+
+void DwWorker::resetTimeIncrement() {
+	std::fill(num_timelim_stops_.begin(), num_timelim_stops_.end(), 0);
 }
 
 DSP_RTN_CODE DwWorker::resetSubproblems() {

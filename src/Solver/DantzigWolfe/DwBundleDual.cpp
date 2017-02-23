@@ -265,7 +265,7 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 			primobj_ = primal_si_->getObjValue();
 			primsol_.assign(primal_si_->getColSolution(), primal_si_->getColSolution() + primal_si_->getNumCols());
 		} else {
-			message_->print(3, "The primal master could not be solved to optimality.\n");
+			message_->print(3, "  The primal master could not be solved to optimality.\n");
 			primobj_ = COIN_DBL_MAX;
 			primsol_.assign(si_->getRowPrice(), si_->getRowPrice() + si_->getNumRows());
 		}
@@ -290,8 +290,10 @@ DSP_RTN_CODE DwBundleDual::updateModel() {
 	/** descent test */
 	bool foundBetter = false;
 	if (dualobj_ <= bestdualobj_ + mL_ * v_) {
-		message_->print(3, "Serious step: best dual %+e -> %e\n", -bestdualobj_, -dualobj_);
+		message_->print(2, "  Serious step: best dual %+e -> %e\n", -bestdualobj_, -dualobj_);
 		foundBetter = true;
+		/** reset subproblem time increment */
+		worker_->resetTimeIncrement();
 	}
 
 	/** update weight */

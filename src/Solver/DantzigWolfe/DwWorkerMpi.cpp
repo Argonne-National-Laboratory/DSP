@@ -15,7 +15,7 @@ DwWorkerMpi::DwWorkerMpi(
 		DspMessage * message,
 		MPI_Comm comm):
 DwWorker(model, par, message),
-comm_(comm) {
+comm_(comm), resetTimeIncrement_(0) {
 	MPI_Comm_rank(comm_, &comm_rank_);
 	MPI_Comm_size(comm_, &comm_size_);
 
@@ -133,6 +133,11 @@ DSP_RTN_CODE DwWorkerMpi::generateCols(
 	MPI_Bcast(&phase, 1, MPI_INT, 0, comm_);
 	MPI_Bcast(piA_, npiA_, MPI_DOUBLE, 0, comm_);
 	//DSPdebugMessage("Rank %d received phase %d and piA_ vector of size %d.\n", comm_rank_, phase, npiA_);
+
+	/** reset time increment? */
+	MPI_Bcast(&resetTimeIncrement_, 1, MPI_INT, 0, comm_);
+	if (resetTimeIncrement_)
+		DwWorker::resetTimeIncrement();
 
 	DSP_RTN_CHECK_RTN_CODE(
 			DwWorker::generateCols(phase, piA_, indices, statuses, cxs, objs, sols));
