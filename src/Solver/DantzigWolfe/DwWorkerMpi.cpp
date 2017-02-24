@@ -136,8 +136,16 @@ DSP_RTN_CODE DwWorkerMpi::generateCols(
 
 	/** reset time increment? */
 	MPI_Bcast(&resetTimeIncrement_, 1, MPI_INT, 0, comm_);
-	if (resetTimeIncrement_)
+	if (resetTimeIncrement_) {
 		DwWorker::resetTimeIncrement();
+		resetTimeIncrement_ = 0;
+	}
+
+	/** get maximum number of stops due to time limit */
+	int maxstops_s = *std::max_element(num_timelim_stops_.begin(), num_timelim_stops_.end());
+	int maxstops_r = 0;
+	MPI_Allreduce(&maxstops_s, &maxstops_r, 1, MPI_INT, MPI_MAX, comm_);
+	std::fill(num_timelim_stops_.begin(), num_timelim_stops_.end(), maxstops_r);
 
 	DSP_RTN_CHECK_RTN_CODE(
 			DwWorker::generateCols(phase, piA_, indices, statuses, cxs, objs, sols));
