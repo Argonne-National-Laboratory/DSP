@@ -100,8 +100,6 @@ protected:
 
 	int nsubprobs_; /**< number of total subproblems */
 
-private:
-
 	std::vector<int> num_timelim_stops_; /**< number of stops due to time limit */
 };
 
