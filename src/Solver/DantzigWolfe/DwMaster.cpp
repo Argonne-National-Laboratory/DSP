@@ -629,7 +629,16 @@ DSP_RTN_CODE DwMaster::generateCols(
 	DSP_RTN_CHECK_RTN_CODE(
 			worker_->generateCols(phase_, &piA[0], subinds, status_subs_, subcxs, subobjs, subsols));
 
-	if (status_ == DSP_STAT_FEASIBLE) {
+	/** any subproblem primal/dual infeasible? */
+	bool isInfeasible = false;
+	for (auto status = status_subs_.begin(); status != status_subs_.end(); status++)
+		if (*status == DSP_STAT_PRIM_INFEASIBLE ||
+			*status == DSP_STAT_DUAL_INFEASIBLE) {
+			isInfeasible = true;
+			break;
+		}
+
+	if (!isInfeasible) {
 		/** calculate lower bound */
 		if (phase_ == 2) {
 			DSP_RTN_CHECK_RTN_CODE(getLagrangianBound(subobjs));
