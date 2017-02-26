@@ -425,7 +425,7 @@ DSP_RTN_CODE DwWorker::solveSubproblems() {
 	double timlim = par_->getDblParam("DW/SUB/TIME_LIM");
 	int max_stops = *std::max_element(num_timelim_stops_.begin(), num_timelim_stops_.end());
 	if (max_stops > 0) {
-		timlim *= (max_stops+1);
+		timlim *= std::pow(2,max_stops);
 		message_->print(3, "  Increased the time limit to %f for subproblems\n", timlim);
 	}
 
