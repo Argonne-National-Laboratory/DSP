@@ -255,6 +255,14 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 		}
 
 		v_ = dualobj_ - bestdualobj_;
+
+		/** adjust v if subproblem was not solved to optimality */
+		for (auto it = status_subs_.begin(); it != status_subs_.end(); it++)
+			if (*it != DSP_STAT_OPTIMAL) {
+				v_ = std::min(v_, -1.0e-4);
+				break;
+			}
+
 		alpha_ = -v_;
 		for (int j = 0; j < nrows_orig_; ++j)
 			alpha_ -= p_[j] * d[j];
@@ -332,7 +340,7 @@ bool DwBundleDual::terminationTest(int nnewcols) {
 	if (relgap_ <= 1.0e-4)
 		return true;
 
-	if (v_ >= -par_->getDblParam("DW/GAPTOL")*(1+fabs(bestdualobj_)))
+	if (v_ >= 0.0)
 		return true;
 
 	if (iterlim_ <= itercnt_)

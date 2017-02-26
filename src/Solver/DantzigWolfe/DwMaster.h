@@ -120,9 +120,6 @@ protected:
 
     /** termination test */
     virtual bool terminationTest(int nnewcols);
-
-    /** termination test after column generation*/
-    virtual bool terminationTestColgen(std::vector<int>& statuses);
 #if 0
     /** Run heuristics */
     virtual DSP_RTN_CODE heuristics();
@@ -205,6 +202,10 @@ public:
     double t_total_; /**< total time */
     double t_master_; /**< master solution time */
     double t_colgen_; /**< column generation time */
+
+protected:
+
+    std::vector<int> status_subs_; /**< subproblem status */
 
 };
 

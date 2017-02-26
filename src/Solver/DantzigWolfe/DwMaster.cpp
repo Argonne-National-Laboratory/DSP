@@ -438,6 +438,11 @@ DSP_RTN_CODE DwMaster::gutsOfSolve() {
 		t_colgen_ += CoinGetTimeOfDay() - stime;
 
 		/** subproblem solution may declare infeasibility. */
+		for (auto st = status_subs_.begin(); st != status_subs_.end(); st++)
+			if (*st == DSP_STAT_PRIM_INFEASIBLE) {
+				status_ = DSP_STAT_PRIM_INFEASIBLE;
+				break;
+			}
 		if (status_ == DSP_STAT_PRIM_INFEASIBLE)
 			break;
 
@@ -611,7 +616,6 @@ DSP_RTN_CODE DwMaster::generateCols(
 	std::vector<double> piA;
 	/** column generation info */
 	std::vector<int> subinds;
-	std::vector<int> substatus;
 	std::vector<double> subcxs;
 	std::vector<double> subobjs;
 	std::vector<CoinPackedVector*> subsols;
@@ -623,10 +627,7 @@ DSP_RTN_CODE DwMaster::generateCols(
 
 	/** generate columns */
 	DSP_RTN_CHECK_RTN_CODE(
-			worker_->generateCols(phase_, &piA[0], subinds, substatus, subcxs, subobjs, subsols));
-
-	/** termination test */
-	terminationTestColgen(substatus);
+			worker_->generateCols(phase_, &piA[0], subinds, status_subs_, subcxs, subobjs, subsols));
 
 	if (status_ == DSP_STAT_FEASIBLE) {
 		/** calculate lower bound */
@@ -637,7 +638,7 @@ DSP_RTN_CODE DwMaster::generateCols(
 
 		/** create and add columns */
 		DSP_RTN_CHECK_RTN_CODE(
-				addCols(&piA[0], subinds, substatus, subcxs, subobjs, subsols, ncols));
+				addCols(&piA[0], subinds, status_subs_, subcxs, subobjs, subsols, ncols));
 	}
 
 	/** free memory for subproblem solutions */
@@ -808,25 +809,6 @@ DSP_RTN_CODE DwMaster::calculatePiA(
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;
-}
-
-bool DwMaster::terminationTestColgen(std::vector<int>& statuses) {
-	bool term = false;
-	status_ = DSP_STAT_FEASIBLE;
-	for (unsigned s = 0; s < statuses.size(); ++s) {
-		if (statuses[s] != DSP_STAT_OPTIMAL &&
-				statuses[s] != DSP_STAT_DUAL_INFEASIBLE &&
-				statuses[s] != DSP_STAT_LIM_ITERorTIME) {
-			status_ = DSP_STAT_PRIM_INFEASIBLE;
-			break;
-		}
-		DSPdebugMessage("statuses[%d] %d\n", s, statuses[s]);
-	}
-	if (status_ == DSP_STAT_PRIM_INFEASIBLE) {
-		DSPdebugMessage("Subproblems are infeasible.\n");
-		term = true;
-	}
-	return term;
 }
 
 #if 0
