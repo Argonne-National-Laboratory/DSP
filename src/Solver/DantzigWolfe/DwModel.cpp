@@ -37,39 +37,41 @@ DSP_RTN_CODE DwModel::solve() {
 		primobj_ = master_->getPrimalObjective();
 		dualobj_ = -master_->getBestDualObjective();
 
-		/** parse solution */
-		int cpos = 0;
-		CoinZeroN(&primsol_[0], master_->ncols_orig_);
-		for (auto it = master_->cols_generated_.begin(); it != master_->cols_generated_.end(); it++) {
-			if ((*it)->active_) {
-				for (int i = 0; i < (*it)->x_.getNumElements(); ++i) {
-					if ((*it)->x_.getIndices()[i] < master_->ncols_orig_)
-						primsol_[(*it)->x_.getIndices()[i]] += (*it)->x_.getElements()[i] * master_->getPrimalSolution()[cpos];
+		if (primobj_ < 1.0e+20) {
+			/** parse solution */
+			int cpos = 0;
+			CoinZeroN(&primsol_[0], master_->ncols_orig_);
+			for (auto it = master_->cols_generated_.begin(); it != master_->cols_generated_.end(); it++) {
+				if ((*it)->active_) {
+					for (int i = 0; i < (*it)->x_.getNumElements(); ++i) {
+						if ((*it)->x_.getIndices()[i] < master_->ncols_orig_)
+							primsol_[(*it)->x_.getIndices()[i]] += (*it)->x_.getElements()[i] * master_->getPrimalSolution()[cpos];
+					}
+					cpos++;
 				}
-				cpos++;
 			}
-		}
-		//DspMessage::printArray(cpos, master_->getPrimalSolution());
+			//DspMessage::printArray(cpos, master_->getPrimalSolution());
 
-		//DspMessage::printArray(master_->ncols_orig_, &solution_[0]);
-		for (int j = 0; j < master_->ncols_orig_; ++j) {
-			double viol = std::max(master_->clbd_node_[j] - primsol_[j], primsol_[j] - master_->cubd_node_[j]);
-			if (viol > 1.0e-6) {
-				printf("Violated variable at %d by %e (%+e <= %+e <= %+e)\n", j, viol,
-						master_->clbd_node_[j], primsol_[j], master_->cubd_node_[j]);
+			for (int j = 0; j < master_->ncols_orig_; ++j) {
+				double viol = std::max(master_->clbd_node_[j] - primsol_[j], primsol_[j] - master_->cubd_node_[j]);
+				if (viol > 1.0e-6) {
+					printf("Violated variable at %d by %e (%+e <= %+e <= %+e)\n", j, viol,
+							master_->clbd_node_[j], primsol_[j], master_->cubd_node_[j]);
+				}
 			}
-		}
 
-		/** run heuristics */
-		if (par_->getBoolParam("DW/HEURISTICS")) {
-			/** FIXME */
-			bestprimobj_ = COIN_DBL_MAX;
-			for (auto it = heuristics_.begin(); it != heuristics_.end(); it++) {
-				printf("Running %s heuristic:\n", (*it)->name());
-				int found = (*it)->solution(bestprimobj_, bestprimsol_);
-				printf("found %d bestprimobj %+e\n", found, bestprimobj_);
+			/** run heuristics */
+			if (par_->getBoolParam("DW/HEURISTICS")) {
+				/** FIXME */
+				bestprimobj_ = COIN_DBL_MAX;
+				for (auto it = heuristics_.begin(); it != heuristics_.end(); it++) {
+					printf("Running %s heuristic:\n", (*it)->name());
+					int found = (*it)->solution(bestprimobj_, bestprimsol_);
+					printf("found %d bestprimobj %+e\n", found, bestprimobj_);
+				}
 			}
-		}
+		} else
+			status_ = DSP_STAT_PRIM_INFEASIBLE;
 		break;
 	}
 	default:
