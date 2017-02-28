@@ -5,6 +5,8 @@
  *      Author: kibaekkim
  */
 
+//#define DSP_DEBUG
+
 #include "cplex.h"
 #include "OsiCpxSolverInterface.hpp"
 #include "Utility/DspUtility.h"
@@ -32,13 +34,20 @@ DSP_RTN_CODE DwBundleDual::solve() {
 	t_master_ = 0.0;
 	t_colgen_ = 0.0;
 
+	bestdualsol_.resize(nrows_);
+	dualsol_.resize(nrows_);
+	std::fill(bestdualsol_.begin(), bestdualsol_.end(), 0.0);
+	std::fill(dualsol_.begin(), dualsol_.end(), 0.0);
+
 	/** update quadratic term */
 	u_ = 1.0;
+	counter_ = 0;
 	updateCenter(u_);
 
 	/** generate initial columns */
 	DSP_RTN_CHECK_RTN_CODE(initialColumns());
 	bestdualobj_ = std::min(bestdualobj_, dualobj_);
+	bestdualobj_ = dualobj_;
 
 	/**
 	 * The codes below are experimental to see if deactivating some dual variables would help convergence.
@@ -101,10 +110,12 @@ DSP_RTN_CODE DwBundleDual::createPrimalProblem() {
 	mat->setDimensions(nrows_, 0);
 
 	/** row bounds */
-	std::vector<double> rlbd(nrows_, 1.0);
-	std::vector<double> rubd(nrows_, 1.0);
-	CoinCopyN(rlbd_orig_, nrows_orig_, &rlbd[nrows_conv_]);
-	CoinCopyN(rubd_orig_, nrows_orig_, &rubd[nrows_conv_]);
+	std::vector<double> rlbd(nrows_);
+	std::vector<double> rubd(nrows_);
+	std::fill(rlbd.begin(), rlbd.begin() + nrows_conv_, 1.0);
+	std::fill(rubd.begin(), rubd.begin() + nrows_conv_, 1.0);
+	std::copy(rlbd_orig_, rlbd_orig_ + nrows_orig_, rlbd.begin() + nrows_conv_);
+	std::copy(rubd_orig_, rubd_orig_ + nrows_orig_, rubd.begin() + nrows_conv_);
 
 	/** create solver */
 	primal_si_.reset(new OsiCpxSolverInterface());
@@ -114,6 +125,7 @@ DSP_RTN_CODE DwBundleDual::createPrimalProblem() {
 
 	/** set display */
 	primal_si_->messageHandler()->setLogLevel(0);
+	DSPdebug(primal_si_->messageHandler()->setLogLevel(1));
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -136,7 +148,10 @@ DSP_RTN_CODE DwBundleDual::createDualProblem() {
 	std::fill(dualsol_.begin() + nrows_conv_, dualsol_.end(), 0.0);
 
 	/** other initialization */
-	p_.resize(nrows_orig_);
+	p_.reserve(nrows_orig_+nrows_branch_);
+	d_.reserve(nrows_orig_+nrows_branch_);
+	std::fill(p_.begin(), p_.end(), 0.0);
+	std::fill(d_.begin(), d_.end(), 0.0);
 
 	/** create row-wise matrix and set number of rows */
 	mat.reset(new CoinPackedMatrix(false, 0, 0));
@@ -148,11 +163,15 @@ DSP_RTN_CODE DwBundleDual::createDualProblem() {
 	for (int i = 0; i < nrows_orig_; ++i) {
 		clbd[nrows_conv_+i] = 0.0;
 		cubd[nrows_conv_+i] = 0.0;
-		if (rlbd_orig_[i] > -1.0e+20)
-			cubd[nrows_conv_+i] = COIN_DBL_MAX;
-		if (rubd_orig_[i] < 1.0e+20)
-			clbd[nrows_conv_+i] = -COIN_DBL_MAX;
 		obj[nrows_conv_+i] = -u_*bestdualsol_[nrows_conv_+i];
+		if (rlbd_orig_[i] > -1.0e+20) {
+			cubd[nrows_conv_+i] = COIN_DBL_MAX;
+			obj[nrows_conv_+i] -= rlbd_orig_[i];
+		}
+		if (rubd_orig_[i] < 1.0e+20) {
+			clbd[nrows_conv_+i] = -COIN_DBL_MAX;
+			obj[nrows_conv_+i] -= rubd_orig_[i];
+		}
 	}
 
 	/** create solver */
@@ -161,6 +180,8 @@ DSP_RTN_CODE DwBundleDual::createDualProblem() {
 	OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
 	if (cpx) {
 		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("NUM_CORES"));
+		/** TODO: CPLEX Bug (https://www.ibm.com/developerworks/community/forums/html/topic?id=39012909-cf2b-479c-bf94-3a725ca9d9f4&ps=25) */
+		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARALG, 2);
 	}
 
 	/** display */
@@ -178,10 +199,19 @@ DSP_RTN_CODE DwBundleDual::createDualProblem() {
 }
 
 DSP_RTN_CODE DwBundleDual::updateCenter(double penalty) {
+	double coef;
 	OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
+	const double* rlbd = primal_si_->getRowLower();
+	const double* rubd = primal_si_->getRowUpper();
 	if (cpx) {
 		for (int j = nrows_conv_; j < nrows_; ++j) {
-			si_->setObjCoeff(j, -u_*bestdualsol_[j]);
+			/** objective coefficient */
+			coef = -u_*bestdualsol_[j];
+			if (rlbd[j] > -1.0e+20)
+				coef -= rlbd[j];
+			if (rubd[j] < 1.0e+20)
+				coef -= rubd[j];
+			si_->setObjCoeff(j, coef);
 			CPXchgqpcoef(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), j, j, penalty);
 		}
 	} else {
@@ -215,6 +245,7 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 	case CPX_STAT_UNBOUNDED:
 	case CPX_STAT_INForUNBD:
 		status_ = DSP_STAT_DUAL_INFEASIBLE;
+		message_->print(5, "Unexpected CPLEX status %d\n", cpxstat);
 		break;
 	case CPX_STAT_ABORT_OBJ_LIM:
 	case CPX_STAT_ABORT_PRIM_OBJ_LIM:
@@ -243,18 +274,22 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 
 		dualsol_.assign(si_->getColSolution(), si_->getColSolution() + si_->getNumCols());
 
-		std::vector<double> d(nrows_orig_, 0.0);
-		dualobj_ = si_->getObjValue();
+		d_.resize(nrows_-nrows_conv_);
+		p_.resize(nrows_-nrows_conv_);
+		double polyapprox = 0.0;
 		absp_ = 0.0;
-		for (int j = 0; j < nrows_orig_; ++j) {
-			d[j] = dualsol_[nrows_conv_+j] - bestdualsol_[nrows_conv_+j];
-			p_[j] = -u_ * d[j];
-			dualobj_ += 0.5 * u_ * bestdualsol_[nrows_conv_+j]*bestdualsol_[nrows_conv_+j];
-			dualobj_ -= 0.5 * u_ * d[j] * d[j];
-			absp_ += fabs(p_[j]);
+		for (int j = nrows_conv_; j < nrows_; ++j) {
+			d_[j-nrows_conv_] = dualsol_[j] - bestdualsol_[j];
+			p_[j-nrows_conv_] = -u_ * d_[j-nrows_conv_];
+			polyapprox += u_ * dualsol_[j] * (bestdualsol_[j] - 0.5 * dualsol_[j]);
+			absp_ += fabs(p_[j-nrows_conv_]);
+//			printf("j %d: dualsol %+e, bestdualsol %+e, d %+e, p %+e, polyapprox %+e\n",
+//					j, dualsol_[j], bestdualsol_[j], d[j-nrows_conv_], p_[j-nrows_conv_], polyapprox);
 		}
+//		printf("u*dualsol*(bestdualsol-0.5*dualsol) = %+e\n", polyapprox);
+		polyapprox += si_->getObjValue();
 
-		v_ = dualobj_ - bestdualobj_;
+		v_ = polyapprox - bestdualobj_;
 
 		/** adjust v if subproblem was not solved to optimality */
 		for (auto it = status_subs_.begin(); it != status_subs_.end(); it++)
@@ -264,16 +299,17 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 			}
 
 		alpha_ = -v_;
-		for (int j = 0; j < nrows_orig_; ++j)
-			alpha_ -= p_[j] * d[j];
+		for (int j = nrows_conv_; j < nrows_; ++j)
+			alpha_ -= p_[j-nrows_conv_] * d_[j-nrows_conv_];
 
 		/** get primal solutions by solving the primal master */
+		DSPdebug(primal_si_->writeMps("PrimMaster"));
 		primal_si_->resolve();
 		if (primal_si_->isProvenOptimal()) {
 			primobj_ = primal_si_->getObjValue();
 			primsol_.assign(primal_si_->getColSolution(), primal_si_->getColSolution() + primal_si_->getNumCols());
 		} else {
-			message_->print(3, "  The primal master could not be solved to optimality.\n");
+			message_->print(5, "  The primal master could not be solved to optimality.\n");
 			primobj_ = COIN_DBL_MAX;
 			primsol_.assign(si_->getRowPrice(), si_->getRowPrice() + si_->getNumRows());
 		}
@@ -291,9 +327,9 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 }
 
 DSP_RTN_CODE DwBundleDual::updateModel() {
-	double u = u_, newu;
-
 	BGN_TRY_CATCH
+
+	double u = u_, newu;
 
 	/** descent test */
 	bool foundBetter = false;
@@ -320,8 +356,9 @@ DSP_RTN_CODE DwBundleDual::updateModel() {
 		bestdualsol_ = dualsol_;
 	} else {
 		eps_ = std::min(eps_, absp_ + alpha_);
-		if (linerr_ > std::max(eps_, -10*v_) && counter_ < -3)
+		if (-linerr_ > std::max(eps_, -10*v_) && counter_ < -3)
 			u = 2 * u_ * (1 - (dualobj_ - bestdualobj_) / v_);
+//		printf("#### linerr_ %+e, eps_ %+e, -10*v_ %+e, u %+e\n", -linerr_, eps_, -10*v_, u);
 		newu = std::min(u, 10*u_);
 		counter_ = std::min(counter_-1,-1);
 		if (u_ != newu)
@@ -375,12 +412,19 @@ DSP_RTN_CODE DwBundleDual::addRows(
 
 	/** allocate memory */
 	std::vector<double> Ax(nrows_orig_, 0.0);
-	cutvec.reserve(nrows_conv_+nrows_orig_);
+	cutvec.reserve(nrows_);
 
 	/** reset counter */
 	nadded = 0;
 
-	linerr_ = bestdualobj_;
+	/** linearization error */
+	linerr_ = 0.0;
+	for (int i = nrows_conv_; i < nrows_; ++i) {
+		if (primal_si_->getRowLower()[i] > -1.0e+20)
+			linerr_ += primal_si_->getRowLower()[i] * d_[i-nrows_conv_];
+		if (primal_si_->getRowUpper()[i] < 1.0e+20)
+			linerr_ += primal_si_->getRowUpper()[i] * d_[i-nrows_conv_];
+	}
 
 	for (unsigned int s = 0; s < indices.size(); ++s) {
 		int sind = indices[s]; /**< actual subproblem index */
@@ -401,35 +445,39 @@ DSP_RTN_CODE DwBundleDual::addRows(
 		/** take A x^k */
 		mat_orig_->times(*x, &Ax[0]);
 
-		/** dual objective and linearization error */
-		linerr_ -= cxs[s];
+		/** clear cut vector */
+		cutvec.clear();
+
+		/** original constraints */
+		if (statuses[s] != DSP_STAT_DUAL_INFEASIBLE)
+			cutvec.insert(sind, 1.0);
 		for (int i = 0; i < nrows_orig_; ++i) {
-			linerr_ += Ax[i] * bestdualsol_[nrows_conv_+i];
-			if (rlbd_orig_[i] > -1.0e+20)
-				linerr_ -= bestdualsol_[nrows_conv_+i] * rlbd_orig_[i];
-			if (rubd_orig_[i] < 1.0e+20)
-				linerr_ -= bestdualsol_[nrows_conv_+i] * rubd_orig_[i];
+			cutcoef = Ax[i];
+			linerr_ -= cutcoef * d_[i];
+			if (fabs(cutcoef) > 1.0e-10)
+				cutvec.insert(nrows_conv_+i, cutcoef);
 		}
+		cutrhs = cxs[s];
+
+		/** branching objects */
+		for (int i = 0; i < nrows_branch_; ++i) {
+			int j = branch_row_to_col_[nrows_core_ + i];
+			int sparse_index = x->findIndex(j);
+			if (sparse_index == -1) continue;
+			cutcoef = x->getElements()[sparse_index];
+			linerr_ -= cutcoef * d_[nrows_orig_+i];
+			if (fabs(cutcoef) > 1.0e-10)
+				cutvec.insert(nrows_core_+i, cutcoef);
+		}
+
+		DSPdebugMessage("subproblem %d: status %d, objective %+e, violation %+e\n", sind, statuses[s], objs[s], dualsol_[sind] - objs[s]);
 
 		if (dualsol_[sind] > objs[s] + 1.0e-6 ||
 				statuses[s] == DSP_STAT_DUAL_INFEASIBLE) {
-
-			/** clear cut vector */
-			cutvec.clear();
-
-			/** original constraints */
-			if (statuses[s] != DSP_STAT_DUAL_INFEASIBLE)
-				cutvec.insert(sind, 1.0);
-			cutrhs = cxs[s];
-			for (int i = 0; i < nrows_orig_; ++i) {
-				cutcoef = Ax[i];
-				if (rlbd_orig_[i] > -1.0e+20)
-					cutcoef -= rlbd_orig_[i];
-				if (rubd_orig_[i] < 1.0e+20)
-					cutcoef -= rubd_orig_[i];
-				if (fabs(cutcoef) > 1.0e-10)
-					cutvec.insert(nrows_conv_+i, cutcoef);
-			}
+#ifdef DSP_DEBUG_MORE
+			DspMessage::printArray(&cutvec);
+			printf("cutrhs %+e\n", cutrhs);
+#endif
 
 			/** add row to the dual master */
 			si_->addRow(cutvec, -COIN_DBL_MAX, cutrhs);
@@ -454,15 +502,19 @@ DSP_RTN_CODE DwBundleDual::getLagrangianBound(
 	BGN_TRY_CATCH
 
 	/** calculate lower bound */
-	dualobj_ = 0.0;
-	for (int j = 0; j < nrows_orig_; ++j) {
-		if (rlbd_orig_[j] > -1.0e+20)
-			dualobj_ -= dualsol_[nrows_conv_+j] * rlbd_orig_[j];
-		else if (rubd_orig_[j] < 1.0e+20)
-			dualobj_ -= dualsol_[nrows_conv_+j] * rubd_orig_[j];
+	dualobj_ = -std::accumulate(objs.begin(), objs.end(), 0.0);
+	DSPdebugMessage("Sum of subproblem objectives: %+e\n", -dualobj_);
+	const double* rlbd = primal_si_->getRowLower();
+	const double* rubd = primal_si_->getRowUpper();
+	for (int j = nrows_conv_; j < nrows_; ++j) {
+		if (rlbd[j] > -1.0e+20)
+			dualobj_ -= dualsol_[j] * rlbd[j];
+		else if (rubd[j] < 1.0e+20)
+			dualobj_ -= dualsol_[j] * rubd[j];
 	}
-	for (unsigned int s = 0; s < objs.size(); ++s)
-		dualobj_ -= objs[s];
+
+	/** linearization error */
+	linerr_ += bestdualobj_ - dualobj_;
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -489,15 +541,46 @@ void DwBundleDual::setBranchingObjects(const DspBranch* branchobj) {
 
 	/** remove all columns in the primal master */
 	std::vector<int> delcols(primal_si_->getNumCols());
-	CoinIotaN(&delcols[0], primal_si_->getNumCols(), 0);
+	std::iota(delcols.begin(), delcols.end(), 0.0);
 	primal_si_->deleteCols(primal_si_->getNumCols(), &delcols[0]);
 
 	/** remove all rows in the dual master */
 	std::vector<int> delrows(si_->getNumRows());
-	CoinIotaN(&delrows[0], si_->getNumRows(), 0);
+	std::iota(delrows.begin(), delrows.end(), 0.0);
 	si_->deleteRows(si_->getNumRows(), &delrows[0]);
-#if 1
-	/** add branching rows */
+
+	/** remove branching rows and columns */
+	if (nrows_branch_ > 0) {
+		std::vector<int> delinds(nrows_branch_);
+		std::iota(delinds.begin(), delinds.end(), nrows_core_);
+		primal_si_->deleteRows(nrows_branch_, &delinds[0]);
+		si_->deleteCols(nrows_branch_, &delinds[0]);
+		nrows_branch_ = 0;
+	}
+
+	/** add branching rows and columns */
+	for (unsigned j = 0; j < branchobj->index_.size(); ++j) {
+		if (branchobj->lb_[j] > clbd_orig_[branchobj->index_[j]]) {
+			branch_row_to_col_[nrows_core_ + nrows_branch_] = branchobj->index_[j];
+			primal_si_->addRow(0, NULL, NULL, branchobj->lb_[j], COIN_DBL_MAX);
+			si_->addCol(0, NULL, NULL, 0.0, COIN_DBL_MAX, branchobj->lb_[j]);
+			nrows_branch_++;
+		}
+		if (branchobj->ub_[j] < cubd_orig_[branchobj->index_[j]]) {
+			branch_row_to_col_[nrows_core_ + nrows_branch_] = branchobj->index_[j];
+			primal_si_->addRow(0, NULL, NULL, -COIN_DBL_MAX, branchobj->ub_[j]);
+			si_->addCol(0, NULL, NULL, -COIN_DBL_MAX, 0.0, branchobj->ub_[j]);
+			nrows_branch_++;
+		}
+	}
+
+	/** update the number of rows */
+	nrows_ = nrows_core_ + nrows_branch_;
+
+	std::vector<int> rind; /**< column indices for branching row */
+	std::vector<double> rval; /** column values for branching row */
+
+	/** add branching columns and rows */
 	for (auto it = cols_generated_.begin(); it != cols_generated_.end(); it++) {
 		(*it)->active_ = true;
 		for (unsigned j = 0, i = 0; j < branchobj->index_.size(); ++j) {
@@ -512,20 +595,54 @@ void DwBundleDual::setBranchingObjects(const DspBranch* branchobj) {
 		}
 
 		if ((*it)->active_) {
+			/** create a column for core rows */
+			rind.clear();
+			rval.clear();
+			for (int i = 0; i < (*it)->col_.getNumElements(); ++i) {
+				if ((*it)->col_.getIndices()[i] < nrows_core_) {
+					rind.push_back((*it)->col_.getIndices()[i]);
+					rval.push_back((*it)->col_.getElements()[i]);
+				}
+			}
+
+			/** append column elements for the branching rows */
+			for (unsigned j = 0, i = 0; j < branchobj->index_.size(); ++j) {
+				int sparse_index = (*it)->x_.findIndex(branchobj->index_[j]);
+				double val = 0.0;
+				if (sparse_index > -1)
+					val = (*it)->x_.getElements()[sparse_index];
+				if (branchobj->lb_[j] > clbd_orig_[branchobj->index_[j]]) {
+					if (fabs(val) > 1.0e-10) {
+						rind.push_back(nrows_core_+i);
+						rval.push_back(val);
+					}
+					i++;
+				}
+				if (branchobj->ub_[j] < cubd_orig_[branchobj->index_[j]]) {
+					if (fabs(val) > 1.0e-10) {
+						rind.push_back(nrows_core_+i);
+						rval.push_back(val);
+					}
+					i++;
+				}
+			}
+
+			/** assign the core-row column */
+			(*it)->col_.setVector(rind.size(), &rind[0], &rval[0]);
+
+			/** add row and column */
 			si_->addRow((*it)->col_, -COIN_DBL_MAX, (*it)->obj_);
 			primal_si_->addCol((*it)->col_, 0.0, COIN_DBL_MAX, (*it)->obj_);
 		}
 	}
-#else
-	for (auto it = cols_generated_.begin(); it != cols_generated_.end(); it++)
-		(*it)->active_ = false;
-#endif
 	message_->print(3, "Appended dynamic columns in the master (%d / %u cols).\n", si_->getNumRows(), cols_generated_.size());
 
+#if 0
 	/** apply column bounds */
 	std::vector<int> ncols_inds(ncols_orig_);
-	CoinIotaN(&ncols_inds[0], ncols_orig_, 0);
+	std::iota(ncols_inds.begin(), ncols_inds.end(), 0);
 	worker_->setColBounds(ncols_orig_, &ncols_inds[0], clbd_node_, cubd_node_);
+#endif
 
 	/** set known best bound */
 	bestdualobj_ = branchobj->bestBound_;
@@ -534,8 +651,8 @@ void DwBundleDual::setBranchingObjects(const DspBranch* branchobj) {
 }
 
 void DwBundleDual::printIterInfo() {
-	message_->print(1, "Iteration %3d: Primal %+e, Best %+e ",
-			itercnt_, primobj_, -bestdualobj_);
+	message_->print(1, "Iteration %3d: Primal %+e, Dual %+e, Approx %+e, Best Dual %+e ",
+			itercnt_, primobj_, -dualobj_, -bestdualobj_-v_, -bestdualobj_);
 	if (relgap_ < 1000)
 		message_->print(1, "(gap %.2f %%), ", relgap_*100);
 	else

@@ -36,6 +36,7 @@ rubd_orig_(NULL),
 clbd_node_(NULL),
 cubd_node_(NULL),
 itercnt_(0),
+ngenerated_(0),
 t_total_(0.0),
 t_master_(0.0),
 t_colgen_(0.0) {
@@ -648,7 +649,9 @@ DSP_RTN_CODE DwMaster::generateCols(
 		/** create and add columns */
 		DSP_RTN_CHECK_RTN_CODE(
 				addCols(&piA[0], subinds, status_subs_, subcxs, subobjs, subsols, ncols));
-	}
+	} else
+		ncols = 0;
+	ngenerated_ = ncols;
 
 	/** free memory for subproblem solutions */
 	for (unsigned i = 0; i < subsols.size(); ++i)
@@ -1480,7 +1483,6 @@ void DwMaster::setBranchingObjects(const DspBranch* branchobj) {
 			}
 
 			/** assign the core-row column */
-			(*it)->col_.clear();
 			(*it)->col_.setVector(col_inds.size(), &col_inds[0], &col_elems[0]);
 
 			/** add column */

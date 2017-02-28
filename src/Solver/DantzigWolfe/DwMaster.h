@@ -197,6 +197,7 @@ public:
 	double* cubd_node_; /** current column upper bounds */
 
     int itercnt_;
+    int ngenerated_;
 
     /**@name Time stamps */
     double t_total_; /**< total time */
