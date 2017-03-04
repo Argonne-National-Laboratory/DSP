@@ -48,6 +48,7 @@ DSP_RTN_CODE DwSolverMpi::init() {
 		alps_->AlpsPar()->setEntry(AlpsParams::nodeLogInterval, par->getIntParam("ALPS/NODE_LOG_INTERVAL"));
 		alps_->AlpsPar()->setEntry(AlpsParams::nodeLimit, par->getIntParam("ALPS/NODE_LIM"));
 		alps_->AlpsPar()->setEntry(AlpsParams::timeLimit, par->getDblParam("ALPS/TIME_LIM"));
+		alps_->AlpsPar()->setEntry(AlpsParams::clockType, AlpsClockTypeCpu);
 	}
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;
