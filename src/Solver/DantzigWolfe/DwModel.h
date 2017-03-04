@@ -32,6 +32,7 @@ public:
 private:
 
     DwMaster* master_;
+    double infeasibility_;
 };
 
 #endif /* SRC_SOLVER_DANTZIGWOLFE_DWMODEL_H_ */
