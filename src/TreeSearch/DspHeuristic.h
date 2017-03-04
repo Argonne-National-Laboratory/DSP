@@ -8,13 +8,15 @@
 #ifndef SRC_TREESEARCH_DSPHEURISTIC_H_
 #define SRC_TREESEARCH_DSPHEURISTIC_H_
 
-#include "Solver/DecSolver.h"
+#include <vector>
+
+class DspModel;
 
 class DspHeuristic {
 public:
-	DspHeuristic(std::string name, DecSolver &solver) {
+	DspHeuristic(std::string name, DspModel &model) {
 		name_ = name;
-		solver_ = &solver;
+		model_ = &model;
 	}
 
 	virtual ~DspHeuristic() {}
@@ -27,7 +29,7 @@ public:
 
 protected:
 	std::string name_;
-	DecSolver *solver_;
+	DspModel *model_;
 };
 
 #endif /* SRC_TREESEARCH_DSPHEURISTIC_H_ */

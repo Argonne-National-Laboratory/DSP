@@ -15,6 +15,7 @@ struct DspBranch {
 	std::vector<double> lb_;
 	std::vector<double> ub_;
 	double bestBound_; /**< best bound */
+	std::vector<double> dualsol_;
 
 	void push_back(int index, double lb, double ub) {
 		index_.push_back(index);
