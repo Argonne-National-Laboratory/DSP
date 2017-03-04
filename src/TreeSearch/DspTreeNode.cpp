@@ -48,9 +48,6 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 	DspParams* par = model->getParPtr();
 	double relTol = 0.0001;//par->getDblParam("DW/GAPTOL");
 
-	double alpsTimeRemain = par->getDblParam("ALPS/TIME_LIM") - getKnowledgeBroker()->timer().getWallClock();
-	double dwTimeLim = CoinMin(par->getDblParam("DW/TIME_LIM"), alpsTimeRemain);
-
 	/** bounds */
 	double curUb = getKnowledgeBroker()->getIncumbentValue();
 	double gUb = curUb;
@@ -72,9 +69,8 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 		model->setBranchingObjects(desc->getBranchingObject());
 	}
 
-	alpsTimeRemain = par->getDblParam("ALPS/TIME_LIM") - getKnowledgeBroker()->timer().getWallClock();
-	dwTimeLim = CoinMin(par->getDblParam("DW/TIME_LIM"), alpsTimeRemain);
-
+	double alpsTimeRemain = par->getDblParam("ALPS/TIME_LIM") - getKnowledgeBroker()->timer().getWallClock();
+	double dwTimeLim = CoinMin(par->getDblParam("DW/TIME_LIM"), alpsTimeRemain);
 	model->setIterLimit(par->getIntParam("DW/ITER_LIM"));
 	model->setTimeLimit(dwTimeLim);
 
