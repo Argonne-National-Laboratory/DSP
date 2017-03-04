@@ -1,7 +1,6 @@
 include_directories(Model Solver Utility)
 
 set(DSP_SRC_FILES
-	DspDriver.cpp
 	Model/BlkModel.cpp
 	Model/DecBlkModel.cpp
 	Model/DecTssModel.cpp
@@ -23,7 +22,6 @@ set(DSP_SRC_FILES
 if (MPI_CXX_FOUND)
 	set(DSP_SRC_FILES
 		${DSP_SRC_FILES}
-		DspDriverMpi.cpp
 		Solver/DantzigWolfe/DwSolverMpi.cpp
 		Solver/DantzigWolfe/DwWorkerMpi.cpp
 		Utility/DspMpi.cpp)
