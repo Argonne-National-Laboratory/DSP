@@ -23,6 +23,35 @@ alpha_(COIN_DBL_MAX),
 linerr_(COIN_DBL_MAX) {
 }
 
+DwBundleDual::DwBundleDual(const DwBundleDual& rhs):
+	DwMaster(rhs),
+	v_(rhs.v_),
+	counter_(rhs.counter_),
+	u_(rhs.u_),
+	eps_(rhs.eps_),
+	absp_(rhs.absp_),
+	alpha_(rhs.alpha_),
+	linerr_(rhs.linerr_) {
+	d_ = rhs.d_;
+	p_ = rhs.p_;
+	primal_si_.reset(rhs.primal_si_->clone());
+}
+
+DwBundleDual& DwBundleDual::operator =(const DwBundleDual& rhs) {
+	DwMaster::operator =(rhs);
+	v_ = rhs.v_;
+	counter_ = rhs.counter_;
+	u_ = rhs.u_;
+	eps_ = rhs.eps_;
+	absp_ = rhs.absp_;
+	alpha_ = rhs.alpha_;
+	linerr_ = rhs.linerr_;
+	d_ = rhs.d_;
+	p_ = rhs.p_;
+	primal_si_.reset(rhs.primal_si_->clone());
+	return *this;
+}
+
 DwBundleDual::~DwBundleDual() {
 }
 
@@ -30,24 +59,32 @@ DSP_RTN_CODE DwBundleDual::solve() {
 	BGN_TRY_CATCH
 
 	itercnt_ = 0;
-	t_total_ = CoinGetTimeOfDay();
+	t_start_ = CoinGetTimeOfDay();
+	t_total_ = 0.0;
 	t_master_ = 0.0;
 	t_colgen_ = 0.0;
-
-	bestdualsol_.resize(nrows_);
-	dualsol_.resize(nrows_);
-	std::fill(bestdualsol_.begin(), bestdualsol_.end(), 0.0);
-	std::fill(dualsol_.begin(), dualsol_.end(), 0.0);
 
 	/** update quadratic term */
 	u_ = 1.0;
 	counter_ = 0;
 	updateCenter(u_);
 
+	/** initial price to generate columns */
+	bestdualsol_.resize(nrows_, 0.0);
+	dualsol_ = bestdualsol_;
+	std::fill(dualsol_.begin(), dualsol_.begin() + nrows_conv_, COIN_DBL_MAX);
+
 	/** generate initial columns */
-	DSP_RTN_CHECK_RTN_CODE(initialColumns());
-	bestdualobj_ = std::min(bestdualobj_, dualobj_);
-	bestdualobj_ = dualobj_;
+	if (si_->getNumRows() == 0) {
+		double stime = CoinGetTimeOfDay();
+		DSP_RTN_CHECK_RTN_CODE(generateCols());
+		t_colgen_ += CoinGetTimeOfDay() - stime;
+		message_->print(3, "Generated %u initial columns. Initial dual bound %e\n", ngenerated_, dualobj_);
+		if (dualobj_ < bestdualobj_) {
+			bestdualobj_ = dualobj_;
+			bestdualsol_ = dualsol_;
+		}
+	}
 
 	/**
 	 * The codes below are experimental to see if deactivating some dual variables would help convergence.
@@ -83,10 +120,8 @@ DSP_RTN_CODE DwBundleDual::solve() {
 DSP_RTN_CODE DwBundleDual::createProblem() {
 	BGN_TRY_CATCH
 
-	clbd_node_ = new double [ncols_orig_];
-	cubd_node_ = new double [ncols_orig_];
-	CoinCopyN(clbd_orig_, ncols_orig_, clbd_node_);
-	CoinCopyN(cubd_orig_, ncols_orig_, cubd_node_);
+	clbd_node_ = clbd_orig_;
+	cubd_node_ = cubd_orig_;
 
 	DSP_RTN_CHECK_RTN_CODE(createPrimalProblem());
 	DSP_RTN_CHECK_RTN_CODE(createDualProblem());
@@ -114,8 +149,8 @@ DSP_RTN_CODE DwBundleDual::createPrimalProblem() {
 	std::vector<double> rubd(nrows_);
 	std::fill(rlbd.begin(), rlbd.begin() + nrows_conv_, 1.0);
 	std::fill(rubd.begin(), rubd.begin() + nrows_conv_, 1.0);
-	std::copy(rlbd_orig_, rlbd_orig_ + nrows_orig_, rlbd.begin() + nrows_conv_);
-	std::copy(rubd_orig_, rubd_orig_ + nrows_orig_, rubd.begin() + nrows_conv_);
+	std::copy(rlbd_orig_.begin(), rlbd_orig_.begin() + nrows_orig_, rlbd.begin() + nrows_conv_);
+	std::copy(rubd_orig_.begin(), rubd_orig_.begin() + nrows_orig_, rubd.begin() + nrows_conv_);
 
 	/** create solver */
 	primal_si_.reset(new OsiCpxSolverInterface());
@@ -140,12 +175,10 @@ DSP_RTN_CODE DwBundleDual::createDualProblem() {
 	std::vector<double> clbd(nrows_), cubd(nrows_), obj(nrows_);
 
 	/** necessary dual variables */
-	bestdualsol_.resize(nrows_);
 	dualsol_.resize(nrows_);
-	std::fill(bestdualsol_.begin(), bestdualsol_.begin() + nrows_conv_, COIN_DBL_MAX);
-	std::fill(bestdualsol_.begin() + nrows_conv_, bestdualsol_.end(), 0.0);
 	std::fill(dualsol_.begin(), dualsol_.begin() + nrows_conv_, COIN_DBL_MAX);
 	std::fill(dualsol_.begin() + nrows_conv_, dualsol_.end(), 0.0);
+	bestdualsol_ = dualsol_;
 
 	/** other initialization */
 	p_.reserve(nrows_orig_+nrows_branch_);
@@ -230,9 +263,7 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 		return DSP_RTN_ERR;
 	}
 
-	double stime = CoinGetTimeOfDay();
 	CPXqpopt(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_PROBLEM));
-	t_master_ += CoinGetTimeOfDay() - stime;
 	int cpxstat = CPXgetstat(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
 	switch (cpxstat) {
 	case CPX_STAT_OPTIMAL:
@@ -371,10 +402,10 @@ DSP_RTN_CODE DwBundleDual::updateModel() {
 	return DSP_RTN_OK;
 }
 
-bool DwBundleDual::terminationTest(int nnewcols) {
+bool DwBundleDual::terminationTest() {
 	BGN_TRY_CATCH
 
-	if (relgap_ <= 1.0e-4)
+	if (relgap_ <= par_->getDblParam("DW/GAPTOL"))
 		return true;
 
 	if (v_ >= 0.0)
@@ -383,28 +414,31 @@ bool DwBundleDual::terminationTest(int nnewcols) {
 	if (iterlim_ <= itercnt_)
 		return true;
 
+	if (time_remains_ < t_total_) {
+		time_remains_ -= t_total_;
+		return true;
+	}
+
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return false;
 }
 
 DSP_RTN_CODE DwBundleDual::addCols(
-		const double* piA,                    /**< [in] pi^T A */
-		std::vector<int>& indices,            /**< [in] subproblem indices corresponding to cols*/
-		std::vector<int>& statuses,           /**< [in] subproblem solution status */
-		std::vector<double>& cxs,             /**< [in] solution times original objective coefficients */
-		std::vector<double>& objs,            /**< [in] subproblem objective values */
-		std::vector<CoinPackedVector*>& sols, /**< [in] subproblem solutions */
-		int& nadded                           /**< [out] number of columns added */) {
-	return addRows(indices, statuses, cxs, objs, sols, nadded);
+		const double* piA,                   /**< [in] pi^T A */
+		std::vector<int>& indices,           /**< [in] subproblem indices corresponding to cols*/
+		std::vector<int>& statuses,          /**< [in] subproblem solution status */
+		std::vector<double>& cxs,            /**< [in] solution times original objective coefficients */
+		std::vector<double>& objs,           /**< [in] subproblem objective values */
+		std::vector<CoinPackedVector*>& sols /**< [in] subproblem solutions */) {
+	return addRows(indices, statuses, cxs, objs, sols);
 }
 
 DSP_RTN_CODE DwBundleDual::addRows(
-		std::vector<int>& indices,            /**< [in] subproblem indices corresponding to cols*/
-		std::vector<int>& statuses,           /**< [in] subproblem solution status */
-		std::vector<double>& cxs,             /**< [in] solution times original objective coefficients */
-		std::vector<double>& objs,            /**< [in] subproblem objective values */
-		std::vector<CoinPackedVector*>& sols, /**< [in] subproblem solutions */
-		int& nadded                           /**< [out] number of columns added */) {
+		std::vector<int>& indices,           /**< [in] subproblem indices corresponding to cols*/
+		std::vector<int>& statuses,          /**< [in] subproblem solution status */
+		std::vector<double>& cxs,            /**< [in] solution times original objective coefficients */
+		std::vector<double>& objs,           /**< [in] subproblem objective values */
+		std::vector<CoinPackedVector*>& sols /**< [in] subproblem solutions */) {
 	CoinPackedVector cutvec;
 	double cutcoef, cutrhs;
 
@@ -415,7 +449,7 @@ DSP_RTN_CODE DwBundleDual::addRows(
 	cutvec.reserve(nrows_);
 
 	/** reset counter */
-	nadded = 0;
+	ngenerated_ = 0;
 
 	/** linearization error */
 	linerr_ = 0.0;
@@ -487,7 +521,7 @@ DSP_RTN_CODE DwBundleDual::addRows(
 
 			/** store columns */
 			cols_generated_.push_back(new DwCol(sind, *x, cutvec, cutrhs, 0.0, COIN_DBL_MAX));
-			nadded++;
+			ngenerated_++;
 		}
 	}
 	DSPdebugMessage("Number of columns in the pool: %u\n", cols_generated_.size());
@@ -529,14 +563,13 @@ void DwBundleDual::setBranchingObjects(const DspBranch* branchobj) {
 	BGN_TRY_CATCH
 
 	/** restore column bounds */
-	CoinCopyN(clbd_orig_, ncols_orig_, clbd_node_);
-	CoinCopyN(cubd_orig_, ncols_orig_, cubd_node_);
+	clbd_node_ = clbd_orig_;
+	cubd_node_ = cubd_orig_;
 
 	/** update column bounds at the current node */
 	for (unsigned j = 0; j < branchobj->index_.size(); ++j) {
 		clbd_node_[branchobj->index_[j]] = branchobj->lb_[j];
 		cubd_node_[branchobj->index_[j]] = branchobj->ub_[j];
-		message_->print(3, "  Branching index %d: [%+e, %+e]\n", branchobj->index_[j], branchobj->lb_[j], branchobj->ub_[j]);
 	}
 
 	/** remove all columns in the primal master */
@@ -637,29 +670,31 @@ void DwBundleDual::setBranchingObjects(const DspBranch* branchobj) {
 	}
 	message_->print(3, "Appended dynamic columns in the master (%d / %u cols).\n", si_->getNumRows(), cols_generated_.size());
 
-#if 0
+#if 1
 	/** apply column bounds */
 	std::vector<int> ncols_inds(ncols_orig_);
 	std::iota(ncols_inds.begin(), ncols_inds.end(), 0);
-	worker_->setColBounds(ncols_orig_, &ncols_inds[0], clbd_node_, cubd_node_);
+	worker_->setColBounds(ncols_orig_, &ncols_inds[0], &clbd_node_[0], &cubd_node_[0]);
 #endif
 
 	/** set known best bound */
 	bestdualobj_ = branchobj->bestBound_;
+	bestdualsol_ = branchobj->dualsol_;
 
 	END_TRY_CATCH(;)
 }
 
 void DwBundleDual::printIterInfo() {
-	message_->print(1, "Iteration %3d: Primal %+e, Dual %+e, Approx %+e, Best Dual %+e ",
-			itercnt_, primobj_, -dualobj_, -bestdualobj_-v_, -bestdualobj_);
+	message_->print(1, "Iteration %3d: DW Bound %+e, ", itercnt_, primobj_);
+	message_->print(3, "Dual %+e, Approx %+e, ", -dualobj_, -bestdualobj_-v_);
+	message_->print(1, "Best Dual %+e ", -bestdualobj_);
 	if (relgap_ < 1000)
 		message_->print(1, "(gap %.2f %%), ", relgap_*100);
 	else
 		message_->print(1, "(gap Large %%), ");
 	message_->print(1, "nrows %d, ncols %d, ", si_->getNumRows(), si_->getNumCols());
 	message_->print(1, "timing (total %.2f, master %.2f, gencols %.2f), statue %d\n",
-			CoinGetTimeOfDay() - t_total_, t_master_, t_colgen_, status_);
-	message_->print(3, "  predicted ascent %+e, |p| %+e, alpha %+e, linerr %+e, eps %+e, u %+e, counter %d\n",
+			t_total_, t_master_, t_colgen_, status_);
+	message_->print(5, "  predicted ascent %+e, |p| %+e, alpha %+e, linerr %+e, eps %+e, u %+e, counter %d\n",
 			-v_, absp_, alpha_, -linerr_, eps_, u_, counter_);
 }

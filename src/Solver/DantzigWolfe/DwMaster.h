@@ -40,6 +40,16 @@ public:
     /** constructor with worker */
     DwMaster(DwWorker* worker);
 
+    /** copy constructor */
+    DwMaster(const DwMaster& rhs);
+
+    /** copy operator */
+    DwMaster& operator=(const DwMaster& rhs);
+
+	virtual DwMaster* clone() const {
+		return new DwMaster(*this);
+	}
+
     /** default destructor */
     virtual ~DwMaster();
 
@@ -94,8 +104,7 @@ protected:
     virtual DSP_RTN_CODE reduceCols();
 
     /** generate columns */
-    virtual DSP_RTN_CODE generateCols(
-			int& ncols /**< [out] number of columns generated */);
+    virtual DSP_RTN_CODE generateCols();
 
     /** calculate piA */
     virtual DSP_RTN_CODE calculatePiA(
@@ -103,13 +112,12 @@ protected:
 
     /** Add columns */
     virtual DSP_RTN_CODE addCols(
-    		const double* piA,                    /**< [in] pi^T A */
-    		std::vector<int>& indices,            /**< [in] subproblem indices corresponding to cols*/
-			std::vector<int>& statuses,           /**< [in] subproblem solution status */
-			std::vector<double>& cxs,             /**< [in] solution times original objective coefficients */
-			std::vector<double>& objs,            /**< [in] subproblem objective values */
-    		std::vector<CoinPackedVector*>& sols, /**< [in] subproblem solutions */
-			int& nadded                           /**< [out] number of columns added */);
+    		const double* piA,                   /**< [in] pi^T A */
+    		std::vector<int>& indices,           /**< [in] subproblem indices corresponding to cols*/
+			std::vector<int>& statuses,          /**< [in] subproblem solution status */
+			std::vector<double>& cxs,            /**< [in] solution times original objective coefficients */
+			std::vector<double>& objs,           /**< [in] subproblem objective values */
+    		std::vector<CoinPackedVector*>& sols /**< [in] subproblem solutions */);
 
     /** Calculate Lagrangian bound */
     virtual DSP_RTN_CODE getLagrangianBound(
@@ -119,7 +127,7 @@ protected:
     virtual DSP_RTN_CODE updateModel();
 
     /** termination test */
-    virtual bool terminationTest(int nnewcols);
+    virtual bool terminationTest();
 #if 0
     /** Run heuristics */
     virtual DSP_RTN_CODE heuristics();
@@ -186,20 +194,20 @@ public:
 
     /**@name original master problem data */
     CoinPackedMatrix* mat_orig_; /**< constraint matrix */
-    double* clbd_orig_;
-    double* cubd_orig_;
-    double* obj_orig_;
-    char* ctype_orig_;
-    double* rlbd_orig_;
-    double* rubd_orig_;
-
-	double* clbd_node_; /** current column lower bounds */
-	double* cubd_node_; /** current column upper bounds */
+    std::vector<double> clbd_orig_;
+    std::vector<double> cubd_orig_;
+    std::vector<double> obj_orig_;
+    std::vector<char> ctype_orig_;
+    std::vector<double> rlbd_orig_;
+    std::vector<double> rubd_orig_;
+	std::vector<double> clbd_node_; /** current column lower bounds */
+	std::vector<double> cubd_node_; /** current column upper bounds */
 
     int itercnt_;
     int ngenerated_;
 
     /**@name Time stamps */
+    double t_start_; /**< solution start time */
     double t_total_; /**< total time */
     double t_master_; /**< master solution time */
     double t_colgen_; /**< column generation time */

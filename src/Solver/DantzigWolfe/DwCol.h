@@ -24,6 +24,18 @@ public:
 		/** that's it */
 	}
 
+	/** copy constructor */
+	DwCol(const DwCol& rhs):
+		blockid_(rhs.blockid_),
+		x_(rhs.x_),
+		col_(rhs.col_),
+		obj_(rhs.obj_),
+		lb_(rhs.lb_),
+		ub_(rhs.ub_),
+		active_(rhs.active_),
+		age_(rhs.age_) {
+	}
+
 	/** destructor */
 	virtual ~DwCol() {}
 

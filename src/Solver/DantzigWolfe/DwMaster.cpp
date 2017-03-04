@@ -27,32 +27,87 @@ nrows_conv_(0),
 nrows_core_(0),
 nrows_branch_(0),
 mat_orig_(NULL),
-clbd_orig_(NULL),
-cubd_orig_(NULL),
-obj_orig_(NULL),
-ctype_orig_(NULL),
-rlbd_orig_(NULL),
-rubd_orig_(NULL),
-clbd_node_(NULL),
-cubd_node_(NULL),
 itercnt_(0),
 ngenerated_(0),
+t_start_(0.0),
 t_total_(0.0),
 t_master_(0.0),
 t_colgen_(0.0) {
 	useBarrier_ = par_->getBoolParam("DW/MASTER/IPM");
 }
 
+DwMaster::DwMaster(const DwMaster& rhs):
+DecSolver(rhs),
+useBarrier_(rhs.useBarrier_),
+phase_(rhs.phase_),
+auxcolindices_(rhs.auxcolindices_),
+worker_(rhs.worker_),
+ncols_orig_(rhs.ncols_orig_),
+ncols_start_(rhs.ncols_start_),
+nrows_(rhs.nrows_),
+nrows_orig_(rhs.nrows_orig_),
+nrows_conv_(rhs.nrows_conv_),
+nrows_core_(rhs.nrows_core_),
+nrows_branch_(rhs.nrows_branch_),
+branch_row_to_col_(rhs.branch_row_to_col_),
+clbd_orig_(rhs.clbd_orig_),
+cubd_orig_(rhs.cubd_orig_),
+obj_orig_(rhs.obj_orig_),
+ctype_orig_(rhs.ctype_orig_),
+rlbd_orig_(rhs.rlbd_orig_),
+rubd_orig_(rhs.rubd_orig_),
+clbd_node_(rhs.clbd_node_),
+cubd_node_(rhs.cubd_node_),
+itercnt_(rhs.itercnt_),
+ngenerated_(rhs.ngenerated_),
+t_start_(rhs.t_start_),
+t_total_(rhs.t_total_),
+t_master_(rhs.t_master_),
+t_colgen_(rhs.t_colgen_),
+status_subs_(rhs.status_subs_) {
+	mat_orig_ = new CoinPackedMatrix(*(rhs.mat_orig_));
+	for (auto it = rhs.cols_generated_.begin(); it != rhs.cols_generated_.end(); it++)
+		cols_generated_.push_back(new DwCol(**it));
+}
+
+/** copy operator */
+DwMaster& DwMaster::operator=(const DwMaster& rhs) {
+	DecSolver::operator=(rhs);
+	useBarrier_ = rhs.useBarrier_;
+	phase_ = rhs.phase_;
+	auxcolindices_ = rhs.auxcolindices_;
+	worker_ = rhs.worker_;
+	ncols_orig_ = rhs.ncols_orig_;
+	ncols_start_ = rhs.ncols_start_;
+	nrows_ = rhs.nrows_;
+	nrows_orig_ = rhs.nrows_orig_;
+	nrows_conv_ = rhs.nrows_conv_;
+	nrows_core_ = rhs.nrows_core_;
+	nrows_branch_ = rhs.nrows_branch_;
+	branch_row_to_col_ = rhs.branch_row_to_col_;
+	clbd_orig_ = rhs.clbd_orig_;
+	cubd_orig_ = rhs.cubd_orig_;
+	obj_orig_ = rhs.obj_orig_;
+	ctype_orig_ = rhs.ctype_orig_;
+	rlbd_orig_ = rhs.rlbd_orig_;
+	rubd_orig_ = rhs.rubd_orig_;
+	clbd_node_ = rhs.clbd_node_;
+	cubd_node_ = rhs.cubd_node_;
+	itercnt_ = rhs.itercnt_;
+	ngenerated_ = rhs.ngenerated_;
+	t_start_ = rhs.t_start_;
+	t_total_ = rhs.t_total_;
+	t_master_ = rhs.t_master_;
+	t_colgen_ = rhs.t_colgen_;
+	status_subs_ = rhs.status_subs_;
+	mat_orig_ = new CoinPackedMatrix(*(rhs.mat_orig_));
+	for (auto it = rhs.cols_generated_.begin(); it != rhs.cols_generated_.end(); it++)
+		cols_generated_.push_back(new DwCol(**it));
+	return *this;
+}
+
 DwMaster::~DwMaster() {
 	FREE_PTR(mat_orig_);
-	FREE_ARRAY_PTR(clbd_orig_);
-	FREE_ARRAY_PTR(cubd_orig_);
-	FREE_ARRAY_PTR(obj_orig_);
-	FREE_ARRAY_PTR(ctype_orig_);
-	FREE_ARRAY_PTR(rlbd_orig_);
-	FREE_ARRAY_PTR(rubd_orig_);
-	FREE_ARRAY_PTR(clbd_node_);
-	FREE_ARRAY_PTR(cubd_node_);
 	for (unsigned i = 0; i < cols_generated_.size(); ++i)
 		FREE_PTR(cols_generated_[i]);
 }
@@ -115,34 +170,35 @@ DSP_RTN_CODE DwMaster::init() {
     	}
     	DSPdebug(mat_orig_->verifyMtx(4));
 
-    	clbd_orig_ = new double [ncols];
-    	cubd_orig_ = new double [ncols];
-    	ctype_orig_ = new char [ncols];
-    	obj_orig_ = new double [ncols];
-    	rlbd_orig_ = new double [mat_orig_->getNumRows()];
-    	rubd_orig_ = new double [mat_orig_->getNumRows()];
-    	CoinCopyN(org_ctype, ncols_first_stage, ctype_orig_);
-    	CoinFillN(ctype_orig_ + ncols_first_stage, ncols - ncols_first_stage, 'C');
+    	clbd_orig_.resize(ncols);
+    	cubd_orig_.resize(ncols);
+    	ctype_orig_.resize(ncols);
+    	obj_orig_.resize(ncols);
+    	rlbd_orig_.resize(mat_orig_->getNumRows());
+    	rubd_orig_.resize(mat_orig_->getNumRows());
+    	std::copy(org_ctype, org_ctype + ncols_first_stage, ctype_orig_.begin());
+    	std::fill(ctype_orig_.begin() + ncols_first_stage, ctype_orig_.end(), 'C');
 		for (int s = 0; s < nscen; ++s) {
-			CoinCopyN(org_clbd, ncols_first_stage, clbd_orig_ + s * ncols_first_stage);
-			CoinCopyN(org_cubd, ncols_first_stage, cubd_orig_ + s * ncols_first_stage);
-//			CoinCopyN(org_ctype, ncols_first_stage, org_ctype_ + s * ncols_first_stage);
+	    	std::copy(org_clbd, org_clbd + ncols_first_stage, clbd_orig_.begin() + s * ncols_first_stage);
+	    	std::copy(org_cubd, org_cubd + ncols_first_stage, cubd_orig_.begin() + s * ncols_first_stage);
 	    	for (int j = 0; j < ncols_first_stage; ++j)
 	    		obj_orig_[s * ncols_first_stage + j] = org_obj[j] * probability[s];
 		}
-		CoinCopyN(org_clbd + ncols_first_stage,  ncols - nscen * ncols_first_stage,
-				clbd_orig_ + nscen * ncols_first_stage);
-		CoinCopyN(org_cubd + ncols_first_stage,  ncols - nscen * ncols_first_stage,
-				cubd_orig_ + nscen * ncols_first_stage);
-//		CoinCopyN(org_ctype + ncols_first_stage, ncols - nscen * ncols_first_stage,
-//				org_ctype_ + nscen * ncols_first_stage);
-		CoinZeroN(obj_orig_ + nscen * ncols_first_stage, ncols - nscen * ncols_first_stage);
-		CoinZeroN(rlbd_orig_, mat_orig_->getNumRows());
-		CoinZeroN(rubd_orig_, mat_orig_->getNumRows());
+    	std::copy(org_clbd + ncols_first_stage, org_clbd + ncols - (nscen-1) * ncols_first_stage, clbd_orig_.begin() + nscen * ncols_first_stage);
+    	std::copy(org_cubd + ncols_first_stage, org_cubd + ncols - (nscen-1) * ncols_first_stage, cubd_orig_.begin() + nscen * ncols_first_stage);
+    	std::fill(obj_orig_.begin() + nscen * ncols_first_stage, obj_orig_.end(), 0.0);
+    	std::fill(rlbd_orig_.begin(), rlbd_orig_.end(), 0.0);
+    	std::fill(rubd_orig_.begin(), rubd_orig_.end(), 0.0);
     } else {
     	/** retrieve the original master problem structure */
     	model_->decompose(0, NULL, 0, NULL, NULL, NULL,
-    			mat_orig_, clbd_orig_, cubd_orig_, ctype_orig_, obj_orig_, rlbd_orig_, rubd_orig_);
+    			mat_orig_, org_clbd, org_cubd, org_ctype, org_obj, org_rlbd, org_rubd);
+    	clbd_orig_.assign(org_clbd, org_clbd + mat_orig_->getNumCols());
+    	cubd_orig_.assign(org_cubd, org_cubd + mat_orig_->getNumCols());
+    	ctype_orig_.assign(org_ctype, org_ctype + mat_orig_->getNumCols());
+    	obj_orig_.assign(org_obj, org_obj + mat_orig_->getNumCols());
+    	rlbd_orig_.assign(org_rlbd, org_rlbd + mat_orig_->getNumRows());
+    	rubd_orig_.assign(org_rubd, org_rubd + mat_orig_->getNumRows());
     }
 
 	ncols_orig_ = mat_orig_->getNumCols(); /**< number of columns in the original master */
@@ -169,35 +225,22 @@ DSP_RTN_CODE DwMaster::init() {
 }
 
 DSP_RTN_CODE DwMaster::createProblem() {
-#define FREE_MEMORY       \
-	FREE_PTR(mat)         \
-	FREE_ARRAY_PTR(rlbd)  \
-	FREE_ARRAY_PTR(rubd)
-
-	/** master problem */
-	CoinPackedMatrix * mat = NULL;
-	double * rlbd = NULL;
-	double * rubd = NULL;
-
 	BGN_TRY_CATCH
 
 	/** allocate memory */
-	rlbd = new double [nrows_];
-	rubd = new double [nrows_];
-	clbd_node_ = new double [ncols_orig_];
-	cubd_node_ = new double [ncols_orig_];
-	CoinCopyN(clbd_orig_, ncols_orig_, clbd_node_);
-	CoinCopyN(cubd_orig_, ncols_orig_, cubd_node_);
+	std::vector<double> rlbd(nrows_), rubd(nrows_);
+	clbd_node_ = clbd_orig_;
+	cubd_node_ = cubd_orig_;
 
 	/** create column-wise matrix and set number of rows */
-	mat = new CoinPackedMatrix(true, 0, 0);
+	std::shared_ptr<CoinPackedMatrix> mat(new CoinPackedMatrix(true, 0, 0));
 	mat->setDimensions(nrows_, 0);
 
 	/** Set row bounds */
-	CoinFillN(rlbd, nrows_conv_, 1.0);
-	CoinFillN(rubd, nrows_conv_, 1.0);
-	CoinCopyN(rlbd_orig_, nrows_orig_, rlbd + nrows_conv_);
-	CoinCopyN(rubd_orig_, nrows_orig_, rubd + nrows_conv_);
+	std::fill(rlbd.begin(), rlbd.begin() + nrows_conv_, 1.0);
+	std::fill(rubd.begin(), rubd.begin() + nrows_conv_, 1.0);
+	std::copy(rlbd_orig_.begin(), rlbd_orig_.end(), rlbd.begin() + nrows_conv_);
+	std::copy(rubd_orig_.begin(), rubd_orig_.end(), rubd.begin() + nrows_conv_);
 
 	/** create solver */
 	if (useBarrier_)
@@ -207,19 +250,15 @@ DSP_RTN_CODE DwMaster::createProblem() {
 	si_->messageHandler()->logLevel(5);
 
 	/** load problem data */
-	si_->loadProblem(*mat, NULL, NULL, NULL, rlbd, rubd);
+	si_->loadProblem(*mat, NULL, NULL, NULL, &rlbd[0], &rubd[0]);
 
 	dualsol_.reserve(si_->getNumRows());
 
 	DSP_RTN_CHECK_RTN_CODE(initialOsiSolver());
 
-	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
-
-	/** release memory */
-	FREE_MEMORY
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
-#undef FREE_MEMORY
 }
 
 DSP_RTN_CODE DwMaster::initialOsiSolver() {
@@ -265,7 +304,8 @@ DSP_RTN_CODE DwMaster::solve() {
 	BGN_TRY_CATCH
 
 	itercnt_ = 0;
-	t_total_ = CoinGetTimeOfDay();
+	t_start_ = CoinGetTimeOfDay();
+	t_total_ = 0.0;
 	t_master_ = 0.0;
 	t_colgen_ = 0.0;
 
@@ -306,9 +346,6 @@ DSP_RTN_CODE DwMaster::solve() {
 }
 
 DSP_RTN_CODE DwMaster::initialColumns() {
-	/** column generation info */
-	int nColsAdded;
-
 	BGN_TRY_CATCH
 
 	/** should consider phase 2 */
@@ -322,8 +359,8 @@ DSP_RTN_CODE DwMaster::initialColumns() {
 	CoinZeroN(&dualsol_[nrows_conv_], nrows_orig_);
 
 	/** generate columns */
-	DSP_RTN_CHECK_RTN_CODE(generateCols(nColsAdded));
-	message_->print(3, "Generated %u initial columns. Initial dual bound %e\n", nColsAdded, dualobj_);
+	DSP_RTN_CHECK_RTN_CODE(generateCols());
+	message_->print(3, "Generated %u initial columns. Initial dual bound %e\n", ngenerated_, dualobj_);
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -414,7 +451,6 @@ DSP_RTN_CODE DwMaster::solvePhase2() {
 
 DSP_RTN_CODE DwMaster::gutsOfSolve() {
 
-	int nColsAdded = 0; /**< column generation info */
 	double stime; /**< timing results */
 
 	BGN_TRY_CATCH
@@ -435,7 +471,7 @@ DSP_RTN_CODE DwMaster::gutsOfSolve() {
 
 		/** generate columns */
 		stime = CoinGetTimeOfDay();
-		DSP_RTN_CHECK_RTN_CODE(generateCols(nColsAdded));
+		DSP_RTN_CHECK_RTN_CODE(generateCols());
 		t_colgen_ += CoinGetTimeOfDay() - stime;
 
 		/** subproblem solution may declare infeasibility. */
@@ -451,14 +487,17 @@ DSP_RTN_CODE DwMaster::gutsOfSolve() {
 		DSP_RTN_CHECK_RTN_CODE(updateModel());
 
 		/** solver the master problem */
+		stime = CoinGetTimeOfDay();
 		DSP_RTN_CHECK_RTN_CODE(solveMaster());
+		t_master_ += CoinGetTimeOfDay() - stime;
+		t_total_ = CoinGetTimeOfDay() - t_start_;
 
 		/** print information and increment iteration */
 		printIterInfo();
 		itercnt_++;
 
 		/** termination test */
-		if (terminationTest(nColsAdded))
+		if (terminationTest())
 			break;
 
 #ifdef DSP_DEBUG_CPX
@@ -493,9 +532,7 @@ DSP_RTN_CODE DwMaster::solveMaster() {
 
 	/** resolve */
 	DSPdebugMessage("solve master problem (nrows %d, ncols %d).\n", si_->getNumRows(), si_->getNumCols());
-	double stime = CoinGetTimeOfDay();
 	si_->resolve();
-	t_master_ += CoinGetTimeOfDay() - stime;
 	convertCoinToDspStatus(si_, status_);
 #if 0
 	if (status_ == DSP_STAT_ABORT && useBarrier_) {
@@ -612,8 +649,7 @@ DSP_RTN_CODE DwMaster::reduceCols() {
 	return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE DwMaster::generateCols(
-		int& ncols /**< [out] number of columns generated */) {
+DSP_RTN_CODE DwMaster::generateCols() {
 	std::vector<double> piA;
 	/** column generation info */
 	std::vector<int> subinds;
@@ -648,10 +684,9 @@ DSP_RTN_CODE DwMaster::generateCols(
 
 		/** create and add columns */
 		DSP_RTN_CHECK_RTN_CODE(
-				addCols(&piA[0], subinds, status_subs_, subcxs, subobjs, subsols, ncols));
+				addCols(&piA[0], subinds, status_subs_, subcxs, subobjs, subsols));
 	} else
-		ncols = 0;
-	ngenerated_ = ncols;
+		ngenerated_ = 0;
 
 	/** free memory for subproblem solutions */
 	for (unsigned i = 0; i < subsols.size(); ++i)
@@ -663,13 +698,12 @@ DSP_RTN_CODE DwMaster::generateCols(
 }
 
 DSP_RTN_CODE DwMaster::addCols(
-		const double* piA,                    /**< [in] pi^T A */
-		std::vector<int>& indices,            /**< [in] subproblem indices corresponding to cols*/
-		std::vector<int>& statuses,           /**< [in] subproblem solution status */
-		std::vector<double>& cxs,             /**< [in] solution times original objective coefficients */
-		std::vector<double>& objs,            /**< [in] subproblem objective values */
-		std::vector<CoinPackedVector*>& sols, /**< [in] subproblem solutions */
-		int& nadded                           /**< [out] number of columns added */) {
+		const double* piA,                   /**< [in] pi^T A */
+		std::vector<int>& indices,           /**< [in] subproblem indices corresponding to cols*/
+		std::vector<int>& statuses,          /**< [in] subproblem solution status */
+		std::vector<double>& cxs,            /**< [in] solution times original objective coefficients */
+		std::vector<double>& objs,           /**< [in] subproblem objective values */
+		std::vector<CoinPackedVector*>& sols /**< [in] subproblem solutions */) {
 #define FREE_MEMORY \
 	FREE_ARRAY_PTR(Ax)
 
@@ -683,13 +717,13 @@ DSP_RTN_CODE DwMaster::addCols(
 	colvec.reserve(nrows_);
 
 	/** reset counter */
-	nadded = 0;
+	ngenerated_ = 0;
 
 	for (unsigned int s = 0; s < indices.size(); ++s) {
 		int sind = indices[s]; /**< actual subproblem index */
 
 		/** cutoff = dual variable corresponding to the convex-combination constraint */
-		double cutoff = dualsol_[nrows_orig_ + sind];
+		double cutoff = dualsol_[sind];
 		DSPdebugMessage("pricing out: %e < %e ? (colobj %e, status %d)\n", objs[s], cutoff, cxs[s], statuses[s]);
 
 		if (statuses[s] == DSP_STAT_DUAL_INFEASIBLE || objs[s] < cutoff - 1.0e-4) {
@@ -732,7 +766,7 @@ DSP_RTN_CODE DwMaster::addCols(
 
 			/** store columns */
 			cols_generated_.push_back(new DwCol(sind, *x, colvec, newcoef, 0.0, COIN_DBL_MAX));
-			nadded++;
+			ngenerated_++;
 		}
 	}
 	DSPdebugMessage("Number of columns in the pool: %u\n", cols_generated_.size());
@@ -770,9 +804,9 @@ DSP_RTN_CODE DwMaster::getLagrangianBound(
 	return DSP_RTN_OK;
 }
 
-bool DwMaster::terminationTest(int nnewcols) {
+bool DwMaster::terminationTest() {
 
-	if (nnewcols == 0 || (!useBarrier_ && si_->getIterationCount() == 0))
+	if (ngenerated_ == 0 || (!useBarrier_ && si_->getIterationCount() == 0))
 		return true;
 
 	bool term = false;
@@ -1492,8 +1526,8 @@ void DwMaster::setBranchingObjects(const DspBranch* branchobj) {
 	DSPdebugMessage("Appended dynamic columns in the master (%d / %u cols).\n", si_->getNumCols(), cols_generated_.size());
 
 	/** restore column bounds */
-	CoinCopyN(clbd_orig_, ncols_orig_, clbd_node_);
-	CoinCopyN(cubd_orig_, ncols_orig_, cubd_node_);
+	clbd_node_ = clbd_orig_;
+	cubd_node_ = cubd_orig_;
 
 	/** update column bounds at the current node */
 	for (unsigned j = 0, irow = nrows_core_; j < branchobj->index_.size(); ++j) {
@@ -1515,7 +1549,7 @@ void DwMaster::setBranchingObjects(const DspBranch* branchobj) {
 	/** apply column bounds */
 	std::vector<int> ncols_inds(ncols_orig_);
 	CoinIotaN(&ncols_inds[0], ncols_orig_, 0);
-	worker_->setColBounds(ncols_orig_, &ncols_inds[0], clbd_node_, cubd_node_);
+	worker_->setColBounds(ncols_orig_, &ncols_inds[0], &clbd_node_[0], &cubd_node_[0]);
 
 	/** set known best bound */
 	bestdualobj_ = branchobj->bestBound_;
@@ -1535,7 +1569,7 @@ void DwMaster::printIterInfo() {
 	if (!useBarrier_)
 		message_->print(2, "itercnt %d, ", si_->getIterationCount());
 	message_->print(2, "timing (total %.2f, master %.2f, gencols %.2f), statue %d\n",
-			CoinGetTimeOfDay() - t_total_, t_master_, t_colgen_, status_);
+			t_total_, t_master_, t_colgen_, status_);
 }
 
 DSP_RTN_CODE DwMaster::switchToPhase2() {

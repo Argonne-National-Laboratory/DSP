@@ -18,6 +18,16 @@ public:
     /** constructor with worker */
 	DwBundleDual(DwWorker* worker);
 
+	/** copy constructor */
+	DwBundleDual(const DwBundleDual& rhs);
+
+	/** copy operator */
+	DwBundleDual& operator=(const DwBundleDual& rhs);
+
+	virtual DwBundleDual* clone() const {
+		return new DwBundleDual(*this);
+	}
+
     /** default destructor */
 	virtual ~DwBundleDual();
 
@@ -42,29 +52,27 @@ protected:
     virtual DSP_RTN_CODE updateModel();
 
     /** termination test */
-    virtual bool terminationTest(int nnewcols);
+    virtual bool terminationTest();
 
     /** reduce columns (e.g., reduced cost fixing) */
     virtual DSP_RTN_CODE reduceCols() {return DSP_RTN_OK;}
 
     /** Add columns */
     virtual DSP_RTN_CODE addCols(
-    		const double* piA,                    /**< [in] pi^T A */
-    		std::vector<int>& indices,            /**< [in] subproblem indices corresponding to cols*/
-			std::vector<int>& statuses,           /**< [in] subproblem solution status */
-			std::vector<double>& cxs,             /**< [in] solution times original objective coefficients */
-			std::vector<double>& objs,            /**< [in] subproblem objective values */
-    		std::vector<CoinPackedVector*>& sols, /**< [in] subproblem solutions */
-			int& nadded                           /**< [out] number of columns added */);
+    		const double* piA,                   /**< [in] pi^T A */
+    		std::vector<int>& indices,           /**< [in] subproblem indices corresponding to cols*/
+			std::vector<int>& statuses,          /**< [in] subproblem solution status */
+			std::vector<double>& cxs,            /**< [in] solution times original objective coefficients */
+			std::vector<double>& objs,           /**< [in] subproblem objective values */
+    		std::vector<CoinPackedVector*>& sols /**< [in] subproblem solutions */);
 
     /** Add rows */
     virtual DSP_RTN_CODE addRows(
-    		std::vector<int>& indices,            /**< [in] subproblem indices corresponding to cols*/
-			std::vector<int>& statuses,           /**< [in] subproblem solution status */
-			std::vector<double>& cxs,             /**< [in] solution times original objective coefficients */
-			std::vector<double>& objs,            /**< [in] subproblem objective values */
-    		std::vector<CoinPackedVector*>& sols, /**< [in] subproblem solutions */
-			int& nadded                           /**< [out] number of columns added */);
+    		std::vector<int>& indices,           /**< [in] subproblem indices corresponding to cols*/
+			std::vector<int>& statuses,          /**< [in] subproblem solution status */
+			std::vector<double>& cxs,            /**< [in] solution times original objective coefficients */
+			std::vector<double>& objs,           /**< [in] subproblem objective values */
+    		std::vector<CoinPackedVector*>& sols /**< [in] subproblem solutions */);
 
     /** Calculate Lagrangian bound */
     virtual DSP_RTN_CODE getLagrangianBound(

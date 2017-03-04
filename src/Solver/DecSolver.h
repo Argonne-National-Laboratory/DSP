@@ -11,6 +11,7 @@
 #include <iostream>
 #include <fstream>
 #include <iomanip>
+#include <memory>
 /** Coin */
 #include "OsiSolverInterface.hpp"
 /** Dsp */
@@ -48,11 +49,65 @@ public:
 		/** nothing to do */
 	}
 
+	/** copy constructor */
+	DecSolver(const DecSolver& rhs):
+		model_(rhs.model_),
+		par_(rhs.par_),
+		message_(rhs.message_),
+		si_(rhs.si_->clone()),
+		status_(rhs.status_),
+		bestprimobj_(rhs.bestprimobj_),
+		primobj_(rhs.primobj_),
+		bestdualobj_(rhs.bestdualobj_),
+		dualobj_(rhs.dualobj_),
+		bestprimsol_(rhs.bestprimsol_),
+		primsol_(rhs.primsol_),
+		bestdualsol_(rhs.bestdualsol_),
+		dualsol_(rhs.dualsol_),
+		absgap_(rhs.absgap_),
+		relgap_(rhs.relgap_),
+		cputime_(rhs.cputime_),
+		walltime_(rhs.walltime_),
+		time_remains_(rhs.time_remains_),
+		tic_(rhs.tic_),
+		numIterations_(rhs.numIterations_),
+		numNodes_(rhs.numNodes_),
+		iterlim_(rhs.iterlim_) {
+		/** nothing to do */
+	}
+
+	/** copy operator */
+	DecSolver& operator=(const DecSolver& rhs) {
+		model_ = rhs.model_;
+		par_ = rhs.par_;
+		message_ = rhs.message_;
+		si_ = rhs.si_->clone();
+		status_ = rhs.status_;
+		bestprimobj_ = rhs.bestprimobj_;
+		primobj_ = rhs.primobj_;
+		bestdualobj_ = rhs.bestdualobj_;
+		dualobj_ = rhs.dualobj_;
+		bestprimsol_ = rhs.bestprimsol_;
+		primsol_ = rhs.primsol_;
+		bestdualsol_ = rhs.bestdualsol_;
+		dualsol_ = rhs.dualsol_;
+		absgap_ = rhs.absgap_;
+		relgap_ = rhs.relgap_;
+		cputime_ = rhs.cputime_;
+		walltime_ = rhs.walltime_;
+		time_remains_ = rhs.time_remains_;
+		tic_ = rhs.tic_;
+		numIterations_ = rhs.numIterations_;
+		numNodes_ = rhs.numNodes_;
+		iterlim_ = rhs.iterlim_;
+		return *this;
+	}
+
+	virtual DecSolver* clone() const = 0;
+
 	/** default destructor */
 	virtual ~DecSolver() {
 		FREE_PTR(si_);
-		for (unsigned i = 0; i < s_primsols_.size(); ++i)
-			FREE_ARRAY_PTR(s_primsols_[i]);
 		message_ = NULL;
 		par_ = NULL;
 		model_ = NULL;
@@ -95,6 +150,9 @@ public:
 
 	/** get primal solution */
 	virtual const double * getPrimalSolution() {return &primsol_[0];}
+
+	/** get dual solution */
+	virtual const double * getBestDualSolution() {return &bestdualsol_[0];}
 
 	/** get dual solution */
 	virtual const double * getDualSolution() {return &dualsol_[0];}
@@ -162,6 +220,9 @@ public:
 	/** set dual objective */
 	virtual void setDualObjective(double dualobj) {dualobj_=dualobj;}
 
+	/** set best dual solution */
+	virtual void setBestDualSolution(std::vector<double>& dualsol) {dualsol_=dualsol;}
+
 	/** set time limit*/
 	virtual void setTimeLimit(double t) {time_remains_ = t;}
 
@@ -175,30 +236,6 @@ public:
 	void setStatus(int status) {status_ = status;}
 
 	//@}
-
-	/** write output to a file */
-	virtual void write(const char * filename) {
-		ofstream myfile;
-		myfile.open(filename);
-		myfile << "Iter";
-		myfile << ",Status";
-		myfile << ",Prim";
-		myfile << ",Dual";
-		myfile << ",Cpu";
-		myfile << ",Wall";
-		myfile << "\n";
-		for (unsigned i = 0; i < s_statuses_.size(); ++i)
-		{
-			myfile << i;
-			myfile << "," << s_statuses_[i];
-			myfile << "," << scientific << setprecision(5) << s_primobjs_[i];
-			myfile << "," << scientific << setprecision(5) << s_dualobjs_[i];
-			myfile << "," << fixed << setprecision(2) << s_cputimes_[i];
-			myfile << "," << fixed << setprecision(2) << s_walltimes_[i];
-			myfile << "\n";
-		}
-		myfile.close();
-	}
 
 protected:
 
@@ -241,16 +278,6 @@ protected:
 	int numNodes_;      /**< number of branch-and-bound tree nodes */
 
 	int iterlim_; /**< iteration limits */
-
-public:
-
-	/** solver statistics */
-	vector<DSP_RTN_CODE> s_statuses_;  /**< history of solution statuses */
-	vector<double>       s_primobjs_;  /**< history of primal objective values */
-	vector<double>       s_dualobjs_;  /**< history of dual objective values */
-	vector<double*>      s_primsols_;  /**< history of primal solutions */
-	vector<double>       s_cputimes_;  /**< history of cpu times */
-	vector<double>       s_walltimes_; /**< history of wall times */
 };
 
 #endif /* DECSOLVER_H_ */

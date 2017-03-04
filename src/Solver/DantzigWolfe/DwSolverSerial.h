@@ -21,6 +21,8 @@ public:
 			DspParams *  par,    /**< parameters */
 			DspMessage * message /**< message pointer */);
 
+	virtual DwSolverSerial* clone() const {return NULL;}
+
 	virtual ~DwSolverSerial();
 
 	/** initialize */
