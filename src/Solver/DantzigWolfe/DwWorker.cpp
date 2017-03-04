@@ -141,7 +141,7 @@ DSP_RTN_CODE DwWorker::createSubproblems() {
 		si_[s]->messageHandler()->setLogLevel(par_->getIntParam("DW/SUB/LOG_LEVEL"));
 
 		/** set parameters */
-		setGapTolerance(par_->getDblParam("DW/GAPTOL"));
+		setGapTolerance(par_->getDblParam("DW/SUB/GAPTOL"));
 		setTimeLimit(par_->getDblParam("DW/SUB/TIME_LIM"));
 		OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_[s]);
 		if (cpx) {
@@ -220,11 +220,14 @@ DSP_RTN_CODE DwWorker::generateCols(
 
 		/** store solution status */
 		int status;
+		int cpxstat = CPXgetstat(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
 		convertCoinToDspStatus(si_[s], status);
+		/** FIXME: Osi does not know this. */
+		if (cpxstat == CPXMIP_INFEASIBLE)
+			status = DSP_STAT_PRIM_INFEASIBLE;
 
 		/** FIXME: It may be terminated due to time limit. */
 		if (status == DSP_STAT_UNKNOWN) {
-			int cpxstat = CPXgetstat(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
 			if (cpxstat == CPXMIP_TIME_LIM_FEAS) {
 				message_->print(2, "  Subproblem %d terminated due to time limit.\n", sind);
 				status = DSP_STAT_LIM_ITERorTIME;
