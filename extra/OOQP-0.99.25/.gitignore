@@ -1,7 +1,0 @@
-tmp
-*.exe
-GNUmakefile
-GNUmakefile.bak
-PetscMakefile
-config.log
-config.status

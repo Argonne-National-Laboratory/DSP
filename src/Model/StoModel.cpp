@@ -5,6 +5,7 @@
  *      Author: kibaekkim
  */
 
+#include "CoinHelperFunctions.hpp"
 #include "StoModel.h"
 
 StoModel::StoModel() :

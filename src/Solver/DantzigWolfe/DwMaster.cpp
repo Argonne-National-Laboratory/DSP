@@ -6,7 +6,6 @@
 
 #include "cplex.h"
 /** Coin */
-#include "OsiClpSolverInterface.hpp"
 #include "OsiCpxSolverInterface.hpp"
 #include "CoinUtility.hpp"
 /** Dsp */

@@ -69,7 +69,7 @@ DSP_RTN_CODE DwModel::solve() {
 			}
 
 			/** run heuristics */
-			if (par_->getBoolParam("DW/HEURISTICS") /*&& infeasibility_ > 1.0e-6*/) {
+			if (par_->getBoolParam("DW/HEURISTICS") && infeasibility_ > 1.0e-6) {
 				/** FIXME */
 				bestprimobj_ = COIN_DBL_MAX;
 				for (auto it = heuristics_.begin(); it != heuristics_.end(); it++) {

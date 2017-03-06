@@ -10,7 +10,9 @@
 #include "omp.h"
 #include "cplex.h"
 /** Coin */
+#ifdef HAS_CBC
 #include "OsiCbcSolverInterface.hpp"
+#endif
 #include "OsiCpxSolverInterface.hpp"
 /** Dsp */
 #include "Utility/DspMacros.h"
@@ -435,10 +437,12 @@ DSP_RTN_CODE DwWorker::solveSubproblems() {
 	/** TODO: That's it? Dual infeasible??? */
 #pragma omp parallel for
 	for (int s = 0; s < parProcIdxSize_; ++s) {
+#ifdef HAS_CBC
 		/** reset problem status */
 		const OsiCbcSolverInterface* cbc = dynamic_cast<OsiCbcSolverInterface*>(si_[s]);
 		if (cbc)
 			cbc->getModelPtr()->setProblemStatus(-1);
+#endif
 
 		if (si_[s]->getNumIntegers() > 0) {
 

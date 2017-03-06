@@ -1,4 +1,34 @@
-include_directories(Model Solver Utility)
+cmake_minimum_required(VERSION 2.8)
+
+##################################################
+# Set directories
+##################################################
+
+set(DEPEND_DIR     "/Users/kibaekkim/Documents/REPOS/DspCoinDepend/build")
+set(CPLEX_DIR      "/Users/kibaekkim/Applications/IBM/ILOG/CPLEX_Studio1261/cplex")
+set(CPLEX_LIB_DIR  "${CPLEX_DIR}/lib/x86-64_osx/static_pic")
+set(CPLEX_INC_DIR  "${CPLEX_DIR}/include/ilcplex")
+set(GUROBI_DIR     "/Library/gurobi652")
+set(GUROBI_LIB_DIR "${GUROBI_DIR}/mac64/lib")
+set(GUROBI_INC_DIR "${GUROBI_DIR}/mac64/include")
+
+##################################################
+# add include directories
+##################################################
+
+include_directories(
+	Model 
+	Solver 
+	Utility
+	${DEPEND_DIR}/include/coin
+	${DEPEND_DIR}/include/ooqp
+	${CPLEX_INC_DIR}
+	${GUROBI_INC_DIR}
+)
+
+##################################################
+# add files to Dsp library
+##################################################
 
 set(DSP_SRC_FILES
 	Model/BlkModel.cpp
@@ -20,8 +50,7 @@ set(DSP_SRC_FILES
 	TreeSearch/DspTreeNode.cpp
 	Utility/DspParams.cpp)
 if (MPI_CXX_FOUND)
-	set(DSP_SRC_FILES
-		${DSP_SRC_FILES}
+	set(DSP_SRC_FILES ${DSP_SRC_FILES}
 		Solver/DantzigWolfe/DwSolverMpi.cpp
 		Solver/DantzigWolfe/DwWorkerMpi.cpp
 		Utility/DspMpi.cpp)
@@ -31,41 +60,42 @@ add_library(Dsp SHARED
 	DspCInterface.cpp
 	${DSP_SRC_FILES})
 
-# add HSL library
-if (HAS_MA57)
-	set(HSL_LIBS ${MA57_DIR}/lib/libma57.a ${METIS_DIR}/libmetis.a)
-	message(STATUS "${Blue}DSP will be compiled with MA57 (libma57.a, libmetis.a)${ColourReset}")
-else()
-	set(HSL_LIBS ${MA27_DIR}/lib/libma27.a)
-	message(STATUS "${Blue}DSP will be compiled with MA27. Note that DSP can be compiled with MA57 with flag -DHAS_MA57=ON.${ColourReset}")
-endif()
+find_library(SMILIB Smi PATHS ${DEPEND_DIR}/lib)
+find_library(OSILIB Osi PATHS ${DEPEND_DIR}/lib)
+find_library(COINUTILSLIB CoinUtils PATHS ${DEPEND_DIR}/lib)
+find_library(ALPSLIB Alps PATHS ${DEPEND_DIR}/lib)
+find_library(OOQPLIB1 ooqpmehrotra PATHS ${DEPEND_DIR}/lib)
+find_library(OOQPLIB2 ooqpgendense PATHS ${DEPEND_DIR}/lib)
+find_library(OOQPLIB3 ooqpgensparse PATHS ${DEPEND_DIR}/lib)
+find_library(OOQPLIB4 ooqpdense PATHS ${DEPEND_DIR}/lib)
+find_library(OOQPLIB5 ooqpsparse PATHS ${DEPEND_DIR}/lib)
+find_library(OOQPLIB6 ooqpbase PATHS ${DEPEND_DIR}/lib)
+find_library(MA27LIB ma27 PATHS /usr/local/lib)
+find_library(OSICPXLIB OsiCpx PATHS ${DEPEND_DIR}/lib)
+find_library(OSIGRBLIB OsiGrb PATHS ${DEPEND_DIR}/lib)
+find_library(CPXLIB cplex PATHS ${CPLEX_LIB_DIR})
+find_library(GRBLIB gurobi65 PATHS ${GUROBI_LIB_DIR})
 
 # set DSP libraries
 set(DSP_LIBS
-	${SMI_DIR}/lib/libSmi.a
-	${SMI_DIR}/lib/libClp.a
-	${SMI_DIR}/lib/libOsiClp.a
-	${CBC_DIR}/lib/libCgl.a
-	${CBC_DIR}/lib/libCbc.a
-	${CBC_DIR}/lib/libOsiCbc.a
-	${SMI_DIR}/lib/libOsiCpx.a
-	${SMI_DIR}/lib/libOsi.a
-	${SMI_DIR}/lib/libCoinUtils.a
-	${ALPS_DIR}/lib/libAlps.a
-	${OOQP_DIR}/lib/libooqpmehrotra.a
-	${OOQP_DIR}/lib/libooqpgondzio.a
-	${OOQP_DIR}/lib/libooqpgendense.a
-	${OOQP_DIR}/lib/libooqpgensparse.a
-	${OOQP_DIR}/lib/libooqpdense.a
-	${OOQP_DIR}/lib/libooqpsparse.a
-	${OOQP_DIR}/lib/libooqpbase.a
-	${HSL_LIBS}
-	${CPLEXLIB_DIR}/libcplex.a
+	${SMILIB}
+	${OSICPXLIB}
+	${OSIGRBLIB}
+	${OSILIB}
+	${COINUTILSLIB}
+	${ALPSLIB}
+	${CPXLIB}
+	${GRBLIB}
+	${OOQPLIB1}
+	${OOQPLIB2}
+	${OOQPLIB3}
+	${OOQPLIB4}
+	${OOQPLIB5}
+	${OOQPLIB6}
+	${MA27LIB}
 	gfortran
-	${BLAS_LIBRARIES}
 	${LAPACK_LIBRARIES}
-	${ZLIB_LIBRARIES}
-	${BZIP2_LIBRARIES})
+)
 if (MPI_CXX_FOUND)
 	set(DSP_LIBS ${DSP_LIBS} ${MPI_CXX_LIBRARIES})
 endif()
@@ -80,9 +110,9 @@ install(TARGETS Dsp LIBRARY DESTINATION $ENV{PWD}/lib)
 ##################################################
 # SUBDIRECTORY
 ##################################################
-if (PYDSP_COMPILE)
-	add_subdirectory(PyDsp)
-endif()
+# if (PYDSP_COMPILE)
+# 	add_subdirectory(PyDsp)
+# endif()
 
 ##################################################
 # Messages
@@ -93,13 +123,4 @@ if(APPLE)
 	install(CODE "message(\"${Red}    export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$ENV{PWD}/lib${ColourReset}\")")
 else()
 	install(CODE "message(\"${Red}    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ENV{PWD}/lib${ColourReset}\")")
-endif()
-if(PYDSP_COMPILE)
-	if(APPLE)
-		install(CODE "execute_process(COMMAND ln -fs $ENV{PWD}/src/PyDsp/libPyDsp.dylib $ENV{PWD}/lib/_PyDsp.dylib)")
-	else()
-		install(CODE "execute_process(COMMAND ln -fs $ENV{PWD}/src/PyDsp/libPyDsp.so $ENV{PWD}/lib/_PyDsp.so)")
-	endif()
-	install(CODE "execute_process(COMMAND cp $ENV{PWD}/src/PyDsp/PyDsp.py $ENV{PWD}/lib/PyDsp.py)")
-	install(CODE "message(\"${Red}    export PYTHONPATH=$PYTHONPATH:$ENV{PWD}/lib${ColourReset}\")")
 endif()
