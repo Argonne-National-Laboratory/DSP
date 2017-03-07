@@ -17,12 +17,15 @@ message(STATUS "The system information: ${CMAKE_SYSTEM}.${CMAKE_SYSTEM_PROCESSOR
 # REQUIRED PACKAGES
 ##################################################
 find_package(LAPACK REQUIRED)
+find_package(ZLIB REQUIRED)
+find_package(BZip2 REQUIRED)
 find_package(MPI)
 find_package(OpenMP)
 
 ##################################################
 # My include files
 ##################################################
+include(UserConfig.cmake)
 include(color_scheme.cmake)
 
 ##################################################
@@ -60,4 +63,5 @@ endif()
 ##################################################
 # SUBDIRECTORY
 ##################################################
+add_subdirectory(extra)
 add_subdirectory(src)

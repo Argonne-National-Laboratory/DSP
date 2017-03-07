@@ -1,16 +1,11 @@
-cmake_minimum_required(VERSION 2.8)
-
 ##################################################
-# Set directories
+# set directories
 ##################################################
 
-set(DEPEND_DIR     "/Users/kibaekkim/Documents/REPOS/DspCoinDepend/build")
-set(CPLEX_DIR      "/Users/kibaekkim/Applications/IBM/ILOG/CPLEX_Studio1261/cplex")
-set(CPLEX_LIB_DIR  "${CPLEX_DIR}/lib/x86-64_osx/static_pic")
-set(CPLEX_INC_DIR  "${CPLEX_DIR}/include/ilcplex")
-set(GUROBI_DIR     "/Library/gurobi652")
-set(GUROBI_LIB_DIR "${GUROBI_DIR}/mac64/lib")
-set(GUROBI_INC_DIR "${GUROBI_DIR}/mac64/include")
+set(COIN_LIB_DIR "${DEPEND_DIR}/lib")
+set(COIN_INC_DIR "${DEPEND_DIR}/include/coin")
+set(OOQP_LIB_DIR "${DEPEND_DIR}/lib")
+set(OOQP_INC_DIR "${DEPEND_DIR}/include/ooqp")
 
 ##################################################
 # add include directories
@@ -20,10 +15,9 @@ include_directories(
 	Model 
 	Solver 
 	Utility
-	${DEPEND_DIR}/include/coin
-	${DEPEND_DIR}/include/ooqp
+	${COIN_INC_DIR}
+	${OOQP_INC_DIR}
 	${CPLEX_INC_DIR}
-	${GUROBI_INC_DIR}
 )
 
 ##################################################
@@ -55,46 +49,32 @@ if (MPI_CXX_FOUND)
 		Solver/DantzigWolfe/DwWorkerMpi.cpp
 		Utility/DspMpi.cpp)
 endif()
+
 add_library(Dsp SHARED
 	DspApiEnv.cpp
 	DspCInterface.cpp
 	${DSP_SRC_FILES})
-
-find_library(SMILIB Smi PATHS ${DEPEND_DIR}/lib)
-find_library(OSILIB Osi PATHS ${DEPEND_DIR}/lib)
-find_library(COINUTILSLIB CoinUtils PATHS ${DEPEND_DIR}/lib)
-find_library(ALPSLIB Alps PATHS ${DEPEND_DIR}/lib)
-find_library(OOQPLIB1 ooqpmehrotra PATHS ${DEPEND_DIR}/lib)
-find_library(OOQPLIB2 ooqpgendense PATHS ${DEPEND_DIR}/lib)
-find_library(OOQPLIB3 ooqpgensparse PATHS ${DEPEND_DIR}/lib)
-find_library(OOQPLIB4 ooqpdense PATHS ${DEPEND_DIR}/lib)
-find_library(OOQPLIB5 ooqpsparse PATHS ${DEPEND_DIR}/lib)
-find_library(OOQPLIB6 ooqpbase PATHS ${DEPEND_DIR}/lib)
-find_library(MA27LIB ma27 PATHS /usr/local/lib)
-find_library(OSICPXLIB OsiCpx PATHS ${DEPEND_DIR}/lib)
-find_library(OSIGRBLIB OsiGrb PATHS ${DEPEND_DIR}/lib)
-find_library(CPXLIB cplex PATHS ${CPLEX_LIB_DIR})
-find_library(GRBLIB gurobi65 PATHS ${GUROBI_LIB_DIR})
+add_dependencies(Dsp Alps OOQP)
 
 # set DSP libraries
 set(DSP_LIBS
-	${SMILIB}
-	${OSICPXLIB}
-	${OSIGRBLIB}
-	${OSILIB}
-	${COINUTILSLIB}
-	${ALPSLIB}
-	${CPXLIB}
-	${GRBLIB}
-	${OOQPLIB1}
-	${OOQPLIB2}
-	${OOQPLIB3}
-	${OOQPLIB4}
-	${OOQPLIB5}
-	${OOQPLIB6}
-	${MA27LIB}
+	${COIN_LIB_DIR}/libSmi.a
+	${COIN_LIB_DIR}/libOsiCpx.a
+	${COIN_LIB_DIR}/libOsi.a
+	${COIN_LIB_DIR}/libCoinUtils.a
+	${COIN_LIB_DIR}/libAlps.a
+	${CPLEX_LIB_DIR}/libcplex.a
+	${OOQP_LIB_DIR}/libooqpmehrotra.a
+	${OOQP_LIB_DIR}/libooqpgendense.a
+	${OOQP_LIB_DIR}/libooqpgensparse.a
+	${OOQP_LIB_DIR}/libooqpdense.a
+	${OOQP_LIB_DIR}/libooqpsparse.a
+	${OOQP_LIB_DIR}/libooqpbase.a
+	${MA27LIB_DIR}/libma27.a
 	gfortran
 	${LAPACK_LIBRARIES}
+	${ZLIB_LIBRARIES}
+	${BZIP2_LIBRARIES}
 )
 if (MPI_CXX_FOUND)
 	set(DSP_LIBS ${DSP_LIBS} ${MPI_CXX_LIBRARIES})
