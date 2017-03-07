@@ -214,7 +214,7 @@ DSP_RTN_CODE DwBundleDual::createDualProblem() {
 	if (cpx) {
 		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("NUM_CORES"));
 		/** TODO: CPLEX Bug (https://www.ibm.com/developerworks/community/forums/html/topic?id=39012909-cf2b-479c-bf94-3a725ca9d9f4&ps=25) */
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARALG, 2);
+		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARALG, 1);
 	}
 
 	/** display */
