@@ -213,8 +213,7 @@ DSP_RTN_CODE DwBundleDual::createDualProblem() {
 	OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
 	if (cpx) {
 		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("NUM_CORES"));
-		/** TODO: CPLEX Bug (https://www.ibm.com/developerworks/community/forums/html/topic?id=39012909-cf2b-479c-bf94-3a725ca9d9f4&ps=25) */
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARALG, 2);
+		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARMAXCOR, 10);
 	}
 
 	/** display */
@@ -695,6 +694,6 @@ void DwBundleDual::printIterInfo() {
 	message_->print(1, "nrows %d, ncols %d, ", si_->getNumRows(), si_->getNumCols());
 	message_->print(1, "timing (total %.2f, master %.2f, gencols %.2f), statue %d\n",
 			t_total_, t_master_, t_colgen_, status_);
-	message_->print(5, "  predicted ascent %+e, |p| %+e, alpha %+e, linerr %+e, eps %+e, u %+e, counter %d\n",
+	message_->print(3, "  predicted ascent %+e, |p| %+e, alpha %+e, linerr %+e, eps %+e, u %+e, counter %d\n",
 			-v_, absp_, alpha_, -linerr_, eps_, u_, counter_);
 }
