@@ -26,7 +26,8 @@ set(COINUTILS_LIB  "-L${DEPEND_DIR}/lib -lCoinUtils")
 set(OSI_LIB        "-L${DEPEND_DIR}/lib -lOsi")
 set(ALPS_LIB       "-L${DEPEND_DIR}/lib -lAlps")
 set(OOQP_HSL_LIB   "MA27LIB=${MA27LIB}")
-
+set(OOQP_BLAS      "BLAS=${BLAS_LIBRARIES}")
+string(REPLACE ";" "\ " OOQP_BLAS "${OOQP_BLAS}")
 
 ExternalProject_Add(CoinUtils
 	SOURCE_DIR ${COINUTILS_DIR}
@@ -113,7 +114,7 @@ ExternalProject_Add(OOQP
 		CXXFLAGS=-fPIC 
 		FFLAGS=-fPIC
 		${OOQP_HSL_LIB}
-		BLAS=${BLAS_LIBRARIES}
+		${OOQP_BLAS}
 		CXX=${CMAKE_CXX_COMPILER}
 	BINARY_DIR ${OOQP_DIR}
 	INSTALL_DIR ${OOQP_DIR} 
