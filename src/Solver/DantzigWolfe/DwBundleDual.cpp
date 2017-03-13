@@ -407,7 +407,7 @@ bool DwBundleDual::terminationTest() {
 	if (relgap_ <= par_->getDblParam("DW/GAPTOL"))
 		return true;
 
-	if (v_ >= 0.0)
+	if (v_ >= -1.0e-6)
 		return true;
 
 	if (iterlim_ <= itercnt_)
@@ -415,6 +415,7 @@ bool DwBundleDual::terminationTest() {
 
 	if (time_remains_ < t_total_) {
 		time_remains_ -= t_total_;
+		par_->setDblParam("DW/SUB/TIME_LIM", std::min(par_->getDblParam("DW/SUB/TIME_LIM"), time_remains_));
 		return true;
 	}
 
