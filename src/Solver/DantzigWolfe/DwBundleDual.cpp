@@ -79,7 +79,7 @@ DSP_RTN_CODE DwBundleDual::solve() {
 		double stime = CoinGetTimeOfDay();
 		DSP_RTN_CHECK_RTN_CODE(generateCols());
 		t_colgen_ += CoinGetTimeOfDay() - stime;
-		message_->print(3, "Generated %u initial columns. Initial dual bound %e\n", ngenerated_, dualobj_);
+		message_->print(3, "Generated %u initial columns. Initial dual bound %.12e\n", ngenerated_, -dualobj_);
 		if (dualobj_ < bestdualobj_) {
 			bestdualobj_ = dualobj_;
 			bestdualsol_ = dualsol_;
@@ -213,7 +213,8 @@ DSP_RTN_CODE DwBundleDual::createDualProblem() {
 	OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
 	if (cpx) {
 		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("NUM_CORES"));
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARMAXCOR, 10);
+		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARMAXCOR, par_->getIntParam("CPX_PARAM_BARMAXCOR"));
+		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARALG, par_->getIntParam("CPX_PARAM_BARALG"));
 	}
 
 	/** display */
@@ -413,11 +414,8 @@ bool DwBundleDual::terminationTest() {
 	if (iterlim_ <= itercnt_)
 		return true;
 
-	if (time_remains_ < t_total_) {
-		time_remains_ -= t_total_;
-		par_->setDblParam("DW/SUB/TIME_LIM", std::min(par_->getDblParam("DW/SUB/TIME_LIM"), time_remains_));
+	if (time_remains_ < t_total_ + par_->getDblParam("DW/SUB/TIME_LIM"))
 		return true;
-	}
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return false;
