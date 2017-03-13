@@ -75,7 +75,7 @@ DSP_RTN_CODE DwBundleDual::solve() {
 	std::fill(dualsol_.begin(), dualsol_.begin() + nrows_conv_, COIN_DBL_MAX);
 
 	/** generate initial columns */
-	if (si_->getNumRows() == 0) {
+	//if (si_->getNumRows() == 0) {
 		double stime = CoinGetTimeOfDay();
 		DSP_RTN_CHECK_RTN_CODE(generateCols());
 		t_colgen_ += CoinGetTimeOfDay() - stime;
@@ -84,7 +84,7 @@ DSP_RTN_CODE DwBundleDual::solve() {
 			bestdualobj_ = dualobj_;
 			bestdualsol_ = dualsol_;
 		}
-	}
+	//}
 
 	/**
 	 * The codes below are experimental to see if deactivating some dual variables would help convergence.
