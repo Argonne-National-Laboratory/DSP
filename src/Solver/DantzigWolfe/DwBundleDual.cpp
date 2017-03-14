@@ -282,12 +282,12 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 		status_ = DSP_STAT_OPTIMAL;
 		break;
 	case CPX_STAT_INFEASIBLE:
-		status_ = DSP_STAT_PRIM_INFEASIBLE;
+		status_ = DSP_STAT_DUAL_INFEASIBLE;
+		message_->print(0, "Unexpected CPLEX status %d\n", cpxstat);
 		break;
 	case CPX_STAT_UNBOUNDED:
 	case CPX_STAT_INForUNBD:
-		status_ = DSP_STAT_DUAL_INFEASIBLE;
-		message_->print(0, "Unexpected CPLEX status %d\n", cpxstat);
+		status_ = DSP_STAT_PRIM_INFEASIBLE;
 		break;
 	case CPX_STAT_ABORT_OBJ_LIM:
 	case CPX_STAT_ABORT_PRIM_OBJ_LIM:
