@@ -86,6 +86,14 @@ DSP_RTN_CODE DwBundleDual::solve() {
 		}
 	//}
 
+	/** subproblem solution may declare infeasibility. */
+	for (auto st = status_subs_.begin(); st != status_subs_.end(); st++)
+		if (*st == DSP_STAT_PRIM_INFEASIBLE) {
+			status_ = DSP_STAT_PRIM_INFEASIBLE;
+			message_->print(3, "Subproblem solution is infeasible.\n");
+			break;
+		}
+
 	/**
 	 * The codes below are experimental to see if deactivating some dual variables would help convergence.
 	 */
@@ -110,7 +118,8 @@ DSP_RTN_CODE DwBundleDual::solve() {
 	}
 #endif
 
-	DSP_RTN_CHECK_RTN_CODE(gutsOfSolve());
+	if (status_ != DSP_STAT_PRIM_INFEASIBLE)
+		DSP_RTN_CHECK_RTN_CODE(gutsOfSolve());
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -278,7 +287,7 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 	case CPX_STAT_UNBOUNDED:
 	case CPX_STAT_INForUNBD:
 		status_ = DSP_STAT_DUAL_INFEASIBLE;
-		message_->print(5, "Unexpected CPLEX status %d\n", cpxstat);
+		message_->print(0, "Unexpected CPLEX status %d\n", cpxstat);
 		break;
 	case CPX_STAT_ABORT_OBJ_LIM:
 	case CPX_STAT_ABORT_PRIM_OBJ_LIM:
@@ -295,7 +304,7 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 		status_ = DSP_STAT_ABORT;
 		break;
 	default:
-		message_->print(1, "Unexpected CPLEX status %d\n", cpxstat);
+		message_->print(0, "Unexpected CPLEX status %d\n", cpxstat);
 		status_ = DSP_STAT_UNKNOWN;
 		break;
 	}
