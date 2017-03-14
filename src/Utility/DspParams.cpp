@@ -204,7 +204,7 @@ void DspParams::initIntParams()
     IntParams_.createParam("DW/SUB/THREADS", 1);
 
     IntParams_.createParam("CPX_PARAM_BARMAXCOR", 10);
-    IntParams_.createParam("CPX_PARAM_BARALG", 1);
+    IntParams_.createParam("CPX_PARAM_BARALG", 3);
 }
 
 void DspParams::initDblParams()
