@@ -132,7 +132,9 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 		break;
 	default:
 		DSPdebugMessage("Unexpected solution status: %d.\n", model->getStatus());
-		assert(0);
+		setStatus(AlpsNodeStatusDiscarded);
+		wirteLog("fathomed", desc);
+		//status = AlpsReturnStatusErr;
 		break;
 	}
 
