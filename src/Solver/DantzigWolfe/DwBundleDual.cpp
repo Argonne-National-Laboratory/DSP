@@ -419,7 +419,7 @@ bool DwBundleDual::terminationTest() {
 	if (relgap_ <= par_->getDblParam("DW/GAPTOL"))
 		return true;
 
-	if (v_ >= -1.0e-6)
+	if (v_ >= -par_->getDblParam("DW/MIN_INCREASE"))
 		return true;
 
 	if (iterlim_ <= itercnt_)

@@ -203,8 +203,8 @@ void DspParams::initIntParams()
     IntParams_.createParam("DW/HEURISTICS/DIVE/ITER_LIM", MAX_INT_NUM);
     IntParams_.createParam("DW/SUB/THREADS", 1);
 
-    IntParams_.createParam("CPX_PARAM_BARMAXCOR", 10);
-    IntParams_.createParam("CPX_PARAM_BARALG", 3);
+    IntParams_.createParam("CPX_PARAM_BARMAXCOR", -1);
+    IntParams_.createParam("CPX_PARAM_BARALG", 0);
 }
 
 void DspParams::initDblParams()
@@ -234,7 +234,8 @@ void DspParams::initDblParams()
 	DblParams_.createParam("ALPS/TIME_LIM", MAX_DBL_NUM);
 
 	DblParams_.createParam("DW/SUB/TIME_LIM", 300);
-	DblParams_.createParam("DW/GAPTOL", 0.0000);
+	DblParams_.createParam("DW/GAPTOL", 1.0e-5);
+	DblParams_.createParam("DW/MIN_INCREASE", 1.0e-6);
 	DblParams_.createParam("DW/SUB/GAPTOL", 0.0000);
 	DblParams_.createParam("DW/TIME_LIM", MAX_DBL_NUM);
 	DblParams_.createParam("DW/HEURISTICS/TRIVIAL/TIME_LIM", MAX_DBL_NUM);
