@@ -224,8 +224,8 @@ DSP_RTN_CODE DwBundleDual::createDualProblem() {
 		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("NUM_CORES"));
 		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARMAXCOR, par_->getIntParam("CPX_PARAM_BARMAXCOR"));
 		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARALG, par_->getIntParam("CPX_PARAM_BARALG"));
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_DEPIND, 3);
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, 1);
+		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_DEPIND, par_->getIntParam("CPX_PARAM_DEPIND"));
+		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, par_->getIntParam("CPX_PARAM_NUMERICALEMPHASIS"));
 	}
 
 	/** display */

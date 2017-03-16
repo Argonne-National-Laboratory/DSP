@@ -205,6 +205,8 @@ void DspParams::initIntParams()
 
     IntParams_.createParam("CPX_PARAM_BARMAXCOR", -1);
     IntParams_.createParam("CPX_PARAM_BARALG", 0);
+    IntParams_.createParam("CPX_PARAM_DEPIND", -1);
+    IntParams_.createParam("CPX_PARAM_NUMERICALEMPHASIS", 1);
 }
 
 void DspParams::initDblParams()
