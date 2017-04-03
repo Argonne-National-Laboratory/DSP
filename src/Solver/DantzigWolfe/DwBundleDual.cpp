@@ -64,6 +64,8 @@ DSP_RTN_CODE DwBundleDual::solve() {
 	t_master_ = 0.0;
 	t_colgen_ = 0.0;
 
+	status_ = DSP_STAT_FEASIBLE;
+
 	/** update quadratic term */
 	u_ = 1.0;
 	counter_ = 0;
