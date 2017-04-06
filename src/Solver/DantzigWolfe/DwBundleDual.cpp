@@ -63,7 +63,6 @@ DSP_RTN_CODE DwBundleDual::solve() {
 	t_total_ = 0.0;
 	t_master_ = 0.0;
 	t_colgen_ = 0.0;
-
 	status_ = DSP_STAT_FEASIBLE;
 
 	/** update quadratic term */
@@ -77,16 +76,9 @@ DSP_RTN_CODE DwBundleDual::solve() {
 	std::fill(dualsol_.begin(), dualsol_.begin() + nrows_conv_, COIN_DBL_MAX);
 
 	/** generate initial columns */
-	//if (si_->getNumRows() == 0) {
-		double stime = CoinGetTimeOfDay();
-		DSP_RTN_CHECK_RTN_CODE(generateCols());
-		t_colgen_ += CoinGetTimeOfDay() - stime;
-		message_->print(3, "Generated %u initial columns. Initial dual bound %.12e\n", ngenerated_, -dualobj_);
-		if (dualobj_ < bestdualobj_) {
-			bestdualobj_ = dualobj_;
-			bestdualsol_ = dualsol_;
-		}
-	//}
+	double stime = CoinGetTimeOfDay();
+	DSP_RTN_CHECK_RTN_CODE(generateCols());
+	t_colgen_ += CoinGetTimeOfDay() - stime;
 
 	/** subproblem solution may declare infeasibility. */
 	for (auto st = status_subs_.begin(); st != status_subs_.end(); st++)
@@ -119,9 +111,21 @@ DSP_RTN_CODE DwBundleDual::solve() {
 		si_->setColBounds(weight[j].first, 0.0, 0.0);
 	}
 #endif
+	/** check time limit */
+	t_total_ = CoinGetTimeOfDay() - t_start_;
+	if (time_remains_ < t_total_) {
+		message_->print(3, "Time limit reached.\n");
+		status_ = DSP_STAT_LIM_ITERorTIME;
+	}
 
-	if (status_ != DSP_STAT_PRIM_INFEASIBLE)
+	if (status_ == DSP_STAT_FEASIBLE) {
+		message_->print(3, "Generated %u initial columns. Initial dual bound %.12e\n", ngenerated_, -dualobj_);
+		if (dualobj_ < bestdualobj_) {
+			bestdualobj_ = dualobj_;
+			bestdualsol_ = dualsol_;
+		}
 		DSP_RTN_CHECK_RTN_CODE(gutsOfSolve());
+	}
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -424,11 +428,17 @@ bool DwBundleDual::terminationTest() {
 	if (v_ >= -par_->getDblParam("DW/MIN_INCREASE"))
 		return true;
 
-	if (iterlim_ <= itercnt_)
+	if (iterlim_ <= itercnt_) {
+		message_->print(3, "Warning: Iteration limit reached.\n");
+		status_ = DSP_STAT_LIM_ITERorTIME;
 		return true;
+	}
 
-	if (time_remains_ < t_total_ + par_->getDblParam("DW/SUB/TIME_LIM"))
+	if (time_remains_ < t_total_) {
+		message_->print(3, "Warning: Time limit reached.\n");
+		status_ = DSP_STAT_LIM_ITERorTIME;
 		return true;
+	}
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return false;

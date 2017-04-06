@@ -98,11 +98,11 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 		quality_ = model->getDualObjective();
 		double curUb = model->getPrimalObjective();
 
-		DSPdebugMessage("[%f] curLb %e, curUb %e, bestUb %e, bestLb %e\n",
-				getKnowledgeBroker()->timer().getWallClock(), quality_, curUb, gUb, gLb);
+		printf("[%f] curLb %.8e, curUb %.8e, bestUb %.8e, bestLb %.8e\n",
+			getKnowledgeBroker()->timer().getWallClock(), quality_, curUb, gUb, gLb);
 
 		/** fathom if LB is larger than UB. */
-		if (quality_ >= gUb) {
+		if (quality_ >= gUb || curUb >= 1.0e+20) {
 			setStatus(AlpsNodeStatusFathomed);
 			wirteLog("fathomed", desc);
 		} else {
