@@ -24,6 +24,9 @@ DwModel::~DwModel() {
 DSP_RTN_CODE DwModel::solve() {
 	BGN_TRY_CATCH
 
+	/** set best primal objective value */
+	solver_->setBestPrimalObjective(bestprimobj_);
+
 	/** solve master */
 	solver_->solve();
 

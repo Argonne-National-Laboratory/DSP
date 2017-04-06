@@ -422,6 +422,9 @@ DSP_RTN_CODE DwBundleDual::updateModel() {
 bool DwBundleDual::terminationTest() {
 	BGN_TRY_CATCH
 
+	if (-bestdualobj_ >= bestprimobj_)
+		return true;
+
 	if (relgap_ <= par_->getDblParam("DW/GAPTOL"))
 		return true;
 
