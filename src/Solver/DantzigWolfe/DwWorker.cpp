@@ -147,9 +147,10 @@ DSP_RTN_CODE DwWorker::createSubproblems() {
 		setTimeLimit(par_->getDblParam("DW/SUB/TIME_LIM"));
 		OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_[s]);
 		if (cpx) {
-			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("DW/SUB/THREADS"));
 			if (nintegers > 0)
 				cpx->switchToMIP();
+			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("DW/SUB/THREADS"));
+			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_ADVIND, par_->getIntParam("DW/SUB/ADVIND"));
 		}
 
 		si_[s]->initialSolve();
@@ -429,6 +430,7 @@ DSP_RTN_CODE DwWorker::solveSubproblems() {
 
 	double timlim = par_->getDblParam("DW/SUB/TIME_LIM");
 	int max_stops = *std::max_element(num_timelim_stops_.begin(), num_timelim_stops_.end());
+	max_stops = 0;
 	if (max_stops > 0) {
 		timlim *= std::pow(2,max_stops);
 		message_->print(3, "  Increased the time limit to %f for subproblems\n", timlim);

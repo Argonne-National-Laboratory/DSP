@@ -202,7 +202,7 @@ void DspParams::initIntParams()
     IntParams_.createParam("DW/HEURISTICS/TRIVIAL/ITER_LIM", MAX_INT_NUM);
     IntParams_.createParam("DW/HEURISTICS/DIVE/ITER_LIM", MAX_INT_NUM);
     IntParams_.createParam("DW/SUB/THREADS", 1);
-
+	IntParams_.createParam("DW/SUB/ADVIND", 0);
     IntParams_.createParam("CPX_PARAM_BARMAXCOR", -1);
     IntParams_.createParam("CPX_PARAM_BARALG", 0);
     IntParams_.createParam("CPX_PARAM_DEPIND", -1);
