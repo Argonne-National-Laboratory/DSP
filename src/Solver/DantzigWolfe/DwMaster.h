@@ -206,6 +206,9 @@ public:
     int itercnt_;
     int ngenerated_;
 
+    std::vector<double> log_time_;
+    std::vector<double> log_bestdual_bounds_;
+
     /**@name Time stamps */
     double t_start_; /**< solution start time */
     double t_total_; /**< total time */

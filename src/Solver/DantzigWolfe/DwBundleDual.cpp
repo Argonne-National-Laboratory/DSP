@@ -65,6 +65,10 @@ DSP_RTN_CODE DwBundleDual::solve() {
 	t_colgen_ = 0.0;
 	status_ = DSP_STAT_FEASIBLE;
 
+	/** clear logs */
+	log_time_.clear();
+	log_bestdual_bounds_.clear();
+
 	/** update quadratic term */
 	u_ = 1.0;
 	counter_ = 0;
@@ -721,4 +725,8 @@ void DwBundleDual::printIterInfo() {
 			t_total_, t_master_, t_colgen_, status_);
 	message_->print(3, "  predicted ascent %+e, |p| %+e, alpha %+e, linerr %+e, eps %+e, u %+e, counter %d\n",
 			-v_, absp_, alpha_, -linerr_, eps_, u_, counter_);
+
+	/** log */
+	log_time_.push_back(CoinGetTimeOfDay());
+	log_bestdual_bounds_.push_back(-bestdualobj_);
 }

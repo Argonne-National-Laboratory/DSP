@@ -18,6 +18,7 @@
 #include "TreeSearch/DspTreeNode.h"
 #include "TreeSearch/DspModel.h"
 #include "TreeSearch/DspNodeSolution.h"
+#include "Solver/DantzigWolfe/DwMaster.h"
 
 DspTreeNode::DspTreeNode() :
 		AlpsTreeNode(),
@@ -45,6 +46,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 	/** retrieve objects */
 	DspNodeDesc* desc = dynamic_cast<DspNodeDesc*>(desc_);
 	DspModel* model = dynamic_cast<DspModel*>(desc_->getModel());
+	DwMaster* solver = dynamic_cast<DwMaster*>(model->getSolver());
 	DspParams* par = model->getParPtr();
 	double relTol = 0.0001;//par->getDblParam("DW/GAPTOL");
 
@@ -101,6 +103,15 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 
 		printf("[%f] curLb %.8e, curUb %.8e, bestUb %.8e, bestLb %.8e\n",
 			getKnowledgeBroker()->timer().getWallClock(), quality_, curUb, gUb, gLb);
+
+		log_dualobjs_.open(par->getStrParam("DW/LOGFILE/OBJS").c_str(), ios::app);
+		if (isRoot) {
+			for (unsigned i = 0; i < solver->log_time_.size(); ++i)
+				log_dualobjs_ << solver->log_time_[i] << "," << solver->log_bestdual_bounds_[i] << std::endl;
+		} else {
+			log_dualobjs_ << CoinGetTimeOfDay() << "," << gLb << std::endl;
+		}
+		log_dualobjs_.close();
 
 		/** fathom if LB is larger than UB. */
 		if (quality_ >= gUb || curUb >= 1.0e+20) {

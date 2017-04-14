@@ -77,6 +77,7 @@ public:
 
 private:
 
+    std::fstream log_dualobjs_;
     std::fstream logstream_;
 
 	/** branching object */
