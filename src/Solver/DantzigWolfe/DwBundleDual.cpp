@@ -70,7 +70,7 @@ DSP_RTN_CODE DwBundleDual::solve() {
 	log_bestdual_bounds_.clear();
 
 	/** update quadratic term */
-	u_ = 1.0;
+	u_ = par_->getDblParam("DW/INIT_CENTER");
 	counter_ = 0;
 	updateCenter(u_);
 
