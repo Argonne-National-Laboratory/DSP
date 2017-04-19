@@ -81,8 +81,8 @@ DSP_RTN_CODE DwModel::solve() {
 					//printf("found %d bestprimobj %+e\n", found, bestprimobj_);
 				}
 			}
-		} else
-			status_ = DSP_STAT_PRIM_INFEASIBLE;
+		}
+
 		break;
 	}
 	default:
