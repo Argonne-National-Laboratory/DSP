@@ -98,11 +98,10 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 	case DSP_STAT_OPTIMAL:
 	case DSP_STAT_FEASIBLE:
 	case DSP_STAT_LIM_ITERorTIME: {
-		quality_ = model->getDualObjective();
 		double curUb = model->getPrimalObjective();
 
 		printf("[%f] curLb %.8e, curUb %.8e, bestUb %.8e, bestLb %.8e\n",
-			getKnowledgeBroker()->timer().getWallClock(), quality_, curUb, gUb, gLb);
+			getKnowledgeBroker()->timer().getWallClock(), model->getDualObjective(), curUb, gUb, gLb);
 
 		log_dualobjs_.open(par->getStrParam("DW/LOGFILE/OBJS").c_str(), ios::app);
 		if (isRoot) {
@@ -114,10 +113,11 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 		log_dualobjs_.close();
 
 		/** fathom if LB is larger than UB. */
-		if (quality_ >= gUb || curUb >= 1.0e+20) {
+		if (model->getDualObjective() >= gUb || curUb >= 1.0e+20) {
 			setStatus(AlpsNodeStatusFathomed);
 			wirteLog("fathomed", desc);
 		} else {
+			quality_ = model->getDualObjective();
 			/** Branching otherwise */
 			bool hasObjs = model->chooseBranchingObjects(branchingUp_, branchingDn_);
 
