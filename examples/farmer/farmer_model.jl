@@ -23,8 +23,8 @@ Minreq   = [200 240 0]     # minimum crop requirement
 m = Model(NS)
 
 @variable(m, x[i=CROPS] >= 0, Int)
-@objective(m, Min, sum{Cost[i] * x[i], i=CROPS})
-@constraint(m, const_budget, sum{x[i], i=CROPS} <= Budget)
+@objective(m, Min, sum(Cost[i] * x[i] for i=CROPS))
+@constraint(m, const_budget, sum(x[i] for i=CROPS) <= Budget)
 
 for s in blockids()
     blk = Model(m, s, probability[s])
@@ -32,7 +32,7 @@ for s in blockids()
     @variable(blk, y[j=PURCH] >= 0)
     @variable(blk, w[k=SELL] >= 0)
 
-    @objective(blk, Min, sum{Purchase[j] * y[j], j=PURCH} - sum{Sell[k] * w[k], k=SELL})
+    @objective(blk, Min, sum(Purchase[j] * y[j] for j=PURCH) - sum(Sell[k] * w[k] for k=SELL))
 
     @constraint(blk, const_minreq[j=PURCH], Yield[s,j] * x[j] + y[j] - w[j] >= Minreq[j])
     @constraint(blk, const_minreq_beets, Yield[s,3] * x[3] - w[3] - w[4] >= Minreq[3])
