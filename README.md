@@ -16,7 +16,7 @@ The methods can be run on computing clusters and multi-core processors.
 
 You can clone this repository in your preferred directory by typing:
 ```bash
-git clone -b dev-coin https://github.com/Argonne-National-Laboratory/DSP.git
+git clone -b dev-coin --recursive https://github.com/Argonne-National-Laboratory/DSP.git
 ```
 
 ## Installation
