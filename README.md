@@ -1,7 +1,7 @@
 # DSP
-DSP is an open-source and parallel package that implements decomposition methods for **stochastic mixed-integer programming (SMIP)** problems. These are structured optimization problems considering uncertain scenario realizations s with probabilities p_s in the following form:
+DSP is an open-source and parallel package that implements decomposition methods for **structured mixed-integer programming** problems. These are structured optimization problems in the following form:
 
-        minimize   c^T x + \sum_{s=1}^S p_s q_s^T y_s
+        minimize   c^T x + \sum_{s=1}^S q_s^T y_s
         subject to   A x                              = b
                    T_s x +                    W_s y_s = h_s for s = 1, .., S
                    some x, y_s are integers
@@ -16,7 +16,7 @@ The methods can be run on computing clusters and multi-core processors.
 
 You can clone this repository in your preferred directory by typing:
 ```bash
-git clone https://github.com/Argonne-National-Laboratory/DSP.git
+git clone -b dev-coin https://github.com/Argonne-National-Laboratory/DSP.git
 ```
 
 ## Installation
@@ -39,18 +39,15 @@ Pkg.update();
 ```julia
     Pkg.add("JuMP");
 ```
-* The [Dsp.jl](https://github.com/kibaekkim/Dsp.jl) package provides an interface to ``JuMP.jl``. DSPsolver.jl can be installed by the Julia command
+* The [Dsp.jl](https://github.com/kibaekkim/Dsp.jl) package provides an interface to ``JuMP.jl``. Dsp.jl can be installed by the Julia command
 ```julia
     Pkg.clone("https://github.com/kibaekkim/Dsp.jl.git");
+    Pkg.checkout("Dsp","dev-gen");
 ```
 * [MPI.jl](https://github.com/JuliaParallel/MPI.jl) is an **optional** package to run DSP in parallel on high-performance computing machines using MPI library. This is an MPI interface package, which can be installed by the following Julia command. MPICH is required for this package.
 ```julia
     Pkg.add("MPI");
 ```
-
-### Python Interface
-
-Python interface will be automatically installed if ``python`` library is available on your machine.
 
 ## Example
 
