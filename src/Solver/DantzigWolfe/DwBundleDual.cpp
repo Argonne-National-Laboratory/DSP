@@ -429,10 +429,10 @@ bool DwBundleDual::terminationTest() {
 	if (-bestdualobj_ >= bestprimobj_)
 		return true;
 
-	if (relgap_ <= par_->getDblParam("DW/GAPTOL"))
+	if (primobj_ < 1.0e+20 && relgap_ <= par_->getDblParam("DW/GAPTOL"))
 		return true;
 
-	if (v_ >= -par_->getDblParam("DW/MIN_INCREASE"))
+	if (primobj_ < 1.0e+20 && v_ >= -par_->getDblParam("DW/MIN_INCREASE"))
 		return true;
 
 	if (iterlim_ <= itercnt_) {
