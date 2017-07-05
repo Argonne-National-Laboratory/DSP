@@ -9,6 +9,7 @@
 #define SRC_SOLVER_DANTZIGWOLFE_DWSOLVERSERIAL_H_
 
 #include <DecSolver.h>
+#include <TreeSearch/DspNodeSolution.h>
 #include <DantzigWolfe/DwMaster.h>
 #include <DantzigWolfe/DwModel.h>
 

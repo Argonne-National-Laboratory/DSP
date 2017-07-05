@@ -62,8 +62,8 @@ DSP_RTN_CODE DwSolverMpi::solve() {
 		AlpsKnowledgeBrokerSerial alpsBroker(0, NULL, *alps_);
 	    alpsBroker.search(alps_);
 
-//		DspNodeSolution* solution = dynamic_cast<DspNodeSolution*>(alpsBroker.getBestKnowledge(AlpsKnowledgeTypeSolution).first);
-//		solution->print(std::cout);
+		DspNodeSolution* solution = dynamic_cast<DspNodeSolution*>(alpsBroker.getBestKnowledge(AlpsKnowledgeTypeSolution).first);
+		solution->print(std::cout);
 
 		/** send signal */
 		int sig = DwWorkerMpi::sig_terminate;
