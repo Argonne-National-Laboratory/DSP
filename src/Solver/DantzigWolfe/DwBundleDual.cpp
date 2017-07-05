@@ -72,6 +72,7 @@ DSP_RTN_CODE DwBundleDual::solve() {
 	/** update quadratic term */
 	u_ = par_->getDblParam("DW/INIT_CENTER");
 	counter_ = 0;
+	eps_ = COIN_DBL_MAX;
 	updateCenter(u_);
 
 	/** initial price to generate columns */
