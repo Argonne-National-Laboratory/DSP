@@ -13,3 +13,6 @@
 [submodule "extra/Alps"]
 	path = extra/Alps
 	url = https://github.com/kibaekkim/CHiPPS-ALPS.git
+[submodule "extra/Bcps"]
+	path = extra/Bcps
+	url = https://github.com/kibaekkim/CHiPPS-BiCePS.git
