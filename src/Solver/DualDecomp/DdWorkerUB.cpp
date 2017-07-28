@@ -117,6 +117,10 @@ double DdWorkerUB::evaluate(CoinPackedVector* solution) {
 	int nrows = mat_mp_[0]->getNumRows(); /** retrieve the number of rows in subproblem */
 	int nsubprobs = par_->getIntPtrParamSize("ARR_PROC_IDX");
 
+	/** first-stage objective value */
+	double cx = solution->dotProduct(tss->getObjCore(0));
+	double cx_weighted = 0.0;
+
 	/** allocate memory */
 	x = solution->denseVector(tss->getNumCols(0));
 	for (int s = nsubprobs - 1; s >= 0; --s) {
@@ -139,20 +143,22 @@ double DdWorkerUB::evaluate(CoinPackedVector* solution) {
 				si_[s]->setRowUpper(i, rubd[i] - Tx[i]);
 		}
 
+		/** first-stage objective value */
+		cx_weighted += cx * tss->getProbability()[par_->getIntPtrParam("ARR_PROC_IDX")[s]];
+
 		FREE_ARRAY_PTR(Tx)
 	}
 
 	DSP_RTN_CHECK_RTN_CODE(solve());
+	ub_ += cx_weighted;
 
 	/** restore row bounds */
 	for (int s = nsubprobs - 1; s >= 0; --s) {
 		const double* rlbd = si_[s]->getRowLower();
 		const double* rubd = si_[s]->getRowUpper();
 		for (int i = si_[s]->getNumRows() - 1; i >= 0; --i) {
-			if (rlbd_org_[s][i] > -COIN_DBL_MAX)
-				si_[s]->setRowLower(i, rlbd_org_[s][i]);
-			if (rubd_org_[s][i] < COIN_DBL_MAX)
-				si_[s]->setRowUpper(i, rubd_org_[s][i]);
+			si_[s]->setRowLower(i, rlbd_org_[s][i]);
+			si_[s]->setRowUpper(i, rubd_org_[s][i]);
 		}
 	}
 
