@@ -123,15 +123,13 @@ double DdWorkerUB::evaluate(CoinPackedVector* solution) {
 
 	/** allocate memory */
 	x = solution->denseVector(tss->getNumCols(0));
+	double probability = 0.0;
 	for (int s = nsubprobs - 1; s >= 0; --s) {
 		/** calculate Tx */
 		Tx = new double [mat_mp_[s]->getNumRows()];
 		mat_mp_[s]->times(x, Tx);
 
-		/** set time limit */
-		si_[s]->setTimeLimit(
-				CoinMin(CoinMax(0.01, time_remains_),
-						par_->getDblParam("SCIP/TIME_LIM")));
+		probability += tss->getProbability()[s];
 
 		/** adjust row bounds */
 		const double* rlbd = si_[s]->getRowLower();
@@ -152,10 +150,11 @@ double DdWorkerUB::evaluate(CoinPackedVector* solution) {
 	DSP_RTN_CHECK_RTN_CODE(solve());
 	ub_ += cx_weighted;
 
+	for (int j = 0; j < tss->getNumCols(0); ++j)
+		ub_ += probability * tss->getObjCore(0)[j] * x[j];
+
 	/** restore row bounds */
 	for (int s = nsubprobs - 1; s >= 0; --s) {
-		const double* rlbd = si_[s]->getRowLower();
-		const double* rubd = si_[s]->getRowUpper();
 		for (int i = si_[s]->getNumRows() - 1; i >= 0; --i) {
 			si_[s]->setRowLower(i, rlbd_org_[s][i]);
 			si_[s]->setRowUpper(i, rubd_org_[s][i]);
@@ -185,6 +184,11 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 	{
 		cputime = CoinCpuTime();
 		walltime = CoinGetTimeOfDay();
+
+		/** set time limit */
+		si_[s]->setTimeLimit(
+				CoinMin(CoinMax(0.01, time_remains_),
+				par_->getDblParam("SCIP/TIME_LIM")));
 
 		/** solve */
 		si_[s]->solve();

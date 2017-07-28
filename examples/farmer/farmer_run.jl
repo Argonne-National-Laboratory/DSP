@@ -8,7 +8,7 @@ include("farmer_model.jl")
 # Dsp solve types
 solve_types = [:Dual, :Benders, :Extensive]
 
-solve(m, solve_type = solve_types[1])
+solve(m, solve_type = solve_types[1], param = "../params.txt")
 
 @show getprimobjval()
 @show getdualobjval()
