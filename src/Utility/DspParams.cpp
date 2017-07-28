@@ -196,7 +196,7 @@ void DspParams::initDblParams()
 	DblParams_.createParam("DD/WALL_LIM", MAX_DBL_NUM);
 
 	/** initial trust region size */
-	DblParams_.createParam("DD/TR/SIZE", 1);
+	DblParams_.createParam("DD/TR/SIZE", 0.1);
 
 	/** stopping tolerance */
 	DblParams_.createParam("DD/STOP_TOL", 0.00001);
