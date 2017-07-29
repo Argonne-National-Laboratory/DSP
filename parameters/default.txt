@@ -50,6 +50,12 @@ int  DD/OPT_CUTS     1
 int  DD/EVAL_UB      1
 int  DD/MAX_EVAL_UB  100  # maximum number of solutions to evaluate
 
+# Asynchronous (experimental)
+bool  DD/ASYNC               false    # run asynchronously
+bool  DD/ALLOW_IDLE_WORKERS  true     # allow idle workers for asynchronous method
+int   DD/MAX_QSIZE           5        # maximum number of queue in the master
+int   DD/MIN_PROCS           1        # minimum number of worker processes to wait at the master
+
 #
 # Parameters UNLIKELY changed by users
 #
