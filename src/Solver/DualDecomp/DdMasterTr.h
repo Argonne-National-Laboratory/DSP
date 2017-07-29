@@ -89,6 +89,7 @@ protected:
 	vector<double> masterobjsAtCutAdd_; /**< master objective values when cuts were generated */
 	int            ncuts_minor_;    /**< number of cuts generated at minor iterations */
 	double         cutdel_param_;   /**< cut deletion parameter */
+	double         linerr_;         /**< linearization error */
 
 	/** parameters */
 	bool parTr_;            /**< enable/disable trust region */

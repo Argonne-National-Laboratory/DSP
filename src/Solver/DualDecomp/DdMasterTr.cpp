@@ -34,6 +34,7 @@ isSolved_(false),
 cuts_(NULL),
 ncuts_minor_(0),
 cutdel_param_(0.5),
+linerr_(0.0),
 parTr_(true),
 parTrSize_(0.0),
 parTrDecrease_(true),
@@ -328,9 +329,6 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 		newdual += subdualobj_[s];
 	}
 
-	/** add cuts and re-optimize */
-	nCutsAdded = addCuts();
-
 	/** update trust region FIRST, because this does not change problem. */
 	if (parTr_)
 	{
@@ -339,9 +337,6 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 		if (newdual >= bestdualobj_ + 1.0e-4 * (curprimobj - bestdualobj_))
 		{
 			message_->print(2, "TR  %s STEP: dual objective %e", isSolved_ ? "SERIOUS" : "INITIAL", newdual);
-
-			/** reset minor cut counter */
-			ncuts_minor_ = nCutsAdded;
 
 			/** mark cuts not to be deleted */
 			for (int i = cuts_->sizeCuts() - nCutsAdded; i < cuts_->sizeCuts(); ++i)
@@ -377,35 +372,24 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 		}
 		else
 		{
-			/** increase minor cut counter */
-			ncuts_minor_ += nCutsAdded;
+			/** add cuts and increase minor cut counter */
+			ncuts_minor_ += addCuts();
 
 			/** null step */
 			message_->print(3, "TR  null step: dual objective %e", newdual);
 
-//			if (curprimobj < bestdualobj_)
-//			{
-//				/** increase trust region */
-//				stability_param_ = CoinMin(2. * stability_param_, 1.0e+4);
-//				message_->print(3, ", increased trust region size %e", stability_param_);
-//				/** set trust region */
-//				setTrustRegion(stability_param_, stability_center_);
-//			}
-//			else if (parTrDecrease_)
+			/** The following rule is from Linderoth and Wright (2003) */
+			double rho = CoinMin(1.0, stability_param_) * CoinMax(bestdualobj_ - newdual, linerr_) / (curprimobj - bestdualobj_);
+			if (rho > 0) trcnt_++;
+			if (rho >= 3 || (trcnt_ >= 3 && fabs(rho - 2.) < 1.0))
 			{
-				/** The following rule is from Linderoth and Wright (2003) */
-				double rho = CoinMin(1.0, stability_param_) * (bestdualobj_ - newdual) / (curprimobj - bestdualobj_);
-				if (rho > 0) trcnt_++;
-				if (rho >= 3 || (trcnt_ >= 3 && fabs(rho - 2.) < 1.0))
-				{
-					/** decrease trust region */
-					stability_param_ *= 1.0 / CoinMin(rho, 4.);
-					message_->print(3, ", decreased trust region size %e", stability_param_);
-					trcnt_ = 0;
+				/** decrease trust region */
+				stability_param_ *= 1.0 / CoinMin(rho, 4.);
+				message_->print(3, ", decreased trust region size %e", stability_param_);
+				trcnt_ = 0;
 
-					/** set trust region */
-					setTrustRegion(stability_param_, stability_center_);
-				}
+				/** set trust region */
+				setTrustRegion(stability_param_, stability_center_);
 			}
 
 			message_->print(3, "\n");
@@ -484,6 +468,9 @@ int DdMasterTr::addCuts(
 
 	BGN_TRY_CATCH
 
+	/** initialize linearization error */
+	linerr_ = -bestdualobj_;
+
 	/** allocate memory for dense cut */
 	aggvec = new double * [nthetas_];
 	aggrhs = new double [nthetas_];
@@ -502,15 +489,19 @@ int DdMasterTr::addCuts(
 		/** cut index */
 		int cutidx = s % nthetas_;
 
-		/** construct cut */
+		/** calculate error and construct cut */
+		linerr_ += subprimobj_[s];
  		aggrhs[cutidx] += subprimobj_[s];
 		for (int i = 0; i < nlambdas_; i++)
 		{
 			/** evaluate solution on coupling constraints (if they are Hx = d, this is (Hx - d)_i) */
 			double hx_d = model_->evalLhsCouplingRowSubprob(i, s, subsolution_[s]) - model_->getRhsCouplingRow(i);
 			aggvec[cutidx][nthetas_ + i] -= hx_d; /** coefficients for lambda */
-			if (isSolved_)
+			linerr_ += hx_d * stability_center_[i];
+			if (isSolved_) {
+				linerr_ -= hx_d * primsol_[nthetas_ + i];
 				aggrhs[cutidx] -= hx_d * primsol_[nthetas_ + i];
+			}
 		}
 	}
 
