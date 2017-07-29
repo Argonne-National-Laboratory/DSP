@@ -123,13 +123,10 @@ double DdWorkerUB::evaluate(CoinPackedVector* solution) {
 
 	/** allocate memory */
 	x = solution->denseVector(tss->getNumCols(0));
-	double probability = 0.0;
 	for (int s = nsubprobs - 1; s >= 0; --s) {
 		/** calculate Tx */
 		Tx = new double [mat_mp_[s]->getNumRows()];
 		mat_mp_[s]->times(x, Tx);
-
-		probability += tss->getProbability()[s];
 
 		/** adjust row bounds */
 		const double* rlbd = si_[s]->getRowLower();
@@ -149,9 +146,6 @@ double DdWorkerUB::evaluate(CoinPackedVector* solution) {
 
 	DSP_RTN_CHECK_RTN_CODE(solve());
 	ub_ += cx_weighted;
-
-	for (int j = 0; j < tss->getNumCols(0); ++j)
-		ub_ += probability * tss->getObjCore(0)[j] * x[j];
 
 	/** restore row bounds */
 	for (int s = nsubprobs - 1; s >= 0; --s) {
