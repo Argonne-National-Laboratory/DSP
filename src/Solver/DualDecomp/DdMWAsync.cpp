@@ -616,6 +616,7 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 		CoinZeroN(numCutsAdded, subcomm_size_ - 1);
 	}
 
+	int minLbWorkers = par_->getIntParam("DD/MIN_PROCS");
 	int numLbWorkers = subcomm_size_-1; /**< number of LB workers */
 
 	/** print display header */
@@ -705,7 +706,7 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 			}
 
 			/** The master received messages from all the LB workers? */
-			if (master->worker_.size() == numLbWorkers)
+			if (master->worker_.size() >= CoinMin(numLbWorkers,minLbWorkers))
 				break;
 
 			/** time limit */
@@ -830,9 +831,9 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 				message_->print(3, "The queue has been cleaned up (size %lu).\n", q_indicator_.size());
 			}
 		}
-		else if (allowIdleLbProcessors == false)
+		else
 		{
-			DSP_RTN_CHECK_RTN_CODE(master->updateTrustRegion());
+			DSP_RTN_CHECK_RTN_CODE(master->updateTrustRegion(master_->getPrimalSolution()));
 		}
 
 		/** solve problem */

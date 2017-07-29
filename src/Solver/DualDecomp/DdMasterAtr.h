@@ -38,7 +38,8 @@ public:
 			double   newdual  /**< new dual objective value */);
 
 	/** update trust region */
-	DSP_RTN_CODE updateTrustRegion();
+	DSP_RTN_CODE updateTrustRegion(
+			const double * primsol /**< current master primal solution */);
 
 	/** termination test */
 	DSP_RTN_CODE terminationTest();

@@ -176,15 +176,9 @@ DSP_RTN_CODE DdMasterAtr::updateProblem(
 	}
 #endif
 
-	/** add cuts and re-optimize */
-	nCutsAdded = addCuts();
-
 	if (newdual >= bestdualobj_ + 1.0e-4 * (curprimobj - bestdualobj_))
 	{
 		message_->print(2, "TR  %s STEP: dual objective %e", isSolved_ ? "SERIOUS" : "INITIAL", newdual);
-
-		/** reset minor cut counter */
-		ncuts_minor_ = nCutsAdded;
 
 		/** mark cuts not to be deleted */
 		for (int i = cuts_->sizeCuts() - nCutsAdded; i < cuts_->sizeCuts(); ++i)
@@ -197,7 +191,7 @@ DSP_RTN_CODE DdMasterAtr::updateProblem(
 			message_->print(3, ", updated proximal point");
 
 			/** possibly delete cuts */
-			possiblyDeleteCuts(newdual);
+			//possiblyDeleteCuts(newdual);
 
 			/** is solution boundary? */
 			if (isSolutionBoundary() &&
@@ -221,36 +215,26 @@ DSP_RTN_CODE DdMasterAtr::updateProblem(
 	}
 	else
 	{
-		/** increase minor cut counter */
-		ncuts_minor_ += nCutsAdded;
+		/** add cuts and increase minor cut counter */
+		ncuts_minor_ += addCuts();
 
 		/** null step */
 		message_->print(3, "[TR]  NULL STEP: dual objective %e", newdual);
 
-//		if (curprimobj < bestdualobj_)
-//		{
-//			/** increase trust region */
-//			stability_param_ = CoinMin(2. * stability_param_, 1.0e+4);
-//			message_->print(3, ", increased trust region size %e", stability_param_);
-//			/** set trust region */
-//			setTrustRegion(stability_param_, stability_center_);
-//		}
-//		else if (parTrDecrease_)
+		/** The following rule is from Linderoth and Wright (2003) */
+		int nullsteps_allowed = 3 * par_->getIntPtrParamSize("ARR_PROC_IDX");
+		double rho = CoinMin(1.0, stability_param_) * CoinMax(bestdualobj_ - newdual, linerr_) / (curprimobj - bestdualobj_);
+		message_->print(3, ", rho %e, trcnt %d", rho, trcnt_);
+		if (rho > 0) trcnt_++;
+		if (rho >= 3 || (trcnt_ >= nullsteps_allowed && fabs(rho - 2.) < 1.0))
 		{
-			/** The following rule is from Linderoth and Wright (2003) */
-			double rho = CoinMin(1.0, stability_param_) * (bestdualobj_ - newdual) / (curprimobj - bestdualobj_);
-			message_->print(3, ", rho %e, trcnt %d", rho, trcnt_);
-			if (rho > 0) trcnt_++;
-			if (rho >= 3 || (trcnt_ >= 3 && fabs(rho - 2.) < 1.0))
-			{
-				/** decrease trust region */
-				stability_param_ *= 1.0 / CoinMin(rho, 4.);
-				message_->print(3, ", decreased trust region size %e", stability_param_);
-				trcnt_ = 0;
+			/** decrease trust region */
+			stability_param_ *= 1.0 / CoinMin(rho, 4.);
+			message_->print(3, ", decreased trust region size %e", stability_param_);
+			trcnt_ = 0;
 
-				/** set trust region */
-				setTrustRegion(stability_param_, stability_center_);
-			}
+			/** set trust region */
+			setTrustRegion(stability_param_, stability_center_);
 		}
 		message_->print(3, "\n");
 	}
@@ -272,68 +256,33 @@ DSP_RTN_CODE DdMasterAtr::updateProblem(
 	return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE DdMasterAtr::updateTrustRegion()
+DSP_RTN_CODE DdMasterAtr::updateTrustRegion(const double * primsol)
 {
 	BGN_TRY_CATCH
 
-	/** add cuts and re-optimize */
-	int nCutsAdded = addCuts();
+	double curprimobj = 0.0;//si_->getPrimalBound(); /** current primal objective value */
+	for (int s = 0; s < nthetas_; ++s)
+		curprimobj += primsol[s];
 
-	/** increase minor cut counter */
-	ncuts_minor_ += nCutsAdded;
+	/** add cuts and increase minor cut counter */
+	ncuts_minor_ += addCuts();
 
-#if 0
-	/** number of cuts generated from the last iteration */
-	int ncuts = 0;
-	for (int i = 1; i < nworkers_; ++i)
-		ncuts += nlastcuts_[i];
-	if (ncuts > 0) return DSP_RTN_OK;
-
-	OoqpEps * ooqp = dynamic_cast<OoqpEps*>(si_);
-	if (ooqp)
-	{
-		if (ooqp->hasOoqpStatus_ && isSolved_)
-		{
-			DSPdebugMessage("bestprimobj %+e bestdualobj %+e\n", bestprimobj_, bestdualobj_);
-			double epsilon = (si_->getPrimalBound() - bestdualobj_ + ooqp->getDualityGap()) / (1. + fabs(si_->getPrimalBound()));
-			if (epsilon > 1.) epsilon = 1.;
-			ooqp->setOoqpStatus(epsilon, -bestprimobj_, -bestdualobj_);
-		}
-	}
-#endif
-
-#if 0
-	/** is solution boundary? */
-	if (isSolutionBoundary())
-	{
-		/** increase trust region */
-		stability_param_ = CoinMin(2. * stability_param_, 1.0e+4);
-		message_->print(3, ", increased trust region size %e", stability_param_);
-
-		/** set trust region */
-		setTrustRegion(stability_param_, stability_center_);
-	}
-#endif
-
-#if 0
-	/**
-	 * Update the trust region based on the model error
-	 */
-	double currobj = si_->getPrimalBound();
-	double model_error = (currobj - bestdualobj_) / (fabs(bestdualobj_) + 1.0e-10);
-	if (model_error > 0.01) trcnt_++;
-	message_->print(3, "[TR] Model error %.2f, trcnt %d\n", model_error, trcnt_);
-	if (model_error >= 0.10 || (trcnt_ >= 3 && model_error > 0.05))
+	/** The following rule is from Linderoth and Wright (2003) */
+	int nullsteps_allowed = 3 * par_->getIntPtrParamSize("ARR_PROC_IDX");
+	double rho = CoinMin(1.0, stability_param_) * linerr_ / (curprimobj - bestdualobj_);
+	message_->print(3, ", rho %e, trcnt %d", rho, trcnt_);
+	if (rho > 0) trcnt_++;
+	if (rho >= 3 || (trcnt_ >= nullsteps_allowed && fabs(rho - 2.) < 1.0))
 	{
 		/** decrease trust region */
-		stability_param_ *= CoinMax(CoinMin(model_error, 0.9), 0.25);
-		message_->print(3, "[TR] decreased trust region size %e\n", stability_param_);
+		stability_param_ *= 1.0 / CoinMin(rho, 4.);
+		message_->print(3, ", decreased trust region size %e", stability_param_);
 		trcnt_ = 0;
 
 		/** set trust region */
 		setTrustRegion(stability_param_, stability_center_);
 	}
-#endif
+	message_->print(3, "\n");
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -404,6 +353,10 @@ int DdMasterAtr::addCuts(bool possiblyDel)
 
 	BGN_TRY_CATCH
 
+	/** initialize linearization error */
+	int ncuts = 0;
+	linerr_ = 0.0;
+
 //	DSPdebugMessage("Number of workers %lu\n", worker_.size());
 	for (unsigned i = 0; i < worker_.size(); ++i)
 	{
@@ -419,9 +372,10 @@ int DdMasterAtr::addCuts(bool possiblyDel)
 		 */
 		for (int s = 0; s < nsubprobs_[i]; ++s)
 		{
-			/** constructing */
+			/** constructing cut and calculating error*/
 			cutvec.clear();
 			cutvec.insert(subindex_[i][s], 1.0); /**< theta part */
+			linerr_ += subprimobj_[i][s];
 			cutrhs = subprimobj_[i][s];
 			for (int j = 0; j < model_->getNumCouplingRows(); ++j)
 			{
@@ -431,8 +385,12 @@ int DdMasterAtr::addCuts(bool possiblyDel)
 				{
 					cutvec.insert(nthetas_ + j, -hx_d);
 					cutrhs -= hx_d * primsol[nthetas_ + j];
+					linerr_ += hx_d * (stability_center_[j] - primsol[nthetas_ + j]);
 				}
 			}
+
+			/** count number of cuts generated */
+			ncuts++;
 
 			/** cut placeholder */
 			OsiRowCut * rc = new OsiRowCut;
@@ -476,6 +434,10 @@ int DdMasterAtr::addCuts(bool possiblyDel)
 	}
 	message_->print(5, "-> master has %d rows, %d columns, and %d cuts to add\n",
 			si_->getNumRows(), si_->getNumCols(), cuts.sizeCuts());
+
+	/** calculate linearization error */
+	linerr_ -= bestdualobj_;
+	linerr_ *= model_->getNumSubproblems() * 1.0 / ncuts;
 
 	/** add cut */
 	nCutsAdded = cuts.sizeCuts();
