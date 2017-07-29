@@ -363,6 +363,8 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 				/** set trust region */
 				setTrustRegion(stability_param_, stability_center_);
 			}
+			else
+				ncuts_minor_ += addCuts();
 
 			/** update dual bound */
 			bestdualobj_ = newdual;
