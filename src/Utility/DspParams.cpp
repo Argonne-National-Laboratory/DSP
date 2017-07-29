@@ -180,7 +180,7 @@ void DspParams::initIntParams()
 	/** maximum queue size for asynchronous one */
 	IntParams_.createParam("DD/MAX_QSIZE", 5);
 
-	/** maximum queue size for asynchronous one */
+	/** minimum number of processes to wait at the master */
 	IntParams_.createParam("DD/MIN_PROCS", 1);
 
 	/** display frequency */
