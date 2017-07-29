@@ -119,7 +119,7 @@ void DspParams::initBoolParams()
 	BoolParams_.createParam("DD/TR/DECREASE", true);
 
 	/** enable decreasing trust region */
-	BoolParams_.createParam("DD/ALLOW_IDLE_WORKERS", false);
+	BoolParams_.createParam("DD/ALLOW_IDLE_WORKERS", true);
 
 	/** cache recourse models */
 	BoolParams_.createParam("DD/CACHE_RECOURSE", true);
@@ -179,6 +179,9 @@ void DspParams::initIntParams()
 
 	/** maximum queue size for asynchronous one */
 	IntParams_.createParam("DD/MAX_QSIZE", 5);
+
+	/** maximum queue size for asynchronous one */
+	IntParams_.createParam("DD/MIN_PROCS", 1);
 
 	/** display frequency */
 	IntParams_.createParam("SCIP/DISPLAY_FREQ", 100);
