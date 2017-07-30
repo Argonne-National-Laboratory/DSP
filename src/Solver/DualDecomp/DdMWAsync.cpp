@@ -616,6 +616,7 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 		CoinZeroN(numCutsAdded, subcomm_size_ - 1);
 	}
 
+	int nIdles = 0;
 	int minLbWorkers = par_->getIntParam("DD/MIN_PROCS");
 	int numLbWorkers = subcomm_size_-1; /**< number of LB workers */
 
@@ -636,7 +637,7 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 		/** put idle worker processors */
 		if (allowIdleLbProcessors)
 		{
-			int nIdles = 0;
+			nIdles = 0;
 			for (unsigned i = 0; i < master->solution_key_.size(); ++i)
 			{
 				if (master->solution_key_[i] < 0)
@@ -654,7 +655,7 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 		DSP_RTN_CHECK_RTN_CODE(master->clearSubprobData());
 
 		DSPdebugMessage("################# time stamp 1: %.2f\n", CoinGetTimeOfDay() - iterstime_);
-		while (recv_message)
+		while (1)
 		{
 			MPI_Status status;
 			/** receive iteration signal */
@@ -705,14 +706,6 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 				break;
 			}
 
-			/** The master received messages from all the LB workers? */
-			if (master->worker_.size() >= CoinMin(numLbWorkers,minLbWorkers))
-				break;
-
-			/** time limit */
-			if (remainingTime() < 1.0)
-				break;
-
 			/** check if there exists a message to receive */
 			MPI_Status probe_status;
 			MPI_Iprobe(MPI_ANY_SOURCE, DSP_MPI_TAG_LB, subcomm_, &recv_message, &probe_status);
@@ -722,9 +715,23 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 				DSPdebugMessage("Iprobe: source %d count %d recv_message %d\n", probe_status.MPI_SOURCE, local_count, recv_message);
 			}
 #endif
+
+			/** The master received messages from all the LB workers? */
+			if (!recv_message && master->worker_.size() + nIdles >= CoinMin(numLbWorkers,minLbWorkers))
+				break;
+
+			/** time limit */
+			if (remainingTime() < 1.0)
+				break;
 		}
 		DSPdebugMessage("################# time stamp 2: %.2f\n", CoinGetTimeOfDay() - iterstime_);
-		DSPdebugMessage("Number of worker messages: %lu\n", master->worker_.size());
+		message_->print(3, "Number of worker processes received: %lu\n", master->worker_.size());
+		if (message_->logLevel_ >= 3) {
+			printf("worker processes: [");
+			for (unsigned i = 0; i < master->worker_.size(); ++i)
+				printf("%d ", master->worker_[i]);
+			printf("]\n");
+		}
 
 		if (parEvalUb_ >= 0 || parFeasCuts_ >= 0 || parOptCuts_ >= 0)
 		{
@@ -837,7 +844,7 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 		}
 
 		/** solve problem */
-		if (allowIdleLbProcessors == false || q_solution_.size() < max_queue_size_) {
+		//if (allowIdleLbProcessors == false || q_solution_.size() < max_queue_size_) {
 			DSP_RTN_CHECK_RTN_CODE(master->solve());
 
 			/** put solution to Q */
@@ -856,8 +863,9 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 
 			/** increment iteration count */
 			itercnt_++;
-		} else
-			sleep(10);
+		//}
+		//else
+		//	sleep(10);
 
 		/** returns continue or stop signal */
 		if (remainingTime() < 1.0)

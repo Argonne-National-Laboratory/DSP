@@ -266,7 +266,7 @@ DSP_RTN_CODE DdMasterAtr::updateTrustRegion(const double * primsol)
 
 	/** add cuts and increase minor cut counter */
 	ncuts_minor_ += addCuts();
-
+#if 0
 	/** The following rule is from Linderoth and Wright (2003) */
 	int nullsteps_allowed = 3 * par_->getIntPtrParamSize("ARR_PROC_IDX");
 	double rho = CoinMin(1.0, stability_param_) * linerr_ / (curprimobj - bestdualobj_);
@@ -283,7 +283,7 @@ DSP_RTN_CODE DdMasterAtr::updateTrustRegion(const double * primsol)
 		setTrustRegion(stability_param_, stability_center_);
 	}
 	message_->print(3, "\n");
-
+#endif
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
@@ -293,6 +293,7 @@ DSP_RTN_CODE DdMasterAtr::terminationTest()
 {
 	BGN_TRY_CATCH
 
+#if 0
 	/** number of cuts generated from the last iteration */
 	int ncuts = 0;
 	for (int i = 1; i < nworkers_; ++i)
@@ -300,33 +301,10 @@ DSP_RTN_CODE DdMasterAtr::terminationTest()
 
 	if (ncuts > 0)
 		return status_;
+#endif
 
 	if (isSolutionBoundary() == false)
 	{
-#if 0
-		if (is_updated_ == false)
-		{
-			for (unsigned i = 0; i < worker_.size(); ++i)
-				proved_optimality_[worker_[i]-1] = true;
-			/** check optimality */
-			bool found_optimum = true;
-			for (int i = 0; i < nworkers_; ++i)
-				if (proved_optimality_[i] == false)
-				{
-					found_optimum = false;
-					break;
-				}
-			if (found_optimum)
-			{
-				bestdualobj_ = primobj_;
-				status_ = DSP_STAT_MW_STOP;
-				message_->print(0, "The master proved the Lagrangian dual optimality at %+e.\n", primobj_);
-			}
-		}
-		else
-			is_updated_ = false;
-#endif
-
 		if (status_ == DSP_STAT_MW_STOP) return status_;
 
 		double absgap = primobj_ - bestdualobj_;
