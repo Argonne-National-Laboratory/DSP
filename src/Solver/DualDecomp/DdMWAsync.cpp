@@ -844,28 +844,24 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 		}
 
 		/** solve problem */
-		//if (allowIdleLbProcessors == false || q_solution_.size() < max_queue_size_) {
-			DSP_RTN_CHECK_RTN_CODE(master->solve());
+		DSP_RTN_CHECK_RTN_CODE(master->solve());
 
-			/** put solution to Q */
-			if (q_solution_.size() < max_queue_size_)
-			{
-				/** retrieve master solution */
-				double * master_primsol = const_cast<double*>(master_->getPrimalSolution());
-				/** queue lambda if it is a new one. */
-				DSP_RTN_CHECK_RTN_CODE(pushSolutionToQueue(master_primsol));
-				master_primsol = NULL;
-				message_->print(5, "Added a new trial point to the queue (size %lu).\n", q_solution_.size());
-			}
+		/** put solution to Q */
+		if (q_solution_.size() < max_queue_size_)
+		{
+			/** retrieve master solution */
+			double * master_primsol = const_cast<double*>(master_->getPrimalSolution());
+			/** queue lambda if it is a new one. */
+			DSP_RTN_CHECK_RTN_CODE(pushSolutionToQueue(master_primsol));
+			master_primsol = NULL;
+			message_->print(5, "Added a new trial point to the queue (size %lu).\n", q_solution_.size());
+		}
 
-			/** display iteration info */
-			printIterInfo();
+		/** display iteration info */
+		printIterInfo();
 
-			/** increment iteration count */
-			itercnt_++;
-		//}
-		//else
-		//	sleep(10);
+		/** increment iteration count */
+		itercnt_++;
 
 		/** returns continue or stop signal */
 		if (remainingTime() < 1.0)
