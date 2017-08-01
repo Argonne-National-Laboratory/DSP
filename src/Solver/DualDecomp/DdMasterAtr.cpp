@@ -222,7 +222,7 @@ DSP_RTN_CODE DdMasterAtr::updateProblem(
 		message_->print(3, "[TR]  NULL STEP: dual objective %e", newdual);
 
 		/** The following rule is from Linderoth and Wright (2003) */
-		int nullsteps_allowed = 3 * par_->getIntPtrParamSize("ARR_PROC_IDX");
+		int nullsteps_allowed = 3;
 		double rho = CoinMin(1.0, stability_param_) * CoinMax(bestdualobj_ - newdual, linerr_) / (curprimobj - bestdualobj_);
 		message_->print(3, ", rho %e, trcnt %d", rho, trcnt_);
 		if (rho > 0) trcnt_++;
@@ -260,13 +260,14 @@ DSP_RTN_CODE DdMasterAtr::updateTrustRegion(const double * primsol)
 {
 	BGN_TRY_CATCH
 
-	double curprimobj = 0.0;//si_->getPrimalBound(); /** current primal objective value */
-	for (int s = 0; s < nthetas_; ++s)
-		curprimobj += primsol[s];
-
 	/** add cuts and increase minor cut counter */
 	ncuts_minor_ += addCuts();
 #if 0
+	/** current primal objective value */
+	double curprimobj = 0.0;
+	for (int s = 0; s < nthetas_; ++s)
+		curprimobj += primsol[s];
+
 	/** The following rule is from Linderoth and Wright (2003) */
 	int nullsteps_allowed = 3 * par_->getIntPtrParamSize("ARR_PROC_IDX");
 	double rho = CoinMin(1.0, stability_param_) * linerr_ / (curprimobj - bestdualobj_);
