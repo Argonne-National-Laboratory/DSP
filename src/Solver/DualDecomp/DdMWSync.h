@@ -66,6 +66,8 @@ private:
 	/** scatter coupling solution */
 	DSP_RTN_CODE scatterCouplingSolutions(
 			Solutions & solutions /**< received solution placeholder */);
+
+	std::vector<double> time_lb_;
 };
 
 #endif /* SRC_SOLVER_DUALDECOMP_DDMWSYNC_H_ */

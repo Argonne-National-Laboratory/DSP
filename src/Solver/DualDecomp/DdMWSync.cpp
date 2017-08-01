@@ -52,6 +52,9 @@ DSP_RTN_CODE DdMWSync::init()
 	}
 	else
 	{
+		/** clear time log */
+		time_lb_.clear();
+
 		/** create workers */
 		if (lb_comm_rank_ >= 0)
 		{
@@ -125,6 +128,25 @@ DSP_RTN_CODE DdMWSync::finalize()
 	}
 	worker_.clear();
 #else
+
+	/** print lower bounding times */
+	if (par_->getBoolParam("DD/LOG_LB_TIME")) {
+		if (lb_comm_rank_ >= 0) {
+			printf("## Lower bounding time ##\n");
+			for (int i = 0; i < lb_comm_size_; ++i) {
+				if (i == lb_comm_rank_) {
+					printf("%f", time_lb_[0]);
+					for (unsigned j = 1; j < time_lb_.size(); ++j)
+						printf(",%f", time_lb_[j]);
+					printf("\n");
+				}
+				MPI_Barrier(lb_comm_);
+			}
+			printf("## End of lower bounding time ##\n");
+		}
+		MPI_Barrier(comm_);
+	}
+
 	/** free master */
 	if (master_)
 	{
@@ -464,7 +486,6 @@ DSP_RTN_CODE DdMWSync::runWorker()
 
 	/** timing results */
 	double st_total = 0.0;
-	double st_lb = 0.0;
 	double st_cg = 0.0;
 	double st_ub = 0.0;
 	double st_idle = 0.0;
@@ -506,10 +527,12 @@ DSP_RTN_CODE DdMWSync::runWorker()
 		{
 			/** set time limit */
 			workerlb->setTimeLimit(remainingTime());
+
 			/** Solve subproblems assigned to each process  */
 			sts_lb = CoinGetTimeOfDay();
 			workerlb->solve();
-			st_lb += CoinGetTimeOfDay() - sts_lb;
+			time_lb_.push_back(CoinGetTimeOfDay() - sts_lb);
+
 			/** create send buffer */
 			for (int s = 0, pos = 0; s < narrprocidx; ++s)
 			{

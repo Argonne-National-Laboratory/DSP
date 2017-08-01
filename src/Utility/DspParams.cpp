@@ -127,6 +127,9 @@ void DspParams::initBoolParams()
 	/** log dual variable values */
 	BoolParams_.createParam("DD/LOG_DUAL_VARS", false);
 
+	/** log dual variable values */
+	BoolParams_.createParam("DD/LOG_LB_TIME", false);
+
 	/** enable asynchronous parallelization */
 	BoolParams_.createParam("DD/ASYNC", false);
 }
