@@ -132,7 +132,8 @@ DSP_RTN_CODE DdMWSync::finalize()
 	/** print lower bounding times */
 	if (par_->getBoolParam("DD/LOG_LB_TIME")) {
 		if (lb_comm_rank_ >= 0) {
-			printf("## Lower bounding time ##\n");
+			if (lb_comm_rank_ == 0)
+				printf("## Lower bounding time ##\n");
 			for (int i = 0; i < lb_comm_size_; ++i) {
 				if (i == lb_comm_rank_) {
 					printf("%f", time_lb_[0]);
@@ -142,7 +143,8 @@ DSP_RTN_CODE DdMWSync::finalize()
 				}
 				MPI_Barrier(lb_comm_);
 			}
-			printf("## End of lower bounding time ##\n");
+			if (lb_comm_rank_ == 0)
+				printf("## End of lower bounding time ##\n");
 		}
 		MPI_Barrier(comm_);
 	}
