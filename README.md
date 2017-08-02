@@ -18,7 +18,7 @@ The methods can be run on computing clusters and multi-core processors.
 
 You can clone this repository in your preferred directory by typing:
 ```bash
-git clone https://github.com/Argonne-National-Laboratory/DSP.git
+git clone --recursive https://github.com/Argonne-National-Laboratory/DSP.git
 ```
 
 ## Installation
@@ -49,10 +49,6 @@ Pkg.update();
 ```julia
     Pkg.add("MPI");
 ```
-
-### Python Interface
-
-Python interface will be automatically installed if ``python`` library is available on your machine.
 
 ## Example
 
