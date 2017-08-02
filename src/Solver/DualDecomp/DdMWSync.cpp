@@ -64,8 +64,10 @@ DSP_RTN_CODE DdMWSync::init()
 			/** create CG worker */
 			if (parFeasCuts_ >= 0 || parOptCuts_ >= 0)
 			{
+#ifndef NO_SCIP
 				DSPdebugMessage("Rank %d creates a worker for Benders cut generation.\n", comm_rank_);
 				worker_.push_back(new DdWorkerCGBd(par_, model_, message_));
+#endif
 			}
 			/** create UB worker */
 			if (parEvalUb_ >= 0)
@@ -143,6 +145,7 @@ DSP_RTN_CODE DdMWSync::finalize()
 				}
 				MPI_Barrier(lb_comm_);
 			}
+			MPI_Barrier(lb_comm_);
 			if (lb_comm_rank_ == 0)
 				printf("## End of lower bounding time ##\n");
 		}

@@ -57,9 +57,10 @@ DSP_RTN_CODE DdMWAsync::init()
 		/** create worker for upper bounds */
 		if (cgub_comm_rank_ >= 0)
 		{
+#ifndef NO_SCIP
 			DSPdebugMessage("Rank %d creates a worker for Benders cut generation.\n", comm_rank_);
 			worker_.push_back(new DdWorkerCGBd(par_, model_, message_));
-
+#endif
 			DSPdebugMessage("Rank %d creates a worker for upper bounds.\n", comm_rank_);
 			worker_.push_back(new DdWorkerUB(par_, model_, message_));
 		}
@@ -1332,7 +1333,7 @@ DSP_RTN_CODE DdMWAsync::runWorkerCg(
 	int signal = DSP_STAT_MW_CONTINUE;
 
 	BGN_TRY_CATCH
-
+#ifndef NO_SCIP
 	if (solutions.size() > 0)
 	{
 		/** generate Benders cuts */
@@ -1348,7 +1349,7 @@ DSP_RTN_CODE DdMWAsync::runWorkerCg(
 			DSPdebugMessage("Rank %d sent %d cuts to the root.\n", comm_rank_, cuts.sizeCuts());
 		}
 	}
-
+#endif
 	END_TRY_CATCH_RTN(;,DSP_STAT_MW_STOP)
 
 	return signal;

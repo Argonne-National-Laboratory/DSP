@@ -7,9 +7,15 @@
 
 #include "Model/TssModel.h"
 #include "Solver/Deterministic/DeDriver.h"
-//#include "SolverInterface/SolverInterfaceCpx.h"
-#include "SolverInterface/SolverInterfaceScip.h"
 #include "SolverInterface/SolverInterfaceClp.h"
+
+#ifndef NO_CPX
+#include "SolverInterface/SolverInterfaceCpx.h"
+#endif
+
+#ifndef NO_SCIP
+#include "SolverInterface/SolverInterfaceScip.h"
+#endif
 
 DeDriver::DeDriver(DspParams * par, DecModel * model):
 	DspDriver(par,model), si_(NULL) {}
@@ -112,11 +118,22 @@ DSP_RTN_CODE DeDriver::run()
 
 	if (nIntegers > 0)
 	{
-		si_ = new SolverInterfaceScip(par_);
-//		si_ = new SolverInterfaceCpx(par_);
-		/** print level */
-		si_->setPrintLevel(CoinMin(par_->getIntParam("LOG_LEVEL") + 2, 5));
-//		si_->setPrintLevel(par_->getIntParam("LOG_LEVEL"));
+		switch(par_->getIntParam("MIP_SOLVER")) {
+		case CPLEX:
+#ifndef NO_CPX
+			si_ = new SolverInterfaceCpx(par_);
+			si_->setPrintLevel(par_->getIntParam("LOG_LEVEL"));
+			break;
+#endif
+		case SCIP:
+#ifndef NO_SCIP
+			si_ = new SolverInterfaceScip(par_);
+			si_->setPrintLevel(CoinMin(par_->getIntParam("LOG_LEVEL") + 2, 5));
+			break;
+#endif
+		default:
+			break;
+		}
 	}
 	else
 	{
@@ -217,7 +234,21 @@ void DeDriver::writeExtMps(const char * name)
 
 	int nIntegers = model_->getNumIntegers();
 
-	si = new SolverInterfaceScip(par_);
+	switch(par_->getIntParam("MIP_SOLVER")) {
+	case CPLEX:
+#ifndef NO_CPX
+		si = new SolverInterfaceCpx(par_);
+		break;
+#endif
+	case SCIP:
+#ifndef NO_SCIP
+		si = new SolverInterfaceScip(par_);
+		break;
+#endif
+	default:
+		si = new SolverInterfaceClp(par_);
+		break;
+	}
 
 	/** load problem */
 	si->loadProblem(mat, clbd, cubd, obj, ctype, rlbd, rubd, "writeMps");

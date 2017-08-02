@@ -11,9 +11,12 @@
 #include "Solver/BaseMasterWorker.h"
 #include "Solver/DualDecomp/DdMaster.h"
 #include "Solver/DualDecomp/DdWorker.h"
-#include "Solver/DualDecomp/DdWorkerCGBd.h"
 #include "Solver/DualDecomp/DdWorkerLB.h"
 #include "Solver/DualDecomp/DdWorkerUB.h"
+
+#ifndef NO_SCIP
+#include "Solver/DualDecomp/DdWorkerCGBd.h"
+#endif
 
 /**
  * This defines a master-worker framework for dual decomposition.

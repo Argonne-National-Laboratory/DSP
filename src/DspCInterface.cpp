@@ -10,14 +10,25 @@
 #include <Utility/DspMacros.h>
 #include "DspCInterface.h"
 #include "Solver/Deterministic/DeDriver.h"
-#include "Solver/Benders/BdDriverSerial.h"
 #include "Solver/DualDecomp/DdDriverSerial.h"
-#ifdef DSP_HAS_MPI
-#include "Solver/Benders/BdDriverMpi.h"
-#include "Solver/DualDecomp/DdDriverMpi.h"
-#endif
 #include "Model/DecTssModel.h"
 #include "Model/DecDetModel.h"
+
+#ifndef NO_SCIP
+	#include "Solver/Benders/BdDriverSerial.h"
+#endif
+
+
+#ifdef DSP_HAS_MPI
+
+#ifndef NO_SCIP
+#include "Solver/Benders/BdDriverMpi.h"
+#endif
+
+#include "Solver/DualDecomp/DdDriverMpi.h"
+
+#endif
+
 
 
 /* using __cplusplus */
@@ -292,6 +303,7 @@ void solveDd(DspApiEnv * env)
 /** solve serial Benders decomposition */
 void solveBd(DspApiEnv * env)
 {
+#ifndef NO_SCIP
 	STO_API_CHECK_MODEL();
 	freeSolver(env);
 
@@ -334,6 +346,9 @@ void solveBd(DspApiEnv * env)
 	DSPdebugMessage("Initialized a serial Benders object\n");
 	env->solver_->run();
 	env->solver_->finalize();
+#else
+	printf("Benders decomposition has been disabled because SCIP was not available.\n");
+#endif
 }
 
 #ifdef DSP_HAS_MPI
@@ -356,6 +371,7 @@ void solveDdMpi(DspApiEnv * env, MPI_Comm comm)
 void solveBdMpi(
 		DspApiEnv * env, MPI_Comm comm)
 {
+#ifndef NO_SCIP
 	STO_API_CHECK_MODEL();
 	freeSolver(env);
 
@@ -397,6 +413,9 @@ void solveBdMpi(
 	env->solver_->init();
 	env->solver_->run();
 	env->solver_->finalize();
+#else
+	printf("Benders decomposition has been disabled because SCIP was not available.\n");
+#endif
 }
 #endif
 

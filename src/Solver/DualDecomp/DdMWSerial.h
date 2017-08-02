@@ -33,11 +33,13 @@ public:
 
 protected:
 
+#ifndef NO_SCIP
 	/** generate Benders cuts */
 	DSP_RTN_CODE generateBendersCuts(
 			DdWorkerCGBd * workercg, /**< CG worker pointer */
 			Solutions solutions, /**< solutions at which cuts are generated */
 			OsiCuts & cuts       /**< cuts generated */);
+#endif
 
 };
 

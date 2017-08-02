@@ -60,8 +60,10 @@ DSP_RTN_CODE DdMWSerial::init()
 	/** create LB worker */
 	worker_.push_back(new DdWorkerLB(par_, model_, message_));
 	/** create CG worker */
+#ifndef NO_SCIP
 	if (parFeasCuts_ >= 0 || parOptCuts_ >= 0)
 		worker_.push_back(new DdWorkerCGBd(par_, model_, message_));
+#endif
 	/** create UB worker */
 	if (parEvalUb_ >= 0)
 		worker_.push_back(new DdWorkerUB(par_, model_, message_));
@@ -132,7 +134,9 @@ DSP_RTN_CODE DdMWSerial::run()
 
 	/** pointers to workers */
 	DdWorkerLB * workerlb = NULL;
+#ifndef NO_SCIP
 	DdWorkerCGBd * workercg = NULL;
+#endif
 	DdWorkerUB * workerub = NULL;
 
 	Solutions coupling_solutions; /**< coupling solutions */
@@ -153,7 +157,9 @@ DSP_RTN_CODE DdMWSerial::run()
 			workerlb = dynamic_cast<DdWorkerLB*>(worker_[i]);
 			break;
 		case DdWorker::CGBd:
+#ifndef NO_SCIP
 			workercg = dynamic_cast<DdWorkerCGBd*>(worker_[i]);
+#endif
 			break;
 		case DdWorker::UB:
 			workerub = dynamic_cast<DdWorkerUB*>(worker_[i]);
@@ -218,6 +224,7 @@ DSP_RTN_CODE DdMWSerial::run()
 			/** generate cuts */
 			if (parFeasCuts_ >= 0 || parOptCuts_ >= 0)
 			{
+#ifndef NO_SCIP
 				cg_status = generateBendersCuts(workercg, coupling_solutions, cuts);
 				/** resolve subproblems? */
 				if (cg_status == DSP_STAT_MW_RESOLVE)
@@ -235,6 +242,7 @@ DSP_RTN_CODE DdMWSerial::run()
 				cuts.dumpCuts();
 				DSPdebugMessage("Benders cuts %d\n", cutsToAdd_->sizeCuts());
 				DSPdebug2(cutsToAdd_->printCuts());
+#endif
 			}
 			/** evaluate coupling solutions */
 			if (parEvalUb_ >= 0)
@@ -359,6 +367,8 @@ DSP_RTN_CODE DdMWSerial::run()
 	return DSP_RTN_OK;
 #undef FREE_MEMORY
 }
+
+#ifndef NO_SCIP
 
 DSP_RTN_CODE DdMWSerial::generateBendersCuts(
 		DdWorkerCGBd * workercg, /**< CG worker pointer */
@@ -496,3 +506,5 @@ DSP_RTN_CODE DdMWSerial::generateBendersCuts(
 	return ret;
 #undef FREE_MEMORY
 }
+
+#endif

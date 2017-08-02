@@ -32,6 +32,11 @@ enum DSP_BD_INIT_LB_ALGO
 	SEPARATE_MILP,
 };
 
+enum DSP_DD_SUB_SOLVER {
+	SCIP = 0,
+	CPLEX
+};
+
 /**
  * This class create, set and get parameters.
  */

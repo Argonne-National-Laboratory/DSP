@@ -8,6 +8,7 @@
 //#define DSP_DEBUG
 
 #include <Solver/DualDecomp/DdMWPara.h>
+#include "Model/TssModel.h"
 
 DdMWPara::DdMWPara(
 		MPI_Comm     comm,   /**< MPI communicator */
@@ -250,6 +251,7 @@ DSP_RTN_CODE DdMWPara::generateBendersCuts(
 
 	int ret = DSP_STAT_MW_CONTINUE;
 
+#ifndef NO_SCIP
 	if (solutions.size() == 0) return ret;
 	if (parFeasCuts_ < 0 && parOptCuts_ < 0) return ret;
 	if (model_->isStochastic() == false)
@@ -411,6 +413,7 @@ DSP_RTN_CODE DdMWPara::generateBendersCuts(
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
 	FREE_MEMORY
+#endif
 
 	return ret;
 #undef FREE_MEMORY

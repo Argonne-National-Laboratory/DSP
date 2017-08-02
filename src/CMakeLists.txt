@@ -1,4 +1,13 @@
-include_directories(Model Solver Utility)
+##################################################
+# Base settings
+##################################################
+
+include_directories(
+	Model 
+	Solver 
+	Utility
+	${DEPEND_DIR}/include/coin
+)
 
 set(DSP_SRC_FILES
 	Model/DecData.cpp
@@ -9,20 +18,11 @@ set(DSP_SRC_FILES
 	Model/TssModel.cpp
 	Solver/DecSolver.cpp
 	Solver/DspDriver.cpp
-	Solver/Benders/BdDriver.cpp
-	Solver/Benders/BdDriverSerial.cpp
-	Solver/Benders/BdMaster.cpp
-	Solver/Benders/BdMW.cpp
-	Solver/Benders/BdMWSerial.cpp
-	Solver/Benders/BdSub.cpp
-	Solver/Benders/BdWorker.cpp
-	Solver/Benders/SCIPconshdlrBenders.cpp
 	Solver/Deterministic/DeDriver.cpp
 	Solver/DualDecomp/DdDriver.cpp
 	Solver/DualDecomp/DdDriverSerial.cpp
 	Solver/DualDecomp/DdMaster.cpp
 	Solver/DualDecomp/DdMasterAtr.cpp
-	Solver/DualDecomp/DdMasterDsb.cpp
 	Solver/DualDecomp/DdMasterSubgrad.cpp
 	Solver/DualDecomp/DdMasterTr.cpp
 	Solver/DualDecomp/DdMW.cpp
@@ -30,90 +30,131 @@ set(DSP_SRC_FILES
 	Solver/DualDecomp/DdSub.cpp
 	Solver/DualDecomp/DdWorker.cpp
 	Solver/DualDecomp/DdWorkerCG.cpp
-	Solver/DualDecomp/DdWorkerCGBd.cpp
 	Solver/DualDecomp/DdWorkerLB.cpp
 	Solver/DualDecomp/DdWorkerUB.cpp
-	Solver/DualDecomp/SCIPconshdlrBendersDd.cpp
-	SolverInterface/OoqpEps.cpp
-	SolverInterface/OoqpStatus.cpp
-	SolverInterface/SCIPbranchruleLB.cpp
 	SolverInterface/SolverInterfaceClp.cpp
-	SolverInterface/SolverInterfaceOoqp.cpp
 	SolverInterface/SolverInterfaceOsi.cpp
-	SolverInterface/SolverInterfaceScip.cpp
-	SolverInterface/SolverInterfaceSpx.cpp
-#	SolverInterface/SolverInterfaceCpx.cpp
 	Utility/DspParams.cpp)
-if (MPI_CXX_FOUND)
-	set(DSP_SRC_FILES
-		${DSP_SRC_FILES}
-		Solver/Benders/BdDriverMpi.cpp
-		Solver/Benders/BdMWMpi.cpp
-		Solver/Benders/SCIPconshdlrBendersWorker.cpp
+
+# set DSP libraries
+set(DSP_LIBS
+	${DEPEND_DIR}/lib/libSmi.a
+	${DEPEND_DIR}/lib/libClp.a
+	${DEPEND_DIR}/lib/libOsiClp.a
+	${DEPEND_DIR}/lib/libOsi.a
+	${DEPEND_DIR}/lib/libCoinUtils.a
+	gfortran 
+	${LAPACK_LIBRARIES}
+	${ZLIB_LIBRARIES}
+	${BZIP2_LIBRARIES})
+
+##################################################
+# MPI settings
+##################################################
+
+if(MPI_CXX_FOUND)
+	set(DSP_SRC_FILES ${DSP_SRC_FILES}
 		Solver/DualDecomp/DdDriverMpi.cpp
 		Solver/DualDecomp/DdMWAsync.cpp
 		Solver/DualDecomp/DdMWPara.cpp
 		Solver/DualDecomp/DdMWSync.cpp
 		Utility/DspMpi.cpp)
+	set(DSP_LIBS ${DSP_LIBS} ${MPI_CXX_LIBRARIES})
+endif(MPI_CXX_FOUND)
+
+##################################################
+# OOQP settings
+##################################################
+
+if(NOT ${MA27LIB} MATCHES "MA27LIB-NOTFOUND")
+	include_directories(
+		${DEPEND_DIR}/include/ooqp
+	)
+	set(DSP_SRC_FILES ${DSP_SRC_FILES}
+		Solver/DualDecomp/DdMasterDsb.cpp
+		SolverInterface/OoqpEps.cpp
+		SolverInterface/OoqpStatus.cpp
+		SolverInterface/SolverInterfaceOoqp.cpp)
+	set(DSP_LIBS ${DSP_LIBS} 
+		${DEPEND_DIR}/lib/libooqpmehrotra.a
+		${DEPEND_DIR}/lib/libooqpgondzio.a
+		${DEPEND_DIR}/lib/libooqpgendense.a
+		${DEPEND_DIR}/lib/libooqpgensparse.a
+		${DEPEND_DIR}/lib/libooqpdense.a
+		${DEPEND_DIR}/lib/libooqpsparse.a
+		${DEPEND_DIR}/lib/libooqpbase.a
+		${MA27LIB_DIR}/libma27.a)
+else()
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MPI_CXX_COMPILE_FLAGS} -DNO_OOQP")
 endif()
+
+##################################################
+# CPLEX settings
+##################################################
+
+if(NOT ${CPLEXLIB} MATCHES "CPLEXLIB-NOTFOUND")
+	include_directories(
+		${CPLEX_INC_DIR}
+	)
+	set(DSP_SRC_FILES ${DSP_SRC_FILES}
+		SolverInterface/SolverInterfaceCpx.cpp)
+	set(DSP_LIBS ${DSP_LIBS} 
+		${DEPEND_DIR}/lib/libOsiCpx.a
+		${CPLEX_LIB_DIR}/libcplex.a
+		m
+		pthread)
+else()
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MPI_CXX_COMPILE_FLAGS} -DNO_CPX")
+endif()
+
+##################################################
+# SCIP settings
+##################################################
+
+if(NOT ${SCIPLIB} MATCHES "SCIPLIB-NOTFOUND")
+	set(DSP_SRC_FILES ${DSP_SRC_FILES}
+		Solver/Benders/BdDriver.cpp
+		Solver/Benders/BdDriverSerial.cpp
+		Solver/Benders/BdMaster.cpp
+		Solver/Benders/BdMW.cpp
+		Solver/Benders/BdMWSerial.cpp
+		Solver/Benders/BdSub.cpp
+		Solver/Benders/BdWorker.cpp
+		Solver/Benders/SCIPconshdlrBenders.cpp
+		Solver/DualDecomp/DdWorkerCGBd.cpp
+		Solver/DualDecomp/SCIPconshdlrBendersDd.cpp
+		SolverInterface/SCIPbranchruleLB.cpp
+		SolverInterface/SolverInterfaceScip.cpp
+		SolverInterface/SolverInterfaceSpx.cpp)
+	if (MPI_CXX_FOUND)
+		set(DSP_SRC_FILES ${DSP_SRC_FILES}
+			Solver/Benders/BdDriverMpi.cpp
+			Solver/Benders/BdMWMpi.cpp
+			Solver/Benders/SCIPconshdlrBendersWorker.cpp)
+	endif(MPI_CXX_FOUND)
+	set(DSP_LIBS ${DSP_LIBS} 
+		${SCIP_DIR}/lib/libscip.a
+		${SCIP_DIR}/lib/libobjscip.a
+		${SCIP_DIR}/lib/liblpispx.a
+		${SCIP_DIR}/lib/libnlpi.cppad.a
+		${SOPLEX_DIR}/lib/libsoplex.a)
+else()
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MPI_CXX_COMPILE_FLAGS} -DNO_SCIP")
+	message(WARNING "SCIP is required for Benders decomposition.")
+	message(WARNING "Benders decomposition is disabled with SCIP library.")
+endif()
+
 add_library(Dsp SHARED
 	DspApiEnv.cpp
 	DspCInterface.cpp
 	${DSP_SRC_FILES})
 
-# add HSL library
-if (HAS_MA57)
-	set(HSL_LIBS ${MA57_DIR}/lib/libma57.a ${METIS_DIR}/libmetis.a)
-	message(STATUS "${Blue}DSP will be compiled with MA57 (libma57.a, libmetis.a)${ColourReset}")
-else()
-	set(HSL_LIBS ${MA27_DIR}/lib/libma27.a)
-	message(STATUS "${Blue}DSP will be compiled with MA27. Note that DSP can be compiled with MA57 with flag -DHAS_MA57=ON.${ColourReset}")
-endif()
-
-# set DSP libraries
-set(DSP_LIBS
-	${SMI_DIR}/lib/libSmi.a
-	${SMI_DIR}/lib/libClp.a
-	${SMI_DIR}/lib/libOsiClp.a
-	${SMI_DIR}/lib/libOsiSpx.a
-#	${SMI_DIR}/lib/libOsiCpx.a
-	${SMI_DIR}/lib/libOsi.a
-	${SMI_DIR}/lib/libCoinUtils.a
-	${SCIP_DIR}/lib/libscip.a
-	${SCIP_DIR}/lib/libobjscip.a
-	${SCIP_DIR}/lib/liblpispx.a
-	${SCIP_DIR}/lib/libnlpi.cppad.a
-	${SOPLEX_DIR}/lib/libsoplex.a
-	${OOQP_DIR}/lib/libooqpmehrotra.a
-	${OOQP_DIR}/lib/libooqpgondzio.a
-	${OOQP_DIR}/lib/libooqpgendense.a
-	${OOQP_DIR}/lib/libooqpgensparse.a
-	${OOQP_DIR}/lib/libooqpdense.a
-	${OOQP_DIR}/lib/libooqpsparse.a
-	${OOQP_DIR}/lib/libooqpbase.a
-	${HSL_LIBS}
-	gfortran 
-	${BLAS_LIBRARIES}
-	${LAPACK_LIBRARIES}
-	${ZLIB_LIBRARIES}
-	${BZIP2_LIBRARIES})
-if (MPI_CXX_FOUND)
-	set(DSP_LIBS ${DSP_LIBS} ${MPI_CXX_LIBRARIES})
-endif()
 target_link_libraries(Dsp ${DSP_LIBS})
-
 
 ##################################################
 # INSTALL
 ##################################################
 install(TARGETS Dsp LIBRARY DESTINATION $ENV{PWD}/lib)
-
-##################################################
-# SUBDIRECTORY
-##################################################
-if (PYDSP_COMPILE)
-	add_subdirectory(PyDsp)
-endif()
 
 ##################################################
 # Messages
@@ -124,13 +165,4 @@ if(APPLE)
 	install(CODE "message(\"${Red}    export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$ENV{PWD}/lib${ColourReset}\")")
 else()
 	install(CODE "message(\"${Red}    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ENV{PWD}/lib${ColourReset}\")")
-endif()
-if(PYDSP_COMPILE)
-	if(APPLE)
-		install(CODE "execute_process(COMMAND ln -fs $ENV{PWD}/src/PyDsp/libPyDsp.dylib $ENV{PWD}/lib/_PyDsp.dylib)")
-	else()
-		install(CODE "execute_process(COMMAND ln -fs $ENV{PWD}/src/PyDsp/libPyDsp.so $ENV{PWD}/lib/_PyDsp.so)")
-	endif()
-	install(CODE "execute_process(COMMAND cp $ENV{PWD}/src/PyDsp/PyDsp.py $ENV{PWD}/lib/PyDsp.py)")
-	install(CODE "message(\"${Red}    export PYTHONPATH=$PYTHONPATH:$ENV{PWD}/lib${ColourReset}\")")
 endif()

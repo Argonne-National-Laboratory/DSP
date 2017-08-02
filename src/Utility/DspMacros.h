@@ -9,6 +9,8 @@
 #ifndef DSPMACROS_H_
 #define DSPMACROS_H_
 
+#include <cmath>
+
 /*
  * Some print function
  */

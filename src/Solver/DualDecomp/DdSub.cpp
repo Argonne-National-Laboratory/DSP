@@ -9,12 +9,19 @@
 
 #include <Utility/DspMacros.h>
 #include <Utility/DspMessage.h>
+#include "Model/TssModel.h"
 #include "Solver/DualDecomp/DdSub.h"
 #include "SolverInterface/SolverInterfaceClp.h"
-#include "SolverInterface/SolverInterfaceScip.h"
-//#include "SolverInterface/SolverInterfaceCpx.h"
-#include "Solver/DualDecomp/SCIPconshdlrBendersDd.h"
-#include "SolverInterface/SCIPbranchruleLB.h"
+
+#ifndef NO_CPX
+	#include "SolverInterface/SolverInterfaceCpx.h"
+#endif
+
+#ifndef NO_SCIP
+	#include "SolverInterface/SolverInterfaceScip.h"
+	#include "Solver/DualDecomp/SCIPconshdlrBendersDd.h"
+	#include "SolverInterface/SCIPbranchruleLB.h"
+#endif
 
 /** default constructor */
 DdSub::DdSub(int s, DspParams * par, DecModel * model, DspMessage * message) :
@@ -193,10 +200,22 @@ DSP_RTN_CODE DdSub::createProblem() {
         }
     }
 
-    if (nIntegers > 0)
-//		    si_ = new SolverInterfaceCpx(par_);
-        si_ = new SolverInterfaceScip(par_);
-    else
+    if (nIntegers > 0) {
+    	switch (par_->getIntParam("MIP_SOLVER")) {
+    	case CPLEX:
+#ifndef NO_CPX
+    		si_ = new SolverInterfaceCpx(par_);
+    		break;
+#endif
+    	case SCIP:
+#ifndef NO_SCIP
+            si_ = new SolverInterfaceScip(par_);
+            break;
+#endif
+    	default:
+    		break;
+    	}
+    } else
         si_ = new SolverInterfaceClp(par_);
 
     /** no display */
@@ -219,6 +238,7 @@ DSP_RTN_CODE DdSub::createProblem() {
 
 /** add cut generator */
 DSP_RTN_CODE DdSub::addCutGenerator() {
+#ifndef NO_SCIP
     SolverInterfaceScip *si = dynamic_cast<SolverInterfaceScip *>(si_);
     if (si) {
         /** create constraint handler */
@@ -231,6 +251,7 @@ DSP_RTN_CODE DdSub::addCutGenerator() {
         /** TODO */
         printf("Warning: Cut generation supports only SCIP.\n");
     }
+#endif
     return DSP_RTN_OK;
 }
 
@@ -293,12 +314,14 @@ DSP_RTN_CODE DdSub::updateProblem(
 /** push cuts */
 DSP_RTN_CODE DdSub::pushCuts(OsiCuts * cuts)
 {
+#ifndef NO_SCIP
 	/** TODO only for SCIP */
 	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(si_);
 	if (si)
 	{
 		si->setCuts(cuts);
 	}
+#endif
 	return DSP_RTN_OK;
 }
 
@@ -320,9 +343,11 @@ void DdSub::setGapTol(double tol)
 /** set print level */
 void DdSub::setPrintLevel(int level)
 {
+#ifndef NO_SCIP
 	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(si_);
 	if (si)
 		si_->setPrintLevel(level);
 	else
 		si_->setPrintLevel(CoinMax(0, level - 2));
+#endif
 }

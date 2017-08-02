@@ -8,7 +8,16 @@
 //#define DSP_DEBUG
 
 #include "Solver/DualDecomp/DdMasterAtr.h"
-#include "SolverInterface/OoqpEps.h"
+#include "SolverInterface/SolverInterfaceClp.h"
+
+#ifndef NO_CPX
+	#include "SolverInterface/SolverInterfaceCpx.h"
+#endif
+
+#ifndef NO_OOQP
+	#include "SolverInterface/SolverInterfaceOoqp.h"
+	#include "SolverInterface/OoqpEps.h"
+#endif
 
 DdMasterAtr::DdMasterAtr(
 		DspParams *  par,     /**< parameter pointer */
@@ -239,6 +248,7 @@ DSP_RTN_CODE DdMasterAtr::updateProblem(
 		message_->print(3, "\n");
 	}
 
+#ifndef NO_OOQP
 	OoqpEps * ooqp = dynamic_cast<OoqpEps*>(si_);
 	if (ooqp)
 	{
@@ -250,6 +260,7 @@ DSP_RTN_CODE DdMasterAtr::updateProblem(
 			ooqp->setOoqpStatus(epsilon, -bestprimobj_, -bestdualobj_);
 		}
 	}
+#endif
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 

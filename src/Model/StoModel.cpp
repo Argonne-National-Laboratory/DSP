@@ -6,6 +6,7 @@
  */
 
 #include "StoModel.h"
+#include "CoinHelperFunctions.hpp"
 
 StoModel::StoModel() :
 		nscen_(0),

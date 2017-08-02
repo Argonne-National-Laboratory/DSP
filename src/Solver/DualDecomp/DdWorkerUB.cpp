@@ -8,7 +8,17 @@
 //#define DSP_DEBUG
 #include "Model/TssModel.h"
 #include <Solver/DualDecomp/DdWorkerUB.h>
-#include "SolverInterface/SolverInterfaceScip.h"
+#include "SolverInterface/SolverInterfaceClp.h"
+
+#ifndef NO_CPX
+	#include "SolverInterface/SolverInterfaceCpx.h"
+#endif
+
+#ifndef NO_SCIP
+	#include "SolverInterface/SolverInterfaceScip.h"
+	#include "Solver/DualDecomp/SCIPconshdlrBendersDd.h"
+	#include "SolverInterface/SCIPbranchruleLB.h"
+#endif
 
 DdWorkerUB::DdWorkerUB(
 		DspParams * par,
@@ -82,7 +92,20 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 				obj_reco, rlbd_org_[s], rubd_org_[s]));
 
 		/** creating solver interface */
-		si_[s] = new SolverInterfaceScip(par_);
+    	switch (par_->getIntParam("MIP_SOLVER")) {
+    	case CPLEX:
+#ifndef NO_CPX
+    		si_[s] = new SolverInterfaceCpx(par_);
+    		break;
+#endif
+    	case SCIP:
+#ifndef NO_SCIP
+            si_[s] = new SolverInterfaceScip(par_);
+            break;
+#endif
+    	default:
+    		break;
+    	}
 
 	    /** no display */
 	    si_[s]->setPrintLevel(0);

@@ -12,10 +12,16 @@
 
 /** DSP */
 #include "Solver/DualDecomp/DdMasterTr.h"
-//#include "SolverInterface/SolverInterfaceCpx.h"
 #include "SolverInterface/SolverInterfaceClp.h"
-#include "SolverInterface/SolverInterfaceOoqp.h"
-#include "SolverInterface/OoqpEps.h"
+
+#ifndef NO_CPX
+	#include "SolverInterface/SolverInterfaceCpx.h"
+#endif
+
+#ifndef NO_OOQP
+	#include "SolverInterface/SolverInterfaceOoqp.h"
+	#include "SolverInterface/OoqpEps.h"
+#endif
 
 DdMasterTr::DdMasterTr(
 		DspParams *  par,     /**< parameter pointer */
@@ -64,7 +70,7 @@ DSP_RTN_CODE DdMasterTr::init()
 	parNumCutsPerIter_ = par_->getIntParam("DD/NUM_CUTS_PER_ITER");
 	parMasterAlgo_ = par_->getIntParam("DD/MASTER_ALGO");
 	parLogLevel_ = par_->getIntParam("LOG_LEVEL");
-        DSPdebugMessage("Trust region size %f\n", parTrSize_);
+	DSPdebugMessage("Trust region size %f\n", parTrSize_);
 
 	/** create problem */
 	createProblem();
@@ -267,21 +273,32 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 	switch (parMasterAlgo_)
 	{
 	case Simplex:
+#ifndef NO_CPX
+		si_ = new SolverInterfaceCpx(par_);
+#else
 		si_ = new SolverInterfaceClp(par_);
-//		si_ = new SolverInterfaceCpx(par_);
+#endif
 		break;
 	case IPM:
+#if !defined(NO_OOQP)
 		si_ = new SolverInterfaceOoqp(par_);
-//		si_ = new SolverInterfaceCpx(par_);
-//		dynamic_cast<SolverInterfaceCpx*>(si_)->useBarrier_ = true;
+#elif !defined(NO_CPX)
+		si_ = new SolverInterfaceCpx(par_);
+		dynamic_cast<SolverInterfaceCpx*>(si_)->useBarrier_ = true;
+#else
+		si_ = new SolverInterfaceClp(par_);
+#endif
 		break;
 	case IPM_Feasible:
+#ifndef NO_OOQP
 		si_ = new OoqpEps(par_);
 		break;
+#endif
 	default:
-		si_ = new OoqpEps(par_);
+		si_ = new SolverInterfaceClp(par_);
 		break;
 	}
+//	si_->setPrintLevel(10);
 	DSPdebugMessage("Created master algorithm\n");
 
 	/** [MAX]imization */
@@ -408,6 +425,7 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 	message_->print(4, "TR  master has %d rows and %d cols after adding %d cuts.\n",
 				si_->getNumRows() + nCutsAdded, si_->getNumCols(), nCutsAdded);
 
+#ifndef NO_OOQP
 	OoqpEps * ooqp = dynamic_cast<OoqpEps*>(si_);
 	if (ooqp)
 	{
@@ -419,6 +437,7 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 			ooqp->setOoqpStatus(epsilon, -bestprimobj_, -bestdualobj_);
 		}
 	}
+#endif
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -576,14 +595,14 @@ DSP_RTN_CODE DdMasterTr::possiblyDeleteCuts(
 	BGN_TRY_CATCH
 
 	SolverInterfaceOsi * osi = dynamic_cast<SolverInterfaceOsi*>(si_);
-	SolverInterfaceOoqp * ooqp = dynamic_cast<SolverInterfaceOoqp*>(si_);
-	if (osi)
-	{
+	if (osi) {
 		DSP_RTN_CHECK_THROW(possiblyDeleteCutsOsi(subobjval));
-	}
-	else if (ooqp)
-	{
-		DSP_RTN_CHECK_THROW(possiblyDeleteCutsOoqp(subobjval));
+	} else {
+#ifndef NO_OOQP
+		SolverInterfaceOoqp * ooqp = dynamic_cast<SolverInterfaceOoqp*>(si_);
+		if (ooqp)
+			DSP_RTN_CHECK_THROW(possiblyDeleteCutsOoqp(subobjval));
+#endif
 	}
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
@@ -689,6 +708,7 @@ DSP_RTN_CODE DdMasterTr::possiblyDeleteCutsOsi(
 DSP_RTN_CODE DdMasterTr::possiblyDeleteCutsOoqp(
 		double subobjval /**< sum of subproblem objective values */)
 {
+#ifndef NO_OOQP
 	OsiCuts cuts;
 	int nrows = model_->nonanticipativity() ? model_->getNumSubproblemCouplingCols(0) : 0;
 	int ncuts = si_->getNumRows() - nrows;
@@ -777,7 +797,7 @@ DSP_RTN_CODE DdMasterTr::possiblyDeleteCutsOoqp(
 	si_->addCuts(cuts);
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
-
+#endif
 	return DSP_RTN_OK;
 }
 
@@ -788,19 +808,19 @@ int DdMasterTr::recruiteCuts()
 	OsiCuts cuts;
 
 	CoinWarmStartBasis * ws = NULL;
-	SolverInterfaceClp * clp = NULL;
+	SolverInterfaceOsi * osi = NULL;
 
 	vector<char> aStat; /**< status of artificial variables */
 
 	BGN_TRY_CATCH
 
-	clp = dynamic_cast<SolverInterfaceClp*>(si_);
+	osi = dynamic_cast<SolverInterfaceOsi*>(si_);
 
-	if (clp)
+	if (osi)
 	{
 		/** get basis information */
-		clp->setWarmStart(clp->getOSI()->getWarmStart());
-		ws = dynamic_cast<CoinWarmStartBasis*>(clp->getWarmStart());
+		osi->setWarmStart(osi->getOSI()->getWarmStart());
+		ws = dynamic_cast<CoinWarmStartBasis*>(osi->getWarmStart());
 	}
 
 	int irow = model_->nonanticipativity() ? model_->getNumSubproblemCouplingCols(0) : 0;
@@ -814,7 +834,7 @@ int DdMasterTr::recruiteCuts()
 		{
 			/** add cut */
 			cuts.insert(*rc);
-			if (clp)
+			if (osi)
 			{
 				/** set status of artificial variable */
 				aStat.push_back(ws->getArtifStatus(irow++));
@@ -829,7 +849,7 @@ int DdMasterTr::recruiteCuts()
 				nRecruited++;
 				/** add cut */
 				cuts.insert(*rc);
-				if (clp)
+				if (osi)
 				{
 					/** set status of artificial variable */
 					aStat.push_back(CoinWarmStartBasis::basic);
@@ -850,13 +870,13 @@ int DdMasterTr::recruiteCuts()
 		/** apply cuts */
 		si_->addCuts(cuts);
 
-		if (clp)
+		if (osi)
 		{
 			/** create new basis */
 			CoinWarmStartBasis * basis = new CoinWarmStartBasis(
 					ws->getNumStructural(), ws->getNumArtificial(),
 					ws->getStructuralStatus(), &aStat[0]);
-			clp->setWarmStart(basis);
+			osi->setWarmStart(basis);
 		}
 	}
 
@@ -870,10 +890,8 @@ DSP_RTN_CODE DdMasterTr::removeAllCuts()
 {
 	BGN_TRY_CATCH
 
-	SolverInterfaceClp * clp = dynamic_cast<SolverInterfaceClp*>(si_);
-	SolverInterfaceOoqp * ooqp = dynamic_cast<SolverInterfaceOoqp*>(si_);
-	if (clp)
-	{
+	SolverInterfaceOsi * osi = dynamic_cast<SolverInterfaceOsi*>(si_);
+	if (osi) {
 		int nrows = model_->nonanticipativity() ? model_->getNumSubproblemCouplingCols(0) : 0;
 		int ncuts = si_->getNumRows() - nrows;
 
@@ -882,16 +900,19 @@ DSP_RTN_CODE DdMasterTr::removeAllCuts()
 		CoinIotaN(rowIndices, ncuts, nrows);
 
 		/** delete */
-		clp->getOSI()->deleteRows(ncuts, rowIndices);
+		osi->getOSI()->deleteRows(ncuts, rowIndices);
 
 		/** free memory */
 		FREE_ARRAY_PTR(rowIndices);
-	}
-	else if (ooqp)
-	{
-		for (int i = 0; i < ooqp->cuts_.sizeCuts(); ++i)
-			delete ooqp->cuts_.rowCutPtr(i);
-		ooqp->cuts_.dumpCuts();
+	} else {
+#ifndef NO_OOQP
+		SolverInterfaceOoqp * ooqp = dynamic_cast<SolverInterfaceOoqp*>(si_);
+		if (ooqp) {
+			for (int i = 0; i < ooqp->cuts_.sizeCuts(); ++i)
+				delete ooqp->cuts_.rowCutPtr(i);
+			ooqp->cuts_.dumpCuts();
+		}
+#endif
 	}
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
@@ -928,25 +949,22 @@ DSP_RTN_CODE DdMasterTr::terminationTest()
 
 	BGN_TRY_CATCH
 
+#ifndef NO_OOQP
 	OoqpEps * ooqp = dynamic_cast<OoqpEps*>(si_);
 	/** is the solution suboptimal? */
 	if (ooqp != NULL && ooqp->isSuboptimal())
 		return status_;
+#endif
 
-//	if (isSolutionBoundary() == false)
+	double time_elapsed = CoinGetTimeOfDay() - walltime_elapsed_;
+	double absgap = getAbsApproxGap();
+	double relgap = getRelApproxGap();
+	DSPdebugMessage("absgap %+e relgap %+e\n", getAbsApproxGap(), relgap);
+	if (relgap < par_->getDblParam("DD/STOP_TOL"))
 	{
-		double time_elapsed = CoinGetTimeOfDay() - walltime_elapsed_;
-		double absgap = getAbsApproxGap();
-		double relgap = getRelApproxGap();
-		DSPdebugMessage("absgap %+e relgap %+e\n", getAbsApproxGap(), relgap);
-		if (relgap < par_->getDblParam("DD/STOP_TOL"))
-		{
-			status_ = DSP_STAT_MW_STOP;
-			message_->print(1, "Tr  STOP with gap tolerance %+e (%.2f%%).\n", absgap, relgap*100);
-		}
+		status_ = DSP_STAT_MW_STOP;
+		message_->print(1, "Tr  STOP with gap tolerance %+e (%.2f%%).\n", absgap, relgap*100);
 	}
-//	else
-//		message_->print(4, "TR -> The current solution is in TR boundary.\n");
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
