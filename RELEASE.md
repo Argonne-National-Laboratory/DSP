@@ -1,5 +1,9 @@
 DSP Release Notes
 =================
+August 2, 2017
+--------------
+
+* DSP can compile with CPLEX
 
 Version 0.3.0 (August 22, 2016)
 ----------------------------
