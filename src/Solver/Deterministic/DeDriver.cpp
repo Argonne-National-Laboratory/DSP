@@ -148,7 +148,7 @@ DSP_RTN_CODE DeDriver::run()
 	/** time limit */
 	double time_limit = CoinMin(
 			par_->getDblParam("DE/WALL_LIM"),
-			par_->getDblParam("SCIP/TIME_LIM"));
+			par_->getDblParam("MIP/TIME_LIM"));
 	si_->setTimeLimit(time_limit);
 
 	/** set node limit */

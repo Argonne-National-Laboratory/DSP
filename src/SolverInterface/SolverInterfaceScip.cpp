@@ -119,7 +119,7 @@ DSP_RTN_CODE SolverInterfaceScip::initialize()
 		SCIP_CALL_ABORT(SCIPincludeDefaultPlugins(scip_));
 		SCIP_CALL_ABORT(SCIPsetIntParam(scip_, "display/freq", par_->getIntParam("SCIP/DISPLAY_FREQ")));
 		setClockType(2);
-		setGapTol(par_->getDblParam("SCIP/GAP_TOL"));
+		setGapTol(par_->getDblParam("MIP/GAP_TOL"));
 		//SCIP_CALL_ABORT(SCIPsetBoolParam(scip_, "misc/allowdualreds", FALSE));
 		//SCIP_CALL_ABORT(SCIPsetBoolParam(scip_, "constraints/indicator/dualreductions", FALSE));
 	}

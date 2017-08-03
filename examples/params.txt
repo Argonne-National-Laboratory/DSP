@@ -24,8 +24,8 @@ double  DE/WALL_LIM    1000000  # Wall clock limit
 double  BD/WALL_LIM    1000000  # Wall clock limit
 double  DD/WALL_LIM    1000000  # Wall clock limit
 double  DD/STOP_TOL    0.00001  # Stopping tolerance
-double  SCIP/GAP_TOL   0.0      # Duality gap tolerance
-double  SCIP/TIME_LIM  1000000  # Time limit
+double  MIP/GAP_TOL   0.0      # Duality gap tolerance
+double  MIP/TIME_LIM  1000000  # Time limit
 
 # Benders lower bound method
 #   0 = solve separate LP relaxation problems
@@ -57,6 +57,6 @@ int     BD/NUM_CORES       1        # Number of cores used by OpenMP
 int     BD/CUT_PRIORITY    -200000  # Parameater CONSHDLR_SEPAPRIORITY for SCIP
 bool    DD/TR              true     # Use trust region?
 bool    DD/TR/DECREASE     true     # Decrease trust-region size?
-double  DD/TR/SIZE         100      # Initial trust-region size
+double  DD/TR/SIZE         1      # Initial trust-region size
 bool    DD/CACHE_RECOURSE  true     # Do not release recourse problem
 bool    DD/LOG_DUAL_VARS   false    # Store all the dual variable values

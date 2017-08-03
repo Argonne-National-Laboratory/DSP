@@ -123,7 +123,7 @@ DSP_RTN_CODE DdSub::createProblem() {
 
     /** parameters */
     parRelaxIntegrality_ = par_->getBoolPtrParam("RELAX_INTEGRALITY");
-    gapTol_ = par_->getDblParam("SCIP/GAP_TOL");
+    gapTol_ = par_->getDblParam("MIP/GAP_TOL");
 
     /** augmented subproblem index */
     augs[0] = sind_;

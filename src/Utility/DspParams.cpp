@@ -211,10 +211,10 @@ void DspParams::initDblParams()
 	DblParams_.createParam("DD/STOP_TOL", 0.00001);
 
 	/** branch-and-bound gap tolerance */
-	DblParams_.createParam("SCIP/GAP_TOL", 0.00001);
+	DblParams_.createParam("MIP/GAP_TOL", 0.00001);
 
 	/** time limit */
-	DblParams_.createParam("SCIP/TIME_LIM", 300);
+	DblParams_.createParam("MIP/TIME_LIM", 300);
 
 	/** LB-UB worker ratio */
 	DblParams_.createParam("DD/WORKER_RATIO", 0.8);

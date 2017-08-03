@@ -49,7 +49,7 @@ DSP_RTN_CODE DdWorkerLB::solve() {
 		walltime = CoinGetTimeOfDay();
 
 		/** reset gap tolerance */
-		subprobs_[s]->setGapTol(par_->getDblParam("SCIP/GAP_TOL"));
+		subprobs_[s]->setGapTol(par_->getDblParam("MIP/GAP_TOL"));
 
 		bool resolve = true;
 		while (resolve) {
@@ -57,7 +57,7 @@ DSP_RTN_CODE DdWorkerLB::solve() {
 
 			/** set time limit */
 			subprobs_[s]->setTimeLimit(
-					CoinMin(CoinMax(0.01, time_remains_), par_->getDblParam("SCIP/TIME_LIM")));
+					CoinMin(CoinMax(0.01, time_remains_), par_->getDblParam("MIP/TIME_LIM")));
 			/** solve */
 			subprobs_[s]->solve();
 
