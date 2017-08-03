@@ -39,14 +39,10 @@ set(DSP_SRC_FILES
 # set DSP libraries
 set(DSP_LIBS
 	${DEPEND_DIR}/lib/libSmi.a
-	${DEPEND_DIR}/lib/libClp.a
 	${DEPEND_DIR}/lib/libOsiClp.a
+	${DEPEND_DIR}/lib/libClp.a
 	${DEPEND_DIR}/lib/libOsi.a
-	${DEPEND_DIR}/lib/libCoinUtils.a
-	gfortran 
-	${LAPACK_LIBRARIES}
-	${ZLIB_LIBRARIES}
-	${BZIP2_LIBRARIES})
+	${DEPEND_DIR}/lib/libCoinUtils.a)
 
 ##################################################
 # MPI settings
@@ -83,7 +79,7 @@ if(NOT ${MA27LIB} MATCHES "MA27LIB-NOTFOUND")
 		${DEPEND_DIR}/lib/libooqpdense.a
 		${DEPEND_DIR}/lib/libooqpsparse.a
 		${DEPEND_DIR}/lib/libooqpbase.a
-		${MA27LIB_DIR}/libma27.a)
+		${MA27LIB})
 else()
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MPI_CXX_COMPILE_FLAGS} -DNO_OOQP")
 endif()
@@ -100,9 +96,7 @@ if(NOT ${CPLEXLIB} MATCHES "CPLEXLIB-NOTFOUND")
 		SolverInterface/SolverInterfaceCpx.cpp)
 	set(DSP_LIBS ${DSP_LIBS} 
 		${DEPEND_DIR}/lib/libOsiCpx.a
-		${CPLEX_LIB_DIR}/libcplex.a
-		m
-		pthread)
+		${CPLEX_LIB_DIR}/libcplex.a)
 else()
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MPI_CXX_COMPILE_FLAGS} -DNO_CPX")
 endif()
@@ -144,12 +138,18 @@ else()
 	message(WARNING "Benders decomposition is disabled with SCIP library.")
 endif()
 
+set(DSP_LIBS ${DSP_LIBS}
+	gfortran 
+	${LAPACK_LIBRARIES}
+	${ZLIB_LIBRARIES}
+	${BZIP2_LIBRARIES})
+
 add_library(Dsp SHARED
 	DspApiEnv.cpp
 	DspCInterface.cpp
 	${DSP_SRC_FILES})
 
-target_link_libraries(Dsp ${DSP_LIBS})
+target_link_libraries(Dsp ${DSP_LIBS} "-Wl,--no-undefined")
 
 ##################################################
 # INSTALL

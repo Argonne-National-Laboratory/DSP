@@ -143,3 +143,4 @@ ExternalProject_Add(Smi
 		CXX=${CMAKE_CXX_COMPILER}
 	BUILD_COMMAND make
 	INSTALL_COMMAND make install)
+
