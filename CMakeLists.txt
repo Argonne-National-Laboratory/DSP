@@ -16,11 +16,14 @@ message(STATUS "The system information: ${CMAKE_SYSTEM}.${CMAKE_SYSTEM_PROCESSOR
 ##################################################
 # REQUIRED PACKAGES
 ##################################################
+find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(BZip2 REQUIRED)
 find_package(MPI)
 find_package(OpenMP)
+
+string(REPLACE ";" "\ " BLAS_LIBRARIES "${BLAS_LIBRARIES}")
 
 ##################################################
 # My include files

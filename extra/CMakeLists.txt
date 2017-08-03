@@ -27,7 +27,6 @@ else()
 	set(OOQP_DIR     "${EXTRA_DIR}/OOQP")
 	set(OOQP_HSL_LIB "MA27LIB=${MA27LIB}")
 	set(OOQP_BLAS    "BLAS=${BLAS_LIBRARIES}")
-	string(REPLACE ";" "\ " OOQP_BLAS "${OOQP_BLAS}")
 
 	ExternalProject_Add(OOQP
 		SOURCE_DIR ${OOQP_DIR}
