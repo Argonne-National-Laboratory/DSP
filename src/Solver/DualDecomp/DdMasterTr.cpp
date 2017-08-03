@@ -380,8 +380,10 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 				/** set trust region */
 				setTrustRegion(stability_param_, stability_center_);
 			}
-			else
-				ncuts_minor_ += addCuts();
+			else {
+				nCutsAdded = addCuts();
+				ncuts_minor_ += nCutsAdded;
+			}
 
 			/** update dual bound */
 			bestdualobj_ = newdual;
@@ -392,7 +394,11 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 		else
 		{
 			/** add cuts and increase minor cut counter */
-			ncuts_minor_ += addCuts();
+			nCutsAdded = addCuts();
+			ncuts_minor_ += nCutsAdded;
+
+			message_->print(4, "TR  master has %d rows and %d cols after adding %d cuts.\n",
+						si_->getNumRows() + nCutsAdded, si_->getNumCols(), nCutsAdded);
 
 			/** null step */
 			message_->print(3, "TR  null step: dual objective %e", newdual);
@@ -421,9 +427,6 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 			/** update dual bound */
 			bestdualobj_ = newdual;
 	}
-
-	message_->print(4, "TR  master has %d rows and %d cols after adding %d cuts.\n",
-				si_->getNumRows() + nCutsAdded, si_->getNumCols(), nCutsAdded);
 
 #ifndef NO_OOQP
 	OoqpEps * ooqp = dynamic_cast<OoqpEps*>(si_);
