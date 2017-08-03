@@ -963,7 +963,7 @@ DSP_RTN_CODE DdMasterTr::terminationTest()
 	double absgap = getAbsApproxGap();
 	double relgap = getRelApproxGap();
 	DSPdebugMessage("absgap %+e relgap %+e\n", getAbsApproxGap(), relgap);
-	if (relgap <= par_->getDblParam("DD/STOP_TOL") + par_->getDblParam("MPI/GAP_TOL")) {
+	if (relgap <= par_->getDblParam("DD/STOP_TOL") + par_->getDblParam("MIP/GAP_TOL")) {
 		status_ = DSP_STAT_MW_STOP;
 		message_->print(1, "Tr  STOP with gap tolerance %+e (%.2f%%).\n", absgap, relgap*100);
 	}
