@@ -5,8 +5,8 @@
  *      Author: kibaekkim
  */
 
-#include "StoModel.h"
 #include "CoinHelperFunctions.hpp"
+#include "StoModel.h"
 
 StoModel::StoModel() :
 		nscen_(0),

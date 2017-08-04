@@ -7,8 +7,8 @@
 
 //#define DSP_DEBUG
 
-#include <Utility/DspMessage.h>
-#include "TssModel.h"
+#include "Utility/DspMessage.h"
+#include "Model/TssModel.h"
 
 TssModel::TssModel() :
 StoModel()
