@@ -10,6 +10,8 @@
 #define DSPMACROS_H_
 
 #include <cmath>
+#include <iostream>
+#include <exception>
 
 /*
  * Some print function
@@ -56,8 +58,6 @@
 /*
  * try-catch macros
  */
-#include <iostream>
-#include <exception>
 
 #define BGN_TRY_CATCH try {
 

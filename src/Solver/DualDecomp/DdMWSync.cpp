@@ -145,9 +145,6 @@ DSP_RTN_CODE DdMWSync::finalize()
 				}
 				MPI_Barrier(lb_comm_);
 			}
-			MPI_Barrier(lb_comm_);
-			if (lb_comm_rank_ == 0)
-				printf("## End of lower bounding time ##\n");
 		}
 		MPI_Barrier(comm_);
 	}
