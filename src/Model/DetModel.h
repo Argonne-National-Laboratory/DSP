@@ -8,9 +8,12 @@
 #ifndef DETMODEL_H_
 #define DETMODEL_H_
 
-#include <Utility/DspMacros.h>
-#include <Utility/DspMpi.h>
-#include "CoinTime.hpp"
+/** coin */
+#include "CoinPackedMatrix.hpp"
+#include "CoinHelperFunctions.hpp"
+/** Dsp */
+#include "DspMacros.h"
+#include "DspRtnCodes.h"
 
 
 /**
@@ -52,6 +55,31 @@ public:
 
 	/** default destructor */
 	virtual ~DetModel();
+
+	/** create model */
+	void createModel(
+			const CoinPackedMatrix * mat, /**< constraint matrix */
+			const double * clbd,          /**< column lower bounds */
+			const double * cubd,          /**< column upper bounds */
+			const char   * ctype,         /**< column types */
+			const double * obj,           /**< objective coefficients */
+			const double * rlbd,          /**< row lower bounds */
+			const double * rubd           /**< row upper bounds */);
+
+	/** create model */
+	void createModel(
+			const CoinBigIndex * start, /**< start index for each row */
+			const int    * index,       /**< column indices */
+			const double * value,       /**< constraint elements */
+			const int      numels,      /**< number of elements in index and value */
+			const int      ncols,       /**< number of columns */
+			const int      nrows,       /**< number of rows */
+			const double * clbd,        /**< column lower bounds */
+			const double * cubd,        /**< column upper bounds */
+			const char   * ctype,       /**< column types */
+			const double * obj,         /**< objective coefficients */
+			const double * rlbd,        /**< row lower bounds */
+			const double * rubd         /**< row upper bounds */);
 
 	void __printData();
 
