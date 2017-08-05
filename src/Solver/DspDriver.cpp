@@ -5,6 +5,7 @@
  *      Author: kibaekkim
  */
 
+#include "CoinFinite.hpp"
 #include "Solver/DspDriver.h"
 
 DspDriver::DspDriver(DspParams * par, DecModel * model):

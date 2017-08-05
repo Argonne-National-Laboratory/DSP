@@ -12,7 +12,7 @@
 #include "Solver/Deterministic/DeDriver.h"
 #include "Solver/DualDecomp/DdDriverSerial.h"
 #include "Model/DecTssModel.h"
-#include "Model/DecDetModel.h"
+#include "Model/DecBlkModel.h"
 
 #ifndef NO_SCIP
 	#include "Solver/Benders/BdDriverSerial.h"
@@ -36,24 +36,6 @@
 extern "C" {
 #endif
 
-#define STO_API_CHECK_ENV(RTN)                \
-	if (env == NULL) {                        \
-		printf("Error: Null API pointer.\n"); \
-		return RTN;                           \
-	}
-#define STO_API_CHECK_MODEL(RTN)                \
-	STO_API_CHECK_ENV(RTN)                      \
-	if (env->model_ == NULL) {                    \
-		printf("Error: Null model pointer.\n"); \
-		return RTN;                             \
-	}
-#define STO_API_CHECK_SOLVER(RTN)                \
-	STO_API_CHECK_ENV(RTN)                       \
-	if (env->solver_ == NULL) {                  \
-		printf("Error: Null solver pointer.\n"); \
-		return RTN;                              \
-	}
-
 /** create API environment */
 DspApiEnv * createEnv(void)
 {
@@ -69,14 +51,14 @@ void freeEnv(DspApiEnv * env)
 /** free new model */
 void freeModel(DspApiEnv * env)
 {
-	STO_API_CHECK_ENV();
+	DSP_API_CHECK_ENV();
 	FREE_PTR(env->model_);
 }
 
 /** free solver */
 void freeSolver(DspApiEnv * env)
 {
-	STO_API_CHECK_ENV();
+	DSP_API_CHECK_ENV();
 	FREE_PTR(env->solver_);
 }
 
@@ -107,48 +89,10 @@ TssModel * getTssModel(DspApiEnv * env)
 	}
 }
 
-/** prepare decomposition model to be solved; returns false if there is an error */
-bool prepareDecModel(DspApiEnv * env)
-{
-	BGN_TRY_CATCH
-	if (!env->model_->isStochastic() && env->decdata_ == NULL)
-	{
-		printf("Error: General decomposition models must be accompanied by coupling constraints\n");
-		return false;
-	}
-
-	if (env->decdata_ != NULL)
-	{
-		if (env->model_->isStochastic())
-		{
-			printf("Decomposition data for a stochastic model supplied: converting model to extensive form\n");
-			DetModel * det;
-			DSP_RTN_CHECK_THROW(getTssModel(env)->copyDeterministicEquivalent(det));
-			env->model_ = new DecDetModel(det, env->decdata_);
-		}
-		else
-		{
-			/** deterministic case with decdata: update model with decdata */
-			DecDetModel * decDet = dynamic_cast<DecDetModel *>(env->model_);
-			decDet->setDecData(env->decdata_);
-		}
-
-		if (env->par_->getBoolPtrParam("RELAX_INTEGRALITY")[0] ||
-				env->par_->getBoolPtrParam("RELAX_INTEGRALITY")[1])
-		{
-			printf("Warning: Relaxing stage integrality only supported in stochastic model; feature disabled\n");
-		}
-	}
-
-	END_TRY_CATCH_RTN(;,false)
-
-	return true;
-}
-
 /** get model pointer */
 DecModel * getModelPtr(DspApiEnv * env)
 {
-	STO_API_CHECK_ENV(NULL);
+	DSP_API_CHECK_ENV(NULL);
 	return env->model_;
 }
 
@@ -211,49 +155,75 @@ void loadSecondStage(
 	getTssModel(env)->loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
 }
 
-/** load deterministic problem */
-void loadDeterministic(
+/**
+ * The following function allows to read the model by blocks. This
+ * is particularly useful for distributed memory computing.
+ */
+
+/** load block problems */
+void loadBlockProblem(
 		DspApiEnv *          env,    /**< pointer to API object */
+		int                  id,     /**< block ID */
+		int                  ncols,  /**< number of columns */
+		int                  nrows,  /**< number of rows */
+		int                  numels, /**< number of elements in the matrix */
 		const CoinBigIndex * start,  /**< start index for each row */
 		const int *          index,  /**< column indices */
 		const double *       value,  /**< constraint elements */
-		const int            numels, /**< number of elements in index and value */
-		const int            ncols,  /**< number of columns */
-		const int            nrows,  /**< number of rows */
 		const double *       clbd,   /**< column lower bounds */
 		const double *       cubd,   /**< column upper bounds */
 		const char *         ctype,  /**< column types */
 		const double *       obj,    /**< objective coefficients */
 		const double *       rlbd,   /**< row lower bounds */
-		const double *       rubd    /**< row upper bounds */)
-{
-	if (env->model_ != NULL)
-		printf("Warning: Replacing an already loaded model\n");
-	DetModel * det = new DetModel(start, index, value, numels, ncols, nrows, clbd, cubd, ctype, obj, rlbd, rubd);
-	env->model_ = new DecDetModel(det, NULL);
+		const double *       rubd    /**< row upper bounds */) {
+	DSPdebugMessage("\n##############################################################\n"
+			          "## The beginning of loadBlockProblem                        ##\n"
+			          "##############################################################\n");
+	DSPdebugMessage("id = %d\n", id);
+	DSPdebugMessage("ncols = %d\n", ncols);
+	DSPdebugMessage("nrows = %d\n", nrows);
+	DSPdebugMessage("numels = %d\n", numels);
+	DSPdebugMessage("start:\n");
+	DSPdebug(DspMessage::printArray(nrows+1, start));
+	DSPdebugMessage("index:\n");
+	DSPdebug(DspMessage::printArray(numels, index));
+	DSPdebugMessage("value:\n");
+	DSPdebug(DspMessage::printArray(numels, value));
+	DSPdebugMessage("clbd:\n");
+	DSPdebug(DspMessage::printArray(ncols, clbd));
+	DSPdebugMessage("cubd:\n");
+	DSPdebug(DspMessage::printArray(ncols, cubd));
+	DSPdebugMessage("obj:\n");
+	DSPdebug(DspMessage::printArray(ncols, obj));
+	DSPdebugMessage("rlbd:\n");
+	DSPdebug(DspMessage::printArray(nrows, rlbd));
+	DSPdebugMessage("rubd:\n");
+	DSPdebug(DspMessage::printArray(nrows, rubd));
+	DSPdebugMessage("\n##############################################################\n"
+			          "## The end of loadBlockProblem                              ##\n"
+			          "##############################################################\n\n\n\n");
+	if (env->model_ == NULL)
+		env->model_ = new DecBlkModel;
+	BlkModel* blk = dynamic_cast<DecBlkModel*>(env->model_)->blkPtr();
+	if (blk == NULL)
+		fprintf(stderr, "Block decomposition model is not loaded.\n");
+	else {
+		blk->addBlock(id,
+				new DetBlock(start, index, value, numels,
+						ncols, nrows, clbd, cubd, ctype, obj, rlbd, rubd));
+	}
 }
 
-/** load parameters for a custom decomposition of the problem */
-void loadDecomposition(
-		DspApiEnv * env,            /**< pointer to API object */
-		int         nsubprobs,      /**< number of subproblems */
-		int         ncols,          /**< number of columns */
-		int         ncoupling,      /**< number of coupling constraints */
-		int *       varPartition,   /**< partition of columns into subproblems */
-		int *       couplingStarts, /**< indices in cols at which each coupling constraint starts */
-		int *       couplingCols,   /**< variables of each coupling constraint left-hand side */
-		double *    couplingCoeffs, /**< coefficients of each coupling constraint left-hand side */
-		char *      couplingSenses, /**< senses of each coupling constraint */
-		double *    couplingRhs     /**< right-hand sides of each coupling constraint */)
-{
+/** update block structure information */
+void updateBlocks(
+		DspApiEnv * env /**< pointer to API object */) {
 	if (env->model_ == NULL)
-	{
-		printf("Error: Model needs to be loaded before specifying decomposition parameters.\n");
-		return;
-	}
-
-	env->decdata_ = new DecData(nsubprobs, ncols, ncoupling, varPartition, couplingStarts,
-		couplingCols, couplingCoeffs, couplingSenses, couplingRhs);
+		fprintf(stderr, "Block decomposition model is not loaded.\n");
+	BlkModel* blk = dynamic_cast<DecBlkModel*>(env->model_)->blkPtr();
+	if (blk == NULL)
+		fprintf(stderr, "Block decomposition model is not loaded.\n");
+	else
+		blk->updateBlocks();
 }
 
 /** set initial solutions
@@ -269,16 +239,17 @@ void setSolution(
 /** solve deterministic equivalent model */
 void solveDe(DspApiEnv * env)
 {
-	STO_API_CHECK_MODEL();
-	freeSolver(env);
+	BGN_TRY_CATCH
 
-	if (!prepareDecModel(env))
-		return;
+	DSP_API_CHECK_MODEL();
+	freeSolver(env);
 
 	env->solver_ = new DeDriver(env->par_, env->model_);
 	env->solver_->init();
 	env->solver_->run();
 	env->solver_->finalize();
+
+	END_TRY_CATCH(;)
 }
 
 /** solve dual decomposition */
@@ -286,11 +257,8 @@ void solveDd(DspApiEnv * env)
 {
 	BGN_TRY_CATCH
 
-	STO_API_CHECK_MODEL();
+	DSP_API_CHECK_MODEL();
 	freeSolver(env);
-
-	if (!prepareDecModel(env))
-		return;
 
 	env->solver_ = new DdDriverSerial(env->par_, env->model_);
 	DSP_RTN_CHECK_THROW(env->solver_->init());
@@ -304,7 +272,7 @@ void solveDd(DspApiEnv * env)
 void solveBd(DspApiEnv * env)
 {
 #ifndef NO_SCIP
-	STO_API_CHECK_MODEL();
+	DSP_API_CHECK_MODEL();
 	freeSolver(env);
 
 	if (!env->model_->isStochastic())
@@ -355,11 +323,8 @@ void solveBd(DspApiEnv * env)
 /** solve dual decomposition */
 void solveDdMpi(DspApiEnv * env, MPI_Comm comm)
 {
-	STO_API_CHECK_MODEL();
+	DSP_API_CHECK_MODEL();
 	freeSolver(env);
-
-	if (!prepareDecModel(env))
-		return;
 
 	env->solver_ = new DdDriverMpi(env->par_, env->model_, comm);
 	env->solver_->init();
@@ -372,7 +337,7 @@ void solveBdMpi(
 		DspApiEnv * env, MPI_Comm comm)
 {
 #ifndef NO_SCIP
-	STO_API_CHECK_MODEL();
+	DSP_API_CHECK_MODEL();
 	freeSolver(env);
 
 	if (!env->model_->isStochastic())
@@ -422,14 +387,14 @@ void solveBdMpi(
 /** read parameter file */
 void readParamFile(DspApiEnv * env, const char * param_file)
 {
-	STO_API_CHECK_ENV();
+	DSP_API_CHECK_ENV();
 	env->par_->readParamFile(param_file);
 }
 
 /** set boolean parameter */
 void setBoolParam(DspApiEnv * env, const char * name, bool value)
 {
-	STO_API_CHECK_ENV();
+	DSP_API_CHECK_ENV();
 	string strname(name);
 	env->par_->setBoolParam(name, value);
 }
@@ -437,7 +402,7 @@ void setBoolParam(DspApiEnv * env, const char * name, bool value)
 /** set integer parameter */
 void setIntParam(DspApiEnv * env, const char * name, int value)
 {
-	STO_API_CHECK_ENV();
+	DSP_API_CHECK_ENV();
 	string strname(name);
 	env->par_->setIntParam(strname, value);
 }
@@ -445,7 +410,7 @@ void setIntParam(DspApiEnv * env, const char * name, int value)
 /** set double parameter */
 void setDblParam(DspApiEnv * env, const char * name, double value)
 {
-	STO_API_CHECK_ENV();
+	DSP_API_CHECK_ENV();
 	string strname(name);
 	env->par_->setDblParam(strname, value);
 }
@@ -453,7 +418,7 @@ void setDblParam(DspApiEnv * env, const char * name, double value)
 /** set string parameter */
 void setStrParam(DspApiEnv * env, const char * name, const char *  value)
 {
-	STO_API_CHECK_ENV();
+	DSP_API_CHECK_ENV();
 	string strname(name);
 	string strvalue(value);
 	env->par_->setStrParam(strname, strvalue);
@@ -462,7 +427,7 @@ void setStrParam(DspApiEnv * env, const char * name, const char *  value)
 /** set boolean pointer parameter */
 void setBoolPtrParam(DspApiEnv * env, const char * name, int size, bool * value)
 {
-	STO_API_CHECK_ENV();
+	DSP_API_CHECK_ENV();
 	string strname(name);
 	env->par_->setBoolPtrParamSize(strname, size);
 	for (int i = 0; i < size; ++i)
@@ -472,7 +437,7 @@ void setBoolPtrParam(DspApiEnv * env, const char * name, int size, bool * value)
 /** set integer pointer parameter */
 void setIntPtrParam(DspApiEnv * env, const char * name, int size, int * value)
 {
-	STO_API_CHECK_ENV();
+	DSP_API_CHECK_ENV();
 	string strname(name);
 	env->par_->setIntPtrParamSize(strname, size);
 	for (int i = 0; i < size; ++i)
@@ -486,118 +451,112 @@ void setIntPtrParam(DspApiEnv * env, const char * name, int size, int * value)
 /** get number of rows */
 int getNumRows(DspApiEnv * env, int stage)
 {
-	STO_API_CHECK_MODEL(-1);
+	DSP_API_CHECK_MODEL(-1);
 	return getTssModel(env)->getNumRows(stage);
 }
 
 /** get number of columns */
 int getNumCols(DspApiEnv * env, int stage)
 {
-	STO_API_CHECK_MODEL(-1);
+	DSP_API_CHECK_MODEL(-1);
 	return getTssModel(env)->getNumCols(stage);
 }
 
 /** get number of scenarios */
 int getNumScenarios(DspApiEnv * env)
 {
-	STO_API_CHECK_MODEL(-1);
+	DSP_API_CHECK_MODEL(-1);
 	return getTssModel(env)->getNumScenarios();
 }
 
 /** get number of coupling rows */
 int getNumCouplingRows(DspApiEnv * env)
 {
-	STO_API_CHECK_MODEL(-1);
+	DSP_API_CHECK_MODEL(-1);
 	return getModelPtr(env)->getNumCouplingRows();
 }
 
 /** get total number of rows */
 int getTotalNumRows(DspApiEnv * env)
 {
-	STO_API_CHECK_MODEL(-1);
+	DSP_API_CHECK_MODEL(-1);
 	return getNumRows(env,0)+getNumRows(env,1);
 }
 
 /** get total number of columns */
 int getTotalNumCols(DspApiEnv * env)
 {
-	STO_API_CHECK_MODEL(-1);
+	DSP_API_CHECK_MODEL(-1);
 	return getModelPtr(env)->getFullModelNumCols();
 }
 
 /** get number of subproblems */
 int getNumSubproblems(DspApiEnv * env)
 {
-	STO_API_CHECK_MODEL(-1);
+	DSP_API_CHECK_MODEL(-1);
 	return getModelPtr(env)->getNumSubproblems();
-}
-
-void getObjCoef(DspApiEnv * env, double * obj)
-{
-	STO_API_CHECK_SOLVER();
-	return getModelPtr(env)->getObjCoef(obj);
 }
 
 /** get total cpu time */
 double getCpuTime(DspApiEnv * env)
 {
-	STO_API_CHECK_SOLVER(0.0);
+	DSP_API_CHECK_SOLVER(0.0);
 	return env->solver_->getCpuTime();
 }
 
 /** get solution time */
 double getWallTime(DspApiEnv * env)
 {
-	STO_API_CHECK_SOLVER(0.);
+	DSP_API_CHECK_SOLVER(0.);
 	return env->solver_->getWallTime();
 }
 
 /** get solution status */
 int getStatus(DspApiEnv * env)
 {
-	STO_API_CHECK_SOLVER(0);
+	DSP_API_CHECK_SOLVER(0);
 	return env->solver_->getStatus();
 }
 
 /** get objective value */
 double getPrimalBound(DspApiEnv * env)
 {
-	STO_API_CHECK_SOLVER(0.0);
+	DSP_API_CHECK_SOLVER(0.0);
 	return env->solver_->getPrimalObjectiveValue();
 }
 
 /** get objective value */
 double getDualBound(DspApiEnv * env)
 {
-	STO_API_CHECK_SOLVER(0.0);
+	DSP_API_CHECK_SOLVER(0.0);
 	return env->solver_->getDualObjectiveValue();
 }
 
 /** get solution */
 void getPrimalSolution(DspApiEnv * env, int num, double * solution)
 {
-	STO_API_CHECK_SOLVER();
+	DSP_API_CHECK_SOLVER();
 	CoinCopyN(env->solver_->getPrimalSolution(), num, solution);
 }
 
 /** get dual solution */
 void getDualSolution(DspApiEnv * env, int num, double * solution)
 {
-	STO_API_CHECK_SOLVER();
+	DSP_API_CHECK_SOLVER();
 	CoinCopyN(env->solver_->getDualSolution(), num, solution);
 }
 
 /** get number of iterations */
 int getNumIterations(DspApiEnv * env)
 {
-	STO_API_CHECK_SOLVER(0);
+	DSP_API_CHECK_SOLVER(0);
 	return env->solver_->getNumIterations();
 }
 
 /** get number of nodes */
 int getNumNodes(DspApiEnv * env)
 {
-	STO_API_CHECK_SOLVER(0);
+	DSP_API_CHECK_SOLVER(0);
 	return env->solver_->getNumNodes();
 }
 
@@ -607,11 +566,8 @@ int getNumNodes(DspApiEnv * env)
 
 void writeMps(DspApiEnv * env, const char * name)
 {
-	STO_API_CHECK_MODEL();
+	DSP_API_CHECK_MODEL();
 	freeSolver(env);
-
-	if (!prepareDecModel(env))
-		return;
 
 	env->solver_ = new DeDriver(env->par_, env->model_);
 	env->solver_->init();
@@ -622,12 +578,12 @@ void writeMps(DspApiEnv * env, const char * name)
 /** print model */
 void printModel(DspApiEnv * env)
 {
-	STO_API_CHECK_MODEL();
+	DSP_API_CHECK_MODEL();
 	env->model_->__printData();
 }
 
-#undef STO_API_CHECK_MODEL
-#undef STO_API_CHECK_ENV
+#undef DSP_API_CHECK_MODEL
+#undef DSP_API_CHECK_ENV
 
 #ifdef __cplusplus
 }

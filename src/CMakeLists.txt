@@ -10,8 +10,8 @@ include_directories(
 )
 
 set(DSP_SRC_FILES
-	Model/DecData.cpp
-	Model/DecDetModel.cpp
+	Model/BlkModel.cpp
+	Model/DecBlkModel.cpp
 	Model/DecTssModel.cpp
 	Model/DetModel.cpp
 	Model/StoModel.cpp
@@ -149,7 +149,11 @@ add_library(Dsp SHARED
 	DspCInterface.cpp
 	${DSP_SRC_FILES})
 
-target_link_libraries(Dsp ${DSP_LIBS} "-Wl,--no-undefined")
+if (APPLE)
+	target_link_libraries(Dsp ${DSP_LIBS})
+else()
+	target_link_libraries(Dsp ${DSP_LIBS} "-Wl,--no-undefined")
+endif(APPLE)
 
 ##################################################
 # INSTALL
