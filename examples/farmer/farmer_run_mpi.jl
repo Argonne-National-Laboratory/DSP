@@ -13,7 +13,10 @@ include("farmer_model.jl")
 # Dsp solve types
 solve_types = [:Dual, :Benders]
 
-status = solve(m, solve_type = solve_types[1])
+# Default parameter file
+myparam = joinpath(dirname(@__FILE__),"../../parameters/default.txt")
+
+status = solve(m, solve_type = solve_types[1], param = myparam)
 
 if MPI.Comm_rank(MPI.COMM_WORLD) == 0
     @show getprimobjval()

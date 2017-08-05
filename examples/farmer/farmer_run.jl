@@ -8,7 +8,10 @@ include("farmer_model.jl")
 # Dsp solve types
 solve_types = [:Dual, :Benders, :Extensive]
 
-solve(m, solve_type = solve_types[1], param = "../params.txt")
+# Default parameter file
+myparam = joinpath(dirname(@__FILE__),"../../parameters/default.txt")
+
+solve(m, solve_type = solve_types[1], param = myparam)
 
 @show getprimobjval()
 @show getdualobjval()
