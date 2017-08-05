@@ -24,8 +24,8 @@ double  DE/WALL_LIM     1000000  # Wall clock limit
 double  BD/WALL_LIM     1000000  # Wall clock limit
 double  DD/WALL_LIM     1000000  # Wall clock limit
 double  DD/STOP_TOL     0.00001  # Stopping tolerance
-double  MIP/GAP_TOL    0.00001  # Duality gap tolerance
-double  MIP/TIME_LIM   300      # Time limit
+double  MIP/GAP_TOL     0.00001  # Duality gap tolerance
+double  MIP/TIME_LIM    300      # Time limit
 
 # Benders lower bound method
 #   0 = solve separate LP relaxation problems
@@ -67,3 +67,4 @@ bool    DD/TR/DECREASE     true     # Decrease trust-region size?
 double  DD/TR/SIZE         1        # Initial trust-region size
 bool    DD/CACHE_RECOURSE  true     # Do not release recourse problem
 bool    DD/LOG_DUAL_VARS   false    # Store all the dual variable values
+bool    DD/LOG_LB_TIME     false    # Print out lower bouding solution times

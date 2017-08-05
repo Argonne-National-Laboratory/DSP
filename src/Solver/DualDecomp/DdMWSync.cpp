@@ -134,17 +134,32 @@ DSP_RTN_CODE DdMWSync::finalize()
 	/** print lower bounding times */
 	if (par_->getBoolParam("DD/LOG_LB_TIME")) {
 		if (lb_comm_rank_ >= 0) {
-			if (lb_comm_rank_ == 0)
-				printf("## Lower bounding time ##\n");
-			for (int i = 0; i < lb_comm_size_; ++i) {
-				if (i == lb_comm_rank_) {
-					printf("%f", time_lb_[0]);
+			if (lb_comm_rank_ == 0) {
+				printf("\n## Lower bounding time ##\n");
+				printf("%f", time_lb_[0]);
+				for (unsigned j = 1; j < time_lb_.size(); ++j)
+					printf(",%f", time_lb_[j]);
+				printf("\n");
+			}
+
+			double* time_lb = new double [time_lb_.size()];
+			for (int i = 1; i < lb_comm_size_; ++i) {
+				if (lb_comm_rank_ == 0) {
+					MPI_Recv(time_lb, (int) time_lb_.size(), MPI_DOUBLE, MPI_ANY_SOURCE, 9999, lb_comm_, MPI_STATUS_IGNORE);
+					printf("%f", time_lb[0]);
 					for (unsigned j = 1; j < time_lb_.size(); ++j)
-						printf(",%f", time_lb_[j]);
+						printf(",%f", time_lb[j]);
 					printf("\n");
-				}
+				} else if (lb_comm_rank_ == i)
+					MPI_Send(&time_lb_[0], (int) time_lb_.size(), MPI_DOUBLE, 0, 9999, lb_comm_);
+
 				MPI_Barrier(lb_comm_);
 			}
+			delete [] time_lb;
+			time_lb = NULL;
+
+			if (lb_comm_rank_ == 0)
+				printf("## End of lower bounding time ##\n\n");
 		}
 		MPI_Barrier(comm_);
 	}
