@@ -111,6 +111,28 @@
 		PTR = NULL;                        \
 	}
 
+/**
+ * C Interface
+ */
+
+#define DSP_API_CHECK_ENV(RTN)                \
+	if (env == NULL) {                        \
+		printf("Error: Null API pointer.\n"); \
+		return RTN;                           \
+	}
+#define DSP_API_CHECK_MODEL(RTN)                \
+	DSP_API_CHECK_ENV(RTN)                      \
+	if (env->model_ == NULL) {                    \
+		printf("Error: Null model pointer.\n"); \
+		return RTN;                             \
+	}
+#define DSP_API_CHECK_SOLVER(RTN)                \
+	DSP_API_CHECK_ENV(RTN)                       \
+	if (env->solver_ == NULL) {                  \
+		printf("Error: Null solver pointer.\n"); \
+		return RTN;                              \
+	}
+
 
 
 #endif /* DSPMACROS_H_ */

@@ -8,11 +8,13 @@
 #ifndef DECMODEL_H_
 #define DECMODEL_H_
 
-#include <Utility/DspMacros.h>
-#include <Utility/DspRtnCodes.h>
 #include <map>
+/** Coin */
 #include "CoinTime.hpp"
-#include "SmiScnModel.hpp"
+#include "CoinPackedMatrix.hpp"
+/** Dsp */
+#include "Utility/DspMacros.h"
+#include "Utility/DspRtnCodes.h"
 
 
 /**
@@ -24,6 +26,29 @@
  * Here, Hx = d are the coupling constraints and x are the coupling variables.
  * Variables y and constraints that are not coupling are referred to as main.
  * (Currently coupling constraints must be equalities, but main constraints may be inequalities.)
+ */
+
+/**
+ * Extension:
+ * The design follows the matrix of the form
+ *   lb^0 <= H^1 x^1 + ... + H^k x^k                     <= ub^0
+ *   lb^1 <= A^1 x^1                 + B^1 y^1           <= ub^1
+ *   ...
+ *   lb^k <=                 A^k x^k           + B^k y^k <= ub^k
+ *
+ * The nonzero elements of the constraint matrix look like this:
+ *   X X X       <- coupling rows
+ *   X     X
+ *     X     X
+ *       X     X
+ *   ^ ^ ^
+ *   coupling columns
+ *
+ * NOTE: A Benders-type method will fix the coupling column values,
+ *       whereas a Lagrangian method will relax the coupling rows.
+ *
+ * Either fixing the coupling column values or relaxing the coupling rows
+ * decomposes the problem into three subproblems.
  */
 class DecModel
 {
@@ -44,7 +69,7 @@ public:
 	virtual int getNumCouplingRows() = 0;
 
 	/**
-	 * Returns the number of coupling variables (number of columns of B or H, or dimension of x).
+	 * Returns the number of coupling variables (dimension of [x^1, ..., x^k]).
 	 */
 	virtual int getNumCouplingCols() = 0;
 
@@ -56,17 +81,21 @@ public:
 	virtual int getNumSubproblemCouplingRows(int s) = 0;
 
 	/**
-	 * Returns the indices of coupling constraints relevant to a subproblem s (indices of rows of H involving x^s).
-	 * When applying Lagrangian relaxation to Hx = d, these are the indices of the Lagrangian multipliers
-	 * restricted to the subproblem (i.e. multipliers from constraints irrelevant to the subproblem are ignored).
-	 * (Note that these indices do not exist in the original problems; they are from 1 to getNumCouplingRows().)
-	 */
-	virtual const int * getSubproblemCouplingRowIndices(int s) = 0;
-
-	/**
-	 * Returns the number of coupling variables for a subproblem s (number of columns of A^s).
+	 * Returns the number of coupling columns for subproblem s (number of columns of H^s)
 	 */
 	virtual int getNumSubproblemCouplingCols(int s) = 0;
+
+	/**
+	 * Returns the indices of coupling columns for subproblem s (column indices of H^s)
+	 * with respect to the full problem
+	 */
+	virtual const int * getSubproblemCouplingColIndices(int s) = 0;
+
+	/**
+	 * Returns number of rows in full model.
+	 * (In stochastic, this is the extensive form. In deterministic, this is the complete model itself.)
+	 */
+	virtual int getFullModelNumRows() = 0;
 
 	/**
 	 * Returns number of columns in full model. 
@@ -80,9 +109,9 @@ public:
 	virtual int getNumIntegers() = 0;
 
 	/**
-	 * Stores in obj the objective coefficients of the model.
+	 * Returns the number of integer coupling variables
 	 */
-	virtual void getObjCoef(double * obj) = 0;
+	virtual int getNumCouplingIntegers() = 0;
 
 	/**
 	 * Evaluate the left-hand side of a coupling row w.r.t. solutions in the subproblem space.
@@ -96,6 +125,16 @@ public:
 	 * to the space of the master problem.
 	 */
 	virtual double evalLhsCouplingRowSubprob(int row, int subprob, double * subprobSolution) = 0;
+
+	/**
+	 * Returns the coupling row lower bound
+	 */
+	virtual double getCouplingRowLower(int row) = 0;
+
+	/**
+	 * Returns the coupling row upper bound
+	 */
+	virtual double getCouplingRowUpper(int row) = 0;
 
 	/**
 	 * Return the sense of a coupling row.
@@ -128,8 +167,8 @@ public:
 
 	/**
 	 * This routine decomposes the model based on inputs. If size = 0, then
-	 * this results in a standard Benders decomposition structure. If size = 1, then
-	 * this results in a dual decomposition structure.
+	 * this results in a standard Benders decomposition master problem. If size = 1, then
+	 * this results in a dual decomposition subproblem.
 	 */
 	virtual DSP_RTN_CODE decompose(
 		int size,                    /**< [in] size of subproblem subset */
@@ -160,6 +199,35 @@ public:
 		CoinPackedMatrix *& cpl_mat, /**< [out] coupling constraint matrix */
 		int *& cpl_cols,             /**< [out] columns of cpl_mat involved in coupling rows */
 		int & cpl_ncols              /**< [out] size of cpl_cols */) = 0;
+
+	/**
+	 * This creates the subproblems with coupling columns; that is,
+	 *   lb^k <= A^k x^k + B^k y^k <= ub^k
+	 */
+	virtual DSP_RTN_CODE copySubprob(
+		int subprob,             /**< [in] subproblem index */
+		CoinPackedMatrix *& mat, /**< [out] constraint matrix [A^k B^k] */
+		double *& clbd,          /**< [out] column lower bounds of y */
+		double *& cubd,          /**< [out] column upper bounds of y */
+		char   *& ctype,         /**< [out] column types of y */
+		double *& obj,           /**< [out] objective coefficients for y */
+		double *& rlbd,          /**< [out] row lower bounds */
+		double *& rubd           /**< [out] row upper bounds */) = 0;
+
+	/**
+	 * This creates recourse problem structure for a given scenario index; that is,
+	 *   lb^k <= B^k y^k <= ub^k with A^k matrix separately.
+	 */
+	virtual DSP_RTN_CODE copyRecoProb(
+		int scen,                     /**< [in] scenario index */
+		CoinPackedMatrix *& mat_tech, /**< [out] technology matrix (A matrix) */
+		CoinPackedMatrix *& mat_reco, /**< [out] recourse matrix (B matrix) */
+		double *& clbd_reco,          /**< [out] column lower bounds of y */
+		double *& cubd_reco,          /**< [out] column upper bounds of y */
+		char   *& ctype_reco,         /**< [out] column types of y */
+		double *& obj_reco,           /**< [out] objective coefficients for y */
+		double *& rlbd_reco,          /**< [out] row lower bounds */
+		double *& rubd_reco           /**< [out] row upper bounds */) = 0;
 
 	/**
 	 * Returns the full model in matrix form, including coupling constraints.

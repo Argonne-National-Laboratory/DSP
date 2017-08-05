@@ -16,7 +16,10 @@ end
 # Unit commitment model
 include("suc_mod.jl")
 
-solve(m, solve_type = :Dual)
+# Default parameter file
+myparam = joinpath(dirname(@__FILE__),"../../parameters/default.txt")
+
+solve(m, solve_type = :Dual, param = myparam)
 
 if MPI.Comm_rank(MPI.COMM_WORLD) == 0
     @show getprimobjval()

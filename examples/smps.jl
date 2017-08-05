@@ -14,7 +14,10 @@ readSmps(smps)
 # type of solution methods
 solve_types = [:Dual, :Benders, :Extensive]
 
-optimize(solve_type = solve_types[1])
+# Default parameter file
+myparam = joinpath(dirname(@__FILE__),"../parameters/default.txt")
+
+optimize(solve_type = solve_types[1], param = myparam)
 
 @show getprimobjval() # Dsp.model.primVal
 @show getdualobjval() # Dsp.model.dualVal

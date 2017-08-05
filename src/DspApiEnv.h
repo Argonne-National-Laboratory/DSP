@@ -10,7 +10,6 @@
 
 #include <Utility/DspMacros.h>
 #include "Model/TssModel.h"
-#include "Model/DecData.h"
 #include "Utility/DspParams.h"
 #include "Solver/DspDriver.h"
 #include "Solver/DecSolver.h"
@@ -23,7 +22,6 @@ public:
 
 public:
 	DspDriver * solver_;
-	DecData * decdata_;  /**< decomposition data: only used when a general decomposable model is supplied */
 	DecModel * model_;
 	DspParams * par_;
 

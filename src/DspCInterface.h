@@ -39,9 +39,6 @@ void freeSolver(DspApiEnv * env);
 /** If current model is stochastic, return the model as a TssModel object. If no model exists, create one. */
 TssModel * getTssModel(DspApiEnv * env);
 
-/** prepare decomposition model to be solved; returns false if there is an error */
-bool prepareDecModel(DspApiEnv * env);
-
 /** get model pointer */
 DecModel * getModelPtr(DspApiEnv * env);
 
@@ -88,6 +85,27 @@ void loadSecondStage(
 		const double *       obj,   /**< objective coefficients */
 		const double *       rlbd,  /**< row lower bounds */
 		const double *       rubd   /**< row upper bounds */);
+
+/** load block problems */
+void loadBlockProblem(
+		DspApiEnv *          env,    /**< pointer to API object */
+		int                  id,     /**< block ID */
+		int                  ncols,  /**< number of columns */
+		int                  nrows,  /**< number of rows */
+		int                  numels, /**< number of elements in the matrix */
+		const CoinBigIndex * start,  /**< start index for each row */
+		const int *          index,  /**< column indices */
+		const double *       value,  /**< constraint elements */
+		const double *       clbd,   /**< column lower bounds */
+		const double *       cubd,   /**< column upper bounds */
+		const char *         ctype,  /**< column types */
+		const double *       obj,    /**< objective coefficients */
+		const double *       rlbd,   /**< row lower bounds */
+		const double *       rubd    /**< row upper bounds */);
+
+/** update block structure information */
+void updateBlocks(
+		DspApiEnv * env /**< pointer to API object */);
 
 /** set initial solutions
  * This function can be called multiple times for multiple initial solutions. */
@@ -171,8 +189,6 @@ double getWallTime(DspApiEnv * env);
 
 /** get solution status */
 int getStatus(DspApiEnv * env);
-
-void getObjCoef(DspApiEnv * env, double * obj);
 
 /** get primal bound */
 double getPrimalBound(DspApiEnv * env);

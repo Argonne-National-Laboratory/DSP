@@ -9,15 +9,18 @@ end
 
 smps = ARGS[1]
 
-# type of solution methods
-solve_types = [:Dual, :Benders]
-
 # initialize MPI
 MPI.Init()
 
 readSmps(smps)
 
-optimize(solve_type = solve_types[1])
+# type of solution methods
+solve_types = [:Dual, :Benders]
+
+# Default parameter file
+myparam = joinpath(dirname(@__FILE__),"../parameters/default.txt")
+
+optimize(solve_type = solve_types[1], param = myparam)
 
 if MPI.Comm_rank(MPI.COMM_WORLD) == 0
     @show getprimobjval() 

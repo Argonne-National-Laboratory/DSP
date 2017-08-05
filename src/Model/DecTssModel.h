@@ -8,8 +8,8 @@
 #ifndef DECTSSMODEL_H_
 #define DECTSSMODEL_H_
 
-#include "TssModel.h"
-#include "DecModel.h"
+#include "Model/TssModel.h"
+#include "Model/DecModel.h"
 
 /**
  * Decomposable version of the two-stage stochastic problem through nonanticipativity constraints.
@@ -42,35 +42,87 @@ public:
 
 public:
 
+	/**
+	 * Returns the number of scenarios.
+	 */
 	int getNumSubproblems() {return getNumScenarios();}
 
-	int getNumCouplingRows() {
-		return getNumScenarios() * getNumCols(0); /* rows of nonanticipativity constraints */
-	}
+	/**
+	 * Returns the number of first-stage variables.
+	 */
+	int getNumCouplingCols() {return getNumCols(0);}
 
-	int getNumCouplingCols() {
-		return getNumScenarios() * getNumCols(0); /* copies of first-stage variables for all scenarios */
-	}
-
-	int getNumSubproblemCouplingRows(int s) {
-		return getNumCols(0); /* copies of first-stage variables for scenario s */
-	}
-
-	const int * getSubproblemCouplingRowIndices(int s);
-
+	/**
+	 * Returns the number of first-stage variables.
+	 */
 	int getNumSubproblemCouplingCols(int s) {return getNumCols(0);}
 
+	/**
+	 * Returns the first-stage variable indices.
+	 */
+	const int * getSubproblemCouplingColIndices(int s);
+
+	/**
+	 * Returns the number of columns in the extensive form.
+	 */
+	int getFullModelNumRows() {return getNumRows(0) + getNumScenarios() * getNumRows(1);}
+
+	/**
+	 * Returns the number of columns in the extensive form.
+	 */
 	int getFullModelNumCols() {return getNumCols(0) + getNumScenarios() * getNumCols(1);}
 
-	int getNumIntegers() {return getNumCoreIntegers();}
+	/**
+	 * Returns the number of integer variables in the extensive form.
+	 */
+	int getNumIntegers() {return TssModel::getNumIntegers(0) + getNumScenarios() * TssModel::getNumIntegers(1);}
+
+	int getNumCouplingIntegers() {return TssModel::getNumIntegers(0) * getNumScenarios();}
 
 	double evalLhsCouplingRow(int row, double ** solutions);
 
+	/**@name Functions specific for the Dual Decomposition */
+	//@{
+
+	/**
+	 * This considers a dual decomposition and returns the number of non-anticipativity constraints.
+	 */
+	int getNumCouplingRows() {return getNumScenarios() * getNumCols(0);}
+
+	/**
+	 * This considers a dual decomposition and returns the number of first-stage variables copied for each scenario s.
+	 */
+	int getNumSubproblemCouplingRows(int s) {return getNumCols(0);}
+
+	/**
+	 * This returns the row-th element of vector lambda_j^T x_j.
+	 * @param row is in [0, getNumCouplingRows()].
+	 * @param subprob is a scenario index (j) ranged in [0, getNumSubproblems()].
+	 * @param subprobSolution is the first-stage solution (x) of the size getNumCouplingCols().
+	 */
 	double evalLhsCouplingRowSubprob(int row, int subprob, double * subprobSolution);
 
+	/**
+	 * Returns the coupling row lower bound.
+	 */
+	double getCouplingRowLower(int row) {return 0;}
+
+	/**
+	 * Returns the coupling row upper bound.
+	 */
+	double getCouplingRowUpper(int row) {return 0;}
+
+	/**
+	 * Returns the coupling row sense.
+	 */
 	char getSenseCouplingRow(int row) {return 'E';}
 
+	/**
+	 * Returns the coupling row rhs.
+	 */
 	double getRhsCouplingRow(int row) {return 0;}
+
+	//@}
 
 	bool nonanticipativity() {return true;}
 
@@ -102,6 +154,31 @@ public:
 		int *& cpl_cols,             /**< [out] columns of cpl_mat involved in coupling rows */
 		int & cpl_ncols              /**< [out] size of cpl_cols */);
 
+	/**
+	 * This creates the subproblems with coupling columns; that is,
+	 *   lb^k <= A^k x^k + B^k y^k <= ub^k
+	 */
+	DSP_RTN_CODE copySubprob(
+		int subprob,             /**< [in] subproblem index */
+		CoinPackedMatrix *& mat, /**< [out] constraint matrix [A^k B^k] */
+		double *& clbd,          /**< [out] column lower bounds of y */
+		double *& cubd,          /**< [out] column upper bounds of y */
+		char   *& ctype,         /**< [out] column types of y */
+		double *& obj,           /**< [out] objective coefficients for y */
+		double *& rlbd,          /**< [out] row lower bounds */
+		double *& rubd           /**< [out] row upper bounds */);
+
+	DSP_RTN_CODE copyRecoProb(
+		int scen,                     /**< [in] scenario index */
+		CoinPackedMatrix *& mat_tech, /**< [out] technology matrix (A matrix) */
+		CoinPackedMatrix *& mat_reco, /**< [out] recourse matrix (B matrix) */
+		double *& clbd_reco,          /**< [out] column lower bounds of y */
+		double *& cubd_reco,          /**< [out] column upper bounds of y */
+		char   *& ctype_reco,         /**< [out] column types of y */
+		double *& obj_reco,           /**< [out] objective coefficients for y */
+		double *& rlbd_reco,          /**< [out] row lower bounds */
+		double *& rubd_reco           /**< [out] row upper bounds */);
+
 	DSP_RTN_CODE getFullModel(
 		CoinPackedMatrix *& mat, /**< [out] constraint matrix */
 		double *& clbd,          /**< [out] column lower bounds */
@@ -110,10 +187,6 @@ public:
 		double *& obj,           /**< [out] objective coefficients */
 		double *& rlbd,          /**< [out] row lower bounds */
 		double *& rubd           /**< [out] row upper bounds */);
-
-	/** get objective coefficients */
-	void getObjCoef(double * obj);
-
 
 	/** Methods on alternative representation used in subgradient algorithm */
 
@@ -124,6 +197,10 @@ public:
 	void convertLagrangianFromAlternative(double * multipliers, double *& newMultipliers);
 
 	void __printData() {return TssModel::__printData();}
+
+private:
+
+	int* master_col_indices_; /**< master column indices */
 };
 
 #endif /* DECTSSMODEL_H_ */
