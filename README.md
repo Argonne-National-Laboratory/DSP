@@ -42,7 +42,6 @@ Pkg.update();
 * The [Dsp.jl](https://github.com/kibaekkim/Dsp.jl) package provides an interface to ``JuMP.jl``. Dsp.jl can be installed by the Julia command
 ```julia
     Pkg.clone("https://github.com/kibaekkim/Dsp.jl.git");
-    Pkg.checkout("Dsp","dev-gen");
 ```
 * [MPI.jl](https://github.com/JuliaParallel/MPI.jl) is an **optional** package to run DSP in parallel on high-performance computing machines using MPI library. This is an MPI interface package, which can be installed by the following Julia command. MPICH is required for this package.
 ```julia
