@@ -47,8 +47,8 @@ void SolverInterfaceCpx::solve()
 	if (useBarrier_)
 	{
 		CPXbaropt(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::FREECACHED_RESULTS));
-		int lpstat = CPXgetstat(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
-		printf("CPLEX barrier status %d\n", lpstat);
+		//int lpstat = CPXgetstat(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
+		//printf("CPLEX barrier status %d\n", lpstat);
 	}
 	else
 		SolverInterfaceOsi::solve();
