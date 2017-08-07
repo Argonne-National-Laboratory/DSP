@@ -14,6 +14,12 @@ int  LOG_LEVEL          1    # Display level
 int  SCIP/DISPLAY_FREQ  100  # SCIP display frequency
 
 #
+# External solvers
+#
+int  SOLVER/MIP  0 # 0: CPLEX, 1: SCIP
+int  SOLVER/QP   0 # 0: CPLEX, 1: OOQP
+
+#
 # Stopping criteria
 #
 

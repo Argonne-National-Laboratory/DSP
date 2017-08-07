@@ -92,7 +92,7 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 				obj_reco, rlbd_org_[s], rubd_org_[s]));
 
 		/** creating solver interface */
-    	switch (par_->getIntParam("MIP_SOLVER")) {
+    	switch (par_->getIntParam("SOLVER/MIP")) {
     	case CPLEX:
 #ifndef NO_CPX
     		si_[s] = new SolverInterfaceCpx(par_);

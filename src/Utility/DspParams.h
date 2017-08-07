@@ -32,14 +32,10 @@ enum DSP_BD_INIT_LB_ALGO
 	SEPARATE_MILP,
 };
 
-enum DSP_DD_SUB_SOLVER {
-	SCIP = 0,
-	CPLEX
-};
-
-enum DSP_DD_QP_SOLVER {
-	OOQP = 0,
-	CPLEX
+enum DSP_EXTERNAL_SOLVER {
+	CPLEX = 0,
+	SCIP = 1,
+	OOQP = 1
 };
 
 /**

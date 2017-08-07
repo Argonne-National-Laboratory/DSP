@@ -118,7 +118,7 @@ DSP_RTN_CODE DeDriver::run()
 
 	if (nIntegers > 0)
 	{
-		switch(par_->getIntParam("MIP_SOLVER")) {
+		switch(par_->getIntParam("SOLVER/MIP")) {
 		case CPLEX:
 #ifndef NO_CPX
 			si_ = new SolverInterfaceCpx(par_);
@@ -234,7 +234,7 @@ void DeDriver::writeExtMps(const char * name)
 
 	int nIntegers = model_->getNumIntegers();
 
-	switch(par_->getIntParam("MIP_SOLVER")) {
+	switch(par_->getIntParam("SOLVER/MIP")) {
 	case CPLEX:
 #ifndef NO_CPX
 		si = new SolverInterfaceCpx(par_);

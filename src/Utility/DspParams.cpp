@@ -187,10 +187,10 @@ void DspParams::initIntParams()
 	IntParams_.createParam("DD/MIN_PROCS", 1);
 
 	/** minimum number of processes to wait at the master */
-	IntParams_.createParam("MIP_SOLVER", CPLEX);
+	IntParams_.createParam("SOLVER/MIP", CPLEX);
 
 	/** minimum number of processes to wait at the master */
-	IntParams_.createParam("QP_SOLVER", OOQP);
+	IntParams_.createParam("SOLVER/QP", CPLEX);
 
 	/** display frequency */
 	IntParams_.createParam("SCIP/DISPLAY_FREQ", 100);

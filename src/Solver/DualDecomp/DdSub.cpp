@@ -201,7 +201,7 @@ DSP_RTN_CODE DdSub::createProblem() {
     }
 
     if (nIntegers > 0) {
-    	switch (par_->getIntParam("MIP_SOLVER")) {
+    	switch (par_->getIntParam("SOLVER/MIP")) {
     	case CPLEX:
 #ifndef NO_CPX
     		si_ = new SolverInterfaceCpx(par_);

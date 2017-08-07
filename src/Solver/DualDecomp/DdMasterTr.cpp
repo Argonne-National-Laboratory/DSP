@@ -280,7 +280,7 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 #endif
 		break;
 	case IPM: {
-		switch (par_->getIntParam("QP_SOLVER")) {
+		switch (par_->getIntParam("SOLVER/QP")) {
 		case OOQP:
 #if !defined(NO_OOQP)
 			si_ = new SolverInterfaceOoqp(par_);
