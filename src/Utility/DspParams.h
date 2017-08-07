@@ -37,6 +37,11 @@ enum DSP_DD_SUB_SOLVER {
 	CPLEX
 };
 
+enum DSP_DD_QP_SOLVER {
+	OOQP = 0,
+	CPLEX
+};
+
 /**
  * This class create, set and get parameters.
  */

@@ -145,8 +145,8 @@ void DspParams::initIntParams()
 	/** number of cuts to the master per iteration */
 	IntParams_.createParam("BD/NUM_CUTS_PER_ITER", 1);
 
-	/** number of cores used in OpenMP library (Benders only) */
-	IntParams_.createParam("BD/NUM_CORES", 1);
+	/** number of cores used in OpenMP library */
+	IntParams_.createParam("NUM_CORES", 1);
 
 	/** Benders cut priority (refer CONSHDLR_SEPAPRIORITY of SCIP constraint handler */
 	IntParams_.createParam("BD/CUT_PRIORITY", -200000);
@@ -188,6 +188,9 @@ void DspParams::initIntParams()
 
 	/** minimum number of processes to wait at the master */
 	IntParams_.createParam("MIP_SOLVER", CPLEX);
+
+	/** minimum number of processes to wait at the master */
+	IntParams_.createParam("QP_SOLVER", OOQP);
 
 	/** display frequency */
 	IntParams_.createParam("SCIP/DISPLAY_FREQ", 100);

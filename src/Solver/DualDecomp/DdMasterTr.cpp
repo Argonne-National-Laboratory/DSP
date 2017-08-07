@@ -279,16 +279,34 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 		si_ = new SolverInterfaceClp(par_);
 #endif
 		break;
-	case IPM:
+	case IPM: {
+		switch (par_->getIntParam("QP_SOLVER")) {
+		case OOQP:
 #if !defined(NO_OOQP)
-		si_ = new SolverInterfaceOoqp(par_);
-#elif !defined(NO_CPX)
-		si_ = new SolverInterfaceCpx(par_);
-		dynamic_cast<SolverInterfaceCpx*>(si_)->useBarrier_ = true;
+			si_ = new SolverInterfaceOoqp(par_);
+			break;
 #else
-		si_ = new SolverInterfaceClp(par_);
+			printf("OOQP is not available for QP solve.\n");
 #endif
+		case CPLEX: {
+#if !defined(NO_OOQP)
+			si_ = new SolverInterfaceCpx(par_);
+			OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
+			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_LPMETHOD,          CPX_ALG_BARRIER);
+			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARCROSSALG,       -1);
+			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS,           par_->getIntParam("NUM_CORES"));
+			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, 1);
+			break;
+#else
+			printf("CPLEX is not available for QP solve.\n");
+#endif
+		}
+		default:
+			si_ = new SolverInterfaceClp(par_);
+			break;
+		}
 		break;
+	}
 	case IPM_Feasible:
 #ifndef NO_OOQP
 		si_ = new OoqpEps(par_);

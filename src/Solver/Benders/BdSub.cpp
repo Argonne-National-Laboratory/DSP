@@ -161,7 +161,7 @@ int BdSub::generateCuts(
 	bool doContinue = true;
 #ifdef USE_OMP
 	/** set number of cores to use */
-	omp_set_num_threads(par_->getIntParam("BD/NUM_CORES"));
+	omp_set_num_threads(par_->getIntParam("NUM_CORES"));
 #pragma omp parallel for schedule(dynamic)
 #endif
 	for (int s = nsubprobs_ - 1; s >= 0; --s)
