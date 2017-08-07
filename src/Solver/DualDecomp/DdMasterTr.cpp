@@ -291,7 +291,9 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 		case CPLEX: {
 #if !defined(NO_OOQP)
 			si_ = new SolverInterfaceCpx(par_);
-			OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
+			SolverInterfaceCpx* osi = dynamic_cast<SolverInterfaceCpx*>(si_);
+			osi->useBarrier_ = true;
+			OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(osi->getOSI());
 			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_LPMETHOD,          CPX_ALG_BARRIER);
 			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARCROSSALG,       -1);
 			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS,           par_->getIntParam("NUM_CORES"));
@@ -316,7 +318,6 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 		si_ = new SolverInterfaceClp(par_);
 		break;
 	}
-//	si_->setPrintLevel(10);
 	DSPdebugMessage("Created master algorithm\n");
 
 	/** [MAX]imization */
