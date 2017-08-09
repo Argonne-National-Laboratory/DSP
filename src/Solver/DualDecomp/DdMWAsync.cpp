@@ -620,6 +620,8 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 	int nIdles = 0;
 	int minLbWorkers = par_->getIntParam("DD/MIN_PROCS");
 	int numLbWorkers = subcomm_size_-1; /**< number of LB workers */
+	double timeToRecvFirstWorker = -1.0;
+	double minWaitTime = par_->getDblParam("DD/ASYNC/MIN_WAIT_TIME");
 
 	/** print display header */
 	printHeaderInfo();
@@ -655,12 +657,19 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 		/** clear queue */
 		DSP_RTN_CHECK_RTN_CODE(master->clearSubprobData());
 
+		timeToRecvFirstWorker = -1;
+
 		DSPdebugMessage("################# time stamp 1: %.2f\n", CoinGetTimeOfDay() - iterstime_);
 		while (1)
 		{
 			MPI_Status status;
 			/** receive iteration signal */
 			MPI_Recv(&signal, 1, MPI_INT, MPI_ANY_SOURCE, DSP_MPI_TAG_LB, subcomm_, &status);
+
+			/** get time stamp to receive the first worker process */
+			if (timeToRecvFirstWorker < 0)
+				timeToRecvFirstWorker = CoinGetTimeOfDay();
+
 			/** signal to stop? */
 			if (signal == DSP_STAT_MW_STOP) break;
 			/** retrieve message source; the next receive should be from the same source. */
@@ -718,7 +727,9 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 #endif
 
 			/** The master received messages from all the LB workers? */
-			if (!recv_message && master->worker_.size() + nIdles >= CoinMin(numLbWorkers,minLbWorkers))
+			if (!recv_message &&
+					(master->worker_.size() + nIdles >= CoinMin(numLbWorkers,minLbWorkers)
+					|| minWaitTime < CoinGetTimeOfDay() - timeToRecvFirstWorker))
 				break;
 
 			/** time limit */
