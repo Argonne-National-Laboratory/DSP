@@ -221,6 +221,9 @@ void DspParams::initDblParams()
 
 	/** LB-UB worker ratio */
 	DblParams_.createParam("DD/WORKER_RATIO", 0.8);
+
+	/** minimum wait time for the master to receive worker processes */
+	DblParams_.createParam("DD/ASYNC/MIN_WAIT_TIME", 5.0);
 }
 
 void DspParams::initStrParams()

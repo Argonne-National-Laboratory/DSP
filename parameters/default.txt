@@ -44,29 +44,30 @@ int  BD/INIT_LB_ALGO  0
 #   2 = Feasible interior-point method
 #   3 = Doubly stabilized bundle method
 #   4 = Subgradient
-int  DD/MASTER_ALGO        2
+int  DD/MASTER_ALGO        1
 int  DD/NUM_CUTS_PER_ITER  1   # number of cuts to add per iteration
 
 # Benders-type cuts and upper bound evaluation
 #   -1 : disabled
 #    0 : enabled only at the first iteration
 #    1 : enabled
-int  DD/FEAS_CUTS    1
-int  DD/OPT_CUTS     1
-int  DD/EVAL_UB      1
+int  DD/FEAS_CUTS    -1
+int  DD/OPT_CUTS     -1
+int  DD/EVAL_UB      -1
 int  DD/MAX_EVAL_UB  100  # maximum number of solutions to evaluate
 
 # Asynchronous (experimental)
-bool  DD/ASYNC               false    # run asynchronously
-bool  DD/ALLOW_IDLE_WORKERS  true     # allow idle workers for asynchronous method
-int   DD/MAX_QSIZE           5        # maximum number of queue in the master
-int   DD/MIN_PROCS           1        # minimum number of worker processes to wait at the master
+bool    DD/ASYNC                false    # run asynchronously
+bool    DD/ALLOW_IDLE_WORKERS   true     # allow idle workers for asynchronous method
+int     DD/MAX_QSIZE            5        # maximum number of queue in the master
+int     DD/MIN_PROCS            1        # minimum number of worker processes to wait at the master
+double  DD/ASYNC/MIN_WAIT_TIME  5        # minimum waiting time for the master to receive worker processes
 
 #
 # Parameters UNLIKELY changed by users
 #
 
-int     NUM_CORES          1        # Number of cores used by OpenMP
+int     NUM_CORES          8        # Number of cores used by OpenMP
 int     BD/CUT_PRIORITY    -200000  # Parameater CONSHDLR_SEPAPRIORITY for SCIP
 bool    DD/TR              true     # Use trust region?
 bool    DD/TR/DECREASE     true     # Decrease trust-region size?
