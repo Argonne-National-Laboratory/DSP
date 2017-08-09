@@ -428,7 +428,7 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 			if (rho >= 3 || (trcnt_ >= 3 && fabs(rho - 2.) < 1.0))
 			{
 				/** decrease trust region */
-				stability_param_ *= 1.0 / CoinMin(rho, 4.);
+				stability_param_ = CoinMin(1.0e-2, stability_param_/CoinMin(rho, 4.));
 				message_->print(3, ", decreased trust region size %e", stability_param_);
 				trcnt_ = 0;
 
