@@ -315,16 +315,13 @@ DSP_RTN_CODE DdMasterAtr::terminationTest()
 		return status_;
 #endif
 
-	if (isSolutionBoundary() == false)
-	{
-		if (status_ == DSP_STAT_MW_STOP) return status_;
+	if (status_ == DSP_STAT_MW_STOP) return status_;
 
-		double absgap = primobj_ - bestdualobj_;
-		double relgap = fabs(absgap) / (1.e-10 + fabs(primobj_));
-		if (relgap <= par_->getDblParam("DD/STOP_TOL") + par_->getDblParam("MIP/GAP_TOL")) {
-			status_ = DSP_STAT_MW_STOP;
-			message_->print(0, "TR  STOP with gap tolerance %+e (%.2f%%).\n", absgap, relgap*100);
-		}
+	double absgap = primobj_ - bestdualobj_;
+	double relgap = fabs(absgap) / (1.e-10 + fabs(primobj_));
+	if (relgap <= par_->getDblParam("DD/STOP_TOL") + par_->getDblParam("MIP/GAP_TOL")) {
+		status_ = DSP_STAT_MW_STOP;
+		message_->print(0, "TR  STOP with gap tolerance %+e (%.2f%%).\n", absgap, relgap*100);
 	}
 
 
