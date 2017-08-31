@@ -402,7 +402,7 @@ DSP_RTN_CODE TssModel::decompose(
 	/** # of nonzeros in the first-stage matrix A */
 	for (i = 0; i < nrows_[0]; ++i) {
 		for (j = 0; j < rows_core_[i]->getNumElements(); ++j) {
-			if (fabs(rows_core_[i]->getNumElements()[j]) > 1.e-10)
+			if (fabs(rows_core_[i]->getElements()[j]) > 1.e-10)
 				nzcnt++;
 		}
 	}
@@ -436,10 +436,10 @@ DSP_RTN_CODE TssModel::decompose(
 	for (i = 0; i < nrows_[0]; ++i)
 	{
 		for (j = 0; j < rows_core_[i]->getNumElements(); ++j) {
-			if (fabs(rows_core_[i]->getNumElements()[j]) > 1.e-10) {
+			if (fabs(rows_core_[i]->getElements()[j]) > 1.e-10) {
 				rowIndices.push_back(rownum);
-				colIndices.push_back(rows_core_[i]->getNumElements()[j]);
-				elements.push_back(rows_core_[i]->getNumElements()[j]);
+				colIndices.push_back(rows_core_[i]->getIndices()[j]);
+				elements.push_back(rows_core_[i]->getElements()[j]);
 				pos++;
 			}
 		}
