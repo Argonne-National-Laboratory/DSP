@@ -119,18 +119,23 @@ DSP_RTN_CODE DeDriver::run()
 	if (nIntegers > 0)
 	{
 		switch(par_->getIntParam("SOLVER/MIP")) {
-		case CPLEX:
+		case CPLEX: {
 #ifndef NO_CPX
 			si_ = new SolverInterfaceCpx(par_);
 			si_->setPrintLevel(par_->getIntParam("LOG_LEVEL"));
+			SolverInterfaceCpx* osicpx = dynamic_cast<SolverInterfaceCpx*>(si_);
+			OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(osicpx->getOSI());
+			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("NUM_CORES"));
 			break;
 #endif
-		case SCIP:
+		}
+		case SCIP: {
 #ifndef NO_SCIP
 			si_ = new SolverInterfaceScip(par_);
 			si_->setPrintLevel(CoinMin(par_->getIntParam("LOG_LEVEL") + 2, 5));
 			break;
 #endif
+		}
 		default:
 			break;
 		}
