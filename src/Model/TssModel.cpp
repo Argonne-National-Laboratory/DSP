@@ -367,7 +367,7 @@ DSP_RTN_CODE TssModel::decompose(
 	assert(naux >= 0);
 	assert(mat == NULL);
 
-	int s, i;
+	int s, i, j;
 	int nrows = nrows_[0] + size * nrows_[1];
 	int ncols = ncols_[0] + size * ncols_[1] + naux;
 	DSPdebugMessage("nrows %d ncols %d\n", nrows, ncols);
@@ -390,23 +390,30 @@ DSP_RTN_CODE TssModel::decompose(
 	double stime = CoinCpuTime();
 #endif
 
-#if 1
-	int * rowIndices = NULL;
-	int * colIndices = NULL;
-	double * elements = NULL;
+	vector<int> rowIndices;
+	vector<int> colIndices;
+	vector<double> elements;
+	// int * rowIndices = NULL;
+	// int * colIndices = NULL;
+	// double * elements = NULL;
 	double * denserow = NULL;
 
 	int nzcnt = 0;
 	/** # of nonzeros in the first-stage matrix A */
-	for (i = 0; i < nrows_[0]; ++i)
-		nzcnt += rows_core_[i]->getNumElements();
+	for (i = 0; i < nrows_[0]; ++i) {
+		for (j = 0; j < rows_core_[i]->getNumElements(); ++j) {
+			if (fabs(rows_core_[i]->getNumElements()[j]) > 1.e-10)
+				nzcnt++;
+		}
+	}
 	/** # of nonzeros in the technology and recourse matrices */
 	for (s = 0; s < size; ++s)
 	{
 		if (fromSMPS_)
 		{
-			for (i = nrows_[0]; i < nrows_core_; ++i)
+			for (i = nrows_[0]; i < nrows_core_; ++i) {
 				nzcnt += rows_core_[i]->getNumElements();
+			}
 		}
 		else
 			nzcnt += mat_scen_[scen[s]]->getNumElements();
@@ -414,9 +421,12 @@ DSP_RTN_CODE TssModel::decompose(
 	DSPdebugMessage("nzcnt %d\n", nzcnt);
 
 	/** allocate memory */
-	rowIndices = new int [nzcnt];
-	colIndices = new int [nzcnt];
-	elements = new double [nzcnt];
+	rowIndices.reserve(nzcnt);
+	colIndices.reserve(nzcnt);
+	elements.reserve(nzcnt);
+	// rowIndices = new int [nzcnt];
+	// colIndices = new int [nzcnt];
+	// elements = new double [nzcnt];
 	if (fromSMPS_)
 		denserow = new double [ncols_core_];
 
@@ -425,10 +435,14 @@ DSP_RTN_CODE TssModel::decompose(
 	int rownum = 0;
 	for (i = 0; i < nrows_[0]; ++i)
 	{
-		CoinFillN(rowIndices + pos, rows_core_[i]->getNumElements(), rownum);
-		CoinCopyN(rows_core_[i]->getIndices(), rows_core_[i]->getNumElements(), colIndices + pos);
-		CoinCopyN(rows_core_[i]->getElements(), rows_core_[i]->getNumElements(), elements + pos);
-		pos += rows_core_[i]->getNumElements();
+		for (j = 0; j < rows_core_[i]->getNumElements(); ++j) {
+			if (fabs(rows_core_[i]->getNumElements()[j]) > 1.e-10) {
+				rowIndices.push_back(rownum);
+				colIndices.push_back(rows_core_[i]->getNumElements()[j]);
+				elements.push_back(rows_core_[i]->getNumElements()[j]);
+				pos++;
+			}
+		}
 		rownum++;
 	}
 	for (s = 0; s < size; ++s)
@@ -453,9 +467,9 @@ DSP_RTN_CODE TssModel::decompose(
 				{
 					if (fabs(denserow[j]) > 1.e-10)
 					{
-						rowIndices[pos + length] = rownum;
-						colIndices[pos + length] = j;
-						elements[pos + length] = denserow[j];
+						rowIndices.push_back(rownum);
+						colIndices.push_back(j);
+						elements.push_back(denserow[j]);
 						length++;
 					}
 				}
@@ -463,11 +477,13 @@ DSP_RTN_CODE TssModel::decompose(
 			else /** from Julia */
 			{
 				length = mat_scen_[scen[s]]->getVectorSize(i - nrows_[0]);
-				CoinFillN(rowIndices + pos, length, rownum);
-				CoinCopyN(mat_scen_[scen[s]]->getIndices() + start, length, colIndices + pos);
-				CoinCopyN(mat_scen_[scen[s]]->getElements() + start, length, elements + pos);
+				for (j = 0; j < length; ++j) {
+					rowIndices.push_back(rownum);
+					colIndices.push_back(mat_scen_[scen[s]]->getIndices()[start + j]);
+					elements.push_back(mat_scen_[scen[s]]->getElements()[start + j]);
+				}
 			}
-			shiftVecIndices(length, colIndices + pos, s * ncols_[1], cstart_[1]);
+			shiftVecIndices(length, &colIndices[0] + pos, s * ncols_[1], cstart_[1]);
 			DSPdebugMessage("shift vector indices from %d by %d from %d\n", pos, s * ncols_[1], cstart_[1]);
 			/*for (int k = 0, l = 0; l < length; ++l)
 			{
@@ -482,54 +498,19 @@ DSP_RTN_CODE TssModel::decompose(
 			rownum++;
 		}
 	}
+	nzcnt = rowIndices.size();
 	DSPdebugMessage("rownum %d nzcnt %d pos %d\n", rownum, nzcnt, pos);
 	assert(nzcnt == pos);
 
-	mat = new CoinPackedMatrix(false, rowIndices, colIndices, elements, nzcnt);
+	mat = new CoinPackedMatrix(false, &rowIndices[0], &colIndices[0], &elements[0], nzcnt);
 	mat->setDimensions(nrows, ncols);
 	DSPdebug(mat->verifyMtx(4));
 
 	/** free memory */
-	FREE_ARRAY_PTR(rowIndices);
-	FREE_ARRAY_PTR(colIndices);
-	FREE_ARRAY_PTR(elements);
+	rowIndices.clear();
+	colIndices.clear();
+	elements.clear();
 	FREE_ARRAY_PTR(denserow);
-#else
-	CoinPackedVector * row = NULL;
-	/** allocate memory for matrix */
-	mat = new CoinPackedMatrix(false, 0, 0); /** row-wise */
-
-	/** construct matrix */
-	mat->setDimensions(0, ncols);
-
-	/** first-stage part */
-	for (i = 0; i < nrows_[0]; ++i)
-		mat->appendRow(*rows_core_[i]);
-
-	/** second-stage part */
-	for (s = 0; s < size; ++s)
-	{
-		for (i = rstart_[1]; i < nrows_core_; ++i)
-		{
-			//printf("Add second-stage row (%d,%d)\n", s, i);
-			/** clone */
-			row = new CoinPackedVector(*rows_core_[i]);
-
-			/** combine random elements */
-			combineRandRowVec(row, i - rstart_[1], scen[s]);
-
-			/** shift indices for recourse part */
-			shiftVecIndices(row, s * ncols_[1], cstart_[1]);
-
-			/** add it */
-			mat->appendRow(*row);
-
-			/** free clone */
-			FREE_PTR(row)
-		}
-	}
-	mat->verifyMtx(4);
-#endif
 
 #ifdef DSP_TIMING
 	printf("construct matrix %f seconds.\n", CoinCpuTime() - stime);
