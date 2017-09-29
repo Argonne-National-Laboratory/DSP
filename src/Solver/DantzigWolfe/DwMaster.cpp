@@ -175,14 +175,14 @@ DSP_RTN_CODE DwMaster::init() {
     	obj_orig_.resize(ncols);
     	rlbd_orig_.resize(mat_orig_->getNumRows());
     	rubd_orig_.resize(mat_orig_->getNumRows());
-    	std::copy(org_ctype, org_ctype + ncols_first_stage, ctype_orig_.begin());
-    	std::fill(ctype_orig_.begin() + ncols_first_stage, ctype_orig_.end(), 'C');
-		for (int s = 0; s < nscen; ++s) {
+	for (int s = 0; s < nscen; ++s) {
+    		std::copy(org_ctype, org_ctype + ncols_first_stage, ctype_orig_.begin() + s * ncols_first_stage);
 	    	std::copy(org_clbd, org_clbd + ncols_first_stage, clbd_orig_.begin() + s * ncols_first_stage);
 	    	std::copy(org_cubd, org_cubd + ncols_first_stage, cubd_orig_.begin() + s * ncols_first_stage);
 	    	for (int j = 0; j < ncols_first_stage; ++j)
 	    		obj_orig_[s * ncols_first_stage + j] = org_obj[j] * probability[s];
-		}
+	}
+   	std::copy(org_ctype + ncols_first_stage, org_ctype + ncols - (nscen-1) * ncols_first_stage, ctype_orig_.begin() + nscen * ncols_first_stage);
     	std::copy(org_clbd + ncols_first_stage, org_clbd + ncols - (nscen-1) * ncols_first_stage, clbd_orig_.begin() + nscen * ncols_first_stage);
     	std::copy(org_cubd + ncols_first_stage, org_cubd + ncols - (nscen-1) * ncols_first_stage, cubd_orig_.begin() + nscen * ncols_first_stage);
     	std::fill(obj_orig_.begin() + nscen * ncols_first_stage, obj_orig_.end(), 0.0);
@@ -1551,7 +1551,7 @@ void DwMaster::setBranchingObjects(const DspBranch* branchobj) {
 	worker_->setColBounds(ncols_orig_, &ncols_inds[0], &clbd_node_[0], &cubd_node_[0]);
 
 	/** set known best bound */
-	bestdualobj_ = branchobj->bestBound_;
+	bestdualobj_ = COIN_DBL_MAX;
 
 	END_TRY_CATCH(;)
 }
