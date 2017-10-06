@@ -9,7 +9,9 @@
 
 #include "Solver/DualDecomp/DdMWSerial.h"
 #include "Solver/DualDecomp/DdMasterTr.h"
+#ifndef NO_OOQP
 #include "Solver/DualDecomp/DdMasterDsb.h"
+#endif
 #include "Solver/DualDecomp/DdMasterSubgrad.h"
 
 DdMWSerial::DdMWSerial(
@@ -45,9 +47,11 @@ DSP_RTN_CODE DdMWSerial::init()
 	case IPM_Feasible:
 		master_ = new DdMasterTr(par_, model_, message_);
 		break;
+#ifndef NO_OOQP
 	case DSBM:
 		master_ = new DdMasterDsb(par_, model_, message_);
 		break;
+#endif
 	case Subgradient:
 		master_ = new DdMasterSubgrad(par_, model_, message_);
 		break;
