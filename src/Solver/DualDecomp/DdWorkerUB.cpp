@@ -220,13 +220,16 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 			break;
 		default:
 			status_ = DSP_STAT_MW_STOP;
-			message_->print(0,
+			message_->print(5,
 					"Warning: subproblem %d solution status is %d\n", s,
 					si_[s]->getStatus());
 			break;
 		}
-		if (status_ == DSP_STAT_MW_STOP)
+		if (status_ == DSP_STAT_MW_STOP) {
+			primobj = COIN_DBL_MAX;
+			dualobj = -COIN_DBL_MAX;
 			break;
+		}
 
 		primobj += si_[s]->getPrimalBound();
 		dualobj += si_[s]->getDualBound();
