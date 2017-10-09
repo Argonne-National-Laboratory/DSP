@@ -68,14 +68,14 @@ DSP_RTN_CODE DdWorkerLB::solve() {
 				case DSP_STAT_STOPPED_GAP:
 				case DSP_STAT_STOPPED_NODE:
 					message_->print(3, "Warning: subproblem %d solution status is %d\n",
-									s, subprobs_[s]->si_->getStatus());
+									subprobs_[s]->sind_, subprobs_[s]->si_->getStatus());
 					break;
 				case DSP_STAT_OPTIMAL:
 					break;
 				default:
 					status_ = DSP_STAT_MW_STOP;
 					message_->print(0, "Warning: subproblem %d solution status is %d\n",
-									s, subprobs_[s]->si_->getStatus());
+									subprobs_[s]->sind_, subprobs_[s]->si_->getStatus());
 					break;
 			}
 			if (status_ == DSP_STAT_MW_STOP)
