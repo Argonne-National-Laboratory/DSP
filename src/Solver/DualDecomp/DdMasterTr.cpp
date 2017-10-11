@@ -133,6 +133,7 @@ DSP_RTN_CODE DdMasterTr::solve()
 		s_primsol = NULL;
 		s_cputimes_.push_back(CoinCpuTime() - cputime);
 		s_walltimes_.push_back(CoinGetTimeOfDay() - walltime);
+		message_->print(3, "Master solution time %.2f sec.\n", CoinGetTimeOfDay() - walltime);
 
 		break;
 	}
@@ -297,7 +298,8 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_LPMETHOD,          CPX_ALG_BARRIER);
 			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARCROSSALG,       -1);
 			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS,           par_->getIntParam("NUM_CORES"));
-			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, 1);
+			//CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, 1);
+			CPXsetdblparam(cpx->getEnvironmentPtr(), CPX_PARAM_BAREPCOMP, 1e-5);
 			break;
 #else
 			printf("CPLEX is not available for QP solve.\n");
