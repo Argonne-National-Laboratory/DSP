@@ -229,7 +229,7 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 			break;
 		default:
 			status_ = DSP_STAT_MW_STOP;
-			message_->print(5,
+			message_->print(10,
 					"Warning: subproblem %d solution status is %d\n", s,
 					si_[s]->getStatus());
 			break;

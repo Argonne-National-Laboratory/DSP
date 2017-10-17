@@ -244,16 +244,20 @@ DSP_RTN_CODE DdMWAsync::runWorker()
 				MPI_Send(&dummy, 1, MPI_INT, 0, DSP_MPI_TAG_ASK_SOLS, comm_);
 				/** receive coupling solutions */
 				MPIrecvCoinPackedVectors(comm_, 0, solutions, DSP_MPI_TAG_SOLS);
-				DSPdebugMessage("Rank %d received %lu solutions from the root.\n", comm_rank_, solutions.size());
-				//message_->print(0, "The CGUB workers have %lu solutions.\n", solutions.size());
+				message_->print(5, "The CGUB workers received %lu solutions from the root.\n", solutions.size());
 			}
 			/** broadcast coupling solutions */
 			MPIbcastCoinPackedVectors(cgub_comm_, solutions);
 			if (solutions.size() == 0) continue;
 
 			/** TODO move some solutions to the local vector */
-			local_solutions.push_back(solutions.back());
-			solutions.pop_back();
+			//for (int i = 0; i < par_->getIntParam("DD/MAX_EVAL_UB"); i++) {
+				local_solutions.push_back(solutions.back());
+				solutions.pop_back();
+			//	if (solutions.size() == 0)
+			//		break;
+			//}
+			/*
 			if (solutions.size() > 100)
 			{
 				int numToDel = solutions.size() - 100;
@@ -261,6 +265,7 @@ DSP_RTN_CODE DdMWAsync::runWorker()
 					FREE_PTR(solutions[i]);
 				solutions.erase(solutions.begin(), solutions.begin()+numToDel);
 			}
+			/*
 
 			/** run CG */
 			DSPdebugMessage("Rank %d runs runWorkerCg().\n", comm_rank_);
@@ -617,6 +622,7 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 		CoinZeroN(numCutsAdded, subcomm_size_ - 1);
 	}
 
+	int nTerminated = 0;
 	int nIdles = 0;
 	int minLbWorkers = par_->getIntParam("DD/MIN_PROCS");
 	int numLbWorkers = subcomm_size_-1; /**< number of LB workers */
@@ -671,7 +677,9 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 				timeToRecvFirstWorker = CoinGetTimeOfDay();
 
 			/** signal to stop? */
-			if (signal == DSP_STAT_MW_STOP) break;
+			if (signal == DSP_STAT_MW_STOP)
+				nTerminated++;
+
 			/** retrieve message source; the next receive should be from the same source. */
 			int msg_source = status.MPI_SOURCE;
 			/** receive lambda ID from the LB worker */
@@ -728,7 +736,7 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 
 			/** The master received messages from all the LB workers? */
 			if (!recv_message &&
-					(master->worker_.size() + nIdles >= CoinMin(numLbWorkers,minLbWorkers)
+					(master->worker_.size() + nIdles + nTerminated >= CoinMin(numLbWorkers,minLbWorkers)
 					|| minWaitTime < CoinGetTimeOfDay() - timeToRecvFirstWorker))
 				break;
 
@@ -749,7 +757,7 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 		{
 			/** store coupling solutions */
 			storeCouplingSolutions(solutions);
-			DSPdebugMessage("Rank %d added %lu solutions to the pool (%lu)\n", comm_rank_, solutions.size(), ubSolutions_.size());
+			message_->print(3, "Added %lu solutions to the pool (%lu)\n", solutions.size(), ubSolutions_.size());
 
 			/** probe if the worker asks solutions */
 			int req_sols, dummy;
@@ -885,9 +893,10 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 		{
 			signal = DSP_STAT_MW_STOP;
 			message_->print(1, "Iteration limit (%d) has been reached.\n", master_->getParPtr()->getIntParam("DD/ITER_LIM"));
-		}
-		else
-		{
+		} else if (nTerminated > 0) {
+			signal = DSP_STAT_MW_STOP;
+			message_->print(1, "One or more worker processes terminated..\n");
+		} else {
 			signal = master->terminationTest();
 		}
 		/** send signal */
@@ -1190,30 +1199,30 @@ DSP_RTN_CODE DdMWAsync::runWorkerCore()
 		signal = workerlb->getStatus();
 		/** send stop signal to master */
 		MPI_Send(&signal, 1, MPI_INT, 0, DSP_MPI_TAG_LB, subcomm_);
-		if (signal == DSP_STAT_MW_STOP) break;
 
-		/** create send buffer */
-		for (int s = 0, pos = 0; s < narrprocidx; ++s)
-		{
-			sendbuf[pos++] = static_cast<double>(workerlb->subprobs_[s]->sind_);
-			sendbuf[pos++] = workerlb->subprobs_[s]->getPrimalObjective();
-			sendbuf[pos++] = workerlb->subprobs_[s]->getDualObjective();
-			CoinCopyN(workerlb->subprobs_[s]->si_->getSolution(), workerlb->subprobs_[s]->ncols_coupling_, sendbuf + pos);
-			pos += workerlb->subprobs_[s]->ncols_coupling_;
-			DSPdebugMessage("worker %d, subprob %d primobj %+e dualobj %+e\n",
-					comm_rank_, workerlb->subprobs_[s]->sind_, workerlb->subprobs_[s]->getPrimalObjective(), workerlb->subprobs_[s]->getDualObjective());
-		}
+		if (signal != DSP_STAT_MW_STOP) {
+			/** create send buffer */
+			for (int s = 0, pos = 0; s < narrprocidx; ++s)
+			{
+				sendbuf[pos++] = static_cast<double>(workerlb->subprobs_[s]->sind_);
+				sendbuf[pos++] = workerlb->subprobs_[s]->getPrimalObjective();
+				sendbuf[pos++] = workerlb->subprobs_[s]->getDualObjective();
+				CoinCopyN(workerlb->subprobs_[s]->si_->getSolution(), workerlb->subprobs_[s]->ncols_coupling_, sendbuf + pos);
+				pos += workerlb->subprobs_[s]->ncols_coupling_;
+				DSPdebugMessage("worker %d, subprob %d primobj %+e dualobj %+e\n",
+						comm_rank_, workerlb->subprobs_[s]->sind_, workerlb->subprobs_[s]->getPrimalObjective(), workerlb->subprobs_[s]->getDualObjective());
+			}
 #ifdef DSP_DEBUG_QUEUE1
-		message_->print(0, "LB processor (rank %d) send message (%d):\n", comm_rank_, scount);
-		DspMessage::printArray(scount, sendbuf);
+			message_->print(0, "LB processor (rank %d) send message (%d):\n", comm_rank_, scount);
+			DspMessage::printArray(scount, sendbuf);
 #endif
 
-		/** send lambda ID to the master */
-		MPI_Send(&(workerlb->solution_key_), 1, MPI_INT, 0, DSP_MPI_TAG_LB, subcomm_);
-//		message_->print(1, "LB processor (rank %d) evaluated the trial point (ID %d).\n", comm_rank_, workerlb->solution_key_);
-		/** send message to the master */
-		MPI_Send(sendbuf, scount, MPI_DOUBLE, 0, DSP_MPI_TAG_LB, subcomm_);
-
+			/** send lambda ID to the master */
+			MPI_Send(&(workerlb->solution_key_), 1, MPI_INT, 0, DSP_MPI_TAG_LB, subcomm_);
+//			message_->print(1, "LB processor (rank %d) evaluated the trial point (ID %d).\n", comm_rank_, workerlb->solution_key_);
+			/** send message to the master */
+			MPI_Send(sendbuf, scount, MPI_DOUBLE, 0, DSP_MPI_TAG_LB, subcomm_);
+		}
 		/** receive signal from the root */
 		MPI_Recv(&signal, 1, MPI_INT, 0, DSP_MPI_TAG_SIG, subcomm_, MPI_STATUS_IGNORE);
 		if (signal == DSP_STAT_MW_STOP)
@@ -1573,7 +1582,7 @@ DSP_RTN_CODE DdMWAsync::recvUpperBounds() {
 		/** calculate the best UB */
 		for (int i = 0; i < nprimobjs; ++i)
 		{
-			DSPdebugMessage("solution %d: primal objective %+e\n", i, primobjs[i]);
+			message_->print(5, "solution %d: primal objective %+e\n", i, primobjs[i]);
 			master_->bestprimobj_ = primobjs[i] < master_->bestprimobj_ ? primobjs[i] : master_->bestprimobj_;
 		}
 		/** is there a message to receive? */

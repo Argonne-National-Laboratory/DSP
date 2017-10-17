@@ -437,7 +437,7 @@ int DdMasterAtr::addCuts(bool possiblyDel)
 	else
 	{
 		/** TODO recruit back some cuts if no cut is generated */
-		message_->print(5, "WARNING: Cut recruit is not implemented.\n");
+		message_->print(10, "WARNING: Cut recruit is not implemented.\n");
 	}
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
