@@ -8,11 +8,18 @@
 #ifndef SRC_UTILITY_DSPUTILITY_H_
 #define SRC_UTILITY_DSPUTILITY_H_
 
+//#define DSP_DEBUG
+//#define DSP_DEBUG2
+
 #include <vector>
 #include "CoinHelperFunctions.hpp"
 #include "Utility/DspMessage.h"
 
 using namespace std;
+
+bool myduplicatetolerance(double i, double j) {
+	return (fabs(i-j) < 1.0e-8);
+}
 
 /** check whether solution is duplicate or not */
 bool duplicateVector(
@@ -21,28 +28,27 @@ bool duplicateVector(
 {
 	bool dup = false;
 
+#ifdef DSP_DEBUG2
+	DSPdebugMessage("vec (%d):\n", vec->getNumElements());
+	DspMessage::printArray(vec);
+#endif
 	/** number of saved solutions */
 	int num = vecs.size();
 	DSPdebugMessage2("number of vectors %d\n", num);
 	for (int i = num - 1; i >= 0; --i)
 	{
 #ifdef DSP_DEBUG2
-		DSPdebugMessage("vecs[%d]:\n", i);
+		DSPdebugMessage("vecs[%d] (%d):\n", i, vecs[i]->getNumElements());
 		DspMessage::printArray(vecs[i]);
 #endif
-		if (vec->getNumElements() == 0 || vecs[i]->getNumElements() == 0) {
-		  if (vec->getNumElements() == 0 && vecs[i]->getNumElements() == 0)
-		    dup = true;
-		  else
-		    dup = false;
-		  break;
-		} else {
-		  dup = (vec->getNumElements() == vecs[i]->getNumElements() &&
-		    std::equal(vec->getIndices(),vec->getIndices()+vec->getNumElements(),
-			     vecs[i]->getIndices()) &&
-		    std::equal(vec->getElements(),vec->getElements()+vec->getNumElements(),
-			       vecs[i]->getElements()));
+		if (vec->getNumElements() == vecs[i]->getNumElements()) {
+			if (vec->getNumElements() == 0)
+				dup = true;
+			else if (std::equal(vec->getIndices(), vec->getIndices()+vec->getNumElements(), vecs[i]->getIndices()) && 
+				std::equal(vec->getElements(), vec->getElements()+vec->getNumElements(), vecs[i]->getElements()), myduplicatetolerance)
+				dup = true;
 		}
+		if (dup) break;
 	}
 
 	return dup;
