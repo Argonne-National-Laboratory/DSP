@@ -251,21 +251,12 @@ DSP_RTN_CODE DdMWAsync::runWorker()
 			if (solutions.size() == 0) continue;
 
 			/** TODO move some solutions to the local vector */
-			//for (int i = 0; i < par_->getIntParam("DD/MAX_EVAL_UB"); i++) {
+			for (int i = 0; i < par_->getIntParam("DD/MAX_EVAL_UB"); i++) {
 				local_solutions.push_back(solutions.back());
 				solutions.pop_back();
-			//	if (solutions.size() == 0)
-			//		break;
-			//}
-			/*
-			if (solutions.size() > 100)
-			{
-				int numToDel = solutions.size() - 100;
-				for (int i = 0; i < numToDel; ++i)
-					FREE_PTR(solutions[i]);
-				solutions.erase(solutions.begin(), solutions.begin()+numToDel);
+				if (solutions.size() == 0)
+					break;
 			}
-			/*
 
 			/** run CG */
 			DSPdebugMessage("Rank %d runs runWorkerCg().\n", comm_rank_);
@@ -282,8 +273,14 @@ DSP_RTN_CODE DdMWAsync::runWorker()
 			for (unsigned i = 0; i < local_solutions.size(); ++i)
 				FREE_PTR(local_solutions[i]);
 			local_solutions.clear();
+			for (unsigned i = 0; i < solutions.size(); ++i)
+				FREE_PTR(solutions[i]);
+			solutions.clear();
 		}
 		/** clear solutions */
+		for (unsigned i = 0; i < local_solutions.size(); ++i)
+			FREE_PTR(local_solutions[i]);
+		local_solutions.clear();
 		for (unsigned i = 0; i < solutions.size(); ++i)
 			FREE_PTR(solutions[i]);
 		solutions.clear();
@@ -1406,6 +1403,28 @@ DSP_RTN_CODE DdMWAsync::runWorkerUb(
 	//message_->print(0, "W%d  Starting UB for %lu solutions.\n", comm_rank_, solutions.size());
 	if (solutions.size() > 0)
 	{
+#if 0
+		if (cgub_comm_rank_ == 0) {
+			char filename[64];
+			const char * output_prefix = par_->getStrParam("OUTPUT/PREFIX").c_str();
+			sprintf(filename, "%s-solns.txt", output_prefix);
+
+			std::ofstream outfile;
+			outfile.open(filename, std::ios_base::app);
+			for (unsigned i = 0; i < solutions.size(); ++i) {
+				CoinPackedVector* soln = solutions[i];
+				bool bewritten = false;
+				for (int j = 0; j < soln->getNumElements(); ++j) {
+					if (fabs(soln->getElements()[j]) < 1.0e-8) continue;
+					if (bewritten) outfile << ",";
+					outfile << soln->getIndices()[j];
+					bewritten = true;
+				}
+				outfile << "\n";
+			}
+			outfile.close();
+		}
+#endif
 		upperbounds.reserve(comm_size_);
 		upperbounds.clear();
 		for (unsigned i = 0; i < solutions.size(); ++i)
@@ -1424,7 +1443,14 @@ DSP_RTN_CODE DdMWAsync::runWorkerUb(
 		MPI_Reduce(&upperbounds[0], sumub, upperbounds.size(), MPI_DOUBLE, MPI_SUM, 0, cgub_comm_);
 		if (cgub_comm_rank_ == 0)
 		{
-			MPI_Send(sumub, upperbounds.size(), MPI_DOUBLE, 0, DSP_MPI_TAG_UB, comm_);
+			bool updated = false;
+			for (unsigned i = 0; i < upperbounds.size(); ++i)
+				if (workerub->bestub_ > sumub[i]) {
+					workerub->bestub_ = sumub[i];
+					updated = true;
+				}
+			if (updated)
+				MPI_Send(&(workerub->bestub_), 1, MPI_DOUBLE, 0, DSP_MPI_TAG_UB, comm_);
 			FREE_ARRAY_PTR(sumub);
 		}
 	}

@@ -25,6 +25,7 @@ DdWorkerUB::DdWorkerUB(
 		DecModel * model,
 		DspMessage * message):
 DdWorker(par, model, message),
+bestub_(COIN_DBL_MAX),
 mat_mp_(NULL),
 rlbd_org_(NULL),
 rubd_org_(NULL),

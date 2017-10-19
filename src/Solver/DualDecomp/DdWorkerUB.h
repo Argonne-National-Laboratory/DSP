@@ -42,6 +42,9 @@ protected:
 	/** create problem */
 	virtual DSP_RTN_CODE createProblem();
 
+public:
+	double bestub_; /**< best upper bound */
+
 private:
 
 	CoinPackedMatrix ** mat_mp_;
