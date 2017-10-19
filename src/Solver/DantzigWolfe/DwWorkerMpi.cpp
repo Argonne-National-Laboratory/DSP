@@ -132,7 +132,7 @@ DSP_RTN_CODE DwWorkerMpi::generateCols(
 	/** synchronize phase and piA_ */
 	MPI_Bcast(&phase, 1, MPI_INT, 0, comm_);
 	MPI_Bcast(piA_, npiA_, MPI_DOUBLE, 0, comm_);
-	//DSPdebugMessage("Rank %d received phase %d and piA_ vector of size %d.\n", comm_rank_, phase, npiA_);
+	DSPdebugMessage("Rank %d received phase %d and piA_ vector of size %d.\n", comm_rank_, phase, npiA_);
 
 	/** reset time increment? */
 	MPI_Bcast(&resetTimeIncrement_, 1, MPI_INT, 0, comm_);
@@ -142,8 +142,9 @@ DSP_RTN_CODE DwWorkerMpi::generateCols(
 	}
 
 	/** get maximum number of stops due to time limit */
-	int maxstops_s = *std::max_element(num_timelim_stops_.begin(), num_timelim_stops_.end());
+	int maxstops_s = num_timelim_stops_.size() > 0 ? *std::max_element(num_timelim_stops_.begin(), num_timelim_stops_.end()) : 0;
 	int maxstops_r = 0;
+	DSPdebugMessage("Rank %d: maxstops_s %d maxstops_r %d\n", comm_rank_, maxstops_s, maxstops_r);
 	MPI_Allreduce(&maxstops_s, &maxstops_r, 1, MPI_INT, MPI_MAX, comm_);
 	std::fill(num_timelim_stops_.begin(), num_timelim_stops_.end(), maxstops_r);
 
