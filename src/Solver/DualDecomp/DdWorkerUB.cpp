@@ -168,8 +168,17 @@ double DdWorkerUB::evaluate(CoinPackedVector* solution) {
 		FREE_ARRAY_PTR(Tx)
 	}
 
+	/** set initial status */
+	status_ = DSP_STAT_MW_CONTINUE;
+
+	/** solve upper bounding problem */
 	DSP_RTN_CHECK_RTN_CODE(solve());
-	ub_ += cx_weighted;
+
+	/** update upper bound */
+	if (status_ == DSP_STAT_MW_CONTINUE)
+		ub_ += cx_weighted;
+	else
+		ub_ = COIN_DBL_MAX;
 
 	/** restore row bounds */
 	for (int s = nsubprobs - 1; s >= 0; --s) {
