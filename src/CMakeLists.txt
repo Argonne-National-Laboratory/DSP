@@ -79,7 +79,8 @@ if(NOT ${MA27LIB} MATCHES "MA27LIB-NOTFOUND")
 		${DEPEND_DIR}/lib/libooqpdense.a
 		${DEPEND_DIR}/lib/libooqpsparse.a
 		${DEPEND_DIR}/lib/libooqpbase.a
-		${MA27LIB})
+		${MA27LIB}
+		${LAPACK_LIBRARIES})
 else()
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MPI_CXX_COMPILE_FLAGS} -DNO_OOQP")
 endif()
@@ -140,7 +141,6 @@ endif()
 
 set(DSP_LIBS ${DSP_LIBS}
 	gfortran 
-	${LAPACK_LIBRARIES}
 	${ZLIB_LIBRARIES}
 	${BZIP2_LIBRARIES})
 
