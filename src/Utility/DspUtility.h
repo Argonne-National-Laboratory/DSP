@@ -20,7 +20,7 @@
 
 using namespace std;
 
-bool myduplicatetolerance(double i, double j) {
+inline bool myduplicatetolerance(double i, double j) {
 	return (fabs(i-j) < 1.0e-8);
 }
 
