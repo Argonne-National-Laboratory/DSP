@@ -9,10 +9,10 @@
 #include "OsiCpxSolverInterface.hpp"
 #include "CoinUtility.hpp"
 /** Dsp */
-#include "Utility/DspUtility.h"
-#include "Solver/DantzigWolfe/DwMaster.h"
 #include "Model/TssModel.h"
 #include "SolverInterface/OoqpEps.h"
+#include "Solver/DantzigWolfe/DwMaster.h"
+#include "Utility/DspUtility.h"
 
 DwMaster::DwMaster(DwWorker* worker):
 DecSolver(worker->model_, worker->par_, worker->message_),
