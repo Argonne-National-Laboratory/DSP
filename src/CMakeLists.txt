@@ -59,11 +59,9 @@ add_dependencies(Dsp Alps OOQP)
 # set DSP libraries
 set(DSP_LIBS
 	${COIN_LIB_DIR}/libSmi.a
-	${COIN_LIB_DIR}/libOsiCpx.a
 	${COIN_LIB_DIR}/libOsi.a
 	${COIN_LIB_DIR}/libCoinUtils.a
 	${COIN_LIB_DIR}/libAlps.a
-	${CPLEX_LIB_DIR}/libcplex.a
 	${OOQP_LIB_DIR}/libooqpmehrotra.a
 	${OOQP_LIB_DIR}/libooqpgendense.a
 	${OOQP_LIB_DIR}/libooqpgensparse.a
@@ -71,16 +69,21 @@ set(DSP_LIBS
 	${OOQP_LIB_DIR}/libooqpsparse.a
 	${OOQP_LIB_DIR}/libooqpbase.a
 	${MA27LIB_DIR}/libma27.a
-	gfortran
 	${LAPACK_LIBRARIES}
+	${COIN_LIB_DIR}/libOsiCpx.a
+	${CPLEX_LIB_DIR}/libcplex.a
+	gfortran
 	${ZLIB_LIBRARIES}
 	${BZIP2_LIBRARIES}
 )
 if (MPI_CXX_FOUND)
 	set(DSP_LIBS ${DSP_LIBS} ${MPI_CXX_LIBRARIES})
 endif()
-target_link_libraries(Dsp ${DSP_LIBS})
-
+if (APPLE)
+	target_link_libraries(Dsp ${DSP_LIBS})
+else()
+	target_link_libraries(Dsp ${DSP_LIBS} "-Wl,--no-undefined")
+endif(APPLE)
 
 ##################################################
 # INSTALL
