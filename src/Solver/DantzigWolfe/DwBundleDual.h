@@ -98,7 +98,7 @@ private:
 
     const double mL_ = 0.0001; /**< parameter for serious step, = (0,0.5) */
     const double mR_ = 0.5; /**< parameter for deciding whether u_ is too large, = (mL_,1)*/
-    const double umin_ = 1.0e-10; /**< minimum weight */
+    const double umin_ = 1.0e-8; /**< minimum weight */
     double v_; /**< predicted ascent */
     int counter_; /**< number of serious steps or null steps since the latest change of u_ */
     double u_; /**< bundle weight */
