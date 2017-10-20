@@ -9,8 +9,8 @@
 
 #include "cplex.h"
 #include "OsiCpxSolverInterface.hpp"
+#include "DantzigWolfe/DwBundleDual.h"
 #include "Utility/DspUtility.h"
-#include <DantzigWolfe/DwBundleDual.h>
 
 DwBundleDual::DwBundleDual(DwWorker* worker):
 DwMaster(worker),
@@ -233,10 +233,11 @@ DSP_RTN_CODE DwBundleDual::createDualProblem() {
 	OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
 	if (cpx) {
 		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("NUM_CORES"));
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARMAXCOR, par_->getIntParam("CPX_PARAM_BARMAXCOR"));
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARALG, par_->getIntParam("CPX_PARAM_BARALG"));
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_DEPIND, par_->getIntParam("CPX_PARAM_DEPIND"));
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, par_->getIntParam("CPX_PARAM_NUMERICALEMPHASIS"));
+		//CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARMAXCOR, par_->getIntParam("CPX_PARAM_BARMAXCOR"));
+		//CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARALG, par_->getIntParam("CPX_PARAM_BARALG"));
+		//CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_DEPIND, par_->getIntParam("CPX_PARAM_DEPIND"));
+		//CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, par_->getIntParam("CPX_PARAM_NUMERICALEMPHASIS"));
+		CPXsetdblparam(cpx->getEnvironmentPtr(), CPX_PARAM_BAREPCOMP, 1e-6);
 	}
 
 	/** display */
@@ -258,10 +259,11 @@ DSP_RTN_CODE DwBundleDual::updateCenter(double penalty) {
 	OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
 	const double* rlbd = primal_si_->getRowLower();
 	const double* rubd = primal_si_->getRowUpper();
+
 	if (cpx) {
 		for (int j = nrows_conv_; j < nrows_; ++j) {
 			/** objective coefficient */
-			coef = -u_*bestdualsol_[j];
+			coef = -penalty*bestdualsol_[j];
 			if (rlbd[j] > -1.0e+20)
 				coef -= rlbd[j];
 			if (rubd[j] < 1.0e+20)
@@ -353,7 +355,7 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 
 		alpha_ = -v_;
 		for (int j = nrows_conv_; j < nrows_; ++j)
-			alpha_ -= p_[j-nrows_conv_] * d_[j-nrows_conv_];
+			alpha_ += p_[j-nrows_conv_] * d_[j-nrows_conv_];
 
 		/** get primal solutions by solving the primal master */
 		DSPdebug(primal_si_->writeMps("PrimMaster"));
@@ -404,6 +406,8 @@ DSP_RTN_CODE DwBundleDual::updateModel() {
 		counter_ = std::max(counter_+1,1);
 		if (u_ != newu)
 			counter_ = 1;
+		else
+			counter_++;
 		u_ = newu;
 		bestdualobj_ = dualobj_;
 		bestdualsol_ = dualsol_;
@@ -412,10 +416,12 @@ DSP_RTN_CODE DwBundleDual::updateModel() {
 		if (-linerr_ > std::max(eps_, -10*v_) && counter_ < -3)
 			u = 2 * u_ * (1 - (dualobj_ - bestdualobj_) / v_);
 //		printf("#### linerr_ %+e, eps_ %+e, -10*v_ %+e, u %+e\n", -linerr_, eps_, -10*v_, u);
-		newu = std::min(u, 10*u_);
+		newu = std::max(std::min(u, 10*u_), umin_);
 		counter_ = std::min(counter_-1,-1);
 		if (u_ != newu)
 			counter_ = -1;
+		else if (ngenerated_ == 0 && primobj_ >= 1.0e+20 && v_ >= 0.0)
+			newu = std::max(0.1*newu, umin_);
 		u_ = newu;
 	}
 	updateCenter(u_);
@@ -535,7 +541,7 @@ DSP_RTN_CODE DwBundleDual::addRows(
 
 		DSPdebugMessage("subproblem %d: status %d, objective %+e, violation %+e\n", sind, statuses[s], objs[s], dualsol_[sind] - objs[s]);
 
-		if (dualsol_[sind] > objs[s] + 1.0e-6 ||
+		if (dualsol_[sind] >= objs[s] ||
 				statuses[s] == DSP_STAT_DUAL_INFEASIBLE) {
 #ifdef DSP_DEBUG_MORE
 			DspMessage::printArray(&cutvec);
@@ -707,7 +713,7 @@ void DwBundleDual::setBranchingObjects(const DspBranch* branchobj) {
 #endif
 
 	/** set known best bound */
-	bestdualobj_ = branchobj->bestBound_;
+	bestdualobj_ = COIN_DBL_MAX;
 	bestdualsol_ = branchobj->dualsol_;
 
 	END_TRY_CATCH(;)
