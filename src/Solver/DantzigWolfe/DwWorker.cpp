@@ -15,11 +15,9 @@
 #endif
 #include "OsiCpxSolverInterface.hpp"
 /** Dsp */
-#include "Utility/DspMacros.h"
-#include "Utility/DspUtility.h"
-#include "Utility/DspRtnCodes.h"
 #include "Solver/DantzigWolfe/DwWorker.h"
 #include "Model/TssModel.h"
+#include "Utility/DspUtility.h"
 
 #define SI OsiCpxSolverInterface
 
@@ -72,7 +70,7 @@ DwWorker::DwWorker(DecModel * model, DspParams * par, DspMessage * message) :
 	DSP_RTN_CHECK_THROW(createSubproblems());
 
 	/** set number of cores */
-	omp_set_num_threads(par_->getIntParam("NUM_CORES"));
+	omp_set_num_threads(par_->getIntParam("DW/SUB/THREADS"));
 }
 
 DwWorker::~DwWorker() {

@@ -290,6 +290,7 @@ DSP_RTN_CODE StoModel::readSmps(const char * filename)
 	/** clear scenario-stage map */
 	scen2stg_.clear();
 
+	std::vector<int> lens;
 	for (i = 0; i < nscen_; ++i)
 	{
 		/** get stage corresponding to scenario */
@@ -297,10 +298,6 @@ DSP_RTN_CODE StoModel::readSmps(const char * filename)
 
 		/** add mapping */
 		scen2stg_.insert(std::pair<int,int>(i,stg));
-
-		/** allocate memory */
-		mat_scen_[i]  = new CoinPackedMatrix(false, 0, 0);
-		mat_scen_[i]->setDimensions(0, ncols_[stg]);
 
 		/** probability */
 		prob_[i] = smi.getLeafNode(i)->getProb();
@@ -317,11 +314,11 @@ DSP_RTN_CODE StoModel::readSmps(const char * filename)
 				node->getRowLowerLength(), node->getRowLowerIndices(), node->getRowLowerElements());
 		rubd_scen_[i] = new CoinPackedVector(
 				node->getRowUpperLength(), node->getRowUpperIndices(), node->getRowUpperElements());
+		lens.resize(nrows_[stg]);
 		for (j = rstart_[stg]; j < rstart_[stg] + nrows_[stg]; ++j)
-		{
-			mat_scen_[i]->appendRow(
-					node->getRowLength(j), node->getRowIndices(j), node->getRowElements(j));
-		}
+			lens[j-rstart_[stg]] = node->getRowLength(j);
+		mat_scen_[i]  = new CoinPackedMatrix(false, ncols_[stg], nrows_[stg], node->getNumMatrixElements(), 
+				node->getRowElements(rstart_[stg]), node->getRowIndices(rstart_[stg]), node->getRowStarts(rstart_[stg]), &lens[0]);
 	}
 
 	/** mark */
