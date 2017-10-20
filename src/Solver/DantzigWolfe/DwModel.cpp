@@ -138,15 +138,34 @@ bool DwModel::chooseBranchingObjects(
 				branchingValue = primsol_[j];
 			}
 		}
+
+		/** for the first pass of smip, look through expected first-stage integer variable values */
+		if (ncols_first_stage > 0 && findPhase == 0 && branchingIndex < 0) {
+			maxdist = 1.0e-8;
+			for (int j = 0; j < tss->getNumCols(0); ++j) {
+				if (master_->ctype_orig_[j] == 'C') continue;
+				double expval = 0.0;
+				for (int s = 0; s < tss->getNumScenarios(); ++s)
+					expval += primsol_[tss->getNumCols(0) * s + j] / tss->getNumScenarios();
+				dist = fabs(expval - floor(expval + 0.5));
+				if (dist > maxdist) {
+					maxdist = dist;
+					branchingIndex = j;
+					branchingValue = primsol_[j];
+				}
+			}
+		}
+
 		findPhase++;
 	}
 
-	/** get branching index in first stage */
-	if (branchingIndex < ncols_first_stage)
-		branchingFirstStage = branchingIndex % tss->getNumCols(0);
-
 	if (branchingIndex > -1) {
+
 		branched = true;
+
+		/** get branching index in first stage */
+		if (branchingIndex < ncols_first_stage)
+			branchingFirstStage = branchingIndex % tss->getNumCols(0);
 
 		/** creating branching objects */
 		branchingUp = new DspBranch();
