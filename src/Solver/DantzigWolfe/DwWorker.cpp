@@ -108,7 +108,7 @@ DSP_RTN_CODE DwWorker::createSubproblems() {
 					model_->decompose(1, &parProcIdx_[s], 0, NULL, NULL, NULL,
 							mat, sub_clbd_[s], sub_cubd_[s], ctype, sub_objs_[s], rlbd, rubd));
 			for (int j = 0; j < tss->getNumCols(0); ++j)
-				sub_objs_[s][j] *= tss->getProbability()[j];
+				sub_objs_[s][j] *= tss->getProbability()[parProcIdx_[s]];
 		} else {
 			DSP_RTN_CHECK_RTN_CODE(
 					model_->copySubprob(parProcIdx_[s], mat, sub_clbd_[s], sub_cubd_[s], ctype, sub_objs_[s], rlbd, rubd));
