@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-#define DSP_DEBUG
+//#define DSP_DEBUG
 
 #include <DantzigWolfe/DwModel.h>
 #include <DantzigWolfe/DwHeuristic.h>
@@ -105,7 +105,10 @@ bool DwModel::chooseBranchingObjects(
 	double dist, maxdist = 1.0e-6;
 	int branchingIndex = -1;
 	double branchingValue;
-	int ncols_first_stage = -1;
+
+	/** smip branching */
+	int ncols_first_stage = -1;   /**< number of first-stage columns in dd form */
+	int branchingFirstStage = -1; /**< branching index in first stage */
 	TssModel* tss = NULL;
 
 	BGN_TRY_CATCH
@@ -138,8 +141,11 @@ bool DwModel::chooseBranchingObjects(
 		findPhase++;
 	}
 
+	/** get branching index in first stage */
+	if (branchingIndex < ncols_first_stage)
+		branchingFirstStage = branchingIndex % tss->getNumCols(0);
+
 	if (branchingIndex > -1) {
-		DSPdebugMessage("Creating branch objects on column %d (value %e).\n", branchingIndex, branchingValue);
 		branched = true;
 
 		/** creating branching objects */
@@ -147,7 +153,9 @@ bool DwModel::chooseBranchingObjects(
 		branchingDn = new DspBranch();
 		for (int j = 0; j < master_->ncols_orig_; ++j) {
 			if (master_->ctype_orig_[j] == 'C') continue;
-			if (branchingIndex == j) {
+			/** NOTE: branching on all the first-stage variables */
+			if (branchingIndex == j || branchingFirstStage == j % tss->getNumCols(0)) {
+				DSPdebugMessage("Creating branch objects on column %d (value %e).\n", j, branchingValue);
 				branchingUp->push_back(j, ceil(branchingValue), master_->cubd_node_[j]);
 				branchingDn->push_back(j, master_->clbd_node_[j], floor(branchingValue));
 			} else if (master_->clbd_node_[j] > master_->clbd_orig_[j] || master_->cubd_node_[j] < master_->cubd_orig_[j]) {
