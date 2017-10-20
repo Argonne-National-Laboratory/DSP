@@ -5,8 +5,11 @@
  *      Author: kibaekkim
  */
 
+#define DSP_DEBUG
+
 #include <DantzigWolfe/DwModel.h>
 #include <DantzigWolfe/DwHeuristic.h>
+#include "Model/TssModel.h"
 
 DwModel::DwModel(): DspModel(), master_(NULL), infeasibility_(0.0) {}
 
@@ -102,6 +105,8 @@ bool DwModel::chooseBranchingObjects(
 	double dist, maxdist = 1.0e-6;
 	int branchingIndex = -1;
 	double branchingValue;
+	int ncols_first_stage = -1;
+	TssModel* tss = NULL;
 
 	BGN_TRY_CATCH
 
@@ -109,10 +114,19 @@ bool DwModel::chooseBranchingObjects(
 	FREE_PTR(branchingUp)
 	FREE_PTR(branchingDn)
 
+	if (solver_->getModelPtr()->isStochastic()) {
+		/** two-stage stochastic model */
+		tss = dynamic_cast<TssModel*>(solver_->getModelPtr());
+		ncols_first_stage = tss->getNumScenarios() * tss->getNumCols(0);
+	}
+	DSPdebugMessage("ncols_first_stage %d\n", ncols_first_stage);
+
 	findPhase = 0;
 	while (findPhase < 2 && branchingIndex < 0) {
 		/** most fractional value */
 		for (int j = 0; j < master_->ncols_orig_; ++j) {
+			if (findPhase == 0 && j > ncols_first_stage)
+				break;
 			if (master_->ctype_orig_[j] == 'C') continue;
 			dist = fabs(primsol_[j] - floor(primsol_[j] + 0.5));
 			if (dist > maxdist) {
