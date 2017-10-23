@@ -12,8 +12,18 @@
 
 class DwRounding: public DspHeuristic {
 public:
-	DwRounding(std::string name, DspModel &model);
+	DwRounding(std::string name, DspModel &model):
+		DspHeuristic(name, model) {}
 	~DwRounding() {}
+
+	virtual int solution(double &objective, std::vector<double> &solution);
+};
+
+class DwSmip: public DspHeuristic {
+public:
+	DwSmip(std::string name, DspModel &model):
+		DspHeuristic(name, model) {}
+	~DwSmip() {}
 
 	virtual int solution(double &objective, std::vector<double> &solution);
 };

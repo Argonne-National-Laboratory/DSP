@@ -16,7 +16,8 @@ DwModel::DwModel(): DspModel(), master_(NULL), infeasibility_(0.0) {}
 DwModel::DwModel(DecSolver* solver): DspModel(solver), infeasibility_(0.0) {
 	master_ = dynamic_cast<DwMaster*>(solver_);
 	primsol_.resize(master_->ncols_orig_);
-	heuristics_.push_back(new DwRounding("Rounding", *this));
+	//heuristics_.push_back(new DwRounding("Rounding", *this));
+	heuristics_.push_back(new DwSmip("Smip", *this));
 }
 
 DwModel::~DwModel() {
@@ -49,9 +50,11 @@ DSP_RTN_CODE DwModel::solve() {
 			std::fill(primsol_.begin(), primsol_.begin() + master_->ncols_orig_, 0.0);
 			for (auto it = master_->cols_generated_.begin(); it != master_->cols_generated_.end(); it++) {
 				if ((*it)->active_) {
-					for (int i = 0; i < (*it)->x_.getNumElements(); ++i) {
-						if ((*it)->x_.getIndices()[i] < master_->ncols_orig_)
-							primsol_[(*it)->x_.getIndices()[i]] += (*it)->x_.getElements()[i] * master_->getPrimalSolution()[cpos];
+					if (fabs(master_->getPrimalSolution()[cpos]) > 1.0-10) {
+						for (int i = 0; i < (*it)->x_.getNumElements(); ++i) {
+							if ((*it)->x_.getIndices()[i] < master_->ncols_orig_)
+								primsol_[(*it)->x_.getIndices()[i]] += (*it)->x_.getElements()[i] * master_->getPrimalSolution()[cpos];
+						}
 					}
 					cpos++;
 				}
@@ -79,7 +82,7 @@ DSP_RTN_CODE DwModel::solve() {
 				/** FIXME */
 				bestprimobj_ = COIN_DBL_MAX;
 				for (auto it = heuristics_.begin(); it != heuristics_.end(); it++) {
-					printf("Running [%s] heuristic:\n", (*it)->name());
+					solver_->getMessagePtr()->print(1, "Running [%s] heuristic:\n", (*it)->name());
 					int found = (*it)->solution(bestprimobj_, bestprimsol_);
 					//printf("found %d bestprimobj %+e\n", found, bestprimobj_);
 				}
