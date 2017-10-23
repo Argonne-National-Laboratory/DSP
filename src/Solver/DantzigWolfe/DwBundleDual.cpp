@@ -20,7 +20,9 @@ u_(1.0),
 eps_(COIN_DBL_MAX),
 absp_(COIN_DBL_MAX),
 alpha_(COIN_DBL_MAX),
-linerr_(COIN_DBL_MAX) {
+linerr_(COIN_DBL_MAX),
+prev_dualobj_(COIN_DBL_MAX),
+nstalls_(0) {
 }
 
 DwBundleDual::DwBundleDual(const DwBundleDual& rhs):
@@ -31,7 +33,9 @@ DwBundleDual::DwBundleDual(const DwBundleDual& rhs):
 	eps_(rhs.eps_),
 	absp_(rhs.absp_),
 	alpha_(rhs.alpha_),
-	linerr_(rhs.linerr_) {
+	linerr_(rhs.linerr_),
+	prev_dualobj_(rhs.prev_dualobj_),
+	nstalls_(rhs.nstalls_) {
 	d_ = rhs.d_;
 	p_ = rhs.p_;
 	primal_si_.reset(rhs.primal_si_->clone());
@@ -46,6 +50,8 @@ DwBundleDual& DwBundleDual::operator =(const DwBundleDual& rhs) {
 	absp_ = rhs.absp_;
 	alpha_ = rhs.alpha_;
 	linerr_ = rhs.linerr_;
+	prev_dualobj_ = rhs.prev_dualobj_;
+	nstalls_ = rhs.nstalls_;
 	d_ = rhs.d_;
 	p_ = rhs.p_;
 	primal_si_.reset(rhs.primal_si_->clone());
@@ -231,14 +237,6 @@ DSP_RTN_CODE DwBundleDual::createDualProblem() {
 	si_ = new OsiCpxSolverInterface();
 
 	OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
-	if (cpx) {
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("NUM_CORES"));
-		//CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARMAXCOR, par_->getIntParam("CPX_PARAM_BARMAXCOR"));
-		//CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARALG, par_->getIntParam("CPX_PARAM_BARALG"));
-		//CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_DEPIND, par_->getIntParam("CPX_PARAM_DEPIND"));
-		//CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, par_->getIntParam("CPX_PARAM_NUMERICALEMPHASIS"));
-		CPXsetdblparam(cpx->getEnvironmentPtr(), CPX_PARAM_BAREPCOMP, 1e-6);
-	}
 
 	/** display */
 	si_->messageHandler()->setLogLevel(std::max(-1,par_->getIntParam("LOG_LEVEL")-4));
@@ -281,14 +279,28 @@ DSP_RTN_CODE DwBundleDual::updateCenter(double penalty) {
 DSP_RTN_CODE DwBundleDual::solveMaster() {
 	BGN_TRY_CATCH
 
+	/** get previous objective */
+	prev_dualobj_ = dualobj_;
+
 	OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
 	if (!cpx) {
 		CoinError("Failed to case Osi to OsiCpx", "solveMaster", "DwBundle");
 		return DSP_RTN_ERR;
+	} else {
+		//CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("NUM_CORES"));
+		//CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARORDER, 3);
+		//CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARMAXCOR, par_->getIntParam("CPX_PARAM_BARMAXCOR"));
+		//CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARALG, par_->getIntParam("CPX_PARAM_BARALG"));
+		//CPXsetdblparam(cpx->getEnvironmentPtr(), CPX_PARAM_BAREPCOMP, 1e-6);
+		/** use dual simplex for QP, which is numerically much more stable than Barrier */
+		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_QPMETHOD, 2);
+		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_DEPIND, par_->getIntParam("CPX_PARAM_DEPIND"));
+		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, par_->getIntParam("CPX_PARAM_NUMERICALEMPHASIS"));
 	}
 
 	CPXqpopt(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_PROBLEM));
 	int cpxstat = CPXgetstat(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
+	message_->print(5, "CPLEX status %d\n", cpxstat);
 	switch (cpxstat) {
 	case CPX_STAT_OPTIMAL:
 	case CPX_STAT_NUM_BEST:
@@ -411,7 +423,13 @@ DSP_RTN_CODE DwBundleDual::updateModel() {
 		u_ = newu;
 		bestdualobj_ = dualobj_;
 		bestdualsol_ = dualsol_;
+		nstalls_ = 0;
 	} else {
+		/** increment number of iterations making no progress */
+		nstalls_ = fabs(prev_dualobj_-dualobj_) < 1.0e-6 ? nstalls_ + 1 : 0;
+		if (nstalls_ > 0)
+			message_->print(3, "number of stalls: %d\n", nstalls_);
+
 		eps_ = std::min(eps_, absp_ + alpha_);
 		if (-linerr_ > std::max(eps_, -10*v_) && counter_ < -3)
 			u = 2 * u_ * (1 - (dualobj_ - bestdualobj_) / v_);
@@ -420,8 +438,10 @@ DSP_RTN_CODE DwBundleDual::updateModel() {
 		counter_ = std::min(counter_-1,-1);
 		if (u_ != newu)
 			counter_ = -1;
-		else if (ngenerated_ == 0 && primobj_ >= 1.0e+20 && v_ >= 0.0)
-			newu = std::max(0.1*newu, umin_);
+		else if (ngenerated_ == 0 || nstalls_ > 3 ||
+				(primobj_ >= 1.0e+20 && v_ >= -par_->getDblParam("DW/MIN_INCREASE"))) {
+			newu = std::max(0.1*u_, umin_);
+		}
 		u_ = newu;
 	}
 	updateCenter(u_);
@@ -442,7 +462,7 @@ bool DwBundleDual::terminationTest() {
 	if (primobj_ < 1.0e+20 && v_ >= -par_->getDblParam("DW/MIN_INCREASE"))
 		return true;
 
-	if (iterlim_ <= itercnt_) {
+	if (iterlim_ <= itercnt_ || nstalls_ >= 30) {
 		message_->print(3, "Warning: Iteration limit reached.\n");
 		status_ = DSP_STAT_LIM_ITERorTIME;
 		return true;
@@ -541,7 +561,7 @@ DSP_RTN_CODE DwBundleDual::addRows(
 
 		DSPdebugMessage("subproblem %d: status %d, objective %+e, violation %+e\n", sind, statuses[s], objs[s], dualsol_[sind] - objs[s]);
 
-		if (dualsol_[sind] >= objs[s] ||
+		if (dualsol_[sind] > objs[s] + 1.0e-8 ||
 				statuses[s] == DSP_STAT_DUAL_INFEASIBLE) {
 #ifdef DSP_DEBUG_MORE
 			DspMessage::printArray(&cutvec);
