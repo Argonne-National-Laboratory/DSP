@@ -129,7 +129,7 @@ DSP_RTN_CODE DeDriver::run()
 			break;
 #endif
 		}
-		case SCIP: {
+		case EXT_SCIP: {
 #ifndef NO_SCIP
 			si_ = new SolverInterfaceScip(par_);
 			si_->setPrintLevel(CoinMin(par_->getIntParam("LOG_LEVEL") + 2, 5));
@@ -245,7 +245,7 @@ void DeDriver::writeExtMps(const char * name)
 		si = new SolverInterfaceCpx(par_);
 		break;
 #endif
-	case SCIP:
+	case EXT_SCIP:
 #ifndef NO_SCIP
 		si = new SolverInterfaceScip(par_);
 		break;

@@ -290,7 +290,7 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 			printf("OOQP is not available for QP solve.\n");
 #endif
 		case CPLEX: {
-#if !defined(NO_OOQP)
+#ifndef NO_CPX
 			si_ = new SolverInterfaceCpx(par_);
 			SolverInterfaceCpx* osi = dynamic_cast<SolverInterfaceCpx*>(si_);
 			osi->useBarrier_ = true;

@@ -128,11 +128,12 @@ if(NOT ${SCIPLIB} MATCHES "SCIPLIB-NOTFOUND")
 			Solver/Benders/SCIPconshdlrBendersWorker.cpp)
 	endif(MPI_CXX_FOUND)
 	set(DSP_LIBS ${DSP_LIBS} 
+		${DEPEND_DIR}/lib/libOsiSpx.a
 		${SCIP_DIR}/lib/libscip.a
 		${SCIP_DIR}/lib/libobjscip.a
 		${SCIP_DIR}/lib/liblpispx.a
 		${SCIP_DIR}/lib/libnlpi.cppad.a
-		${SOPLEX_DIR}/lib/libsoplex.a)
+		${SPX_DIR}/lib/libsoplex.a)
 else()
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MPI_CXX_COMPILE_FLAGS} -DNO_SCIP")
 	message(WARNING "SCIP is required for Benders decomposition.")

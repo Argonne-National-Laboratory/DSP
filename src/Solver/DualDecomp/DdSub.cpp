@@ -207,7 +207,7 @@ DSP_RTN_CODE DdSub::createProblem() {
     		si_ = new SolverInterfaceCpx(par_);
     		break;
 #endif
-    	case SCIP:
+    	case EXT_SCIP:
 #ifndef NO_SCIP
             si_ = new SolverInterfaceScip(par_);
             break;

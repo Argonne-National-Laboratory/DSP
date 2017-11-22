@@ -34,7 +34,7 @@ enum DSP_BD_INIT_LB_ALGO
 
 enum DSP_EXTERNAL_SOLVER {
 	CPLEX = 0,
-	SCIP = 1,
+	EXT_SCIP = 1,
 	OOQP = 1
 };
 

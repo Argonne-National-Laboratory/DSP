@@ -99,7 +99,7 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
     		si_[s] = new SolverInterfaceCpx(par_);
     		break;
 #endif
-    	case SCIP:
+    	case EXT_SCIP:
 #ifndef NO_SCIP
             si_[s] = new SolverInterfaceScip(par_);
             break;

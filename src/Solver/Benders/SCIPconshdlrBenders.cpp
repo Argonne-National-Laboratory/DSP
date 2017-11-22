@@ -7,6 +7,8 @@
 
 //#define DSP_DEBUG
 
+#include "OsiCuts.hpp"
+
 /** DSP */
 #include "Utility/DspMessage.h"
 #include "Model/TssModel.h"

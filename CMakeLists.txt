@@ -58,7 +58,11 @@ endif()
 ##################################################
 # add include directories
 ##################################################
-include_directories(src)
+include_directories(
+	src 
+	${SCIP_DIR}/src
+	${SCIP_DIR}/src/scip
+	${SPX_DIR}/src)
 if (MPI_CXX_FOUND)
 	include_directories(${MPI_CXX_INCLUDE_PATH})
 endif()
