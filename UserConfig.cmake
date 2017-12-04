@@ -8,7 +8,7 @@ set(SCIP_LIB_DIR  "")
 set(SPX_DIR       "")
 
 # Please change OFF to ON once the settings are provided.
-set(USER_SETTINGS ON)
+set(USER_SETTINGS OFF)
 
 if(NOT ${USER_SETTINGS})
 	message(FATAL_ERROR "Please complete the user-specific settings in UserConfig.cmake")
