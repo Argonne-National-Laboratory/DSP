@@ -43,20 +43,6 @@ sudo ./get.essentials.archlinux
 * **bzip2 library** -- This is available in http://www.bzip.org/downloads.html.
 * **zlib library** -- This is available in http://www.zlib.net.
 
-### External software packages
-
-The following packages are also *required* to build and run DSP and need to be located on ./extra directory before DSP may be built. *DSP will automatically configure and build the external packages once they are located in the right place.*
-
-* **MA27** (./extra/ma27-1.0.0) -- MA27 is a library for solving sparse symmetric indefinite linear systems. To build OOQP solver, you must have this installed. This is part of HSL (formerly the Harwell Subroutine Library), a collection of ISO Fortran codes for large scale scientific computation.
-  1. Download: http://www.hsl.rl.ac.uk/download/MA27/1.0.0/a/
-  2. Unpack the downloaded file.
-  3. Move and rename the downloaded directory to ./extras/ma27-1.0.0/
-
-* **SCIP Optimization Suite** (./extra/scipoptsuite-3.1.1) -- SCIP contains non-commercial solvers for mixed integer programming (MIP) and mixed-integer nonlinear programming (MINLP).
-  1. Download: http://scip.zib.de/download.php?fname=scipoptsuite-3.1.1.tgz
-  2. Unpack the downloaded file.
-  3. Move and rename the downloaded directory to ./extras/scipoptsuite-3.1.1
-
 ## MPI Library ##
 
 MPI library is optional to build and run DSP, but required to run DSP in parallel. To run in parallel, you need to install one of the following libraries.
@@ -65,6 +51,14 @@ MPI library is optional to build and run DSP, but required to run DSP in paralle
 * **OpenMPI** -- This is available from https://www.open-mpi.org.
 
 ## Installation
+
+Please set `UserConfig.cmake` as follows.
+
+* `MA27LIB_DIR` is optional to use OOQP (interior point solver). If you are not using CPLEX, it is recommended to use OOQP for better performance. You can request the library here: http://www.hsl.rl.ac.uk/download/MA27/1.0.0/a/
+* It is required to set paths for either CPLEX or SCIP. 
+  * `CPLEX_LIB_DIR` is the path to the directory that contains `libcplex.a`. `CPLEX_INC_DIR` is the path to the directory that contains `cplex.h`.
+  * If you use SCIP, you need to compile it as a shared library. `SCIP_DIR` is the path to the SCIP directory. `SCIP_LIB_DIR`  is the path to the shared library (usually `${SCIP_DIR}/lib`). `SPX_DIR` is the path to the SOPLEX directory.
+* Once you are set the variables above, please set `USER_SETTINGS` to `ON`.
 
 If you have all the prerequisite packages installed on your system, then you need to go to the root directory of DSP and type
 ```bash
