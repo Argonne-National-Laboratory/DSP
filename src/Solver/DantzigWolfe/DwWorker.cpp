@@ -292,6 +292,8 @@ DSP_RTN_CODE DwWorker::generateCols(
 				/** subproblem coupling solution */
 				for (int j = 0; j < si_[s]->getNumCols(); ++j) {
 					double xval = x[j];
+					//if (sub_clbd_[s][j] == sub_cubd_[s][j])
+					//	printf("sind %d j %d [%e, %e, %e]\n", sind, j, sub_clbd_[s][j], xval, sub_cubd_[s][j]);
 					if (fabs(xval) > 1.0e-8) {
 						if (model_->isStochastic()) {
 							if (j < tss->getNumCols(0))
@@ -398,6 +400,8 @@ void DwWorker::setColBounds(int j, double lb, double ub) {
 				DSPdebugMessage("subproblem %d changed column bounds: %d [%e %e]\n", parProcIdx_[s], j % tss->getNumCols(0), lb, ub);
 			} else {
 				int jj = j - tss->getNumScenarios() * tss->getNumCols(0);
+				if (jj < parProcIdx_[s] * tss->getNumCols(1) || jj >= (parProcIdx_[s]+1) * tss->getNumCols(1))
+					continue;
 				si_[s]->setColBounds(tss->getNumCols(0) + jj % tss->getNumCols(1), lb, ub);
 				sub_clbd_[s][tss->getNumCols(0) + jj % tss->getNumCols(1)] = lb;
 				sub_cubd_[s][tss->getNumCols(0) + jj % tss->getNumCols(1)] = ub;
