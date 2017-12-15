@@ -50,7 +50,7 @@ DSP_RTN_CODE DwModel::solve() {
 			std::fill(primsol_.begin(), primsol_.begin() + master_->ncols_orig_, 0.0);
 			for (auto it = master_->cols_generated_.begin(); it != master_->cols_generated_.end(); it++) {
 				if ((*it)->active_) {
-					if (fabs(master_->getPrimalSolution()[cpos]) > 1.0-10) {
+					if (fabs(master_->getPrimalSolution()[cpos]) > 1.0e-10) {
 						for (int i = 0; i < (*it)->x_.getNumElements(); ++i) {
 							if ((*it)->x_.getIndices()[i] < master_->ncols_orig_)
 								primsol_[(*it)->x_.getIndices()[i]] += (*it)->x_.getElements()[i] * master_->getPrimalSolution()[cpos];
@@ -177,7 +177,8 @@ bool DwModel::chooseBranchingObjects(
 			if (master_->ctype_orig_[j] == 'C') continue;
 			/** NOTE: branching on all the first-stage variables */
 			if (branchingIndex == j || branchingFirstStage == j % tss->getNumCols(0)) {
-				DSPdebugMessage("Creating branch objects on column %d (value %e).\n", j, branchingValue);
+				DSPdebugMessage("Creating branch objects on column %d (value %e): [%e,%e] and [%e,%e]\n", 
+					j, branchingValue, ceil(branchingValue), master_->cubd_node_[j], master_->clbd_node_[j], floor(branchingValue));
 				branchingUp->push_back(j, ceil(branchingValue), master_->cubd_node_[j]);
 				branchingDn->push_back(j, master_->clbd_node_[j], floor(branchingValue));
 			} else if (master_->clbd_node_[j] > master_->clbd_orig_[j] || master_->cubd_node_[j] < master_->cubd_orig_[j]) {
