@@ -89,24 +89,6 @@ ExternalProject_Add(Alps
 	BUILD_COMMAND make
 	INSTALL_COMMAND make install)
 
-# ExternalProject_Add(Bcps
-# 	DEPENDS Alps
-# 	SOURCE_DIR ${BCPS_DIR}
-# 	CONFIGURE_COMMAND ${BCPS_DIR}/configure
-# 		--prefix=${DEPEND_DIR}
-# 		--enable-static 
-# 		--disable-shared
-# 		--with-coinutils-lib=${COINUTILS_LIB}
-# 		--with-coinutils-incdir=${COIN_INC_DIR}
-# 		--with-osi-lib=${OSI_LIB}
-# 		--with-osi-incdir=${COIN_INC_DIR}
-# 		--with-alps-lib=${ALPS_LIB}
-# 		--with-alps-incdir=${COIN_INC_DIR}
-# 		ADD_CXXFLAGS=-fPIC
-# 		CXX=${CMAKE_CXX_COMPILER}
-# 	BUILD_COMMAND make
-# 	INSTALL_COMMAND make install)
-
 ExternalProject_Add(OOQP
 	SOURCE_DIR ${OOQP_DIR}
 	CONFIGURE_COMMAND ${OOQP_DIR}/configure
