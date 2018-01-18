@@ -10,7 +10,8 @@
 #include "CoinUtility.hpp"
 /** Dsp */
 #include "Model/TssModel.h"
-#include "SolverInterface/OoqpEps.h"
+/** TODO: Replace this by PIPS */
+//#include "SolverInterface/OoqpEps.h"
 #include "Solver/DantzigWolfe/DwMaster.h"
 #include "Utility/DspUtility.h"
 
@@ -242,9 +243,10 @@ DSP_RTN_CODE DwMaster::createProblem() {
 	std::copy(rubd_orig_.begin(), rubd_orig_.end(), rubd.begin() + nrows_conv_);
 
 	/** create solver */
-	if (useBarrier_)
-		si_ = new OoqpEps();
-	else
+	if (useBarrier_) {
+		/** TODO: replace this by PIPS */
+		//si_ = new OoqpEps();
+	} else
 		si_ = new OsiCpxSolverInterface();
 	si_->messageHandler()->logLevel(5);
 
@@ -515,6 +517,8 @@ DSP_RTN_CODE DwMaster::solveMaster() {
 	BGN_TRY_CATCH
 
 	if (useBarrier_) {
+		/** TODO: Replace this by PIPS */
+		/*
 		OoqpEps* ooqp = dynamic_cast<OoqpEps*>(si_);
 		if (ooqp) {
 			if (phase_ == 1)
@@ -526,6 +530,7 @@ DSP_RTN_CODE DwMaster::solveMaster() {
 				ooqp->setOoqpStatus(epsilon, bestdualobj_, bestprimobj_);
 			}
 		}
+		*/
 	} else
 		si_->setHintParam(OsiDoDualInResolve, false);
 

@@ -63,5 +63,6 @@ endif()
 ##################################################
 # SUBDIRECTORY
 ##################################################
+set(DEPEND_DIR $ENV{PWD})
 add_subdirectory(extra)
 add_subdirectory(src)

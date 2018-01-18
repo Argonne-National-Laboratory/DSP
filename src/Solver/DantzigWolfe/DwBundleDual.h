@@ -43,7 +43,7 @@ protected:
 	virtual DSP_RTN_CODE createProblem();
 
 	/** Update the proximal bundle center */
-	DSP_RTN_CODE updateCenter(double penalty);
+	virtual DSP_RTN_CODE updateCenter(double penalty);
 
 	/** solver master */
 	virtual DSP_RTN_CODE solveMaster();
@@ -82,10 +82,10 @@ protected:
 	virtual void printIterInfo();
 
 	/** create primal master problem */
-	DSP_RTN_CODE createPrimalProblem();
+	virtual DSP_RTN_CODE createPrimalProblem();
 
 	/** create dual master problem */
-	DSP_RTN_CODE createDualProblem();
+	virtual DSP_RTN_CODE createDualProblem();
 
 	typedef std::pair<int,double> pairIntDbl;
 	static bool compPair ( const pairIntDbl& l, const pairIntDbl& r) {
@@ -109,6 +109,44 @@ protected:
 	int nstalls_; /**< number of iterations making no progress on objective value */
 
 	std::shared_ptr<OsiSolverInterface> primal_si_;
+
+	//@{
+	/** functions specific to external solver */
+
+	/** initialize dual solver */
+	virtual void initDualSolver(
+			const CoinPackedMatrix& m, 
+			std::vector<double>& clbd, 
+			std::vector<double>& cubd, 
+			std::vector<double>& obj);
+
+	/** call external solver for solveMaster() */
+	virtual DSP_RTN_CODE callMasterSolver();
+
+	/** assign master solution */
+	virtual void assignMasterSolution(std::vector<double>& sol);
+
+	/** get objective value */
+	virtual double getObjValue() { return si_->getObjValue(); }
+
+	/** add row to the dual master */
+	virtual void addDualRow(const CoinPackedVector& v, const double lb, const double ub) {
+		si_->addRow(v, lb, ub);
+	}
+
+	/** remove all columns in the primal master */
+	virtual void removeAllPrimCols();
+
+	/** remove all rows in the dual master */
+	virtual void removeAllDualRows();
+
+	/** remove branching rows and columns */
+	virtual void removeBranchingRowsCols();
+
+	/** add branching rows and columns */
+	virtual void addBranchingRowsCols(const DspBranch* branchobj);
+
+	//@}
 };
 
 #endif /* SRC_SOLVER_DANTZIGWOLFE_DWBUNDLEDUAL_H_ */

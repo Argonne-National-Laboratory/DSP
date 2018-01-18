@@ -44,7 +44,7 @@ public:
 
 	/** In this function, non-root processes receive signals
 	 * from the root process and do proper processing. */
-	DSP_RTN_CODE receiver();
+	virtual DSP_RTN_CODE receiver();
 
 	enum {
 		sig_generateCols = 0,
@@ -52,7 +52,7 @@ public:
 		sig_terminate
 	};
 
-private:
+protected:
 
 	MPI_Comm comm_;
 	int comm_rank_;

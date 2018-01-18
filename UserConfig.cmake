@@ -3,7 +3,8 @@
 set(MA27LIB_DIR   "")
 set(CPLEX_LIB_DIR "")
 set(CPLEX_INC_DIR "")
-set(DEPEND_DIR    $ENV{PWD})
+set(PIPS_DIR      "")
+set(PIPS_LIB_DIR  "")
 
 # Please change OFF to ON once the settings are provided.
 set(USER_SETTINGS OFF)

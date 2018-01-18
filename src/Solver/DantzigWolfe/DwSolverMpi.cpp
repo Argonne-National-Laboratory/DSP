@@ -11,6 +11,10 @@
 #include <DantzigWolfe/DwMaster.h>
 #include <DantzigWolfe/DwBundleDual.h>
 #include <DantzigWolfe/DwWorkerMpi.h>
+#ifdef HAS_PIPS
+#include <DantzigWolfe/DwBundleDualPips.h>
+#include <DantzigWolfe/DwWorkerPips.h>
+#endif
 
 DwSolverMpi::DwSolverMpi(
 		DecModel*   model,   /**< model pointer */
@@ -30,11 +34,19 @@ DSP_RTN_CODE DwSolverMpi::init() {
 	BGN_TRY_CATCH
 
 	/** create worker */
+#ifdef HAS_PIPS
+	worker_ = new DwWorkerPips(model_, par_, message_, comm_);
+#else
 	worker_ = new DwWorkerMpi(model_, par_, message_, comm_);
+#endif
 
 	if (comm_rank_ == 0) {
 		/** create master */
+#ifdef HAS_PIPS
+		master_ = new DwBundleDualPips(worker_);
+#else
 		master_ = new DwBundleDual(worker_);
+#endif
 
 		/** initialize master */
 		DSP_RTN_CHECK_THROW(master_->init());
@@ -60,7 +72,7 @@ DSP_RTN_CODE DwSolverMpi::solve() {
 
 		/** solve */
 		AlpsKnowledgeBrokerSerial alpsBroker(0, NULL, *alps_);
-	    alpsBroker.search(alps_);
+		alpsBroker.search(alps_);
 
 		DspNodeSolution* solution = dynamic_cast<DspNodeSolution*>(alpsBroker.getBestKnowledge(AlpsKnowledgeTypeSolution).first);
 		solution->print(std::cout);
