@@ -63,57 +63,39 @@ ExternalProject_Add(CoinUtils
 ##################################################
 
 if(${CPLEXLIB} MATCHES "CPLEXLIB-NOTFOUND")
-if(${SPX_DIR} EQUAL "")
-	ExternalProject_Add(Osi
-		DEPENDS CoinUtils
-		SOURCE_DIR ${OSI_DIR}
-		CONFIGURE_COMMAND ${OSI_DIR}/configure
-			--prefix=${DEPEND_DIR}
-			--enable-static 
-			--disable-shared
-			--with-coinutils-lib=${COINUTILS_LIB}
-			--with-coinutils-incdir=${COIN_INC_DIR}
-			ADD_CXXFLAGS=-fPIC
-			CXX=${CMAKE_CXX_COMPILER}
-		BUILD_COMMAND make
-		INSTALL_COMMAND make install)
-else()
-	set(SPX_LIB "-L${SPX_DIR}/lib -lsoplex")
-	ExternalProject_Add(Osi
-		DEPENDS CoinUtils
-		SOURCE_DIR ${OSI_DIR}
-		CONFIGURE_COMMAND ${OSI_DIR}/configure
-			--prefix=${DEPEND_DIR}
-			--enable-static 
-			--disable-shared
-			--with-coinutils-lib=${COINUTILS_LIB}
-			--with-coinutils-incdir=${COIN_INC_DIR}
-			--with-soplex-incdir=${SPX_DIR}/src
-			--with-soplex-lib=${SPX_LIB}
-			ADD_CXXFLAGS=-fPIC
-			CXX=${CMAKE_CXX_COMPILER}
-		BUILD_COMMAND make
-		INSTALL_COMMAND make install)
-endif()
+	set(WITH_CPLEX_LIB "")
+	set(WITH_CPLEX_INCDIR "")
 else()
 	set(CPLEX_LIB "-L${CPLEX_LIB_DIR} -lcplex -lm -lpthread")
-	ExternalProject_Add(Osi
-		DEPENDS CoinUtils
-		SOURCE_DIR ${OSI_DIR}
-		CONFIGURE_COMMAND ${OSI_DIR}/configure
-			--prefix=${DEPEND_DIR}
-			--enable-static 
-			--disable-shared
-			--with-coinutils-lib=${COINUTILS_LIB}
-			--with-coinutils-incdir=${COIN_INC_DIR}
-			--with-cplex-lib=${CPLEX_LIB}
-			--with-cplex-incdir=${CPLEX_INC_DIR}
-			--disable-cplex-libcheck
-			ADD_CXXFLAGS=-fPIC
-			CXX=${CMAKE_CXX_COMPILER}
-		BUILD_COMMAND make
-		INSTALL_COMMAND make install)
+	set(WITH_CPLEX_LIB "--with-cplex-lib=${CPLEX_LIB} --disable-cplex-libcheck")
+	set(WITH_CPLEX_INCDIR "--with-cplex-incdir=${CPLEX_INC_DIR}")
 endif()
+
+if(${SPX_DIR} EQUAL "")
+	set(WITH_SOPLEX_LIB "")
+	set(WITH_SOPLEX_INCDIR "")
+else()
+	set(WITH_SOPLEX_LIB "--with-soplex-lib=${SPX_LIB}")
+	set(WITH_SOPLEX_INCDIR "--with-soplex-incdir=${SPX_DIR}/src")
+endif()
+
+ExternalProject_Add(Osi
+	DEPENDS CoinUtils
+	SOURCE_DIR ${OSI_DIR}
+	CONFIGURE_COMMAND ${OSI_DIR}/configure
+		--prefix=${DEPEND_DIR}
+		--enable-static 
+		--disable-shared
+		--with-coinutils-lib=${COINUTILS_LIB}
+		--with-coinutils-incdir=${COIN_INC_DIR}
+		${WITH_CPLEX_LIB}
+		${WITH_CPLEX_INCDIR}
+		${WITH_SOPLEX_LIB}
+		${WITH_SOPLEX_INCDIR}
+		ADD_CXXFLAGS=-fPIC
+		CXX=${CMAKE_CXX_COMPILER}
+	BUILD_COMMAND make
+	INSTALL_COMMAND make install)
 
 ##################################################
 # Compile Clp
