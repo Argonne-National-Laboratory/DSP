@@ -67,7 +67,7 @@ if(${CPLEXLIB} MATCHES "CPLEXLIB-NOTFOUND")
 	set(WITH_CPLEX_INCDIR "")
 else()
 	set(CPLEX_LIB "-L${CPLEX_LIB_DIR} -lcplex -lm -lpthread")
-	set(WITH_CPLEX_LIB "--with-cplex-lib=${CPLEX_LIB} --disable-cplex-libcheck")
+	set(WITH_CPLEX_LIB "--with-cplex-lib=${CPLEX_LIB}")
 	set(WITH_CPLEX_INCDIR "--with-cplex-incdir=${CPLEX_INC_DIR}")
 endif()
 
@@ -92,6 +92,7 @@ ExternalProject_Add(Osi
 		${WITH_CPLEX_INCDIR}
 		${WITH_SOPLEX_LIB}
 		${WITH_SOPLEX_INCDIR}
+		--disable-cplex-libcheck
 		ADD_CXXFLAGS=-fPIC
 		CXX=${CMAKE_CXX_COMPILER}
 	BUILD_COMMAND make
