@@ -4,12 +4,12 @@
 [submodule "extra/Smi"]
 	path = extra/Smi
 	url = https://github.com/kibaekkim/Smi.git
-[submodule "extra/Osi"]
-	path = extra/Osi
-	url = https://github.com/kibaekkim/Osi.git
 [submodule "extra/OOQP"]
 	path = extra/OOQP
 	url = https://github.com/emgertz/OOQP.git
 [submodule "extra/Clp"]
 	path = extra/Clp
 	url = https://github.com/coin-or/Clp.git
+[submodule "extra/Osi"]
+	path = extra/Osi
+	url = https://github.com/coin-or/Osi.git
