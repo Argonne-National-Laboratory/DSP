@@ -13,3 +13,4 @@
 [submodule "extra/Osi"]
 	path = extra/Osi
 	url = https://github.com/coin-or/Osi.git
+	branch = master
