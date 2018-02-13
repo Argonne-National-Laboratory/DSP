@@ -142,6 +142,7 @@ endif()
 
 set(DSP_LIBS ${DSP_LIBS}
 	gfortran 
+	${LAPACK_LIBRARIES}
 	${ZLIB_LIBRARIES}
 	${BZIP2_LIBRARIES})
 
