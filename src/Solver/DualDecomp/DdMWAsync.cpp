@@ -1732,7 +1732,7 @@ DSP_RTN_CODE DdMWAsync::pushSolutionToQueue(double* solution)
 	double * l = new double [master_->getSiPtr()->getNumCols()];
 	int * indicator = new int [lb_comm_size_];
 	CoinCopyN(solution, master_->getSiPtr()->getNumCols(), l);
-	CoinFillN(indicator, lb_comm_size_, 0);
+	CoinFillN(indicator, lb_comm_size_, Q_NOT_ASSIGNED);
 
 	/** push data */
 	q_id_.push_back(qid_counter_++);
@@ -1761,7 +1761,7 @@ DSP_RTN_CODE DdMWAsync::pushFrontSolutionToQueue(double* solution)
 	double * l = new double [master_->getSiPtr()->getNumCols()];
 	int * indicator = new int [lb_comm_size_];
 	CoinCopyN(solution, master_->getSiPtr()->getNumCols(), l);
-	CoinFillN(indicator, lb_comm_size_, 0);
+	CoinFillN(indicator, lb_comm_size_, Q_NOT_ASSIGNED);
 
 	/** push data */
 	q_id_.push_front(qid_counter_++);

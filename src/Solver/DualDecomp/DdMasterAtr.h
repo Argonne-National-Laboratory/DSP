@@ -61,24 +61,20 @@ protected:
 	/** change trust region */
 	virtual DSP_RTN_CODE setTrustRegion(double stability_param, double * stability_center);
 
-private:
-
 	int nworkers_; /**< number of workers */
 
 	vector<int> worker_;
-	vector<int> solution_key_;    /**< unique ID for master solution to be evaluated */
-	vector<int> nsubprobs_;    /**< number of subproblems for the current worker */
+	vector<int> solution_key_;     /**< unique ID for master solution to be evaluated */
+	vector<int> nsubprobs_;        /**< number of subproblems for the current worker */
 	vector<int*> subindex_;        /**< array of subproblem indices */
 	vector<double*> subprimobj_;   /**< subproblem primal objective values */
 	vector<double*> subdualobj_;   /**< subproblem dual objective values */
 	vector<double**> subsolution_; /**< subproblem solution */
 
-private:
-
-	int * nlastcuts_; /**< number of cuts generated at the last iteration */
+	int * nlastcuts_;             /**< number of cuts generated at the last iteration */
 	double ** primsol_to_worker_; /**< primal solution (theta and lambda) given to each worker */
-	bool is_updated_; /**< indicate if the model is updated after solve */
-	bool * proved_optimality_; /**< indicate if the optimality is proved for each worker */
+	bool is_updated_;             /**< indicate if the model is updated after solve */
+	bool * proved_optimality_;    /**< indicate if the optimality is proved for each worker */
 };
 
 #endif /* SRC_SOLVER_DUALDECOMP_DDMASTERATR_H_ */
