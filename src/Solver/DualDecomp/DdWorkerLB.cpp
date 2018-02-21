@@ -27,7 +27,8 @@ DSP_RTN_CODE DdWorkerLB::init() {
 	/** status */
 	status_ = DSP_STAT_MW_CONTINUE;
 	/** create problem */
-	DSP_RTN_CHECK_THROW(createProblem());
+	DSP_RTN_CHECK_THROW(createProblem(
+		par_->getIntPtrParamSize("ARR_PROC_IDX"), par_->getIntPtrParam("ARR_PROC_IDX")));
 	END_TRY_CATCH_RTN(;, DSP_RTN_ERR)
 	return DSP_RTN_OK;
 }
@@ -123,11 +124,17 @@ DSP_RTN_CODE DdWorkerLB::solve() {
     return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE DdWorkerLB::createProblem() {
+DSP_RTN_CODE DdWorkerLB::createProblem(int nsubprobs, int* subindex) {
 	BGN_TRY_CATCH
-	for (int s = 0; s < par_->getIntPtrParamSize("ARR_PROC_IDX"); ++s) {
+
+	/** release all the subproblem data */
+	for (unsigned s = 0; s < subprobs_.size(); ++s)
+		FREE_PTR(subprobs_[s]);
+	subprobs_.clear();
+
+	for (int s = 0; s < nsubprobs; ++s) {
         /** create subproblem instance */
-        DdSub *subprob = new DdSub(par_->getIntPtrParam("ARR_PROC_IDX")[s], par_, model_, message_);
+        DdSub *subprob = new DdSub(subindex[s], par_, model_, message_);
         /** initialize */
         DSP_RTN_CHECK_THROW(subprob->init());
         assert(subprob->si_);
@@ -137,3 +144,4 @@ DSP_RTN_CODE DdWorkerLB::createProblem() {
 	END_TRY_CATCH_RTN(;, DSP_RTN_ERR)
 	return DSP_RTN_OK;
 }
+

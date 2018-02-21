@@ -30,15 +30,11 @@ public:
 	/** solve */
 	virtual DSP_RTN_CODE solve();
 
-public:
+	/** create problem */
+	virtual DSP_RTN_CODE createProblem(int nsubprobs, int* subindex);
 
 	/** get worker type */
 	virtual int getType() {return LB;}
-
-protected:
-
-	/** create problem */
-	virtual DSP_RTN_CODE createProblem();
 
 protected:
 
