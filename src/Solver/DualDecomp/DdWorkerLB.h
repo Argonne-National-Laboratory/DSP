@@ -36,6 +36,9 @@ public:
 	/** get worker type */
 	virtual int getType() {return LB;}
 
+	/** get number of subproblems */
+	virtual int getNumSubprobs() {return subprobs_.size();}
+
 protected:
 
 	int solution_key_; /**< solution ID to be evaluated */

@@ -39,16 +39,14 @@ protected:
 	/** run worker processes */
 	virtual DSP_RTN_CODE runWorker();
 
-private:
-
 	/** run master initialization */
-	DSP_RTN_CODE runMasterInit();
+	virtual DSP_RTN_CODE runMasterInit();
 
 	/** run master core method */
-	DSP_RTN_CODE runMasterCore();
+	virtual DSP_RTN_CODE runMasterCore();
 
 	/** store coupling solution */
-	DSP_RTN_CODE storeCouplingSolutions(Solutions & stored);
+	virtual DSP_RTN_CODE storeCouplingSolutions(Solutions & stored);
 
 	/** receive coupling solutions */
 //	DSP_RTN_CODE recvCouplingSolutions(
@@ -57,7 +55,7 @@ private:
 //			Solutions &solutions /**< received solution placeholder */);
 
 	/** send master solution to workers */
-	DSP_RTN_CODE sendMasterSolution(
+	virtual DSP_RTN_CODE sendMasterSolution(
 			int solution_key,
 			double * master_primsol,
 			int worker_proc,
@@ -66,40 +64,40 @@ private:
 			int * numCutsAdded);
 
 	/** run worker initialization */
-	DSP_RTN_CODE runWorkerInit();
+	virtual DSP_RTN_CODE runWorkerInit();
 
 	/** run worker core method */
-	DSP_RTN_CODE runWorkerCore();
+	virtual DSP_RTN_CODE runWorkerCore();
 
 	/** run worker cut generation methods */
-	DSP_RTN_CODE runWorkerCg(
+	virtual DSP_RTN_CODE runWorkerCg(
 			Solutions solutions /**< solutions at which cuts are generated */);
 
 	/** run worker upper bound methods */
-	DSP_RTN_CODE runWorkerUb(
+	virtual DSP_RTN_CODE runWorkerUb(
 			Solutions solutions /**< solutions to evaluate UB */);
 
 	/** receive Benders cuts */
-	DSP_RTN_CODE recvBendersCuts();
+	virtual DSP_RTN_CODE recvBendersCuts();
 
 	/** receive upper bounds */
-	DSP_RTN_CODE recvUpperBounds();
+	virtual DSP_RTN_CODE recvUpperBounds();
 
 	/** push front queue */
-	DSP_RTN_CODE pushFrontSolutionToQueue(
+	virtual DSP_RTN_CODE pushFrontSolutionToQueue(
 			double * solution /**< lambda to add */);
 
 	/** push queue */
-	DSP_RTN_CODE pushSolutionToQueue(
+	virtual DSP_RTN_CODE pushSolutionToQueue(
 			double * solution /**< lambda to add */);
 
 	/** pop queue */
-	DSP_RTN_CODE popSolutionFromQueue();
+	virtual DSP_RTN_CODE popSolutionFromQueue();
 
 	/** pop back queue */
-	DSP_RTN_CODE popBackSolutionFromQueue();
+	virtual DSP_RTN_CODE popBackSolutionFromQueue();
 
-private:
+protected:
 
 	enum {
 		Q_NOT_ASSIGNED = 0,
@@ -107,10 +105,11 @@ private:
 		Q_EVALUATED
 	};
 
-	int qid_counter_; /**< unique queue identification number */
-	int max_queue_size_;
+	int qid_counter_;    /**< unique queue identification number */
+	int max_queue_size_; /**< maximum queue size */
+
 	std::deque<int>     q_id_;        /**< queue ID */
-	std::deque<double*> q_solution_;    /**< lambdas in queue */
+	std::deque<double*> q_solution_;  /**< lambdas in queue */
 	std::deque<int*>    q_indicator_; /**< indicate if lambda is evaluated by a processor */
 	std::deque<double>  q_objval_;    /**< objective value */
 
