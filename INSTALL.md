@@ -70,7 +70,15 @@ to configure OOQP. If you wish to install the package in a more permanent locati
 ```bash
 make install
 ```
-External packages (MA27, OOQP, SCIP Optimization Suite, Smi) used in DSP are built automatically. A shared object is installed in ./lib directory. Once the installation has been successfully done, you need to set environment variable (DY)LD_LIBRARY_PATH.
+External packages (MA27, OOQP, SCIP Optimization Suite, Smi) used in DSP are built automatically. 
+
+### Binary file
+
+A binary file ``runDsp`` is installed in ./bin directory.
+
+### Shared Object
+
+A shared object is installed in ./lib directory. Once the installation has been successfully done, you need to set environment variable (DY)LD_LIBRARY_PATH.
 Please add the following line by replacing \<DSP_SRC_PATH\> with your DSP source directory in ~/.bash_profile (or ~/.bash_aliases): for Linux,
 ```bash
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<DSP_SRC_PATH>/lib
@@ -78,15 +86,4 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<DSP_SRC_PATH>/lib
 for Mac,
 ```bash
 export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:<DSP_SRC_PATH>/lib
-```
-
-## Test
-
-You can run test problems using Julia scripts. Assuming that you are at ``<DSP_SRC_PATH>``, you can run the Julia test script for serial solvers,
-```bash
-julia test/test.jl
-```
-For parallel,
-```bash
-mpirun -n 4 julia test/test_mpi.jl
 ```
