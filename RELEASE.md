@@ -1,5 +1,11 @@
 DSP Release Notes
 =================
+
+February 22, 2018
+-----------------
+
+* DSP is compiled as a binary file and a shared object. The binary file is a stand-alone solver that can read SMPS files and solve the problems.
+
 August 2, 2017
 --------------
 
