@@ -132,6 +132,12 @@ void DspParams::initBoolParams()
 
 	/** enable asynchronous parallelization */
 	BoolParams_.createParam("DD/ASYNC", false);
+
+	/** dynamic allocation in the asynchronous DD */
+	BoolParams_.createParam("DD/ASYNC/DYNAMIC", false);
+
+	/** static FIFO scheduling in the asynchronous DD; otherwise LIFO */
+	BoolParams_.createParam("DD/ASYNC/FIFO", true);
 }
 
 void DspParams::initIntParams()

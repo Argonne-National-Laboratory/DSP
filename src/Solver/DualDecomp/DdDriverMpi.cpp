@@ -9,6 +9,7 @@
 #include "DdDriverMpi.h"
 #include "Solver/DualDecomp/DdMWSync.h"
 #include "Solver/DualDecomp/DdMWAsync.h"
+#include "Solver/DualDecomp/DdMWAsyncDyn.h"
 
 DdDriverMpi::DdDriverMpi(
 		DspParams* par,
@@ -34,9 +35,12 @@ DSP_RTN_CODE DdDriverMpi::init()
 	/** create Master-Worker framework */
 	if (comm_size_ > 1)
 	{
-		if (par_->getBoolParam("DD/ASYNC"))
-			mw_ = new DdMWAsync(comm_, model_, par_, message_);
-		else
+		if (par_->getBoolParam("DD/ASYNC")) {
+			if (par_->getBoolParam("DD/ASYNC/DYNAMIC"))
+				mw_ = new DdMWAsyncDyn(comm_, model_, par_, message_);
+			else
+				mw_ = new DdMWAsync(comm_, model_, par_, message_);
+		} else
 			mw_ = new DdMWSync(comm_, model_, par_, message_);
 		DSP_RTN_CHECK_THROW(mw_->init());
 	}

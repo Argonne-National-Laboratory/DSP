@@ -1026,11 +1026,15 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 }
 
 bool DdMWAsync::chooseQueueElement(int& qid, double*& qsol, int& nsubprobs, int*& subindex) {
+
 	/** initialize queue ID */
 	qid = -1;
 
-	/** FIFO */
+	/** FIFO vs LIFO */
 	for (unsigned k = 0; k < q_indicator_.size(); ++k) {
+		int kk = k;
+		if (par_->getBoolParam("DD/ASYNC/FIFO") == false)
+			kk = q_indicator_.size() - 1 - k;
 		if (q_indicator_[k][subindex[0]] == Q_NOT_ASSIGNED) {
 			qid = q_id_[k];
 			qsol = q_solution_[k];
@@ -1040,8 +1044,6 @@ bool DdMWAsync::chooseQueueElement(int& qid, double*& qsol, int& nsubprobs, int*
 		if (qid > -1) break;
 	}
 	DSPdebugMessage("qid %d qsol %p\n", qid, qsol);
-
-	/** TODO: LIFO can be easily done by changing for-loop order. */
 
 	return (qid > -1);
 }

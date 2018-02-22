@@ -52,6 +52,7 @@ if(MPI_CXX_FOUND)
 	set(DSP_SRC_FILES ${DSP_SRC_FILES}
 		Solver/DualDecomp/DdDriverMpi.cpp
 		Solver/DualDecomp/DdMWAsync.cpp
+		Solver/DualDecomp/DdMWAsyncDyn.cpp
 		Solver/DualDecomp/DdMWPara.cpp
 		Solver/DualDecomp/DdMWSync.cpp
 		Utility/DspMpi.cpp)

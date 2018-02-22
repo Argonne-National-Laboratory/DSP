@@ -15,6 +15,7 @@ class DdWorkerLB: public DdWorker {
 	friend class DdMWSerial;
 	friend class DdMWSync;
 	friend class DdMWAsync;
+	friend class DdMWAsyncDyn;
 
 public:
 
