@@ -30,6 +30,10 @@ See [INSTALL.md](INSTALL.md)
 
 ## Interfaces
 
+### Stand-alone binary
+
+DSP will be compiled as a binary file ``runDsp`` that can read ``SMPS`` files and solve the problems.
+
 ### Julia Interface
 
 DSP can use Julia as a modeling interface for the computational experiments. Julia is a high level dynamic programming language for technical computing, with syntax that is familiar to users of other technical computing environments such as MATLAB and Python. Julia can be downloaded from http://julialang.org/downloads/ If Julia is successfully installed on your machine, then you can start the Julia command-line tool by typing
