@@ -45,6 +45,9 @@ protected:
 	/** run master core method */
 	virtual DSP_RTN_CODE runMasterCore();
 
+	/** choose queue element for evaluating dual variables */
+	virtual bool chooseQueueElement(int& qid, double*& qsol, int& nsubprobs, int*& subindex);
+
 	/** store coupling solution */
 	virtual DSP_RTN_CODE storeCouplingSolutions(Solutions & stored);
 
@@ -68,6 +71,9 @@ protected:
 
 	/** run worker core method */
 	virtual DSP_RTN_CODE runWorkerCore();
+
+	/** set lower bounding workers */
+	virtual DSP_RTN_CODE setWorkerLb(DdWorkerLB* workerlb, int nsubprobs, int* subindex, double* buf, double bestprimobj);
 
 	/** run worker cut generation methods */
 	virtual DSP_RTN_CODE runWorkerCg(
@@ -110,7 +116,7 @@ protected:
 
 	std::deque<int>     q_id_;        /**< queue ID */
 	std::deque<double*> q_solution_;  /**< lambdas in queue */
-	std::deque<int*>    q_indicator_; /**< indicate if lambda is evaluated by a processor */
+	std::deque<int*>    q_indicator_; /**< indicate if lambda is evaluated for each subproblem */
 	std::deque<double>  q_objval_;    /**< objective value */
 
 };

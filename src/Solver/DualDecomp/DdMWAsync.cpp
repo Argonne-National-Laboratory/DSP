@@ -562,6 +562,7 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 	double * recvbuf = NULL; /**< MPI_Recv: receive buffer */
 	int      rcount  = 0;    /**< MPI_Recv: receive buffer size */
 	int solution_key = -1;
+	int nsubprobs = 0;       /**< number of subproblems to receive */
 
 	/** to store messages received from LB workers */
 	int ** subindex = NULL;
@@ -681,6 +682,8 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 			int msg_source = status.MPI_SOURCE;
 			/** receive lambda ID from the LB worker */
 			MPI_Recv(&solution_key, 1, MPI_INT, msg_source, DSP_MPI_TAG_LB, subcomm_, MPI_STATUS_IGNORE);
+			/** receive number of subproblems */
+			MPI_Recv(&nsubprobs, 1, MPI_INT, msg_source, DSP_MPI_TAG_LB, subcomm_, MPI_STATUS_IGNORE);
 			/** receive solution info from the LB worker */
 			MPI_Recv(recvbuf, rcount, MPI_DOUBLE, msg_source, DSP_MPI_TAG_LB, subcomm_, MPI_STATUS_IGNORE);
 #ifdef DSP_DEBUG_QUEUE
@@ -693,8 +696,8 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 			double dualobj = 0.0;
 			master->solution_key_.push_back(solution_key);
 			master->worker_.push_back(msg_source);
-			master->nsubprobs_.push_back(nsubprobs_[msg_source]);
-			for (int s = 0, pos = 0; s < nsubprobs_[msg_source]; ++s)
+			master->nsubprobs_.push_back(nsubprobs);
+			for (int s = 0, pos = 0; s < nsubprobs; ++s)
 			{
 				subindex[msg_source-1][s] = static_cast<int>(recvbuf[pos++]);
 				subprimobj[msg_source-1][s] = recvbuf[pos++];
@@ -713,11 +716,11 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 			master->subsolution_.push_back(subsolution[msg_source-1]);
 
 			/** update queue */
-			for (unsigned k = 0; k < q_id_.size(); ++k)
-			{
+			for (unsigned k = 0; k < q_id_.size(); ++k) {
 				if (q_id_[k] != solution_key) continue;
 				q_objval_[k] += dualobj;
-				q_indicator_[k][msg_source-1] = Q_EVALUATED;
+				for (int s = 0; s < nsubprobs; ++s)
+					q_indicator_[k][subindex[msg_source-1][s]] = Q_EVALUATED;
 				break;
 			}
 
@@ -796,7 +799,7 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 			int * indicator = q_indicator_.front();
 			double queue_objval = q_objval_.front();
 			bool removeQueue = true;
-			for (int k = 0; k < lb_comm_size_; ++k) {
+			for (int k = 0; k < model_->getNumSubproblems(); ++k) {
 				if (indicator[k] < Q_EVALUATED) {
 					removeQueue = false;
 					break;
@@ -841,7 +844,7 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 				{
 					int * indicator = q_indicator_.back();
 					bool removeQueue = true;
-					for (int k = 0; k < lb_comm_size_; ++k)
+					for (int k = 0; k < model_->getNumSubproblems(); ++k)
 					{
 						if (indicator[k] == Q_ASSIGNED)
 						{
@@ -918,24 +921,16 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 			 * and assign the queue to the worker.
 			 */
 			double * master_primsol = NULL;
-			master->solution_key_[i] = -1;
-			for (unsigned k = 0; k < q_indicator_.size(); ++k) {
-				if (q_indicator_[k][master->worker_[i]-1] == Q_NOT_ASSIGNED) {
-					master->solution_key_[i] = q_id_[k];
-					master_primsol = q_solution_[k];
-					q_indicator_[k][master->worker_[i]-1] = Q_ASSIGNED;
-#ifdef DSP_DEBUG_QUEUE1
-					printf("number of queues %lu, master->worker_ %d, master->solution_key_ %d, q_solution_ %p\n",
-							q_indicator_.size(), master->worker_[i], master->solution_key_[i], q_solution_[k]);
-#endif
-					break;
-				}
-			}
+			bool chosen = chooseQueueElement(
+				master->solution_key_[i], master_primsol, master->nsubprobs_[i], master->subindex_[i]);
 
-			if (master->solution_key_[i] >= 0 || allowIdleLbProcessors == false)
-			{
+			if (chosen == true || allowIdleLbProcessors == false) {
+#ifdef DSP_DEBUG_QUEUE
+				printf("number of queues %lu, master->worker_ %d, master->solution_key_ %d, q_solution_ %p\n",
+						q_indicator_.size(), master->worker_[i], master->solution_key_[i], master_primsol);
+#endif
 				/** Get the current master solution, if no queue is assigned. */
-				if (master->solution_key_[i] < 0)
+				if (chosen == false)
 					master_primsol = const_cast<double*>(master_->getPrimalSolution());
 
 				/** Send q new trial point either from the queue or from the master */
@@ -954,16 +949,9 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 			for (unsigned i = 0; i < idle_worker.size(); ++i)
 			{
 				double * master_primsol = NULL;
-				for (unsigned k = 0; k < q_indicator_.size(); ++k)
-				{
-					if (q_indicator_[k][idle_worker[i]-1] == Q_NOT_ASSIGNED) {
-						idle_solution_key[i] = q_id_[k];
-						master_primsol = q_solution_[k];
-						q_indicator_[k][idle_worker[i]-1] = Q_ASSIGNED;
-						break;
-					}
-				}
-				if (idle_solution_key[i] >= 0)
+				bool chosen = chooseQueueElement(
+					idle_solution_key[i], master_primsol, idle_nsubprobs[i], idle_subindex[i]);
+				if (chosen)
 				{
 					DSP_RTN_CHECK_RTN_CODE(master->setPrimsolToWorker(idle_worker[i]-1, master_primsol));
 					DSP_RTN_CHECK_RTN_CODE(sendMasterSolution(idle_solution_key[i], master_primsol,
@@ -1007,6 +995,8 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 		/** retrieve message source; the next receive should be from the same source. */
 		int msg_source = status.MPI_SOURCE;
 		MPI_Recv(&solution_key, 1, MPI_INT, msg_source, DSP_MPI_TAG_LB, subcomm_, MPI_STATUS_IGNORE);
+		/** receive number of subproblems */
+		MPI_Recv(&nsubprobs, 1, MPI_INT, msg_source, DSP_MPI_TAG_LB, subcomm_, MPI_STATUS_IGNORE);
 		/** receive solution info from the LB workers */
 		MPI_Recv(recvbuf, rcount, MPI_DOUBLE, msg_source, DSP_MPI_TAG_LB, subcomm_, MPI_STATUS_IGNORE);
 		/** send garbage with stop signal as a tag */
@@ -1033,6 +1023,27 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 
 	return DSP_RTN_OK;
 #undef FREE_MEMORY
+}
+
+bool DdMWAsync::chooseQueueElement(int& qid, double*& qsol, int& nsubprobs, int*& subindex) {
+	/** initialize queue ID */
+	qid = -1;
+
+	/** FIFO */
+	for (unsigned k = 0; k < q_indicator_.size(); ++k) {
+		if (q_indicator_[k][subindex[0]] == Q_NOT_ASSIGNED) {
+			qid = q_id_[k];
+			qsol = q_solution_[k];
+			for (int s = 0; s < nsubprobs; ++s)
+				q_indicator_[k][subindex[s]] = Q_ASSIGNED;
+		}
+		if (qid > -1) break;
+	}
+	DSPdebugMessage("qid %d qsol %p\n", qid, qsol);
+
+	/** TODO: LIFO can be easily done by changing for-loop order. */
+
+	return (qid > -1);
 }
 
 DSP_RTN_CODE DdMWAsync::runWorkerInit()
@@ -1132,9 +1143,6 @@ DSP_RTN_CODE DdMWAsync::runWorkerCore()
 {
 	if (worker_.size() == 0)
 		return DSP_RTN_OK;
-#define FREE_MEMORY         \
-	FREE_ARRAY_PTR(sendbuf) \
-	FREE_ARRAY_PTR(recvbuf)
 
 	/** MPI_Send message:
 	 *   [for each subproblem]
@@ -1143,16 +1151,20 @@ DSP_RTN_CODE DdMWAsync::runWorkerCore()
 	 *   3 dual objective
 	 *   4 coupling column part of the solution
 	 */
-	double * sendbuf = NULL; /**< MPI_Send: send buffer */
-	int      scount  = 0;    /**< MPI_Send: send buffer size */
+	std::vector<double> sendbuf; /**< MPI_Send: send buffer */
+	int scount = 0;              /**< MPI_Send: send buffer size */
 
 	/** MPI_Recv message:
 	 *   [for each subproblem]
 	 *   1 theta
 	 *   2 lambda
 	 */
-	double * recvbuf = NULL; /**< MPI_Recv: receive buffer */
-	int      rcount  = 0;    /**< MPI_Recv: receive buffer size */
+	std::vector<double> recvbuf; /**< MPI_Recv: receive buffer */
+	int rcount = 0;              /**< MPI_Recv: receive buffer size */
+
+	/** separate MPI_Recv */
+	int nsubprobs = 0;         /**< number of subproblems to receive */
+	std::vector<int> subindex; /**< subproblem indices to receive */
 
 	BGN_TRY_CATCH
 
@@ -1172,8 +1184,8 @@ DSP_RTN_CODE DdMWAsync::runWorkerCore()
 		rcount += 1 + model_->getNumSubproblemCouplingRows(arrprocidx[i]);
 
 	/** allocate memory for message buffers */
-	sendbuf = new double [scount];
-	recvbuf = new double [rcount];
+	sendbuf.resize(scount);
+	recvbuf.resize(rcount);
 
 	/** loop until when the master signals stop */
 	while(1)
@@ -1199,26 +1211,29 @@ DSP_RTN_CODE DdMWAsync::runWorkerCore()
 
 		if (signal != DSP_STAT_MW_STOP) {
 			/** create send buffer */
-			for (int s = 0, pos = 0; s < narrprocidx; ++s)
+			for (int s = 0, pos = 0; s < workerlb->getNumSubprobs(); ++s)
 			{
 				sendbuf[pos++] = static_cast<double>(workerlb->subprobs_[s]->sind_);
 				sendbuf[pos++] = workerlb->subprobs_[s]->getPrimalObjective();
 				sendbuf[pos++] = workerlb->subprobs_[s]->getDualObjective();
-				CoinCopyN(workerlb->subprobs_[s]->si_->getSolution(), workerlb->subprobs_[s]->ncols_coupling_, sendbuf + pos);
+				CoinCopyN(workerlb->subprobs_[s]->si_->getSolution(), workerlb->subprobs_[s]->ncols_coupling_, &sendbuf[0] + pos);
 				pos += workerlb->subprobs_[s]->ncols_coupling_;
 				DSPdebugMessage("worker %d, subprob %d primobj %+e dualobj %+e\n",
 						comm_rank_, workerlb->subprobs_[s]->sind_, workerlb->subprobs_[s]->getPrimalObjective(), workerlb->subprobs_[s]->getDualObjective());
 			}
 #ifdef DSP_DEBUG_QUEUE1
 			message_->print(0, "LB processor (rank %d) send message (%d):\n", comm_rank_, scount);
-			DspMessage::printArray(scount, sendbuf);
+			DspMessage::printArray(scount, &sendbuf[0]);
 #endif
 
 			/** send lambda ID to the master */
 			MPI_Send(&(workerlb->solution_key_), 1, MPI_INT, 0, DSP_MPI_TAG_LB, subcomm_);
 //			message_->print(1, "LB processor (rank %d) evaluated the trial point (ID %d).\n", comm_rank_, workerlb->solution_key_);
+			/** send number of subproblems to the master */
+			nsubprobs = workerlb->getNumSubprobs();
+			MPI_Send(&nsubprobs, 1, MPI_INT, 0, DSP_MPI_TAG_LB, subcomm_);
 			/** send message to the master */
-			MPI_Send(sendbuf, scount, MPI_DOUBLE, 0, DSP_MPI_TAG_LB, subcomm_);
+			MPI_Send(&sendbuf[0], scount, MPI_DOUBLE, 0, DSP_MPI_TAG_LB, subcomm_);
 		}
 		/** receive signal from the root */
 		MPI_Recv(&signal, 1, MPI_INT, 0, DSP_MPI_TAG_SIG, subcomm_, MPI_STATUS_IGNORE);
@@ -1232,59 +1247,60 @@ DSP_RTN_CODE DdMWAsync::runWorkerCore()
 		MPI_Recv(&(workerlb->solution_key_), 1, MPI_INT, 0, DSP_MPI_TAG_LB, subcomm_, MPI_STATUS_IGNORE);
 		if (workerlb->solution_key_ == SOLUTION_KEY_TO_STOP) break;
 		//message_->print(1, "LB processor (rank %d) received a trial point (ID %d).\n", comm_rank_, workerlb->solution_key_);
+
+		/** receive number of subproblms */
+		MPI_Recv(&nsubprobs, 1, MPI_INT, 0, DSP_MPI_TAG_LB, subcomm_, MPI_STATUS_IGNORE);
+
+		/** receive subproblm indices */
+		subindex.resize(nsubprobs);
+		MPI_Recv(&subindex[0], nsubprobs, MPI_INT, 0, DSP_MPI_TAG_LB, subcomm_, MPI_STATUS_IGNORE);
+
+		/** calculate size of send/receive buffer */
+		scount = 0; rcount = 0;
+		for (int i = 0; i < nsubprobs; ++i) {
+			scount += 3 + model_->getNumSubproblemCouplingRows(subindex[i]);
+			rcount += 1 + model_->getNumSubproblemCouplingRows(subindex[i]);
+		}
+		sendbuf.resize(scount);
+		recvbuf.resize(rcount);
+
 		/** receive message from the master */
-		MPI_Recv(recvbuf, rcount, MPI_DOUBLE, 0, DSP_MPI_TAG_LB, subcomm_, MPI_STATUS_IGNORE);
+		MPI_Recv(&recvbuf[0], rcount, MPI_DOUBLE, 0, DSP_MPI_TAG_LB, subcomm_, MPI_STATUS_IGNORE);
 #ifdef DSP_DEBUG_QUEUE1
-		if (comm_rank_ == 1)
-		{
+		if (comm_rank_ == 1) {
 			printf("LB worker (rank %d) received message (%d):\n", comm_rank_, rcount);
-			DspMessage::printArray(rcount, recvbuf);
+			DspMessage::printArray(rcount, &recvbuf[0]);
 		}
 #endif
 		/** receive cuts */
-		if (parFeasCuts_ >= 0 || parOptCuts_ >= 0)
-		{
+		if (parFeasCuts_ >= 0 || parOptCuts_ >= 0) {
 			/** prepare cuts to receive */
 			OsiCuts cutsToRecv;
 			/** receive cuts from the master */
 			MPIrecvOsiCuts(subcomm_, 0, cutsToRecv, DSP_MPI_TAG_CGBD);
 			DSPdebugMessage("Rank %d received %d cuts from rank 0.\n", comm_rank_, cutsToRecv.sizeCuts());
 			/** move cuts */
-			for (int i = 0; i < cutsToRecv.sizeCuts(); ++i)
-			{
+			for (int i = 0; i < cutsToRecv.sizeCuts(); ++i) {
 				OsiRowCut * rc = cutsToRecv.rowCutPtr(i);
 				cutsToAdd_->insert(rc);
 			}
 			cutsToRecv.dumpCuts();
 		}
+
 		/** receive upper bounds */
 		double bestprimobj = COIN_DBL_MAX;
-		if (parEvalUb_ >= 0)
-		{
+		if (parEvalUb_ >= 0) {
 			MPI_Recv(&bestprimobj, 1, MPI_DOUBLE, 0, DSP_MPI_TAG_UB, subcomm_, MPI_STATUS_IGNORE);
 			DSPdebugMessage("Rank %d received upper bound %+e from rank 0.\n", comm_rank_, bestprimobj);
 		}
 
-		/** parse message */
-		for (int s = 0, pos = 0; s < narrprocidx; ++s)
-		{
-			workerlb->subprobs_[s]->theta_ = recvbuf[pos++];
-			workerlb->subprobs_[s]->updateProblem(recvbuf + pos, bestprimobj);
-			/** apply Benders cuts */
-			if (cutsToAdd_->sizeCuts() > 0 && (parFeasCuts_ >= 0 || parOptCuts_ >= 0))
-			{
-				workerlb->subprobs_[s]->pushCuts(cutsToAdd_);
-				DSPdebugMessage("Rank %d pushed %d Benders cuts.\n", comm_rank_, cutsToAdd_->sizeCuts());
-			}
-			pos += model_->getNumSubproblemCouplingRows(workerlb->subprobs_[s]->sind_);
-		}
+		/** set workerlb */
+		DSP_RTN_CHECK_THROW(setWorkerLb(workerlb, nsubprobs, &subindex[0], &recvbuf[0], bestprimobj));
 	}
 
-	if (lb_comm_rank_ == 0)
-	{
+	if (lb_comm_rank_ == 0) {
 		message_->print(0, "LB processors are finished.\n");
-		if (parFeasCuts_ >= 0 || parOptCuts_ >= 0 || parEvalUb_ >= 0)
-		{
+		if (parFeasCuts_ >= 0 || parOptCuts_ >= 0 || parEvalUb_ >= 0) {
 			message_->print(0, "Finishing CGUB processors...\n");
 			MPI_Send(&signal, 1, MPI_INT, cgub_comm_root_, DSP_MPI_TAG_SIG, comm_);
 			message_->print(3, "The LB root worker (rank %d) sent STOP signal to the CGUB root worker (rank %d).\n",
@@ -1298,12 +1314,28 @@ DSP_RTN_CODE DdMWAsync::runWorkerCore()
 	/** release pointers */
 	arrprocidx = NULL;
 
-	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
-
-	FREE_MEMORY
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
-#undef FREE_MEMORY
+}
+
+DSP_RTN_CODE DdMWAsync::setWorkerLb(DdWorkerLB* workerlb, int nsubprobs, int* subindex, double* buf, double bestprimobj) {
+	BGN_TRY_CATCH
+
+	for (int s = 0, pos = 0; s < nsubprobs; ++s) {
+		workerlb->subprobs_[s]->theta_ = buf[pos++];
+		workerlb->subprobs_[s]->updateProblem(buf + pos, bestprimobj);
+		/** apply Benders cuts */
+		if (cutsToAdd_->sizeCuts() > 0 && (parFeasCuts_ >= 0 || parOptCuts_ >= 0)) {
+			workerlb->subprobs_[s]->pushCuts(cutsToAdd_);
+			DSPdebugMessage("Rank %d pushed %d Benders cuts.\n", comm_rank_, cutsToAdd_->sizeCuts());
+		}
+		pos += model_->getNumSubproblemCouplingRows(workerlb->subprobs_[s]->sind_);
+	}
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
 }
 
 DSP_RTN_CODE DdMWAsync::storeCouplingSolutions(Solutions& solutions) {
@@ -1687,6 +1719,12 @@ DSP_RTN_CODE DdMWAsync::sendMasterSolution(
 	/** send lambda ID */
 	MPI_Send(&(solution_key), 1, MPI_INT, worker_proc, DSP_MPI_TAG_LB, subcomm_);
 
+	/** send number of subproblems */
+	MPI_Send(&num_subprobs, 1, MPI_INT, worker_proc, DSP_MPI_TAG_LB, subcomm_);
+
+	/** send subproblem indices */
+	MPI_Send(subprobs, num_subprobs, MPI_INT, worker_proc, DSP_MPI_TAG_LB, subcomm_);
+
 	/** send message */
 	MPI_Send(sendbuf, local_scount, MPI_DOUBLE, worker_proc, DSP_MPI_TAG_LB, subcomm_);
 #ifdef DSP_DEBUG_QUEUE1
@@ -1732,7 +1770,7 @@ DSP_RTN_CODE DdMWAsync::pushSolutionToQueue(double* solution)
 	double * l = new double [master_->getSiPtr()->getNumCols()];
 	int * indicator = new int [lb_comm_size_];
 	CoinCopyN(solution, master_->getSiPtr()->getNumCols(), l);
-	CoinFillN(indicator, lb_comm_size_, 0);
+	CoinFillN(indicator, model_->getNumSubproblems(), 0);
 
 	/** push data */
 	q_id_.push_back(qid_counter_++);
@@ -1761,7 +1799,7 @@ DSP_RTN_CODE DdMWAsync::pushFrontSolutionToQueue(double* solution)
 	double * l = new double [master_->getSiPtr()->getNumCols()];
 	int * indicator = new int [lb_comm_size_];
 	CoinCopyN(solution, master_->getSiPtr()->getNumCols(), l);
-	CoinFillN(indicator, lb_comm_size_, 0);
+	CoinFillN(indicator, model_->getNumSubproblems(), 0);
 
 	/** push data */
 	q_id_.push_front(qid_counter_++);
