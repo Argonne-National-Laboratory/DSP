@@ -151,20 +151,30 @@ add_library(Dsp SHARED
 	DspCInterface.cpp
 	${DSP_SRC_FILES})
 
+add_executable(runDsp dsp.cpp 
+	DspApiEnv.cpp
+	DspCInterface.cpp
+	${DSP_SRC_FILES})
+
 if (APPLE)
 	target_link_libraries(Dsp ${DSP_LIBS})
+	target_link_libraries(runDsp ${DSP_LIBS})
 else()
 	target_link_libraries(Dsp ${DSP_LIBS} "-Wl,--no-undefined")
+	target_link_libraries(runDsp ${DSP_LIBS} "-Wl,--no-undefined")
 endif(APPLE)
 
 ##################################################
 # INSTALL
 ##################################################
 install(TARGETS Dsp LIBRARY DESTINATION $ENV{PWD}/lib)
+install(TARGETS runDsp DESTINATION $ENV{PWD}/bin)
 
 ##################################################
 # Messages
 ##################################################
+install(CODE "message(\"\")")
+install(CODE "message(\"${Blue}** Standalone binary file was installed in $ENV{PWD}/bin${ColourReset}\")")
 install(CODE "message(\"\")")
 install(CODE "message(\"${Blue}** Please add the following line to the .bash_profile or .bashrc in your home directory:${ColourReset}\")")
 if(APPLE)

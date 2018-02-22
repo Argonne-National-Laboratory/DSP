@@ -1,0 +1,160 @@
+/*
+ * dsp.cpp
+ *
+ *  Created on: Feb 21, 2018
+ *      Author: Kibaek Kim
+ */
+
+#include <iostream>
+#ifdef DSP_HAS_MPI
+#include <mpi.h>
+#endif
+#include <DspCInterface.h>
+
+const char* gDspUsage = 
+	"Not enough or invalid arguments, please try again.\n\n"
+	"Usage: --algo <de,bd,dd> --smps <smps file> [--param <param file>]\n\n"
+	"       --algo\tchoice of algorithms. de: deterministic equivalent form; bd: Benders decomposition; dd: dual decomposition\n"
+	"       --smps\tSMPS file name without extensions. For example, if your SMPS files are ../test/farmer.cor, ../test/farmer.sto, and ../test/farmer.tim, this value should be ../test/farmer\n"
+	"       --param\toptional paramater for parameter file name\n";
+
+void setBlockIds(DspApiEnv* env, bool master_has_subblocks = false);
+void runDsp(char* algotype, char* smpsfile, char* paramfile);
+
+/*
+ This will compile a stand-alone binary file that reads problem instances.
+*/
+int main(int argc, char* argv[]) {
+
+	bool isroot = true;
+#ifdef DSP_HAS_MPI
+	int comm_rank;
+	MPI_Init(&argc, &argv);
+	MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
+	isroot = comm_rank == 0 ? true : false;
+#define EXIT_WITH_MSG \
+	if(isroot) std::cout << gDspUsage; \
+	MPI_Finalize(); \
+	exit(0); 
+#else
+#define EXIT_WITH_MSG \
+	if(isroot) std::cout << gDspUsage; \
+	exit(0); 
+#endif
+
+
+	if (argc < 5) {
+		EXIT_WITH_MSG
+	} else {
+		char* algotype = NULL;
+		char* smpsfile = NULL;
+		char* paramfile = NULL;
+		for (int i = 1; i < argc; ++i) {
+			if (i + 1 != argc) {
+				if (std::string(argv[i]) == "--algo") {
+					algotype = argv[i+1];
+				} else if (std::string(argv[i]) == "--smps") {
+					smpsfile = argv[i+1];
+				} else if (std::string(argv[i]) == "--param") {
+					paramfile = argv[i+1];
+				} else {
+					EXIT_WITH_MSG
+				}
+			}
+			i++;
+		}
+
+		if (algotype == NULL || smpsfile == NULL) {
+			EXIT_WITH_MSG
+		}
+
+		/** run dsp */
+		runDsp(algotype, smpsfile, paramfile);
+
+#ifdef DSP_HAS_MPI
+		MPI_Finalize();
+#endif
+
+		return 0;
+	}
+#undef EXIT_WITH_MSG
+}
+
+void runDsp(char* algotype, char* smpsfile, char* paramfile) {
+
+	bool isroot = true;
+#ifdef DSP_HAS_MPI
+	int comm_rank, comm_size;
+	MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
+	MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+	isroot = comm_rank == 0 ? true : false;
+#endif
+
+	if (isroot) std::cout << "Creating DSP environment\n";
+	DspApiEnv* env = createEnv();
+
+	if (isroot) std::cout << "Reading SMPS files: " << smpsfile << std::endl;
+	readSmps(env, smpsfile);
+	setBlockIds(env, false);
+
+	if (paramfile != NULL) {
+		if (isroot) std::cout << "Reading parameter files: " << paramfile << std::endl;
+		readParamFile(env, paramfile);
+	}
+
+	if (std::string(algotype) == "de")
+		solveDe(env);
+#ifdef DSP_HAS_MPI
+	else if (std::string(algotype) == "bd") {
+		if (comm_size > 1)
+			solveBdMpi(env, MPI_COMM_WORLD);
+		else
+			solveBd(env);
+	} else if (std::string(algotype) == "dd") {
+		if (comm_size > 1)
+			solveDdMpi(env, MPI_COMM_WORLD);
+		else
+			solveDd(env);
+	}
+#else
+	else if (std::string(algotype) == "bd")
+		solveBd(env);
+	else if (std::string(algotype) == "dd")
+		solveDd(env);
+#endif
+	else {
+		if (isroot) std::cout << "Invalid algorithm type, please try again.\n";
+	}
+
+	if (isroot) std::cout << "Deleting DSP environment\n";
+	freeEnv(env);
+}
+
+void setBlockIds(DspApiEnv* env, bool master_has_subblocks) {
+#ifdef DSP_HAS_MPI
+	int nsubprobs = getNumSubproblems(env);
+	int comm_rank, comm_size;
+	MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
+	MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+
+	// empty block IDs
+	std::vector<int> proc_idx_set;
+
+	// DSP is further parallelized with comm_size > nsubprobs.
+	int modrank = comm_rank % nsubprobs;
+	// If we have more than one processor, do not assign a sub-block to the master.
+	if (master_has_subblocks == false && comm_rank > 0) {
+		// exclude master
+		comm_size--;
+		modrank = (comm_rank-1) % nsubprobs;
+	}
+
+	// assign sub-blocks in round-robin fashion
+	for (int s = modrank; s < nsubprobs; s += comm_size)
+		proc_idx_set.push_back(s);
+
+	// set the block ids to Dsp
+	setIntPtrParam(env, "ARR_PROC_IDX", (int) proc_idx_set.size(), &proc_idx_set[0]);
+#endif
+}
+
