@@ -147,22 +147,16 @@ set(DSP_LIBS ${DSP_LIBS}
 	${ZLIB_LIBRARIES}
 	${BZIP2_LIBRARIES})
 
-add_library(Dsp SHARED
-	DspApiEnv.cpp
-	DspCInterface.cpp
-	${DSP_SRC_FILES})
-
-add_executable(runDsp dsp.cpp 
-	DspApiEnv.cpp
-	DspCInterface.cpp
-	${DSP_SRC_FILES})
+add_library(DspCore ${DSP_SRC_FILES})
+add_library(Dsp SHARED DspApiEnv.cpp DspCInterface.cpp)
+add_executable(runDsp dsp.cpp DspApiEnv.cpp DspCInterface.cpp)
 
 if (APPLE)
-	target_link_libraries(Dsp ${DSP_LIBS})
-	target_link_libraries(runDsp ${DSP_LIBS})
+	target_link_libraries(Dsp DspCore ${DSP_LIBS})
+	target_link_libraries(runDsp DspCore ${DSP_LIBS})
 else()
-	target_link_libraries(Dsp ${DSP_LIBS} "-Wl,--no-undefined")
-	target_link_libraries(runDsp ${DSP_LIBS} "-Wl,--no-undefined")
+	target_link_libraries(Dsp DspCore ${DSP_LIBS} "-Wl,--no-undefined")
+	target_link_libraries(runDsp DspCore ${DSP_LIBS} "-Wl,--no-undefined")
 endif(APPLE)
 
 ##################################################
