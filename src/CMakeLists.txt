@@ -148,6 +148,7 @@ set(DSP_LIBS ${DSP_LIBS}
 	${BZIP2_LIBRARIES})
 
 add_library(DspCore ${DSP_SRC_FILES})
+set_property(TARGET DspCore PROPERTY POSITION_INDEPENDENT_CODE ON)
 add_library(Dsp SHARED DspApiEnv.cpp DspCInterface.cpp)
 add_executable(runDsp dsp.cpp DspApiEnv.cpp DspCInterface.cpp)
 
