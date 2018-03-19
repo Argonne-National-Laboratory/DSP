@@ -23,6 +23,12 @@ You can clone this repository in your preferred directory by typing:
 ```bash
 git clone --recursive https://github.com/Argonne-National-Laboratory/DSP.git
 ```
+or
+```bash
+git clone https://github.com/Argonne-National-Laboratory/DSP.git
+cd DSP
+git submodule update --init --recursive
+```
 
 ## Installation
 
