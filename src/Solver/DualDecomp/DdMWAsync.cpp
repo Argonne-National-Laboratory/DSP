@@ -1770,7 +1770,7 @@ DSP_RTN_CODE DdMWAsync::pushSolutionToQueue(double* solution)
 
 	/** copy memory */
 	double * l = new double [master_->getSiPtr()->getNumCols()];
-	int * indicator = new int [lb_comm_size_];
+	int * indicator = new int [model_->getNumSubproblems()];
 	CoinCopyN(solution, master_->getSiPtr()->getNumCols(), l);
 	CoinFillN(indicator, model_->getNumSubproblems(), 0);
 
@@ -1799,7 +1799,7 @@ DSP_RTN_CODE DdMWAsync::pushFrontSolutionToQueue(double* solution)
 
 	/** copy memory */
 	double * l = new double [master_->getSiPtr()->getNumCols()];
-	int * indicator = new int [lb_comm_size_];
+	int * indicator = new int [model_->getNumSubproblems()];
 	CoinCopyN(solution, master_->getSiPtr()->getNumCols(), l);
 	CoinFillN(indicator, model_->getNumSubproblems(), 0);
 
