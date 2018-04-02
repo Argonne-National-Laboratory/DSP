@@ -98,7 +98,8 @@ if(NOT ${CPLEXLIB} MATCHES "CPLEXLIB-NOTFOUND")
 		SolverInterface/SolverInterfaceCpx.cpp)
 	set(DSP_LIBS ${DSP_LIBS} 
 		${DEPEND_DIR}/lib/libOsiCpx.a
-		${CPLEX_LIB_DIR}/libcplex.a)
+		${CPLEX_LIB_DIR}/libcplex.a
+		-ldl)
 else()
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MPI_CXX_COMPILE_FLAGS} -DNO_CPX")
 endif()

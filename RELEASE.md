@@ -1,6 +1,11 @@
 DSP Release Notes
 =================
 
+April 2, 2018
+-------------
+
+* Fixed the linking issue with CPLEX 12.8
+
 February 22, 2018
 -----------------
 
