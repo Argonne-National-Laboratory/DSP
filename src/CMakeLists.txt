@@ -43,11 +43,8 @@ set(DSP_SRC_FILES
 if (MPI_CXX_FOUND)
 	set(DSP_SRC_FILES ${DSP_SRC_FILES}
 		${PIPS_DIR}/Input/stochasticInput.cpp
-		Solver/DantzigWolfe/DwBundleDualPips.cpp
 		Solver/DantzigWolfe/DwSolverMpi.cpp
 		Solver/DantzigWolfe/DwWorkerMpi.cpp
-		Solver/DantzigWolfe/DwWorkerPips.cpp
-		Solver/DantzigWolfe/PipsInterface.cpp
 		Utility/DspMpi.cpp)
 endif()
 
@@ -69,6 +66,7 @@ set(DSP_LIBS
 	gfortran
 	${ZLIB_LIBRARIES}
 	${BZIP2_LIBRARIES}
+	-ldl
 )
 if (MPI_CXX_FOUND)
 	set(DSP_LIBS ${DSP_LIBS} ${MPI_CXX_LIBRARIES})
@@ -78,53 +76,57 @@ endif()
 # Do we want to use PIPS-IPM?
 ##################################################
 
-find_library(PIPS_LIB pipsipm-shared PATHS ${PIPS_LIB_DIR})
-if(${PIPS_LIB} MATCHES "PIPS_LIB-NOTFOUND")
-else()
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DHAS_PIPS")
-	include_directories(
-		${PIPS_DIR}/Input
-		${PIPS_DIR}/PIPS-IPM/Core/Abstract
-		${PIPS_DIR}/PIPS-IPM/Core/Vector
-		${PIPS_DIR}/PIPS-IPM/Core/QpGen
-		${PIPS_DIR}/PIPS-IPM/Core/QpStoch
-		${PIPS_DIR}/PIPS-IPM/Core/QpSolvers
-		${PIPS_DIR}/PIPS-IPM/Core/StochLinearAlgebra
-		${PIPS_DIR}/PIPS-IPM/Core/SparseLinearAlgebra
-	)
-	set(DSP_SRC_FILES ${DSP_SRC_FILES}
-		${PIPS_DIR}/Input/stochasticInput.cpp
-		Solver/DantzigWolfe/DwBundleDualPips.cpp
-		Solver/DantzigWolfe/DwWorkerPips.cpp
-		Solver/DantzigWolfe/PipsInterface.cpp
-	)
-	link_directories(${PIPS_LIB_DIR})
-	set(DSP_LIBS ${DSP_LIBS}
-		pipsipm-shared
-		ma57 metis pardiso
-	)
-endif()
+#find_library(PIPS_LIB pipsipm-shared PATHS ${PIPS_LIB_DIR})
+#if(${PIPS_LIB} MATCHES "PIPS_LIB-NOTFOUND")
+#else()
+#	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DHAS_PIPS")
+#	include_directories(
+#		${PIPS_DIR}/Input
+#		${PIPS_DIR}/PIPS-IPM/Core/Abstract
+#		${PIPS_DIR}/PIPS-IPM/Core/Vector
+#		${PIPS_DIR}/PIPS-IPM/Core/QpGen
+#		${PIPS_DIR}/PIPS-IPM/Core/QpStoch
+#		${PIPS_DIR}/PIPS-IPM/Core/QpSolvers
+#		${PIPS_DIR}/PIPS-IPM/Core/StochLinearAlgebra
+#		${PIPS_DIR}/PIPS-IPM/Core/SparseLinearAlgebra
+#	)
+#	set(DSP_SRC_FILES ${DSP_SRC_FILES}
+#		${PIPS_DIR}/Input/stochasticInput.cpp
+#		Solver/DantzigWolfe/DwBundleDualPips.cpp
+#		Solver/DantzigWolfe/DwWorkerPips.cpp
+#		Solver/DantzigWolfe/PipsInterface.cpp
+#	)
+#	link_directories(${PIPS_LIB_DIR})
+#	set(DSP_LIBS ${DSP_LIBS}
+#		pipsipm-shared
+#		ma57 metis pardiso
+#	)
+#endif()
 
 ##################################################
 # Shared library
 ##################################################
 
-add_library(Dsp SHARED
-	DspApiEnv.cpp
-	DspCInterface.cpp
-	${DSP_SRC_FILES})
+add_library(DspCore ${DSP_SRC_FILES})
+set_property(TARGET DspCore PROPERTY POSITION_INDEPENDENT_CODE ON)
+add_library(Dsp SHARED DspApiEnv.cpp DspCInterface.cpp)
+add_executable(runDsp dsp.cpp DspApiEnv.cpp DspCInterface.cpp)
 add_dependencies(Dsp Alps OOQP)
+add_dependencies(runDsp Alps OOQP)
 
 if (APPLE)
-	target_link_libraries(Dsp ${DSP_LIBS})
+	target_link_libraries(Dsp DspCore ${DSP_LIBS})
+	target_link_libraries(runDsp DspCore ${DSP_LIBS})
 else()
-	target_link_libraries(Dsp ${DSP_LIBS} "-Wl,--no-undefined")
+	target_link_libraries(Dsp DspCore ${DSP_LIBS} "-Wl,--no-undefined")
+	target_link_libraries(runDsp DspCore ${DSP_LIBS} "-Wl,--no-undefined")
 endif(APPLE)
 
 ##################################################
 # INSTALL
 ##################################################
 install(TARGETS Dsp LIBRARY DESTINATION $ENV{PWD}/lib)
+install(TARGETS runDsp DESTINATION $ENV{PWD}/bin)
 
 ##################################################
 # Messages

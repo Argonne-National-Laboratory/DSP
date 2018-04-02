@@ -1,6 +1,13 @@
 DSP Release Notes
 =================
 
+April 2, 2018
+-------------
+
+* Fixed the early termination issue (before finding a feasible primal master solution)
+* Fixed the compile issue with CPLEX 12.8
+* Implemented a stand-alone binary file that can read SMPS, MPS+DEC files
+
 Version 0.3.0 (August 22, 2016)
 ----------------------------
 

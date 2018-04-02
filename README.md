@@ -18,12 +18,22 @@ You can clone this repository in your preferred directory by typing:
 ```bash
 git clone -b dev-coin --recursive https://github.com/Argonne-National-Laboratory/DSP.git
 ```
+or
+```bash
+git clone -b dev-coin https://github.com/Argonne-National-Laboratory/DSP.git
+cd DSP
+git submodule update --init --recursive
+```
 
 ## Installation
 
 See [INSTALL.md](INSTALL.md)
 
 ## Interfaces
+
+### Stand-alone binary
+
+DSP will be compiled as a binary file ``runDsp`` that can read ``SMPS``, ``MPS`` with ``DEC`` files and solve the problems. See more about ``MPS`` with ``DEC`` file format in http://www.or.rwth-aachen.de/gcg/doc/reader__dec_8h.html and also example in https://github.com/Argonne-National-Laboratory/DSP/tree/dev-coin/examples/mps-dec
 
 ### Julia Interface
 
@@ -60,7 +70,8 @@ DSP has been developed and is maintained by:
 * [Victor M. Zavala](http://zavalab.engr.wisc.edu/), Department of Chemical and Biological Engineering, University of Wisconsin-Madison.
 
 ## Publications
-* Kibaek Kim and Victor M. Zavala. "[Algorithmic innovations and software for the dual decomposition method applied to stochastic mixed-integer programs](http://www.optimization-online.org/DB_FILE/2015/06/4960.pdf)" Optimization Online, 2015
+* Kibaek Kim, Audun Botterud, and Feng Qiu. "[Temporal Decomposition for Improved Unit Commitment in Power System Production Cost Modeling](http://ieeexplore.ieee.org/document/8316946/)" IEEE Transactions on Power Systems, 2018
+* Kibaek Kim and Victor M. Zavala. "[Algorithmic innovations and software for the dual decomposition method applied to stochastic mixed-integer programs](https://link.springer.com/article/10.1007/s12532-017-0128-z)" Mathematical Programming Computation, 2017
 * Kibaek Kim and Victor M. Zavala. "[Large-Scale Stochastic Mixed-Integer Programming Algorithms for Power Generation Scheduling](http://dx.doi.org/10.1007/978-3-319-28752-2_18)" Alternative Energy Sources and Technologies, 2016
 * Kibaek Kim, Fan Yang, Victor M. Zavala, and Andrew A. Chien. "[Data Centers as Dispatchable Loads to Harness Stranded Power](http://dx.doi.org/10.1109/TSTE.2016.2593607)" IEEE Transactions on Sustainable Energy, 2016
 
