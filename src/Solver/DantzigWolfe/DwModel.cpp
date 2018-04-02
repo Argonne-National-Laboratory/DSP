@@ -67,15 +67,18 @@ DSP_RTN_CODE DwModel::solve() {
 				if (master_->ctype_orig_[j] != 'C') {
 					infeasibility_ += fabs(primsol_[j] - floor(primsol_[j] + 0.5));
 				}
-			printf("Infeasibility: %+e\n", infeasibility_);
+			solver_->getMessagePtr()->print(3, "Infeasibility: %+e\n", infeasibility_);
 
+			bool isViolated = false;
 			for (int j = 0; j < master_->ncols_orig_; ++j) {
 				double viol = std::max(master_->clbd_node_[j] - primsol_[j], primsol_[j] - master_->cubd_node_[j]);
 				if (viol > 1.0e-6) {
 					printf("Violated variable at %d by %e (%+e <= %+e <= %+e)\n", j, viol,
 							master_->clbd_node_[j], primsol_[j], master_->cubd_node_[j]);
+					isViolated = true;
 				}
 			}
+			if (isViolated) throw "Invalid branching was performed.";
 
 			/** run heuristics */
 			if (par_->getBoolParam("DW/HEURISTICS") && infeasibility_ > 1.0e-6) {
@@ -175,8 +178,8 @@ bool DwModel::chooseBranchingObjects(
 		branchingDn = new DspBranch();
 		for (int j = 0; j < master_->ncols_orig_; ++j) {
 			if (master_->ctype_orig_[j] == 'C') continue;
-			/** NOTE: branching on all the first-stage variables */
-			if (branchingIndex == j || branchingFirstStage == j % tss->getNumCols(0)) {
+			/** NOTE: branching on all the first-stage variables if SMIP */
+			if (branchingIndex == j || (tss != NULL && branchingFirstStage == j % tss->getNumCols(0))) {
 				DSPdebugMessage("Creating branch objects on column %d (value %e): [%e,%e] and [%e,%e]\n", 
 					j, branchingValue, ceil(branchingValue), master_->cubd_node_[j], master_->clbd_node_[j], floor(branchingValue));
 				branchingUp->push_back(j, ceil(branchingValue), master_->cubd_node_[j]);

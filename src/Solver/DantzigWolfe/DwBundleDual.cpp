@@ -373,7 +373,7 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 		}
 //		printf("u*dualsol*(bestdualsol-0.5*dualsol) = %+e\n", polyapprox);
 		polyapprox += getObjValue();
-		printf("polyapprox %e\n", polyapprox);
+		//printf("polyapprox %e\n", polyapprox);
 
 		v_ = polyapprox - bestdualobj_;
 
@@ -396,7 +396,7 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 			primsol_.assign(primal_si_->getColSolution(), primal_si_->getColSolution() + primal_si_->getNumCols());
 		} else {
 			message_->print(5, "  The primal master could not be solved to optimality.\n");
-			//primobj_ = COIN_DBL_MAX;
+			primobj_ = COIN_DBL_MAX;
 			//primsol_.assign(si_->getRowPrice(), si_->getRowPrice() + si_->getNumRows());
 		}
 
