@@ -32,6 +32,7 @@ git submodule update --init --recursive
 
 ## Installation
 
+See [PREREQUISITES.md](PREREQUISITES.md)
 See [INSTALL.md](INSTALL.md)
 
 ## Interfaces
