@@ -920,9 +920,9 @@ DSP_RTN_CODE DdMWSync::syncUpperbound(
 		if (oldprimobj > master_->bestprimobj_)
 		{
 			itercode_ = 'P';
-//			CoinCopyN(solutions[bestprimsol]->denseVector(model_->getNumCouplingCols()),
-//					model_->getNumCouplingCols(),
-//					master_->bestprimsol_);
+			CoinCopyN(solutions[bestprimsol]->denseVector(model_->getNumCouplingCols()),
+					model_->getNumCouplingCols(),
+					master_->bestprimsol_);
 		}
 	}
 	else if (lb_comm_ != MPI_COMM_NULL)

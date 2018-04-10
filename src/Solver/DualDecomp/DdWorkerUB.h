@@ -34,6 +34,7 @@ public:
 
 	/** evaluate solution */
 	double evaluate(CoinPackedVector * solution);
+	double evaluate(int n, double * solution);
 
 	virtual int getType() {return UB;}
 
@@ -44,6 +45,7 @@ protected:
 
 public:
 	double bestub_; /**< best upper bound */
+	double** primsols_; /**< primal solution for each scenario */
 
 private:
 

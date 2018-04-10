@@ -7,6 +7,7 @@
 
 //#define DSP_DEBUG
 
+#include "Model/TssModel.h"
 #include "Solver/DualDecomp/DdMWSerial.h"
 #include "Solver/DualDecomp/DdMasterTr.h"
 #ifndef NO_OOQP
@@ -83,6 +84,7 @@ DSP_RTN_CODE DdMWSerial::init()
 DSP_RTN_CODE DdMWSerial::finalize()
 {
 	BGN_TRY_CATCH
+
 #if 0
 	char filename[64];
 	const char * output_prefix = par_->getStrParam("OUTPUT/PREFIX").c_str();
@@ -270,9 +272,9 @@ DSP_RTN_CODE DdMWSerial::run()
 				if (oldub > master_->bestprimobj_)
 				{
 					itercode_ = 'P';
-//					CoinCopyN(coupling_solutions[bestprimsol]->denseVector(model_->getNumCouplingCols()),
-//							model_->getNumCouplingCols(),
-//							master_->bestprimsol_);
+					CoinCopyN(coupling_solutions[bestprimsol]->denseVector(model_->getNumCouplingCols()),
+							model_->getNumCouplingCols(),
+							master_->bestprimsol_);
 				}
 			}
 			/** clear stored solutions */
@@ -357,8 +359,26 @@ DSP_RTN_CODE DdMWSerial::run()
 		}
 	}
 
-	DSPdebugMessage2("primsol_:\n");
-	DSPdebug2(message_->printArray(master_->getSiPtr()->getNumCols(), master_->getPrimalSolution()));
+	if (model_->isStochastic()) {
+		TssModel* tss = dynamic_cast<TssModel*>(model_);
+
+		DdWorkerUB * workerub = NULL;
+		for (unsigned i = 0; i < worker_.size(); ++i)
+			if (worker_[i]->getType() == DdWorker::UB) {
+				workerub = dynamic_cast<DdWorkerUB*>(worker_[i]);
+				break;
+			}
+		
+		/** evaluate UB to get primal solution for each scenario */
+		double ub = workerub->evaluate(model_->getNumCouplingCols(), master_->bestprimsol_);
+		for (int s = 0; s < tss->getNumScenarios(); ++s) {
+			CoinCopyN(workerub->primsols_[s], tss->getNumCols(1), 
+				master_->bestprimsol_ + tss->getNumCols(0) + s * tss->getNumCols(1));
+			//DspMessage::printArray(tss->getNumCols(1), workerub->primsols_[s]);
+		}
+		DSPdebugMessage2("primsol_:\n");
+		DSPdebug2(DspMessage::printArray(model_->getFullModelNumCols(), master_->bestprimsol_));
+	}
 
 	/** release shallow-copy of pointers */
 	for (int i = 0; i < model_->getNumSubproblems(); ++i)

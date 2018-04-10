@@ -26,6 +26,7 @@ DdWorkerUB::DdWorkerUB(
 		DspMessage * message):
 DdWorker(par, model, message),
 bestub_(COIN_DBL_MAX),
+primsols_(NULL),
 mat_mp_(NULL),
 rlbd_org_(NULL),
 rubd_org_(NULL),
@@ -35,6 +36,7 @@ statuses_(NULL),
 ub_(0.0) {}
 
 DdWorkerUB::~DdWorkerUB() {
+	FREE_2D_ARRAY_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), primsols_);
 	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), mat_mp_);
 	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), rlbd_org_);
 	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), rubd_org_);
@@ -83,6 +85,7 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 	rubd_org_  = new double * [nsubprobs];
 	si_        = new SolverInterface * [nsubprobs];
 	objvals_   = new double [nsubprobs];
+	primsols_  = new double * [nsubprobs];
 	statuses_  = new int [nsubprobs];
 
 	for (int s = 0; s < nsubprobs; ++s) {
@@ -114,6 +117,9 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 	    /** load problem */
 	    si_[s]->loadProblem(mat_reco, clbd_reco, cubd_reco, obj_reco, ctype_reco, rlbd_org_[s], rubd_org_[s]);
 	    DSPdebug(mat_reco->verifyMtx(4));
+
+		/** allocate array size for each scenario primal solution */
+		primsols_[s] = new double [si_[s]->getNumCols()];
     }
 	END_TRY_CATCH_RTN(FREE_MEMORY, DSP_RTN_ERR)
 
@@ -121,6 +127,23 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 
 	return DSP_RTN_OK;
 #undef FREE_MEMORY
+}
+
+double DdWorkerUB::evaluate(int n, double* solution) {
+	std::vector<int> indices;
+	std::vector<double> elements;
+	for (int i = 0; i < n; ++i)
+		if (fabs(solution[i]) > 1.0e-10) {
+			indices.push_back(i);
+			elements.push_back(solution[i]);
+		}
+
+	CoinPackedVector *s = new CoinPackedVector(indices.size(), &indices[0], &elements[0]);
+	double ub = evaluate(s);
+	
+	delete s;
+
+	return ub;
 }
 
 double DdWorkerUB::evaluate(CoinPackedVector* solution) {
@@ -243,6 +266,7 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 
 		primobj += si_[s]->getPrimalBound();
 		dualobj += si_[s]->getDualBound();
+		CoinCopyN(si_[s]->getSolution(), si_[s]->getNumCols(), primsols_[s]);
 		total_cputime += CoinCpuTime() - cputime;
 		total_walltime += CoinGetTimeOfDay() - walltime;
 
