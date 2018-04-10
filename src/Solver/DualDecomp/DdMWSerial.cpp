@@ -359,7 +359,7 @@ DSP_RTN_CODE DdMWSerial::run()
 		}
 	}
 
-	if (model_->isStochastic()) {
+	if (parEvalUb_ >= 0 && model_->isStochastic()) {
 		TssModel* tss = dynamic_cast<TssModel*>(model_);
 
 		DdWorkerUB * workerub = NULL;
