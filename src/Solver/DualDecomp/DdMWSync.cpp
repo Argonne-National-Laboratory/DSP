@@ -6,6 +6,7 @@
  */
 
 //#define DSP_DEBUG
+#include "Model/TssModel.h"
 #include "Solver/DualDecomp/DdMWSync.h"
 #include "Solver/DualDecomp/DdMasterTr.h"
 #ifndef NO_OOQP
@@ -448,11 +449,37 @@ DSP_RTN_CODE DdMWSync::runMaster()
 		MPI_Scatterv(sendbuf, scounts, sdispls, MPI_DOUBLE, NULL, 0, MPI_DOUBLE, 0, subcomm_);
 	}
 
-	/** set best dual objective */
-	//master_->bestdualobj_ = master_->primobj_;
+	if (parEvalUb_ >= 0 && model_->isStochastic()) {
+		TssModel* tss = dynamic_cast<TssModel*>(model_);
+		double *bestcouplingsol = NULL;
 
-	DSPdebugMessage2("primsol_:\n");
-	DSPdebug2(message_->printArray(master_->getSiPtr()->getNumCols(), master_->getPrimalSolution()));
+		/** broadcast best primal coupling solution */
+		MPI_Bcast(master_->bestprimsol_, model_->getNumCouplingCols(), MPI_DOUBLE, 0, comm_);
+
+		/** gather primal solution for each scenario */
+		bestcouplingsol = new double [tss->getNumCols(1) * tss->getNumScenarios()];
+		for (int i = 0; i < subcomm_size_; ++i) {
+			rcounts[i] = tss->getNumCols(1) * nsubprobs_[i];
+			if (i == 0)
+				rdispls[i] = 0;
+			else
+				rdispls[i] = rdispls[i-1] + rcounts[i-1];
+		}
+		MPI_Gatherv(NULL, 0, MPI_DOUBLE, bestcouplingsol, rcounts, rdispls, MPI_DOUBLE, 0, comm_);
+
+		/** rearrange primal solution */
+		for (int i = 0, j = 0; i < subcomm_size_; ++i)
+			for (int s = 0; s < nsubprobs_[i]; ++s) {
+				CoinCopyN(bestcouplingsol + j * tss->getNumCols(1), tss->getNumCols(1), 
+					master_->bestprimsol_ + tss->getNumCols(0) + subprob_indices_[j] * tss->getNumCols(1));
+				j++;
+			}
+
+		FREE_ARRAY_PTR(bestcouplingsol);
+
+		DSPdebugMessage2("primsol_:\n");
+		DSPdebug2(DspMessage::printArray(model_->getFullModelNumCols(), master_->bestprimsol_));
+	}
 
 	/** release shallow-copy of pointers */
 	for (int i = 0; i < model_->getNumSubproblems(); ++i)
@@ -652,6 +679,39 @@ DSP_RTN_CODE DdMWSync::runWorker()
 				}
 			}
 		}
+	}
+
+	if (parEvalUb_ >= 0 && model_->isStochastic()) {
+		TssModel* tss = dynamic_cast<TssModel*>(model_);
+		DdWorkerUB * workerub = NULL;
+		double *bestcouplingsol = NULL;
+
+		/** broadcast best primal coupling solution */
+		bestcouplingsol = new double [model_->getNumCouplingCols()];
+		MPI_Bcast(bestcouplingsol, model_->getNumCouplingCols(), MPI_DOUBLE, 0, comm_);
+
+		/** get WorkerUB pointer */
+		for (unsigned i = 0; i < worker_.size(); ++i)
+			if (worker_[i]->getType() == DdWorker::UB) {
+				workerub = dynamic_cast<DdWorkerUB*>(worker_[i]);
+				break;
+			}
+
+		/** evaluate UB to get primal solution for each scenario */
+		double ub = workerub->evaluate(model_->getNumCouplingCols(), bestcouplingsol);
+
+		/** send primal solution to root */
+		FREE_ARRAY_PTR(sendbuf);
+		int scount = tss->getNumCols(1) * par_->getIntPtrParamSize("ARR_PROC_IDX");
+		sendbuf = new double [scount];
+		for (int s = 0; s < par_->getIntPtrParamSize("ARR_PROC_IDX"); ++s)
+			CoinCopyN(workerub->primsols_[s], tss->getNumCols(1), sendbuf + s * tss->getNumCols(1));
+		MPI_Gatherv(sendbuf, scount, MPI_DOUBLE, NULL, NULL, NULL, MPI_DOUBLE, 0, comm_);
+
+		FREE_ARRAY_PTR(bestcouplingsol);
+
+		DSPdebugMessage2("primsol_:\n");
+		DSPdebug2(DspMessage::printArray(model_->getFullModelNumCols(), master_->bestprimsol_));
 	}
 
 	/** release pointers */
@@ -901,16 +961,16 @@ DSP_RTN_CODE DdMWSync::syncUpperbound(
 	/** allocate memory */
 	primobjs = new double [nsolutions];
 	
+	int bestprimsol = -1;
 	if (comm_rank_ == 0)
 	{
-		int bestprimsol = -1;
 		double oldprimobj = master_->bestprimobj_;
 		/** receive upper bounds */
 		MPI_Recv(primobjs, nsolutions, MPI_DOUBLE, lb_comm_root_, DSP_MPI_TAG_UB, comm_, &status);
 		/** calculate best primal objective */
 		for (int i = 0; i < nsolutions; ++i)
 		{
-			//DSPdebugMessage("solution %d: primal objective %+e\n", i, primobjs[i]);
+			DSPdebugMessage("solution %d: primal objective %+e\n", i, primobjs[i]);
 			if (primobjs[i] < master_->bestprimobj_)
 			{
 				master_->bestprimobj_ = primobjs[i];
@@ -918,11 +978,14 @@ DSP_RTN_CODE DdMWSync::syncUpperbound(
 			}
 		}
 		if (oldprimobj > master_->bestprimobj_)
-		{
 			itercode_ = 'P';
-			CoinCopyN(solutions[bestprimsol]->denseVector(model_->getNumCouplingCols()),
-					model_->getNumCouplingCols(),
-					master_->bestprimsol_);
+
+		MPI_Bcast(&bestprimsol, 1, MPI_INT, 0, comm_);
+
+		if (bestprimsol > -1) {
+			MPI_Recv(master_->bestprimsol_, model_->getNumCouplingCols(), MPI_DOUBLE, 
+				lb_comm_root_, DSP_MPI_TAG_UB, comm_, &status);
+			//DspMessage::printArray(model_->getNumCouplingCols(), master_->bestprimsol_);
 		}
 	}
 	else if (lb_comm_ != MPI_COMM_NULL)
@@ -934,6 +997,12 @@ DSP_RTN_CODE DdMWSync::syncUpperbound(
 		/** send the upper bounds to the root */
 		if (lb_comm_rank_ == 0) {
 			MPI_Send(sumub, nsolutions, MPI_DOUBLE, 0, DSP_MPI_TAG_UB, comm_);
+		}
+		MPI_Bcast(&bestprimsol, 1, MPI_INT, 0, comm_);
+		
+		if (bestprimsol > -1 && lb_comm_rank_ == 0) {
+			MPI_Send(solutions[bestprimsol]->denseVector(model_->getNumCouplingCols()), model_->getNumCouplingCols(),
+				MPI_DOUBLE, 0, DSP_MPI_TAG_UB, comm_);
 		}
 	}
 

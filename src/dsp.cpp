@@ -146,10 +146,9 @@ void runDsp(char* algotype, char* smpsfile, char* solnfile, char* paramfile) {
 			cout << "Primal Bound: " << primobj << endl;
 			cout << "Dual Bound  : " << dualobj << endl;
 
-#ifndef DSP_HAS_MPI
 			/** write solutions to files */
 			if (solnfile != NULL) {
-				if (primobj > 1.0e+20) {
+				if (primobj < 1.0e+20) {
 					double *primsol = new double [ncols];
 					getPrimalSolution(env, ncols, primsol);
 
@@ -177,7 +176,6 @@ void runDsp(char* algotype, char* smpsfile, char* solnfile, char* paramfile) {
 				
 				delete [] dualsol;
 			}
-#endif
 		}
 	}
 
