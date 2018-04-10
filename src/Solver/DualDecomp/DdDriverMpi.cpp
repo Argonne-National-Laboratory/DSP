@@ -76,13 +76,13 @@ DSP_RTN_CODE DdDriverMpi::run()
 		dualobj_ = mw_->master_->getBestDualObjective();
 
 		/** primal solution */
-		nprimsol = model_->getNumCouplingCols();
-		primsol_ = new double [model_->getNumCouplingCols()];
+		nprimsol = model_->getFullModelNumCols();
+		primsol_ = new double [nprimsol];
 		CoinCopyN(mw_->master_->getBestPrimalSolution(), nprimsol, primsol_);
 
 		/** dual solution */
 		ndualsol = model_->getNumCouplingRows();
-		dualsol_ = new double [model_->getNumCouplingRows()];
+		dualsol_ = new double [ndualsol];
 		CoinCopyN(mw_->master_->getBestDualSolution(), ndualsol, dualsol_);
 
 		numNodes_ = mw_->master_->getSiPtr()->getNumNodes();

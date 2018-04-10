@@ -54,9 +54,9 @@ DSP_RTN_CODE DdDriverSerial::run()
 		status_ = master->getStatus();
 		primobj_ = master->getBestPrimalObjective();
 		dualobj_ = master->getBestDualObjective();
-		primsol_ = new double [model_->getNumCouplingCols()];
+		primsol_ = new double [model_->getFullModelNumCols()];
 		dualsol_ = new double [model_->getNumCouplingRows()];
-		CoinCopyN(master->getBestPrimalSolution(), model_->getNumCouplingCols(), primsol_);
+		CoinCopyN(master->getBestPrimalSolution(), model_->getFullModelNumCols(), primsol_);
 		CoinCopyN(master->getBestDualSolution(), model_->getNumCouplingRows(), dualsol_);
 		numNodes_ = master->getSiPtr()->getNumNodes();
 		numIterations_ = master->getSiPtr()->getIterationCount();
