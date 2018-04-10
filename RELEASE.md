@@ -1,6 +1,11 @@
 DSP Release Notes
 =================
 
+April 10, 2018
+--------------
+
+* DSP binary can write primal and dual solutions to files.
+
 April 2, 2018
 -------------
 
