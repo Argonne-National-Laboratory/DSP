@@ -133,73 +133,75 @@ DSP_RTN_CODE DwMaster::init() {
 
 	BGN_TRY_CATCH
 
-    if (model_->isStochastic()) {
-    	DSPdebugMessage("Loading stochastic model.\n");
+	if (model_->isStochastic()) {
+		DSPdebugMessage("Loading stochastic model.\n");
 
-    	/** two-stage stochastic model */
-    	tss = dynamic_cast<TssModel*>(model_);
+		/** two-stage stochastic model */
+		tss = dynamic_cast<TssModel*>(model_);
 
-    	/** get DE model */
-    	DSP_RTN_CHECK_THROW(model_->getFullModel(org_mat, org_clbd, org_cubd, org_ctype, org_obj, org_rlbd, org_rubd));
+		/** get DE model */
+		DSP_RTN_CHECK_THROW(model_->getFullModel(org_mat, org_clbd, org_cubd, org_ctype, org_obj, org_rlbd, org_rubd));
+		DSPdebug(org_mat->verifyMtx(4));
 
-    	int nscen = tss->getNumScenarios();
-    	int ncols_first_stage = tss->getNumCols(0);
-    	int ncols = org_mat->getNumCols() + ncols_first_stage * (nscen - 1);
-    	const double* probability = tss->getProbability();
+		int nscen = tss->getNumScenarios();
+		int ncols_first_stage = tss->getNumCols(0);
+		int ncols = org_mat->getNumCols() + ncols_first_stage * (nscen - 1);
+		const double* probability = tss->getProbability();
+		DSPdebugMessage("nscen %d ncols_first_stage %d ncols %d\n", nscen, ncols_first_stage, ncols);
 
-    	mat_orig_ = new CoinPackedMatrix(org_mat->isColOrdered(), 0, 0);
-    	mat_orig_->setDimensions(0, ncols);
+		mat_orig_ = new CoinPackedMatrix(org_mat->isColOrdered(), 0, 0);
+		mat_orig_->setDimensions(0, ncols);
 
-    	/** add non-anticipativity constraints */
-    	int indices[2];
-    	double elements[] = {1.0, -1.0};
-    	for (int i = 0; i < nscen; ++i) {
-    		if (i < nscen - 1) {
-        		for (int j = 0; j < ncols_first_stage; ++j) {
-        			indices[0] = i * ncols_first_stage + j;
-        			indices[1] = (i+1) * ncols_first_stage + j;
-            		mat_orig_->appendRow(2, indices, elements);
-        		}
-    		} else {
-        		for (int j = 0; j < ncols_first_stage; ++j) {
-        			indices[0] = i * ncols_first_stage + j;
-        			indices[1] = j;
-            		mat_orig_->appendRow(2, indices, elements);
-        		}
-    		}
-    	}
-    	DSPdebug(mat_orig_->verifyMtx(4));
+		/** add non-anticipativity constraints */
+		int indices[2];
+		double elements[] = {1.0, -1.0};
+		for (int i = 0; i < nscen; ++i) {
+			if (i < nscen - 1) {
+				for (int j = 0; j < ncols_first_stage; ++j) {
+					indices[0] = i * ncols_first_stage + j;
+					indices[1] = (i+1) * ncols_first_stage + j;
+					mat_orig_->appendRow(2, indices, elements);
+				}
+			} else {
+				for (int j = 0; j < ncols_first_stage; ++j) {
+					indices[0] = i * ncols_first_stage + j;
+					indices[1] = j;
+					mat_orig_->appendRow(2, indices, elements);
+				}
+			}
+		}
+		DSPdebug(mat_orig_->verifyMtx(4));
 
-    	clbd_orig_.resize(ncols);
-    	cubd_orig_.resize(ncols);
-    	ctype_orig_.resize(ncols);
-    	obj_orig_.resize(ncols);
-    	rlbd_orig_.resize(mat_orig_->getNumRows());
-    	rubd_orig_.resize(mat_orig_->getNumRows());
-	for (int s = 0; s < nscen; ++s) {
-    		std::copy(org_ctype, org_ctype + ncols_first_stage, ctype_orig_.begin() + s * ncols_first_stage);
-	    	std::copy(org_clbd, org_clbd + ncols_first_stage, clbd_orig_.begin() + s * ncols_first_stage);
-	    	std::copy(org_cubd, org_cubd + ncols_first_stage, cubd_orig_.begin() + s * ncols_first_stage);
-	    	for (int j = 0; j < ncols_first_stage; ++j)
-	    		obj_orig_[s * ncols_first_stage + j] = org_obj[j] * probability[s];
+		clbd_orig_.resize(ncols);
+		cubd_orig_.resize(ncols);
+		ctype_orig_.resize(ncols);
+		obj_orig_.resize(ncols);
+		rlbd_orig_.resize(mat_orig_->getNumRows());
+		rubd_orig_.resize(mat_orig_->getNumRows());
+		for (int s = 0; s < nscen; ++s) {
+			std::copy(org_ctype, org_ctype + ncols_first_stage, ctype_orig_.begin() + s * ncols_first_stage);
+			std::copy(org_clbd, org_clbd + ncols_first_stage, clbd_orig_.begin() + s * ncols_first_stage);
+			std::copy(org_cubd, org_cubd + ncols_first_stage, cubd_orig_.begin() + s * ncols_first_stage);
+			for (int j = 0; j < ncols_first_stage; ++j)
+				obj_orig_[s * ncols_first_stage + j] = org_obj[j] * probability[s];
+		}
+		std::copy(org_ctype + ncols_first_stage, org_ctype + ncols - (nscen-1) * ncols_first_stage, ctype_orig_.begin() + nscen * ncols_first_stage);
+		std::copy(org_clbd + ncols_first_stage, org_clbd + ncols - (nscen-1) * ncols_first_stage, clbd_orig_.begin() + nscen * ncols_first_stage);
+		std::copy(org_cubd + ncols_first_stage, org_cubd + ncols - (nscen-1) * ncols_first_stage, cubd_orig_.begin() + nscen * ncols_first_stage);
+		std::fill(obj_orig_.begin() + nscen * ncols_first_stage, obj_orig_.end(), 0.0);
+		std::fill(rlbd_orig_.begin(), rlbd_orig_.end(), 0.0);
+		std::fill(rubd_orig_.begin(), rubd_orig_.end(), 0.0);
+	} else {
+		/** retrieve the original master problem structure */
+		model_->decompose(0, NULL, 0, NULL, NULL, NULL,
+				mat_orig_, org_clbd, org_cubd, org_ctype, org_obj, org_rlbd, org_rubd);
+		clbd_orig_.assign(org_clbd, org_clbd + mat_orig_->getNumCols());
+		cubd_orig_.assign(org_cubd, org_cubd + mat_orig_->getNumCols());
+		ctype_orig_.assign(org_ctype, org_ctype + mat_orig_->getNumCols());
+		obj_orig_.assign(org_obj, org_obj + mat_orig_->getNumCols());
+		rlbd_orig_.assign(org_rlbd, org_rlbd + mat_orig_->getNumRows());
+		rubd_orig_.assign(org_rubd, org_rubd + mat_orig_->getNumRows());
 	}
-   	std::copy(org_ctype + ncols_first_stage, org_ctype + ncols - (nscen-1) * ncols_first_stage, ctype_orig_.begin() + nscen * ncols_first_stage);
-    	std::copy(org_clbd + ncols_first_stage, org_clbd + ncols - (nscen-1) * ncols_first_stage, clbd_orig_.begin() + nscen * ncols_first_stage);
-    	std::copy(org_cubd + ncols_first_stage, org_cubd + ncols - (nscen-1) * ncols_first_stage, cubd_orig_.begin() + nscen * ncols_first_stage);
-    	std::fill(obj_orig_.begin() + nscen * ncols_first_stage, obj_orig_.end(), 0.0);
-    	std::fill(rlbd_orig_.begin(), rlbd_orig_.end(), 0.0);
-    	std::fill(rubd_orig_.begin(), rubd_orig_.end(), 0.0);
-    } else {
-    	/** retrieve the original master problem structure */
-    	model_->decompose(0, NULL, 0, NULL, NULL, NULL,
-    			mat_orig_, org_clbd, org_cubd, org_ctype, org_obj, org_rlbd, org_rubd);
-    	clbd_orig_.assign(org_clbd, org_clbd + mat_orig_->getNumCols());
-    	cubd_orig_.assign(org_cubd, org_cubd + mat_orig_->getNumCols());
-    	ctype_orig_.assign(org_ctype, org_ctype + mat_orig_->getNumCols());
-    	obj_orig_.assign(org_obj, org_obj + mat_orig_->getNumCols());
-    	rlbd_orig_.assign(org_rlbd, org_rlbd + mat_orig_->getNumRows());
-    	rubd_orig_.assign(org_rubd, org_rubd + mat_orig_->getNumRows());
-    }
 
 	ncols_orig_ = mat_orig_->getNumCols(); /**< number of columns in the original master */
 	nrows_orig_ = mat_orig_->getNumRows(); /**< number of rows in the original master */

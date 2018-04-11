@@ -35,6 +35,7 @@ DwWorker::DwWorker(DecModel * model, DspParams * par, DspMessage * message) :
 
 	/** number of total subproblems */
 	nsubprobs_ = parProcIdxSize_;
+	DSPdebugMessage("nsubprobs_ %d\n", nsubprobs_);
 
 	/** create subproblem solver */
 	//sub_ = new DwSub();
