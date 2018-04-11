@@ -6,7 +6,7 @@
  */
 
 //#define DSP_DEBUG
-//#define WRITELOG
+#define WRITELOG
 
 /** Coin */
 #include "CoinHelperFunctions.hpp"
@@ -161,6 +161,8 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 	/** retrieve objects */
 	DspNodeDesc* desc = dynamic_cast<DspNodeDesc*>(desc_);
 	DspModel* model = dynamic_cast<DspModel*>(desc->getModel());
+	DwMaster* solver = dynamic_cast<DwMaster*>(model->getSolver());
+	DspParams* par = model->getParPtr();
 
 	/** new nodes to be returned */
 	std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > newNodes;
@@ -169,13 +171,15 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 	/** set status */
 	setStatus(AlpsNodeStatusBranched);
 	wirteLog("branched", desc, getQuality(), 1.0, 1);
-//#define STRONG_BRANCH
+#define STRONG_BRANCH
 #ifdef STRONG_BRANCH
 	/** turn off display */
 	solver_loglevel = solver->getLogLevel();
 	solver->setLogLevel(0);
 	/** set other parameters */
-	solver->setHeuristicRuns(false);
+	//solver->setHeuristicRuns(false);
+	bool run_heuristics = par->getBoolParam("DW/HEURISTICS");
+	par->setBoolParam("DW/HEURISTICS", false);
 	solver->setIterLimit(10);
 
 	/** Do strong down-branching */
@@ -240,6 +244,7 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 
 	/** restore solver display option */
 	solver->setLogLevel(solver_loglevel);
+	par->setBoolParam("DW/HEURISTICS", run_heuristics);
 #else
 	/** add branching-down node */
 	node = new DspNodeDesc(model, -1, branchingDn_);
