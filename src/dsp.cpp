@@ -108,6 +108,7 @@ void runDsp(char* smpsfile, char* mpsfile, char* decfile, char* paramfile) {
 	if (smpsfile != NULL) {
 		if (isroot) cout << "Reading SMPS files: " << smpsfile << endl;
 		readSmps(env, smpsfile);
+		setBlockIds(env, getNumScenarios(env));
 	} else if (mpsfile != NULL && decfile != NULL) {
 		if (isroot) {
 			cout << "Reading MPS file: " << mpsfile << endl;
