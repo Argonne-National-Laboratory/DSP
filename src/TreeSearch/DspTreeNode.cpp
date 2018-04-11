@@ -91,7 +91,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 		DSPdebugMessage("Found new upper bound %e\n", model->getBestPrimalObjective());
 		DspNodeSolution* nodesol = new DspNodeSolution(model->getBestPrimalSolution(), model->getBestPrimalObjective());
 		getKnowledgeBroker()->addKnowledge(AlpsKnowledgeTypeSolution, nodesol, model->getBestPrimalObjective());
-		wirteLog("heuristic", desc, model->getBestPrimalObjective());
+		//wirteLog("heuristic", desc, model->getBestPrimalObjective());
 	}
 
 	switch (model->getStatus()) {
