@@ -16,8 +16,11 @@ DwModel::DwModel(): DspModel(), master_(NULL), infeasibility_(0.0) {}
 DwModel::DwModel(DecSolver* solver): DspModel(solver), infeasibility_(0.0) {
 	master_ = dynamic_cast<DwMaster*>(solver_);
 	primsol_.resize(master_->ncols_orig_);
-	//heuristics_.push_back(new DwRounding("Rounding", *this));
-	heuristics_.push_back(new DwSmip("Smip", *this));
+
+	/** add heuristics */
+	heuristics_.push_back(new DwRounding("Rounding", *this));
+	if (master_->getModelPtr()->isStochastic())
+		heuristics_.push_back(new DwSmip("Smip", *this));
 }
 
 DwModel::~DwModel() {
@@ -87,7 +90,7 @@ DSP_RTN_CODE DwModel::solve() {
 				for (auto it = heuristics_.begin(); it != heuristics_.end(); it++) {
 					solver_->getMessagePtr()->print(1, "Running [%s] heuristic:\n", (*it)->name());
 					int found = (*it)->solution(bestprimobj_, bestprimsol_);
-					//printf("found %d bestprimobj %+e\n", found, bestprimobj_);
+					solver_->getMessagePtr()->print(1, "found %d bestprimobj %+e\n", found, bestprimobj_);
 				}
 			}
 		}
@@ -186,6 +189,7 @@ bool DwModel::chooseBranchingObjects(
 				branchingDn->push_back(j, master_->clbd_node_[j], floor(branchingValue));
 			} else if (master_->clbd_node_[j] > master_->clbd_orig_[j] || master_->cubd_node_[j] < master_->cubd_orig_[j]) {
 				/** store any bound changes made in parent nodes */
+				DSPdebugMessage("Adjusting bound change on column %d: [%e,%e]\n", j, master_->clbd_node_[j], master_->cubd_node_[j]);
 				branchingUp->push_back(j, master_->clbd_node_[j], master_->cubd_node_[j]);
 				branchingDn->push_back(j, master_->clbd_node_[j], master_->cubd_node_[j]);
 			}
