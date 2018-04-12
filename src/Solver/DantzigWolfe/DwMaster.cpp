@@ -477,12 +477,16 @@ DSP_RTN_CODE DwMaster::gutsOfSolve() {
 		DSP_RTN_CHECK_RTN_CODE(generateCols());
 		t_colgen_ += CoinGetTimeOfDay() - stime;
 
+		/** TODO: This place can have heuristics particularly for SMIP. */
+
 		/** subproblem solution may declare infeasibility. */
-		for (auto st = status_subs_.begin(); st != status_subs_.end(); st++)
+		for (auto st = status_subs_.begin(); st != status_subs_.end(); st++) {
+			DSPdebugMessage("subproblem status %d\n", *st);
 			if (*st == DSP_STAT_PRIM_INFEASIBLE) {
 				status_ = DSP_STAT_PRIM_INFEASIBLE;
 				break;
 			}
+		}
 		if (status_ == DSP_STAT_PRIM_INFEASIBLE)
 			break;
 

@@ -579,6 +579,8 @@ DSP_RTN_CODE DwBundleDual::addRows(
 		}
 
 		DSPdebugMessage("subproblem %d: status %d, objective %+e, violation %+e\n", sind, statuses[s], objs[s], dualsol_[sind] - objs[s]);
+		if (statuses[s] == DSP_STAT_UNKNOWN)
+			throw "Unknown subproblem solution status";
 
 		if (dualsol_[sind] > objs[s] + 1.0e-8 ||
 				statuses[s] == DSP_STAT_DUAL_INFEASIBLE) {
@@ -693,6 +695,7 @@ void DwBundleDual::removeBranchingRowsCols() {
 }
 
 void DwBundleDual::addBranchingRowsCols(const DspBranch* branchobj) {
+//#define BRANCH_ROW
 #ifdef BRANCH_ROW
 	for (unsigned j = 0; j < branchobj->index_.size(); ++j) {
 		if (branchobj->lb_[j] > clbd_orig_[branchobj->index_[j]]) {
