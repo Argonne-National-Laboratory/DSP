@@ -695,7 +695,7 @@ void DwBundleDual::removeBranchingRowsCols() {
 }
 
 void DwBundleDual::addBranchingRowsCols(const DspBranch* branchobj) {
-//#define BRANCH_ROW
+#define BRANCH_ROW
 #ifdef BRANCH_ROW
 	for (unsigned j = 0; j < branchobj->index_.size(); ++j) {
 		if (branchobj->lb_[j] > clbd_orig_[branchobj->index_[j]]) {
