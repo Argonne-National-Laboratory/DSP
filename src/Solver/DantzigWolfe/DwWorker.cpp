@@ -225,17 +225,17 @@ DSP_RTN_CODE DwWorker::generateCols(
 		int cpxstat = CPXgetstat(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
 		convertCoinToDspStatus(si_[s], status);
 		/** FIXME: Osi does not know this. */
-		if (cpxstat == CPXMIP_INFEASIBLE)
+		if (cpxstat == CPXMIP_INFEASIBLE) {
+			message_->print(1, "  Subproblem %d infeasible.\n", sind);
 			status = DSP_STAT_PRIM_INFEASIBLE;
-
-		/** FIXME: It may be terminated due to time limit. */
-		if (status == DSP_STAT_UNKNOWN) {
-			if (cpxstat == CPXMIP_TIME_LIM_FEAS) {
-				message_->print(2, "  Subproblem %d terminated due to time limit.\n", sind);
-				status = DSP_STAT_LIM_ITERorTIME;
-				num_timelim_stops_[s]++;
-			}
-		} else {
+		} else if (cpxstat == CPXMIP_INForUNBD) {
+			message_->print(1, "  Subproblem %d unbounded.\n", sind);
+			status = DSP_STAT_DUAL_INFEASIBLE;
+		} else if (cpxstat == CPXMIP_TIME_LIM_FEAS) {
+			message_->print(1, "  Subproblem %d terminated due to time limit.\n", sind);
+			status = DSP_STAT_LIM_ITERorTIME;
+			num_timelim_stops_[s]++;
+		} else if (status != DSP_STAT_UNKNOWN) {
 			num_timelim_stops_[s] = 0;
 			setTimeLimit(par_->getDblParam("DW/SUB/TIME_LIM"));
 		}
@@ -430,6 +430,18 @@ DSP_RTN_CODE DwWorker::solveSubproblems() {
 	int status;
 
 	BGN_TRY_CATCH
+
+#ifdef DSP_DEBUG
+	for (int s = 0; s < parProcIdxSize_; ++s) {
+		if (s >= 0) {
+			/** write MPS */
+			char ofname[128];
+			sprintf(ofname, "sub%d", s);
+			DSPdebugMessage("Writing MPS file: %s\n", ofname);
+			si_[s]->writeMps(ofname);
+		}
+	}
+#endif
 
 	double timlim = par_->getDblParam("DW/SUB/TIME_LIM");
 	int max_stops = *std::max_element(num_timelim_stops_.begin(), num_timelim_stops_.end());

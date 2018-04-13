@@ -95,7 +95,7 @@ DSP_RTN_CODE DwBundleDual::solve() {
 	for (auto st = status_subs_.begin(); st != status_subs_.end(); st++)
 		if (*st == DSP_STAT_PRIM_INFEASIBLE) {
 			status_ = DSP_STAT_PRIM_INFEASIBLE;
-			message_->print(3, "Subproblem solution is infeasible.\n");
+			message_->print(1, "Subproblem solution is infeasible.\n");
 			break;
 		}
 
@@ -125,12 +125,12 @@ DSP_RTN_CODE DwBundleDual::solve() {
 	/** check time limit */
 	t_total_ = CoinGetTimeOfDay() - t_start_;
 	if (time_remains_ < t_total_) {
-		message_->print(3, "Time limit reached.\n");
+		message_->print(1, "Time limit reached.\n");
 		status_ = DSP_STAT_LIM_ITERorTIME;
 	}
 
 	if (status_ == DSP_STAT_FEASIBLE) {
-		message_->print(3, "Generated %u initial columns. Initial dual bound %.12e\n", ngenerated_, -dualobj_);
+		message_->print(1, "Generated %u initial columns. Initial dual bound %.12e\n", ngenerated_, -dualobj_);
 		if (dualobj_ < bestdualobj_) {
 			bestdualobj_ = dualobj_;
 			bestdualsol_ = dualsol_;
@@ -358,6 +358,7 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 	case DSP_STAT_LIM_ITERorTIME: {
 
 		assignMasterSolution(dualsol_);
+		//DspMessage::printArray(nrows_, &dualsol_[0]);
 
 		d_.resize(nrows_-nrows_conv_);
 		p_.resize(nrows_-nrows_conv_);
