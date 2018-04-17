@@ -152,7 +152,10 @@ DSP_RTN_CODE DwWorker::createSubproblems() {
 			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_ADVIND, par_->getIntParam("DW/SUB/ADVIND"));
 		}
 
-		si_[s]->initialSolve();
+		if (nintegers > 0)
+			si_[s]->branchAndBound();
+		else
+			si_[s]->initialSolve();
 
 #ifdef DSP_DEBUG
 		if (s >= 0) {
