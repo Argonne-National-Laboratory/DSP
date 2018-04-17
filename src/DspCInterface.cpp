@@ -226,7 +226,6 @@ void setSolution(
 /** solve Dantzig-Wolfe decomposition */
 void solveDw(DspApiEnv * env) {
 	env->solver_ = new DwSolverSerial(env->model_, env->par_, env->message_);
-	//env->solver_ = new DspDriver(env->model_, env->par_);
 	DSP_RTN_CHECK_RTN(env->solver_->init());
 	env->solver_->solve();
 	env->solver_->finalize();
@@ -236,7 +235,6 @@ void solveDw(DspApiEnv * env) {
 /** solve Dantzig-Wolfe decomposition */
 void solveDwMpi(DspApiEnv * env, MPI_Comm comm) {
 	env->solver_ = new DwSolverMpi(env->model_, env->par_, env->message_, comm);
-	//env->solver_ = new DspDriverMpi(env->model_, env->par_, comm);
 	DSP_RTN_CHECK_RTN(env->solver_->init());
 	env->solver_->solve();
 	env->solver_->finalize();
