@@ -5,6 +5,7 @@
  *      Author: Kibaek Kim
  */
 
+#include <map>
 #include <iostream>
 #ifdef DSP_HAS_MPI
 #include <mpi.h>
@@ -25,7 +26,8 @@ void runDsp(char* smpsfile, char* mpsfile, char* decfile, char* paramfile);
 void readMpsDec(DspApiEnv* env, char* mpsfile, char* decfile);
 void parseDecFile(char* decfile, vector<vector<string> >& rows_in_blocks);
 void createBlockModel(DspApiEnv* env, CoinMpsIO& p, const CoinPackedMatrix* mat, 
-	int blockid, vector<string>& rows_in_block, const char* ctype, const double* obj);
+	int blockid, vector<string>& rows_in_block, map<string,int>& rowname2index, 
+	const char* ctype, const double* obj);
 
 std::vector<int> g_proc_idx_set;
 
@@ -154,23 +156,30 @@ void readMpsDec(DspApiEnv* env, char* mpsfile, char* decfile) {
 		else
 			ctype.push_back('I');
 
+	//cout << "Creating hash table for matrix rows ... ";
+	map<string, int> rowname2index;
+	for (int i = 0; i < p.getNumRows(); ++i)
+		rowname2index[string(p.rowName(i))] = i;
+	//cout << "done!" << endl;
+
 	// Read .dec file
 	// For each block, the following vector stores the corresponding rows.
+	//cout << "Parsing .dec file ... ";
 	vector<vector<string> > rows_in_blocks;
 	parseDecFile(decfile, rows_in_blocks);
+	//cout << "done!" << endl;
 
 	// Assign block(s) to each process
 	setBlockIds(env, rows_in_blocks.size() - 1);
 
 	// For master block
 	int blockid = 0;
-	createBlockModel(env, p, mps_matrix, 0, rows_in_blocks[0], ctype.c_str(), obj);
+	createBlockModel(env, p, mps_matrix, 0, rows_in_blocks[0], rowname2index, ctype.c_str(), obj);
 
 	// For each sub-block
 	for (unsigned i = 0; i < g_proc_idx_set.size(); ++i) {
 		blockid = g_proc_idx_set[i] + 1; // blockid = subproblem index + 1, because master = 0
-		//createBlockModel(env, p, mps_matrix, blockid, rows_in_blocks[blockid], ctype.c_str(), &zeros[0]);
-		createBlockModel(env, p, mps_matrix, blockid, rows_in_blocks[blockid], ctype.c_str(), obj);
+		createBlockModel(env, p, mps_matrix, blockid, rows_in_blocks[blockid], rowname2index, ctype.c_str(), obj);
 	}
 
 	updateBlocks(env);
@@ -226,24 +235,23 @@ void parseDecFile(char* decfile, vector<vector<string> >& rows_in_blocks) {
 }
 
 void createBlockModel(DspApiEnv* env, CoinMpsIO& p, const CoinPackedMatrix* mat, 
-	int blockid, vector<string>& rows_in_block, const char* ctype, const double* obj) {
-	vector<int> rowids;
-	vector<double> rlbd, rubd;
-	CoinPackedMatrix submat(false, 0, 0);
+		int blockid, vector<string>& rows_in_block, map<string,int>& rowname2index, 
+		const char* ctype, const double* obj) {
+	vector<int> rowids(rows_in_block.size(),-1);
+	vector<double> rlbd(rows_in_block.size(),0.0);
+	vector<double> rubd(rows_in_block.size(),0.0);
+	CoinPackedMatrix submat(false,0,0);
 
+	//cout << "Creating block " << blockid << " ... ";
 	for (unsigned j = 0; j < rows_in_block.size(); ++j) {
-		for (int k = 0; k < p.getNumRows(); ++k) {
-			if (strcmp(rows_in_block[j].c_str(), p.rowName(k)) == 0) {
-				rowids.push_back(k);
-				rlbd.push_back(p.getRowLower()[k]);
-				rubd.push_back(p.getRowUpper()[k]);
-				submat.appendRow(mat->getVectorSize(k), 
-					mat->getIndices() + mat->getVectorFirst(k),
-					mat->getElements() + mat->getVectorFirst(k));
-				break;
-			}
-		}
+		int k = rowname2index[rows_in_block[j]];
+		rowids[j] = k;
+		rlbd[j] = p.getRowLower()[k];
+		rubd[j] = p.getRowUpper()[k];
 	}
+	//cout << " with " << rowids.size() << " rows ... ";
+	submat.submatrixOf(*mat, rowids.size(), &rowids[0]);
+	//cout << "done!" << endl;
 #if 0
 	CoinMpsIO pout;
 	vector<string> cnames;
@@ -254,9 +262,12 @@ void createBlockModel(DspApiEnv* env, CoinMpsIO& p, const CoinPackedMatrix* mat,
 	sprintf(pout_name, "block%d.mps", blockid);
 	pout.writeMps(pout_name);
 #endif
+
+	//cout << "Loading the block ... ";
 	loadBlockProblem(env, blockid, p.getNumCols(), rowids.size(), 
 		submat.getNumElements(), submat.getVectorStarts(), submat.getIndices(), submat.getElements(), 
 		p.getColLower(), p.getColUpper(), ctype, obj, &rlbd[0], &rubd[0]);
+	//cout << "done!" << endl;
 }
 
 void setBlockIds(DspApiEnv* env, int nblocks, bool master_has_subblocks) {
