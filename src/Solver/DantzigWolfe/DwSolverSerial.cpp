@@ -30,9 +30,11 @@ DSP_RTN_CODE DwSolverSerial::init() {
 	BGN_TRY_CATCH
 
 	/** create worker */
+	message_->print(1, "Initializing subproblems ... ");
 	worker_ = new DwWorker(model_, par_, message_);
 
 	/** create master */
+	message_->print(1, "Initializing master problems ... ");
 	//master_ = new DwMaster(worker_);
 	master_ = new DwBundleDual(worker_);
 
@@ -40,6 +42,7 @@ DSP_RTN_CODE DwSolverSerial::init() {
 	DSP_RTN_CHECK_THROW(master_->init());
 
 	/** create an Alps model */
+	message_->print(1, "Initializing ALPS framework ... ");
 	alps_ = new DwModel(master_);
 
 	/** parameter setting */
