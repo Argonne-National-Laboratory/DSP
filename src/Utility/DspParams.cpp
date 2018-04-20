@@ -144,6 +144,7 @@ void DspParams::initIntParams()
 {
 	/** print level */
 	IntParams_.createParam("LOG_LEVEL", 1);
+	IntParams_.createParam("DD/SUB/LOG_LEVEL", 0);
 
 	/** branch-and-cut node limit */
 	IntParams_.createParam("NODE_LIM", MAX_INT_NUM);

@@ -87,3 +87,11 @@ void SolverInterfaceCpx::setGapTol(double tol)
 {
 	CPXsetdblparam(cpx_->getEnvironmentPtr(), CPX_PARAM_EPGAP, CoinMin(tol,1.0));
 }
+
+DSP_RTN_CODE SolverInterfaceCpx::getStatus() {
+	int cpxstat = CPXgetstat(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
+	if (cpxstat == CPXMIP_TIME_LIM_FEAS) {
+		return DSP_STAT_LIM_ITERorTIME;
+	}
+	return SolverInterfaceOsi::getStatus();
+}

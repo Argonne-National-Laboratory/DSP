@@ -219,7 +219,7 @@ DSP_RTN_CODE DdSub::createProblem() {
         si_ = new SolverInterfaceClp(par_);
 
     /** no display */
-    si_->setPrintLevel(0);
+    si_->setPrintLevel(par_->getIntParam("DD/SUB/LOG_LEVEL"));
 
     /** load problem */
     si_->loadProblem(mat, clbd, cubd, obj_, ctype, rlbd, rubd, "DdSub");

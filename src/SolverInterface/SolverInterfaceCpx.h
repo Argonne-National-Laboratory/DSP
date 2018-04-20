@@ -34,6 +34,9 @@ public:
 
 public:
 
+	/** solution status */
+	virtual DSP_RTN_CODE getStatus();
+
 	/** set node limit */
 	virtual void setNodeLimit(int limit);
 
