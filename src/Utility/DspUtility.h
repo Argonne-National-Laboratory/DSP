@@ -8,9 +8,6 @@
 #ifndef SRC_UTILITY_DSPUTILITY_H_
 #define SRC_UTILITY_DSPUTILITY_H_
 
-//#define DSP_DEBUG
-//#define DSP_DEBUG2
-
 #include <vector>
 /** Coin */
 #include "OsiSolverInterface.hpp"
@@ -31,26 +28,30 @@ inline bool duplicateVector(
 {
 	bool dup = false;
 
-#ifdef DSP_DEBUG2
-	DSPdebugMessage("vec (%d):\n", vec->getNumElements());
-	DspMessage::printArray(vec);
-#endif
+	// printf("vec (%d):\n", vec->getNumElements());
+	// DspMessage::printArray(vec);
 	/** number of saved solutions */
 	int num = vecs.size();
-	DSPdebugMessage2("number of vectors %d\n", num);
+	// printf("number of vectors %d\n", num);
+	
 	for (int i = num - 1; i >= 0; --i)
 	{
-#ifdef DSP_DEBUG2
-		DSPdebugMessage("vecs[%d] (%d):\n", i, vecs[i]->getNumElements());
-		DspMessage::printArray(vecs[i]);
-#endif
+		// printf("vecs[%d] (%d):\n", i, vecs[i]->getNumElements());
+		// DspMessage::printArray(vecs[i]);
+		// printf("%sequal size\n", vec->getNumElements() == vecs[i]->getNumElements() ? "" : "not ");
+		// printf("%d size\n", vec->getNumElements());
+		// printf("%sequal indices\n", std::equal(vec->getIndices(), vec->getIndices()+vec->getNumElements(), vecs[i]->getIndices()) ? "" : "not ");
+		// printf("%sequal elements\n", std::equal(vec->getElements(), vec->getElements()+vec->getNumElements(), vecs[i]->getElements(), myduplicatetolerance) ? "" : "not ");
+		// printf("%s\n", dup ? "duplicate" : "new");
+
 		if (vec->getNumElements() == vecs[i]->getNumElements()) {
 			if (vec->getNumElements() == 0)
 				dup = true;
 			else if (std::equal(vec->getIndices(), vec->getIndices()+vec->getNumElements(), vecs[i]->getIndices()) && 
-				std::equal(vec->getElements(), vec->getElements()+vec->getNumElements(), vecs[i]->getElements()), myduplicatetolerance)
+				std::equal(vec->getElements(), vec->getElements()+vec->getNumElements(), vecs[i]->getElements(), myduplicatetolerance))
 				dup = true;
 		}
+		// printf("%s\n", dup ? "duplicate" : "new");
 		if (dup) break;
 	}
 
