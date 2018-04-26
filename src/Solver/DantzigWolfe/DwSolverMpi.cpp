@@ -7,6 +7,7 @@
 
 //#define DSP_DEBUG
 #include "AlpsKnowledgeBrokerSerial.h"
+#include <Model/TssModel.h>
 #include <DantzigWolfe/DwSolverMpi.h>
 #include <DantzigWolfe/DwMaster.h>
 #include <DantzigWolfe/DwBundleDual.h>
@@ -73,9 +74,22 @@ DSP_RTN_CODE DwSolverMpi::solve() {
 		/** solve */
 		AlpsKnowledgeBrokerSerial alpsBroker(0, NULL, *alps_);
 		alpsBroker.search(alps_);
+		// alpsBroker.printBestSolution();
 
-		DspNodeSolution* solution = dynamic_cast<DspNodeSolution*>(alpsBroker.getBestKnowledge(AlpsKnowledgeTypeSolution).first);
-		solution->print(std::cout);
+		DspNodeSolution* solution = NULL;
+		if (alpsBroker.hasKnowledge(AlpsKnowledgeTypeSolution)) {
+			solution = dynamic_cast<DspNodeSolution*>(alpsBroker.getBestKnowledge(AlpsKnowledgeTypeSolution).first);
+			bestprimsol_ = solution->solution_;
+			if (model_->isStochastic()) {
+				TssModel* tss = dynamic_cast<TssModel*>(model_);
+				bestprimsol_.erase(bestprimsol_.begin(), bestprimsol_.begin() + tss->getNumCols(0) * (tss->getNumScenarios() - 1));
+			}
+		}
+		bestprimobj_ = alpsBroker.getBestQuality();
+		if (alpsBroker.getSolStatus() == AlpsExitStatusOptimal)
+			bestdualobj_ = bestprimobj_;
+		else
+			bestdualobj_ = alpsBroker.getBestKnowledge(AlpsKnowledgeTypeNode).second;
 
 		/** send signal */
 		int sig = DwWorkerMpi::sig_terminate;

@@ -400,14 +400,14 @@ double getDualBound(DspApiEnv * env)
 void getPrimalSolution(DspApiEnv * env, int num, double * solution)
 {
 	DSP_API_CHECK_SOLVER();
-	CoinCopyN(env->solver_->getPrimalSolution(), num, solution);
+	CoinCopyN(env->solver_->getBestPrimalSolution(), num, solution);
 }
 
 /** get dual solution */
 void getDualSolution(DspApiEnv * env, int num, double * solution)
 {
 	DSP_API_CHECK_SOLVER();
-	CoinCopyN(env->solver_->getDualSolution(), num, solution);
+	CoinCopyN(env->solver_->getBestDualSolution(), num, solution);
 }
 
 /** get number of iterations */
