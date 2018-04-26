@@ -209,9 +209,9 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 			newNodes.push_back(CoinMakeTriple(
 					static_cast<AlpsNodeDesc*>(node),
 					AlpsNodeStatusCandidate,
-					solver->getDualObjective()));
-			wirteLog("candidate", node, solver->getPrimalObjective());
-			DSPdebugMessage("Strong branching estimates objective value %e.\n", solver->getPrimalObjective());
+					solver->getBestDualObjective()));
+			wirteLog("candidate", node, solver->getBestDualObjective());
+			DSPdebugMessage("Strong branching estimates objective value %e.\n", solver->getBestDualObjective());
 		}
 	}
 	node = NULL;
@@ -239,9 +239,9 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 			newNodes.push_back(CoinMakeTriple(
 					static_cast<AlpsNodeDesc*>(node),
 					AlpsNodeStatusCandidate,
-					solver->getDualObjective()));
-			wirteLog("candidate", node, solver->getPrimalObjective());
-			DSPdebugMessage("Strong branching estimates objective value %e.\n", solver->getPrimalObjective());
+					solver->getBestDualObjective()));
+			wirteLog("candidate", node, solver->getBestDualObjective());
+			DSPdebugMessage("Strong branching estimates objective value %e.\n", solver->getBestDualObjective());
 		}
 	}
 	node = NULL;
