@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
 	exit(0); 
 #endif
 
-	if (argc < 5) {
+	if (argc < 3) {
 		EXIT_WITH_MSG
 	} else {
 		char* smpsfile = NULL;
@@ -133,9 +133,12 @@ void runDsp(char* smpsfile, char* mpsfile, char* decfile, char* paramfile) {
 #endif
 		solveDw(env);
 
-	if (isroot) cout << "Primal bound: " << getPrimalBound(env) << endl;
+	if (isroot) {
+		cout << "Primal bound: " << getPrimalBound(env) << endl;
+		cout << "Dual bound  : " << getDualBound(env) << endl;
+		cout << "Deleting DSP environment" << endl;
+	}
 
-	if (isroot) cout << "Deleting DSP environment" << endl;
 	freeEnv(env);
 }
 
