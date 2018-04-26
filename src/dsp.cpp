@@ -136,6 +136,12 @@ void runDsp(char* smpsfile, char* mpsfile, char* decfile, char* paramfile) {
 	if (isroot) {
 		cout << "Primal bound: " << getPrimalBound(env) << endl;
 		cout << "Dual bound  : " << getDualBound(env) << endl;
+		vector<double> sol(getTotalNumCols(env),0.0);
+		getPrimalSolution(env, getTotalNumCols(env), &sol[0]);
+		for (int j = 0; j < getTotalNumCols(env); ++j) {
+			if (fabs(sol[j]) > 1.0e-10)
+				cout << "x[" << j << "] = " << sol[j] << endl;
+		}
 		cout << "Deleting DSP environment" << endl;
 	}
 
