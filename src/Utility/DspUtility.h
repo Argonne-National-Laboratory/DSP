@@ -45,7 +45,7 @@ bool duplicateVector(
 			if (vec->getNumElements() == 0)
 				dup = true;
 			else if (std::equal(vec->getIndices(), vec->getIndices()+vec->getNumElements(), vecs[i]->getIndices()) && 
-				std::equal(vec->getElements(), vec->getElements()+vec->getNumElements(), vecs[i]->getElements()), myduplicatetolerance)
+				std::equal(vec->getElements(), vec->getElements()+vec->getNumElements(), vecs[i]->getElements(), myduplicatetolerance))
 				dup = true;
 		}
 		if (dup) break;
