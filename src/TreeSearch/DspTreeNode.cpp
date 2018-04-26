@@ -171,8 +171,7 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 	/** set status */
 	setStatus(AlpsNodeStatusBranched);
 	wirteLog("branched", desc, getQuality(), 1.0, 1);
-#define STRONG_BRANCH
-#ifdef STRONG_BRANCH
+
 	/** turn off display */
 	solver_loglevel = solver->getLogLevel();
 	solver->setLogLevel(0);
@@ -180,7 +179,12 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 	//solver->setHeuristicRuns(false);
 	bool run_heuristics = par->getBoolParam("DW/HEURISTICS");
 	par->setBoolParam("DW/HEURISTICS", false);
-	solver->setIterLimit(10);
+
+	if (par->getBoolParam("DW/STRONG_BRANCH")) {
+		solver->getMessagePtr()->print(1, "Strong branching ...\n");
+		solver->setIterLimit(10);
+	} else
+		solver->setIterLimit(1);
 
 	/** Do strong down-branching */
 	solver->setBranchingObjects(branchingDn_);
@@ -205,7 +209,7 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 			newNodes.push_back(CoinMakeTriple(
 					static_cast<AlpsNodeDesc*>(node),
 					AlpsNodeStatusCandidate,
-					solver->getPrimalObjective()));
+					solver->getDualObjective()));
 			wirteLog("candidate", node, solver->getPrimalObjective());
 			DSPdebugMessage("Strong branching estimates objective value %e.\n", solver->getPrimalObjective());
 		}
@@ -235,7 +239,7 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 			newNodes.push_back(CoinMakeTriple(
 					static_cast<AlpsNodeDesc*>(node),
 					AlpsNodeStatusCandidate,
-					solver->getPrimalObjective()));
+					solver->getDualObjective()));
 			wirteLog("candidate", node, solver->getPrimalObjective());
 			DSPdebugMessage("Strong branching estimates objective value %e.\n", solver->getPrimalObjective());
 		}
@@ -245,23 +249,6 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 	/** restore solver display option */
 	solver->setLogLevel(solver_loglevel);
 	par->setBoolParam("DW/HEURISTICS", run_heuristics);
-#else
-	/** add branching-down node */
-	node = new DspNodeDesc(model, -1, branchingDn_);
-	newNodes.push_back(CoinMakeTriple(
-			static_cast<AlpsNodeDesc*>(node),
-			AlpsNodeStatusCandidate, getQuality()));
-	wirteLog("candidate", node, getQuality());
-	node = NULL;
-
-	/** add branching-UP node */
-	node = new DspNodeDesc(model, 1, branchingUp_);
-	newNodes.push_back(CoinMakeTriple(
-			static_cast<AlpsNodeDesc*>(node),
-			AlpsNodeStatusCandidate, getQuality()));
-	wirteLog("candidate", node, getQuality());
-	node = NULL;
-#endif
 
 	return newNodes;
 }
