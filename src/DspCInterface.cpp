@@ -393,7 +393,7 @@ double getPrimalBound(DspApiEnv * env)
 double getDualBound(DspApiEnv * env)
 {
 	DSP_API_CHECK_SOLVER(0.0);
-	return env->solver_->getDualObjective();
+	return env->solver_->getBestDualObjective();
 }
 
 /** get solution */
