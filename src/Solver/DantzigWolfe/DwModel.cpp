@@ -17,10 +17,10 @@ DwModel::DwModel(DecSolver* solver): DspModel(solver), infeasibility_(0.0) {
 	master_ = dynamic_cast<DwMaster*>(solver_);
 	primsol_.resize(master_->ncols_orig_);
 
-	/** add heuristics */
-	heuristics_.push_back(new DwRounding("Rounding", *this));
-	if (master_->getModelPtr()->isStochastic())
-		heuristics_.push_back(new DwSmip("Smip", *this));
+	if (par_->getBoolParam("DW/HEURISTICS")) {
+		/** add heuristics */
+		heuristics_.push_back(new DwRounding("Rounding", *this));
+	}
 }
 
 DwModel::~DwModel() {
@@ -30,6 +30,8 @@ DwModel::~DwModel() {
 
 DSP_RTN_CODE DwModel::solve() {
 	BGN_TRY_CATCH
+
+	DspMessage* message = solver_->getMessagePtr();
 
 	/** set best primal objective value */
 	solver_->setBestPrimalObjective(bestprimobj_);
@@ -45,7 +47,16 @@ DSP_RTN_CODE DwModel::solve() {
 	case DSP_STAT_LIM_ITERorTIME: {
 
 		primobj_ = master_->getPrimalObjective();
-		dualobj_ = -master_->getBestDualObjective();
+		dualobj_ = master_->getBestDualObjective();
+
+		/** update best upper bound */
+		if (solver_->getBestPrimalObjective() < bestprimobj_) {
+			bestprimobj_ = solver_->getBestPrimalObjective();
+			bestprimsol_.resize(master_->ncols_orig_);
+			for (int j = 0; j < master_->ncols_orig_; ++j)
+				bestprimsol_[j] = solver_->getBestPrimalSolution()[j];
+			message->print(1, "Found new primal solution: %e\n", bestprimobj_);
+		}
 
 		if (primobj_ < 1.0e+20) {
 			/** parse solution */
@@ -70,7 +81,7 @@ DSP_RTN_CODE DwModel::solve() {
 				if (master_->ctype_orig_[j] != 'C') {
 					infeasibility_ += fabs(primsol_[j] - floor(primsol_[j] + 0.5));
 				}
-			solver_->getMessagePtr()->print(3, "Infeasibility: %+e\n", infeasibility_);
+			message->print(3, "Infeasibility: %+e\n", infeasibility_);
 
 			bool isViolated = false;
 			for (int j = 0; j < master_->ncols_orig_; ++j) {
@@ -86,11 +97,10 @@ DSP_RTN_CODE DwModel::solve() {
 			/** run heuristics */
 			if (par_->getBoolParam("DW/HEURISTICS") && infeasibility_ > 1.0e-6) {
 				/** FIXME */
-				bestprimobj_ = COIN_DBL_MAX;
 				for (auto it = heuristics_.begin(); it != heuristics_.end(); it++) {
-					solver_->getMessagePtr()->print(1, "Running [%s] heuristic:\n", (*it)->name());
+					message->print(1, "Running [%s] heuristic:\n", (*it)->name());
 					int found = (*it)->solution(bestprimobj_, bestprimsol_);
-					solver_->getMessagePtr()->print(1, "found %d bestprimobj %+e\n", found, bestprimobj_);
+					message->print(1, "found %d bestprimobj %+e\n", found, bestprimobj_);
 				}
 			}
 		}

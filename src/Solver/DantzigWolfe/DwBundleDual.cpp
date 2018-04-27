@@ -372,7 +372,7 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 			//printf("j %d: dualsol %+e, bestdualsol %+e, d %+e, p %+e, polyapprox %+e\n",
 			//		j, dualsol_[j], bestdualsol_[j], d_[j-nrows_conv_], p_[j-nrows_conv_], polyapprox);
 		}
-//		printf("u*dualsol*(bestdualsol-0.5*dualsol) = %+e\n", polyapprox);
+		//printf("u*dualsol*(bestdualsol-0.5*dualsol) = %+e\n", polyapprox);
 		polyapprox += getObjValue();
 		//printf("polyapprox %e\n", polyapprox);
 
@@ -473,8 +473,10 @@ DSP_RTN_CODE DwBundleDual::updateModel() {
 bool DwBundleDual::terminationTest() {
 	BGN_TRY_CATCH
 
-	if (-bestdualobj_ >= bestprimobj_)
+	if (-bestdualobj_ >= bestprimobj_) {
+		message_->print(3, "Terminated due to best dual bound (%e) >= best primal bound (%e)\n", -bestdualobj_, bestprimobj_);
 		return true;
+	}
 
 	if (primobj_ < 1.0e+20 && relgap_ <= par_->getDblParam("DW/GAPTOL"))
 		return true;
@@ -499,7 +501,6 @@ bool DwBundleDual::terminationTest() {
 }
 
 DSP_RTN_CODE DwBundleDual::addCols(
-		const double* piA,                   /**< [in] pi^T A */
 		std::vector<int>& indices,           /**< [in] subproblem indices corresponding to cols*/
 		std::vector<int>& statuses,          /**< [in] subproblem solution status */
 		std::vector<double>& cxs,            /**< [in] solution times original objective coefficients */

@@ -112,7 +112,6 @@ protected:
 
     /** Add columns */
     virtual DSP_RTN_CODE addCols(
-    		const double* piA,                   /**< [in] pi^T A */
     		std::vector<int>& indices,           /**< [in] subproblem indices corresponding to cols*/
 			std::vector<int>& statuses,          /**< [in] subproblem solution status */
 			std::vector<double>& cxs,            /**< [in] solution times original objective coefficients */
@@ -218,6 +217,7 @@ public:
 protected:
 
     std::vector<int> status_subs_; /**< subproblem status */
+    std::vector<CoinPackedVector*> stored_solutions_; /**< first-stage solutions that are evaluated for upper bounds */
 
 };
 

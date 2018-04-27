@@ -68,6 +68,8 @@ status_subs_(rhs.status_subs_) {
 	mat_orig_ = new CoinPackedMatrix(*(rhs.mat_orig_));
 	for (auto it = rhs.cols_generated_.begin(); it != rhs.cols_generated_.end(); it++)
 		cols_generated_.push_back(new DwCol(**it));
+	for (auto it = rhs.stored_solutions_.begin(); it != rhs.stored_solutions_.end(); it++)
+		stored_solutions_.push_back(new CoinPackedVector(**it));
 }
 
 /** copy operator */
@@ -103,6 +105,8 @@ DwMaster& DwMaster::operator=(const DwMaster& rhs) {
 	mat_orig_ = new CoinPackedMatrix(*(rhs.mat_orig_));
 	for (auto it = rhs.cols_generated_.begin(); it != rhs.cols_generated_.end(); it++)
 		cols_generated_.push_back(new DwCol(**it));
+	for (auto it = rhs.stored_solutions_.begin(); it != rhs.stored_solutions_.end(); it++)
+		stored_solutions_.push_back(new CoinPackedVector(**it));
 	return *this;
 }
 
@@ -110,6 +114,8 @@ DwMaster::~DwMaster() {
 	FREE_PTR(mat_orig_);
 	for (unsigned i = 0; i < cols_generated_.size(); ++i)
 		FREE_PTR(cols_generated_[i]);
+	for (unsigned i = 0; i < stored_solutions_.size(); ++i)
+		FREE_PTR(stored_solutions_[i]);
 }
 
 DSP_RTN_CODE DwMaster::init() {
@@ -477,8 +483,6 @@ DSP_RTN_CODE DwMaster::gutsOfSolve() {
 		DSP_RTN_CHECK_RTN_CODE(generateCols());
 		t_colgen_ += CoinGetTimeOfDay() - stime;
 
-		/** TODO: This place can have heuristics particularly for SMIP. */
-
 		/** subproblem solution may declare infeasibility. */
 		for (auto st = status_subs_.begin(); st != status_subs_.end(); st++) {
 			DSPdebugMessage("subproblem status %d\n", *st);
@@ -694,7 +698,92 @@ DSP_RTN_CODE DwMaster::generateCols() {
 
 		/** create and add columns */
 		DSP_RTN_CHECK_RTN_CODE(
-				addCols(&piA[0], subinds, status_subs_, subcxs, subobjs, subsols));
+				addCols(subinds, status_subs_, subcxs, subobjs, subsols));
+
+		/** generate extra columns by fixing the first-stage variables for SMIP */
+		if (model_->isStochastic() && par_->getIntParam("DW/MAX_EVAL_UB") > 0) {
+			TssModel* tss = dynamic_cast<TssModel*>(model_);
+
+			/** maximum number of solutions to evaluate */
+			int max_stores = par_->getIntParam("DW/MAX_EVAL_UB");
+			std::vector<CoinPackedVector*> solutions_to_evaluate;
+			solutions_to_evaluate.reserve(max_stores);
+
+			/** store solutions to distribute */
+			// for (unsigned i = 0; i < subsols.size(); ++i) {
+			// 	for (int j = 0; j < subsols[i]->getNumElements(); ++j) {
+			// 		message_->print(0, "subsols[%d][%d] = %e\n", i, subsols[i]->getIndices()[j], subsols[i]->getElements()[j]);
+			// 	}
+			// }
+			for (unsigned i = 0; i < subsols.size(); ++i) {
+				/** assign first-stage solution value */
+				CoinPackedVector* first_stage_solution = new CoinPackedVector;
+				first_stage_solution->reserve(tss->getNumCols(0));
+				for (int j = 0; j < subsols[i]->getNumElements(); ++j) {
+					if (subsols[i]->getIndices()[j] >= tss->getNumScenarios() * tss->getNumCols(0))
+						break;
+					first_stage_solution->insert(subsols[i]->getIndices()[j] % tss->getNumCols(0), subsols[i]->getElements()[j]);
+					// printf("i %d first_stage_solution[%d] = %e\n", i, subsols[i]->getIndices()[j] % tss->getNumCols(0), subsols[i]->getElements()[j]);
+				}
+				/** store it if not duplicated */
+				if (!duplicateVector(first_stage_solution, stored_solutions_)) {
+					stored_solutions_.push_back(first_stage_solution);
+					solutions_to_evaluate.push_back(first_stage_solution);
+					/** count */
+					max_stores--;
+				}
+				if (max_stores == 0) break;
+			}
+
+			std::vector<double> first_stage_solution_dense(tss->getNumCols(0));
+			for (unsigned i = 0; i < solutions_to_evaluate.size(); ++i) {
+				/** clean up */
+				subinds.clear();
+				std::vector<int> status_ub_subs;
+				subcxs.clear();
+				subobjs.clear();
+				for (unsigned i = 0; i < subsols.size(); ++i)
+					FREE_PTR(subsols[i]);
+				subsols.clear();
+
+				/** generate columns */
+				std::fill(first_stage_solution_dense.begin(), first_stage_solution_dense.end(), 0.0);
+				for (int j = 0; j < solutions_to_evaluate[i]->getNumElements(); ++j)
+					first_stage_solution_dense[solutions_to_evaluate[i]->getIndices()[j]] = solutions_to_evaluate[i]->getElements()[j];
+				DSP_RTN_CHECK_RTN_CODE(
+						worker_->generateColsByFix(&first_stage_solution_dense[0], subinds, status_ub_subs, subcxs, subobjs, subsols));
+
+				/** any subproblem primal/dual infeasible? */
+				bool isInfeasibleFix = false;
+				for (auto status = status_ub_subs.begin(); status != status_ub_subs.end(); status++)
+					if (*status == DSP_STAT_PRIM_INFEASIBLE ||
+						*status == DSP_STAT_DUAL_INFEASIBLE) {
+						isInfeasibleFix = true;
+						break;
+					}
+
+				if (!isInfeasibleFix) {
+					/** create and add columns */
+					DSP_RTN_CHECK_RTN_CODE(
+							addCols(subinds, status_ub_subs, subcxs, subobjs, subsols));
+
+					double newbound = 0.0;
+					for (auto it = subobjs.begin(); it != subobjs.end(); it++)
+						newbound += *it;
+					if (newbound < bestprimobj_) {
+						message_->print(3, "  Found new primal bound %e (< %e)\n", newbound, bestprimobj_);
+						bestprimobj_ = newbound;
+						bestprimsol_.resize(ncols_orig_, 0.0);
+						for (unsigned s = 0; s < subsols.size(); s++)
+							for (int j = 0; j < subsols[s]->getNumElements(); ++j)
+								bestprimsol_[subsols[s]->getIndices()[j]] = subsols[s]->getElements()[j];
+					}
+				}
+			}
+
+			/** clear solution vector */
+			solutions_to_evaluate.clear();
+		}
 	} else
 		ngenerated_ = 0;
 
@@ -708,7 +797,6 @@ DSP_RTN_CODE DwMaster::generateCols() {
 }
 
 DSP_RTN_CODE DwMaster::addCols(
-		const double* piA,                   /**< [in] pi^T A */
 		std::vector<int>& indices,           /**< [in] subproblem indices corresponding to cols*/
 		std::vector<int>& statuses,          /**< [in] subproblem solution status */
 		std::vector<double>& cxs,            /**< [in] solution times original objective coefficients */

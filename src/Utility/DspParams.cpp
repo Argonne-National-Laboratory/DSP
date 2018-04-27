@@ -184,9 +184,11 @@ void DspParams::initIntParams()
 
 	/** evaluate upper bound */
 	IntParams_.createParam("DD/EVAL_UB", 1);
+	IntParams_.createParam("DW/EVAL_UB", 0);
 
 	/** maximum number of solutions to evaluate */
 	IntParams_.createParam("DD/MAX_EVAL_UB", 100);
+	IntParams_.createParam("DW/MAX_EVAL_UB", 100);
 
 	/** maximum queue size for asynchronous one */
 	IntParams_.createParam("DD/MAX_QSIZE", 5);
@@ -237,7 +239,7 @@ void DspParams::initDblParams()
 	DblParams_.createParam("ALPS/TIME_LIM", MAX_DBL_NUM);
 
 	DblParams_.createParam("DW/SUB/TIME_LIM", 300);
-	DblParams_.createParam("DW/GAPTOL", 1.0e-5);
+	DblParams_.createParam("DW/GAPTOL", 1.0e-4);
 	DblParams_.createParam("DW/MIN_INCREASE", 1.0e-5);
 	DblParams_.createParam("DW/SUB/GAPTOL", 0.0000);
 	DblParams_.createParam("DW/TIME_LIM", MAX_DBL_NUM);

@@ -214,6 +214,9 @@ public:
 	/** set primal objective */
 	virtual void setPrimalObjective(double primobj) {primobj_=primobj;}
 
+	/** set best primal solution */
+	virtual void setBestPrimalSolution(std::vector<double>& primsol) {bestprimsol_=primsol;}
+
 	/** set dual objective */
 	virtual void setBestDualObjective(double obj) {bestdualobj_=obj;}
 
@@ -221,7 +224,7 @@ public:
 	virtual void setDualObjective(double dualobj) {dualobj_=dualobj;}
 
 	/** set best dual solution */
-	virtual void setBestDualSolution(std::vector<double>& dualsol) {dualsol_=dualsol;}
+	virtual void setBestDualSolution(std::vector<double>& dualsol) {bestdualsol_=dualsol;}
 
 	/** set time limit*/
 	virtual void setTimeLimit(double t) {time_remains_ = t;}
