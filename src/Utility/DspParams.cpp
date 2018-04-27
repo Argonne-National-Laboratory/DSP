@@ -198,7 +198,7 @@ void DspParams::initIntParams()
 
 	IntParams_.createParam("ALPS/SEARCH_STRATEGY", 0);
 	IntParams_.createParam("ALPS/NODE_LIM", 1000000);
-	IntParams_.createParam("ALPS/NODE_LOG_INTERVAL", 100);
+	IntParams_.createParam("ALPS/NODE_LOG_INTERVAL", 1);
 
 	IntParams_.createParam("DW/MASTER/COL_AGE_LIM", 10);
     IntParams_.createParam("DW/ITER_LIM", MAX_INT_NUM);
