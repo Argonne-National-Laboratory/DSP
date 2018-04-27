@@ -402,13 +402,13 @@ DSP_RTN_CODE DwWorker::generateColsByFix(
 		convertCoinToDspStatus(si_[s], status);
 		/** FIXME: Osi does not know this. */
 		if (cpxstat == CPXMIP_INFEASIBLE) {
-			message_->print(1, "  Subproblem %d infeasible.\n", sind);
+			message_->print(3, "  Upper bounding subproblem %d infeasible.\n", sind);
 			status = DSP_STAT_PRIM_INFEASIBLE;
 		} else if (cpxstat == CPXMIP_INForUNBD) {
-			message_->print(1, "  Subproblem %d unbounded.\n", sind);
+			message_->print(3, "  Upper bounding subproblem %d unbounded.\n", sind);
 			status = DSP_STAT_DUAL_INFEASIBLE;
 		} else if (cpxstat == CPXMIP_TIME_LIM_FEAS) {
-			message_->print(1, "  Subproblem %d terminated due to time limit.\n", sind);
+			message_->print(3, "  Upper bounding subproblem %d terminated due to time limit.\n", sind);
 			status = DSP_STAT_LIM_ITERorTIME;
 			num_timelim_stops_[s]++;
 		} else if (status != DSP_STAT_UNKNOWN) {
