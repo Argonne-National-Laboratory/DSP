@@ -48,14 +48,13 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 	DspModel* model = dynamic_cast<DspModel*>(desc_->getModel());
 	DwMaster* solver = dynamic_cast<DwMaster*>(model->getSolver());
 	DspParams* par = model->getParPtr();
-	double relTol = 0.0001;//par->getDblParam("DW/GAPTOL");
 
 	/** bounds */
-	double curUb = getKnowledgeBroker()->getIncumbentValue();
-	double gUb = curUb;
+	double gUb = getKnowledgeBroker()->getIncumbentValue();
 	double gLb = getKnowledgeBroker()->getBestNode()->getQuality();
 	double gap = (gUb - gLb) / (fabs(gUb) + 1e-10);
-	//printf("Solving node %d, gUb %e, gLb %e, gap %.2f\n", index_, gUb, gLb, gap);
+	double relTol = par->getDblParam("DW/GAPTOL");
+	//printf("Solving node %d, parentObjValue %e, gUb %e, gLb %e, gap %.2f\n", index_, parentObjValue, gUb, gLb, gap);
 
 	if (isRoot) {
 		/** quality_ represents the best-known lower bound */
@@ -69,6 +68,9 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 		}
 		/** set branching objects */
 		model->setBranchingObjects(desc->getBranchingObject());
+
+		if (par->getIntParam("DW/EVAL_UB") <= 0)
+			par->setIntParam("DW/MAX_EVAL_UB", 0);
 	}
 
 	double alpsTimeRemain = par->getDblParam("ALPS/TIME_LIM") - getKnowledgeBroker()->timer().getWallClock();
@@ -88,10 +90,11 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 
 	/** any heuristic solution */
 	if (model->getBestPrimalObjective() < gUb) {
-		DSPdebugMessage("Found new upper bound %e\n", model->getBestPrimalObjective());
-		DspNodeSolution* nodesol = new DspNodeSolution(model->getBestPrimalSolution(), model->getBestPrimalObjective());
-		getKnowledgeBroker()->addKnowledge(AlpsKnowledgeTypeSolution, nodesol, model->getBestPrimalObjective());
-		//wirteLog("heuristic", desc, model->getBestPrimalObjective());
+		gUb = model->getBestPrimalObjective();
+		DSPdebugMessage("Found new upper bound %e\n", gUb);
+		DspNodeSolution* nodesol = new DspNodeSolution(model->getBestPrimalSolution(), gUb);
+		getKnowledgeBroker()->addKnowledge(AlpsKnowledgeTypeSolution, nodesol, gUb);
+		//wirteLog("heuristic", desc, gUb);
 	}
 
 	switch (model->getStatus()) {
@@ -99,9 +102,10 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 	case DSP_STAT_FEASIBLE:
 	case DSP_STAT_LIM_ITERorTIME: {
 		double curUb = model->getPrimalObjective();
+		double curLb = model->getDualObjective();
 
 		printf("[%f] curLb %.8e, curUb %.8e, bestUb %.8e, bestLb %.8e\n",
-			getKnowledgeBroker()->timer().getWallClock(), model->getDualObjective(), curUb, gUb, gLb);
+			getKnowledgeBroker()->timer().getWallClock(), curLb, curUb, gUb, gLb);
 
 		log_dualobjs_.open(par->getStrParam("DW/LOGFILE/OBJS").c_str(), ios::app);
 		if (isRoot) {
@@ -113,11 +117,13 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 		log_dualobjs_.close();
 
 		/** fathom if LB is larger than UB. */
-		if (model->getDualObjective() >= gUb || curUb >= 1.0e+20) {
+		if (curLb >= gUb || curUb >= 1.0e+20) {
 			setStatus(AlpsNodeStatusFathomed);
 			wirteLog("fathomed", desc);
 		} else {
-			quality_ = model->getDualObjective();
+			/** FIXME: quality_, the lower is the better. */
+			quality_ = curLb;
+
 			/** Branching otherwise */
 			bool hasObjs = model->chooseBranchingObjects(branchingUp_, branchingDn_);
 
@@ -187,8 +193,8 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 		solver->setIterLimit(1);
 
 	/** Do strong down-branching */
-	solver->setBranchingObjects(branchingDn_);
-	ret = solver->solve();
+	model->setBranchingObjects(branchingDn_);
+	ret = model->solve();
 
 	/** add branching-down node */
 	node = new DspNodeDesc(model, -1, branchingDn_);
@@ -198,7 +204,7 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 				AlpsNodeStatusDiscarded,
 				ALPS_OBJ_MAX));
 	} else {
-		if (solver->getStatus() == DSP_STAT_PRIM_INFEASIBLE) {
+		if (model->getStatus() == DSP_STAT_PRIM_INFEASIBLE) {
 			newNodes.push_back(CoinMakeTriple(
 					static_cast<AlpsNodeDesc*>(node),
 					AlpsNodeStatusFathomed,
@@ -209,16 +215,16 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 			newNodes.push_back(CoinMakeTriple(
 					static_cast<AlpsNodeDesc*>(node),
 					AlpsNodeStatusCandidate,
-					solver->getBestDualObjective()));
-			wirteLog("candidate", node, solver->getBestDualObjective());
-			DSPdebugMessage("Strong branching estimates objective value %e.\n", solver->getBestDualObjective());
+					model->getDualObjective()));
+			wirteLog("candidate", node, model->getDualObjective());
+			DSPdebugMessage("Strong branching estimates objective value %e.\n", model->getDualObjective());
 		}
 	}
 	node = NULL;
 
 	/** Do strong UP-branching */
-	solver->setBranchingObjects(branchingUp_);
-	ret = solver->solve();
+	model->setBranchingObjects(branchingUp_);
+	ret = model->solve();
 
 	/** add branching-UP node */
 	node = new DspNodeDesc(model, 1, branchingUp_);
@@ -228,7 +234,7 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 				AlpsNodeStatusDiscarded,
 				ALPS_OBJ_MAX));
 	} else {
-		if (solver->getStatus() == DSP_STAT_PRIM_INFEASIBLE) {
+		if (model->getStatus() == DSP_STAT_PRIM_INFEASIBLE) {
 			newNodes.push_back(CoinMakeTriple(
 					static_cast<AlpsNodeDesc*>(node),
 					AlpsNodeStatusFathomed,
@@ -239,9 +245,9 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 			newNodes.push_back(CoinMakeTriple(
 					static_cast<AlpsNodeDesc*>(node),
 					AlpsNodeStatusCandidate,
-					solver->getBestDualObjective()));
-			wirteLog("candidate", node, solver->getBestDualObjective());
-			DSPdebugMessage("Strong branching estimates objective value %e.\n", solver->getBestDualObjective());
+					model->getDualObjective()));
+			wirteLog("candidate", node, model->getDualObjective());
+			DSPdebugMessage("Strong branching estimates objective value %e.\n", model->getDualObjective());
 		}
 	}
 	node = NULL;
