@@ -106,6 +106,10 @@ protected:
     /** generate columns */
     virtual DSP_RTN_CODE generateCols();
 
+    /** generate columns by fixing first-stage variables of SMIP */
+    virtual DSP_RTN_CODE generateColsByFix(
+        int nsols /**< [in] number of solutions to evaluate in LIFO way */);
+
     /** calculate piA */
     virtual DSP_RTN_CODE calculatePiA(
 			std::vector<double>& piA /**< [out] pi^T A */);

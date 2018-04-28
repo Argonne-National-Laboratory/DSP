@@ -46,7 +46,6 @@ public:
 			const double* x,                     /**< [in] solution to fix */
 			std::vector<int>& indices,           /**< [out] subproblem indices */
 			std::vector<int>& statuses,          /**< [out] solution status */
-			std::vector<double>& cxs,            /**< [out] solution times original objective coefficients */
 			std::vector<double>& objs,           /**< [out] subproblem objective values */
 			std::vector<CoinPackedVector*>& sols /**< [out] subproblem coupling column solutions */);
 

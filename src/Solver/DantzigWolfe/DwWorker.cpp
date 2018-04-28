@@ -342,7 +342,6 @@ DSP_RTN_CODE DwWorker::generateColsByFix(
 		const double* x,                     /**< [in] solution to fix */
 		std::vector<int>& indices,           /**< [out] subproblem indices */
 		std::vector<int>& statuses,          /**< [out] solution status */
-		std::vector<double>& cxs,            /**< [out] solution times original objective coefficients */
 		std::vector<double>& objs,           /**< [out] subproblem objective values */
 		std::vector<CoinPackedVector*>& sols /**< [out] subproblem coupling column solutions */) {
 
@@ -352,7 +351,6 @@ DSP_RTN_CODE DwWorker::generateColsByFix(
 
 	BGN_TRY_CATCH
 
-	double cx;
 	double objval;
 	CoinPackedVector* sol = NULL;
 	TssModel* tss = dynamic_cast<TssModel*>(model_);
@@ -378,14 +376,12 @@ DSP_RTN_CODE DwWorker::generateColsByFix(
 	/** cleanup and reserve memory*/
 	indices.clear();
 	statuses.clear();
-	cxs.clear();
 	objs.clear();
 	for (unsigned i = 0; i < sols.size(); ++i)
 		FREE_PTR(sols[i]);
 	sols.clear();
 	indices.reserve(parProcIdxSize_);
 	statuses.reserve(parProcIdxSize_);
-	cxs.reserve(parProcIdxSize_);
 	objs.reserve(parProcIdxSize_);
 	sols.reserve(parProcIdxSize_);
 
@@ -429,8 +425,7 @@ DSP_RTN_CODE DwWorker::generateColsByFix(
 				/** subproblem objective value */
 				//objval = si_[s]->getObjValue();
 				CPXgetbestobjval(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), &objval);
-				cx = objval;
-				DSPdebugMessage("Subprob %d: objval %e, cx %e\n", sind, objval, cx);
+				DSPdebugMessage("Subprob %d: objval %e\n", sind, objval);
 
 				/** subproblem coupling solution */
 				for (int j = 0; j < si_[s]->getNumCols(); ++j) {
@@ -447,14 +442,12 @@ DSP_RTN_CODE DwWorker::generateColsByFix(
 			}
 
 			/** store objective and solution */
-			cxs.push_back(cx);
 			objs.push_back(objval);
 			sols.push_back(sol);
 			sol = NULL;
 		} else {
 			message_->print(0, "Unexpected subproblem status (block: %d, status: %d)\n", sind, status);
 			/** store dummies */
-			cxs.push_back(0.0);
 			objs.push_back(0.0);
 			sols.push_back(new CoinPackedVector);
 		}

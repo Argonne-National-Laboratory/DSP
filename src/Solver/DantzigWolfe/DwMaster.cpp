@@ -461,6 +461,7 @@ DSP_RTN_CODE DwMaster::solvePhase2() {
 DSP_RTN_CODE DwMaster::gutsOfSolve() {
 
 	double stime; /**< timing results */
+	int prev_nsols;
 
 	BGN_TRY_CATCH
 
@@ -478,9 +479,15 @@ DSP_RTN_CODE DwMaster::gutsOfSolve() {
 		/** column management */
 		DSP_RTN_CHECK_RTN_CODE(reduceCols());
 
-		/** generate columns */
 		stime = CoinGetTimeOfDay();
+
+		/** generate columns */
+		prev_nsols = stored_solutions_.size();
 		DSP_RTN_CHECK_RTN_CODE(generateCols());
+
+		/** generate extra columns by fixing the first-stage variables for SMIP */
+		DSP_RTN_CHECK_RTN_CODE(generateColsByFix(stored_solutions_.size() - prev_nsols));
+
 		t_colgen_ += CoinGetTimeOfDay() - stime;
 
 		/** subproblem solution may declare infeasibility. */
@@ -700,22 +707,14 @@ DSP_RTN_CODE DwMaster::generateCols() {
 		DSP_RTN_CHECK_RTN_CODE(
 				addCols(subinds, status_subs_, subcxs, subobjs, subsols));
 
-		/** generate extra columns by fixing the first-stage variables for SMIP */
-		if (model_->isStochastic() && par_->getIntParam("DW/MAX_EVAL_UB") > 0) {
-			TssModel* tss = dynamic_cast<TssModel*>(model_);
-
+		if (model_->isStochastic() && par_->getIntParam("DW/EVAL_UB") >= 0) {
 			/** maximum number of solutions to evaluate */
 			int max_stores = par_->getIntParam("DW/MAX_EVAL_UB");
-			std::vector<CoinPackedVector*> solutions_to_evaluate;
-			solutions_to_evaluate.reserve(max_stores);
 
 			/** store solutions to distribute */
-			// for (unsigned i = 0; i < subsols.size(); ++i) {
-			// 	for (int j = 0; j < subsols[i]->getNumElements(); ++j) {
-			// 		message_->print(0, "subsols[%d][%d] = %e\n", i, subsols[i]->getIndices()[j], subsols[i]->getElements()[j]);
-			// 	}
-			// }
+			TssModel* tss = dynamic_cast<TssModel*>(model_);
 			for (unsigned i = 0; i < subsols.size(); ++i) {
+				if (max_stores == 0) break;
 				/** assign first-stage solution value */
 				CoinPackedVector* first_stage_solution = new CoinPackedVector;
 				first_stage_solution->reserve(tss->getNumCols(0));
@@ -728,62 +727,12 @@ DSP_RTN_CODE DwMaster::generateCols() {
 				/** store it if not duplicated */
 				if (!duplicateVector(first_stage_solution, stored_solutions_)) {
 					stored_solutions_.push_back(first_stage_solution);
-					solutions_to_evaluate.push_back(first_stage_solution);
 					/** count */
 					max_stores--;
 				}
-				if (max_stores == 0) break;
 			}
-
-			std::vector<double> first_stage_solution_dense(tss->getNumCols(0));
-			for (unsigned i = 0; i < solutions_to_evaluate.size(); ++i) {
-				/** clean up */
-				subinds.clear();
-				std::vector<int> status_ub_subs;
-				subcxs.clear();
-				subobjs.clear();
-				for (unsigned i = 0; i < subsols.size(); ++i)
-					FREE_PTR(subsols[i]);
-				subsols.clear();
-
-				/** generate columns */
-				std::fill(first_stage_solution_dense.begin(), first_stage_solution_dense.end(), 0.0);
-				for (int j = 0; j < solutions_to_evaluate[i]->getNumElements(); ++j)
-					first_stage_solution_dense[solutions_to_evaluate[i]->getIndices()[j]] = solutions_to_evaluate[i]->getElements()[j];
-				DSP_RTN_CHECK_RTN_CODE(
-						worker_->generateColsByFix(&first_stage_solution_dense[0], subinds, status_ub_subs, subcxs, subobjs, subsols));
-
-				/** any subproblem primal/dual infeasible? */
-				bool isInfeasibleFix = false;
-				for (auto status = status_ub_subs.begin(); status != status_ub_subs.end(); status++)
-					if (*status == DSP_STAT_PRIM_INFEASIBLE ||
-						*status == DSP_STAT_DUAL_INFEASIBLE) {
-						isInfeasibleFix = true;
-						break;
-					}
-
-				if (!isInfeasibleFix) {
-					/** create and add columns */
-					DSP_RTN_CHECK_RTN_CODE(
-							addCols(subinds, status_ub_subs, subcxs, subobjs, subsols));
-
-					double newbound = 0.0;
-					for (auto it = subobjs.begin(); it != subobjs.end(); it++)
-						newbound += *it;
-					if (newbound < bestprimobj_) {
-						message_->print(3, "  Found new primal bound %e (< %e)\n", newbound, bestprimobj_);
-						bestprimobj_ = newbound;
-						bestprimsol_.resize(ncols_orig_, 0.0);
-						for (unsigned s = 0; s < subsols.size(); s++)
-							for (int j = 0; j < subsols[s]->getNumElements(); ++j)
-								bestprimsol_[subsols[s]->getIndices()[j]] = subsols[s]->getElements()[j];
-					}
-				}
-			}
-
-			/** clear solution vector */
-			solutions_to_evaluate.clear();
 		}
+
 	} else
 		ngenerated_ = 0;
 
@@ -791,6 +740,82 @@ DSP_RTN_CODE DwMaster::generateCols() {
 	for (unsigned i = 0; i < subsols.size(); ++i)
 		FREE_PTR(subsols[i]);
 	subsols.clear();
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+	return DSP_RTN_OK;
+}
+
+DSP_RTN_CODE DwMaster::generateColsByFix(
+		int nsols /**< [in] number of solutions to evaluate in LIFO way */) {
+
+	if (model_->isStochastic() == false) 
+		return DSP_RTN_OK;
+	if (nsols <= 0)
+		return DSP_RTN_OK;
+
+	/** column generation info */
+	std::vector<int> subinds;
+	std::vector<int> substatuses;
+	std::vector<double> subobjs;
+	std::vector<CoinPackedVector*> subsols;
+	std::vector<CoinPackedVector*> solutions_to_evaluate(nsols, NULL);
+
+	BGN_TRY_CATCH
+
+	TssModel* tss = dynamic_cast<TssModel*>(model_);
+
+	for (unsigned i = stored_solutions_.size() - 1, j = 0; i >= stored_solutions_.size() - nsols; --i)
+		solutions_to_evaluate[j++] = stored_solutions_[i];
+
+	std::vector<double> first_stage_solution_dense(tss->getNumCols(0));
+	for (unsigned i = 0; i < solutions_to_evaluate.size(); ++i) {
+		/** generate columns */
+		std::fill(first_stage_solution_dense.begin(), first_stage_solution_dense.end(), 0.0);
+		for (int j = 0; j < solutions_to_evaluate[i]->getNumElements(); ++j)
+			first_stage_solution_dense[solutions_to_evaluate[i]->getIndices()[j]] = solutions_to_evaluate[i]->getElements()[j];
+		DSP_RTN_CHECK_RTN_CODE(
+				worker_->generateColsByFix(&first_stage_solution_dense[0], subinds, substatuses, subobjs, subsols));
+
+		/** any subproblem primal/dual infeasible? */
+		bool isInfeasibleFix = false;
+		for (auto status = substatuses.begin(); status != substatuses.end(); status++)
+			if (*status == DSP_STAT_PRIM_INFEASIBLE ||
+				*status == DSP_STAT_DUAL_INFEASIBLE) {
+				isInfeasibleFix = true;
+				break;
+			}
+
+		if (!isInfeasibleFix) {
+			/** create and add columns */
+			DSP_RTN_CHECK_RTN_CODE(
+					addCols(subinds, substatuses, subobjs, subobjs, subsols));
+
+			double newbound = 0.0;
+			for (auto it = subobjs.begin(); it != subobjs.end(); it++)
+				newbound += *it;
+			if (newbound < bestprimobj_) {
+				message_->print(3, "  Found new primal bound %e (< %e)\n", newbound, bestprimobj_);
+				bestprimobj_ = newbound;
+				bestprimsol_.resize(ncols_orig_, 0.0);
+				for (unsigned s = 0; s < subsols.size(); s++)
+					for (int j = 0; j < subsols[s]->getNumElements(); ++j)
+						bestprimsol_[subsols[s]->getIndices()[j]] = subsols[s]->getElements()[j];
+			}
+		}
+
+		/** clean up */
+		subinds.clear();
+		substatuses.clear();
+		subobjs.clear();
+		for (unsigned i = 0; i < subsols.size(); ++i)
+			FREE_PTR(subsols[i]);
+		subsols.clear();
+	}
+
+	/** clear solution vector */
+	for (unsigned i = 0; i < solutions_to_evaluate.size(); ++i)
+		solutions_to_evaluate[i] = NULL;
+	solutions_to_evaluate.clear();
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;
