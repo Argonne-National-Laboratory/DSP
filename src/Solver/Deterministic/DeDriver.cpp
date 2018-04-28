@@ -177,7 +177,8 @@ DSP_RTN_CODE DeDriver::run()
 	if (status_ == DSP_STAT_OPTIMAL ||
 		status_ == DSP_STAT_STOPPED_TIME ||
 		status_ == DSP_STAT_STOPPED_NODE ||
-		status_ == DSP_STAT_STOPPED_GAP)
+		status_ == DSP_STAT_STOPPED_GAP ||
+	   	status_ == DSP_STAT_LIM_ITERorTIME)
 	{
 		/** objective bounds */
 		primobj_ = si_->getPrimalBound();
