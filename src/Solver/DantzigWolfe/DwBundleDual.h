@@ -35,7 +35,7 @@ public:
 	virtual DSP_RTN_CODE solve();
 
 	/** set branching objects */
-	virtual void setBranchingObjects(const DspBranch* branchobj);
+	virtual void setBranchingObjects(const DspBranchObj* branchobj);
 
 	/** get best dual objective */
 	virtual double getBestDualObjective() {return -bestdualobj_;}
@@ -149,7 +149,7 @@ protected:
 	virtual void removeBranchingRowsCols();
 
 	/** add branching rows and columns */
-	virtual void addBranchingRowsCols(const DspBranch* branchobj);
+	virtual void addBranchingRowsCols(const DspBranchObj* branchobj);
 
 	//@}
 };

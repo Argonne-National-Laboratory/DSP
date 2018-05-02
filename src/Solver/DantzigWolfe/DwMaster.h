@@ -8,7 +8,6 @@
 /** Coin */
 #include "CoinWarmStartBasis.hpp"
 /** Dsp */
-#include "TreeSearch/DspBranch.h"
 #include "Solver/DecSolver.h"
 #include "Solver/DantzigWolfe/DwCol.h"
 #include "Solver/DantzigWolfe/DwWorker.h"
@@ -66,7 +65,7 @@ public:
     DSP_RTN_CODE switchToPhase2();
 
 	/** set branching objects */
-	virtual void setBranchingObjects(const DspBranch* branchobj);
+	virtual void setBranchingObjects(const DspBranchObj* branchobj);
 
 	/** set best primal solution */
 	void setBestPrimalSolution(const double* solution);

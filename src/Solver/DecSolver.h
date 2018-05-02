@@ -21,7 +21,7 @@
 #include "Utility/StoConfig.h"
 #include "Utility/DspParams.h"
 #include "Model/DecModel.h"
-#include "TreeSearch/DspBranch.h"
+#include "TreeSearch/DspBranchObj.h"
 
 class DecSolver {
 public:
@@ -199,7 +199,7 @@ public:
 	/**@name Set functions */
 	//@{
 
-	virtual void setBranchingObjects(const DspBranch* branchobj) {}
+	virtual void setBranchingObjects(const DspBranchObj* branchobj) {}
 
 	/** set column bounds */
 	virtual void setColBounds(int j, double clbd, double cubd) {si_->setColBounds(j, clbd, cubd);}

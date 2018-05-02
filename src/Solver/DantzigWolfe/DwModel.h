@@ -26,8 +26,8 @@ public:
     virtual DSP_RTN_CODE solve();
 
     virtual bool chooseBranchingObjects(
-    			DspBranch*& branchingUp, /**< [out] branching-up object */
-    			DspBranch*& branchingDn  /**< [out] branching-down object */);
+    			DspBranchObj*& branchingUp, /**< [out] branching-up object */
+    			DspBranchObj*& branchingDn  /**< [out] branching-down object */);
 
 private:
 

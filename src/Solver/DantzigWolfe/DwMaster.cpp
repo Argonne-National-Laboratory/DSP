@@ -1550,7 +1550,7 @@ void DwMaster::setPrimalSolution(const double* solution) {
 	primsol_.assign(solution, solution+ncols_orig_);
 }
 
-void DwMaster::setBranchingObjects(const DspBranch* branchobj) {
+void DwMaster::setBranchingObjects(const DspBranchObj* branchobj) {
 	/** shouldn't be null */
 	if (branchobj == NULL)
 		return;

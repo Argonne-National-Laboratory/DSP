@@ -633,7 +633,7 @@ DSP_RTN_CODE DwBundleDual::getLagrangianBound(
 	return DSP_RTN_OK;
 }
 
-void DwBundleDual::setBranchingObjects(const DspBranch* branchobj) {
+void DwBundleDual::setBranchingObjects(const DspBranchObj* branchobj) {
 	/** shouldn't be null */
 	if (branchobj == NULL)
 		return;
@@ -696,7 +696,7 @@ void DwBundleDual::removeBranchingRowsCols() {
 	}
 }
 
-void DwBundleDual::addBranchingRowsCols(const DspBranch* branchobj) {
+void DwBundleDual::addBranchingRowsCols(const DspBranchObj* branchobj) {
 #define BRANCH_ROW
 #ifdef BRANCH_ROW
 	for (unsigned j = 0; j < branchobj->index_.size(); ++j) {

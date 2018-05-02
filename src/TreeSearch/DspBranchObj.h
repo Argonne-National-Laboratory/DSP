@@ -1,16 +1,16 @@
 /*
- * DspBranch.h
+ * DspBranchObj.h
  *
  *  Created on: Oct 11, 2016
- *      Author: kibaekkim
+ *      Author: Kibaek Kim
  */
 
-#ifndef SRC_TREESEARCH_DSPBRANCH_H_
-#define SRC_TREESEARCH_DSPBRANCH_H_
+#ifndef SRC_TREESEARCH_DSPBRANCHOBJ_H_
+#define SRC_TREESEARCH_DSPBRANCHOBJ_H_
 
 #include <vector>
 
-struct DspBranch {
+struct DspBranchObj {
 	std::vector<int> index_;
 	std::vector<double> lb_;
 	std::vector<double> ub_;
@@ -24,4 +24,4 @@ struct DspBranch {
 	}
 };
 
-#endif /* SRC_TREESEARCH_DSPBRANCH_H_ */
+#endif /* SRC_TREESEARCH_DSPBRANCHOBJ_H_ */

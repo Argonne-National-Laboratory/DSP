@@ -14,7 +14,7 @@
 int DwRounding::solution(double &objective, std::vector<double> &solution) {
 
 	/** create branching objects */
-	std::shared_ptr<DspBranch> branch(new DspBranch);
+	std::shared_ptr<DspBranchObj> branch(new DspBranchObj);
 
 	int found = 0;
 	double stime = CoinGetTimeOfDay();
@@ -94,7 +94,7 @@ int DwSmip::solution(double &objective, std::vector<double> &solution) {
 	}
 
 	/** create branching objects */
-	std::shared_ptr<DspBranch> branch(new DspBranch);
+	std::shared_ptr<DspBranchObj> branch(new DspBranchObj);
 
 	double stime = CoinGetTimeOfDay();
 	std::shared_ptr<DwMaster> master(dynamic_cast<DwMaster*>(solver->clone()));
