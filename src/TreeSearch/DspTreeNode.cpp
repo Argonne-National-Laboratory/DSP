@@ -20,10 +20,7 @@
 #include "TreeSearch/DspNodeSolution.h"
 #include "Solver/DantzigWolfe/DwMaster.h"
 
-DspTreeNode::DspTreeNode() :
-		AlpsTreeNode(),
-		branchingUp_(NULL),
-		branchingDn_(NULL) {
+DspTreeNode::DspTreeNode() : AlpsTreeNode() {
 #ifdef WRITELOG
 	//const char* logname = getKnowledgeBroker()->getModel()->AlpsPar()->entry(AlpsParams::logFile).c_str();
 	DSPdebugMessage("Writing log file to DspAlps.vbc.\n");
@@ -32,8 +29,9 @@ DspTreeNode::DspTreeNode() :
 }
 
 DspTreeNode::~DspTreeNode() {
-	FREE_PTR(branchingUp_);
-	FREE_PTR(branchingDn_);
+	for (auto obj = branchingObjs_.begin(); obj != branchingObjs_.end(); obj++) {
+		FREE_PTR(*obj);
+	}
 #ifdef WRITELOG
 	logstream_.close();
 #endif
@@ -125,7 +123,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 			quality_ = curLb;
 
 			/** Branching otherwise */
-			bool hasObjs = model->chooseBranchingObjects(branchingUp_, branchingDn_);
+			bool hasObjs = model->chooseBranchingObjects(branchingObjs_);
 
 			if (hasObjs) {
 				DSPdebugMessage("Branching on the current node.\n");
@@ -192,36 +190,40 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 	} else
 		solver->setIterLimit(1);
 
-	/** Do strong down-branching */
-	model->setBranchingObjects(branchingDn_);
-	ret = model->solve();
+	for (auto obj = branchingObjs_.begin(); obj != branchingObjs_.end(); obj++) {
+		/** Do strong down-branching */
+		model->setBranchingObjects(*obj);
+		ret = model->solve();
 
-	/** add branching-down node */
-	node = new DspNodeDesc(model, -1, branchingDn_);
-	if (ret != DSP_RTN_OK) {
-		newNodes.push_back(CoinMakeTriple(
-				static_cast<AlpsNodeDesc*>(node),
-				AlpsNodeStatusDiscarded,
-				ALPS_OBJ_MAX));
-	} else {
-		if (model->getStatus() == DSP_STAT_PRIM_INFEASIBLE) {
+		/** add branching-down node */
+		node = new DspNodeDesc(model, (*obj)->direction_, *obj);
+		if (ret != DSP_RTN_OK) {
 			newNodes.push_back(CoinMakeTriple(
 					static_cast<AlpsNodeDesc*>(node),
-					AlpsNodeStatusFathomed,
+					AlpsNodeStatusDiscarded,
 					ALPS_OBJ_MAX));
-			wirteLog("infeasible", node);
-			DSPdebugMessage("Strong branching fathomed the child.\n");
 		} else {
-			newNodes.push_back(CoinMakeTriple(
-					static_cast<AlpsNodeDesc*>(node),
-					AlpsNodeStatusCandidate,
-					model->getDualObjective()));
-			wirteLog("candidate", node, model->getDualObjective());
-			DSPdebugMessage("Strong branching estimates objective value %e.\n", model->getDualObjective());
+			if (model->getStatus() == DSP_STAT_PRIM_INFEASIBLE) {
+				newNodes.push_back(CoinMakeTriple(
+						static_cast<AlpsNodeDesc*>(node),
+						AlpsNodeStatusFathomed,
+						ALPS_OBJ_MAX));
+				wirteLog("infeasible", node);
+				DSPdebugMessage("Strong branching fathomed the child.\n");
+			} else {
+				newNodes.push_back(CoinMakeTriple(
+						static_cast<AlpsNodeDesc*>(node),
+						AlpsNodeStatusCandidate,
+						model->getDualObjective()));
+				wirteLog("candidate", node, model->getDualObjective());
+				DSPdebugMessage("Strong branching estimates objective value %e.\n", model->getDualObjective());
+			}
 		}
-	}
-	node = NULL;
+		node = NULL;
 
+	}
+
+#if 0
 	/** Do strong UP-branching */
 	model->setBranchingObjects(branchingUp_);
 	ret = model->solve();
@@ -251,7 +253,7 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 		}
 	}
 	node = NULL;
-
+#endif
 	/** restore solver display option */
 	solver->setLogLevel(solver_loglevel);
 	par->setBoolParam("DW/HEURISTICS", run_heuristics);

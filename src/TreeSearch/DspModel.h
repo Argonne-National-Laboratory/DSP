@@ -54,8 +54,7 @@ public:
     std::vector<double>& getPrimalSolution() {return primsol_;}
 
     virtual bool chooseBranchingObjects(
-    			DspBranchObj*& branchingUp, /**< [out] branching-up object */
-    			DspBranchObj*& branchingDn  /**< [out] branching-down object */) {
+    			std::vector<DspBranchObj*>& branchingObjs /**< [out] branching objects */) {
     	return false;
     }
 

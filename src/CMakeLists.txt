@@ -28,6 +28,7 @@ set(DSP_SRC_FILES
 	Model/DetModel.cpp
 	Model/StoModel.cpp
 	Model/TssModel.cpp
+	Solver/DantzigWolfe/DwBranchInt.cpp
 	Solver/DantzigWolfe/DwModel.cpp
 	Solver/DantzigWolfe/DwMaster.cpp
 	Solver/DantzigWolfe/DwBundleDual.cpp

@@ -9,9 +9,10 @@
 
 #include <DantzigWolfe/DwModel.h>
 #include <DantzigWolfe/DwHeuristic.h>
+#include <DantzigWolfe/DwBranchInt.h>
 #include "Model/TssModel.h"
 
-DwModel::DwModel(): DspModel(), master_(NULL), infeasibility_(0.0) {}
+DwModel::DwModel(): DspModel(), master_(NULL), branch_(NULL), infeasibility_(0.0) {}
 
 DwModel::DwModel(DecSolver* solver): DspModel(solver), infeasibility_(0.0) {
 	master_ = dynamic_cast<DwMaster*>(solver_);
@@ -21,11 +22,15 @@ DwModel::DwModel(DecSolver* solver): DspModel(solver), infeasibility_(0.0) {
 		/** add heuristics */
 		heuristics_.push_back(new DwRounding("Rounding", *this));
 	}
+
+	branch_ = new DwBranchInt(this);
 }
 
 DwModel::~DwModel() {
-	for (unsigned i = 0; i < heuristics_.size(); ++i)
-		delete heuristics_[i];
+	for (unsigned i = 0; i < heuristics_.size(); ++i) {
+		FREE_PTR(heuristics_[i]);
+	}
+	FREE_PTR(branch_);
 }
 
 DSP_RTN_CODE DwModel::solve() {
@@ -116,104 +121,6 @@ DSP_RTN_CODE DwModel::solve() {
 	return DSP_RTN_OK;
 }
 
-bool DwModel::chooseBranchingObjects(
-		DspBranchObj*& branchingUp, /**< [out] branching-up object */
-		DspBranchObj*& branchingDn  /**< [out] branching-down object */) {
-	int findPhase = 0;
-	bool branched = false;
-	double dist, maxdist = 1.0e-6;
-	int branchingIndex = -1;
-	double branchingValue;
-
-	/** smip branching */
-	int ncols_first_stage = -1;   /**< number of first-stage columns in dd form */
-	int branchingFirstStage = -1; /**< branching index in first stage */
-	TssModel* tss = NULL;
-
-	BGN_TRY_CATCH
-
-	/** cleanup */
-	FREE_PTR(branchingUp)
-	FREE_PTR(branchingDn)
-
-	if (solver_->getModelPtr()->isStochastic()) {
-		/** two-stage stochastic model */
-		tss = dynamic_cast<TssModel*>(solver_->getModelPtr());
-		ncols_first_stage = tss->getNumScenarios() * tss->getNumCols(0);
-	}
-	DSPdebugMessage("ncols_first_stage %d\n", ncols_first_stage);
-
-	findPhase = 0;
-	while (findPhase < 2 && branchingIndex < 0) {
-		/** most fractional value */
-		for (int j = 0; j < master_->ncols_orig_; ++j) {
-			if (findPhase == 0 && j > ncols_first_stage)
-				break;
-			if (master_->ctype_orig_[j] == 'C') continue;
-			dist = fabs(primsol_[j] - floor(primsol_[j] + 0.5));
-			if (dist > maxdist) {
-				maxdist = dist;
-				branchingIndex = j;
-				branchingValue = primsol_[j];
-			}
-		}
-
-		/** for the first pass of smip, look through expected first-stage integer variable values */
-		if (ncols_first_stage > 0 && findPhase == 0 && branchingIndex < 0) {
-			maxdist = 1.0e-8;
-			for (int j = 0; j < tss->getNumCols(0); ++j) {
-				if (master_->ctype_orig_[j] == 'C') continue;
-				double expval = 0.0;
-				for (int s = 0; s < tss->getNumScenarios(); ++s)
-					expval += primsol_[tss->getNumCols(0) * s + j] / tss->getNumScenarios();
-				dist = fabs(expval - floor(expval + 0.5));
-				if (dist > maxdist) {
-					maxdist = dist;
-					branchingIndex = j;
-					branchingValue = primsol_[j];
-				}
-			}
-		}
-
-		findPhase++;
-	}
-
-	if (branchingIndex > -1) {
-
-		branched = true;
-
-		/** get branching index in first stage */
-		if (branchingIndex < ncols_first_stage)
-			branchingFirstStage = branchingIndex % tss->getNumCols(0);
-
-		/** creating branching objects */
-		branchingUp = new DspBranchObj();
-		branchingDn = new DspBranchObj();
-		for (int j = 0; j < master_->ncols_orig_; ++j) {
-			if (master_->ctype_orig_[j] == 'C') continue;
-			/** NOTE: branching on all the first-stage variables if SMIP */
-			if (branchingIndex == j || (tss != NULL && branchingFirstStage == j % tss->getNumCols(0))) {
-				DSPdebugMessage("Creating branch objects on column %d (value %e): [%e,%e] and [%e,%e]\n", 
-					j, branchingValue, ceil(branchingValue), master_->cubd_node_[j], master_->clbd_node_[j], floor(branchingValue));
-				branchingUp->push_back(j, ceil(branchingValue), master_->cubd_node_[j]);
-				branchingDn->push_back(j, master_->clbd_node_[j], floor(branchingValue));
-			} else if (master_->clbd_node_[j] > master_->clbd_orig_[j] || master_->cubd_node_[j] < master_->cubd_orig_[j]) {
-				/** store any bound changes made in parent nodes */
-				DSPdebugMessage("Adjusting bound change on column %d: [%e,%e]\n", j, master_->clbd_node_[j], master_->cubd_node_[j]);
-				branchingUp->push_back(j, master_->clbd_node_[j], master_->cubd_node_[j]);
-				branchingDn->push_back(j, master_->clbd_node_[j], master_->cubd_node_[j]);
-			}
-		}
-		branchingUp->bestBound_ = master_->getBestDualObjective();
-		branchingDn->bestBound_ = master_->getBestDualObjective();
-		branchingUp->dualsol_.assign(master_->getBestDualSolution(), master_->getBestDualSolution() + master_->nrows_);
-		branchingDn->dualsol_.assign(master_->getBestDualSolution(), master_->getBestDualSolution() + master_->nrows_);
-	} else {
-		DSPdebugMessage("No branch object is found.\n");
-	}
-
-	END_TRY_CATCH_RTN(;,false)
-
-	return branched;
+bool DwModel::chooseBranchingObjects(std::vector<DspBranchObj*>& branchingObjs) {
+	return branch_->chooseBranchingObjects(branchingObjs);
 }
-

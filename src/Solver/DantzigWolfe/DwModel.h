@@ -11,6 +11,8 @@
 #include <TreeSearch/DspModel.h>
 #include <DantzigWolfe/DwMaster.h>
 
+class DwBranch;
+
 class DwModel: public DspModel {
 public:
 	/** default constructor */
@@ -26,12 +28,14 @@ public:
     virtual DSP_RTN_CODE solve();
 
     virtual bool chooseBranchingObjects(
-    			DspBranchObj*& branchingUp, /**< [out] branching-up object */
-    			DspBranchObj*& branchingDn  /**< [out] branching-down object */);
+    			std::vector<DspBranchObj*>& branchingObjs /**< [out] branching objects */);
+
+    DwMaster* getMasterPtr() {return master_;}
 
 private:
 
     DwMaster* master_;
+    DwBranch* branch_;
     double infeasibility_;
 };
 

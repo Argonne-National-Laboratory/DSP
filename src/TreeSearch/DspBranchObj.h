@@ -16,6 +16,7 @@ struct DspBranchObj {
 	std::vector<double> ub_;
 	double bestBound_; /**< best bound */
 	std::vector<double> dualsol_;
+	int direction_;
 
 	void push_back(int index, double lb, double ub) {
 		index_.push_back(index);

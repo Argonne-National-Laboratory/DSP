@@ -81,8 +81,7 @@ private:
     std::fstream logstream_;
 
 	/** branching object */
-    DspBranchObj* branchingUp_;
-    DspBranchObj* branchingDn_;
+    std::vector<DspBranchObj*> branchingObjs_;
 
 };
 
