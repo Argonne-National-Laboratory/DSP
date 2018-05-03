@@ -30,11 +30,8 @@ public:
     virtual bool chooseBranchingObjects(
     			std::vector<DspBranchObj*>& branchingObjs /**< [out] branching objects */);
 
-    DwMaster* getMasterPtr() {return master_;}
-
 private:
 
-    DwMaster* master_;
     DwBranch* branch_;
     double infeasibility_;
 };

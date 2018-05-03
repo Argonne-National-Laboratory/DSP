@@ -10,13 +10,13 @@
 #include <DantzigWolfe/DwModel.h>
 #include <DantzigWolfe/DwHeuristic.h>
 #include <DantzigWolfe/DwBranchInt.h>
-#include "Model/TssModel.h"
+#include <Model/TssModel.h>
 
-DwModel::DwModel(): DspModel(), master_(NULL), branch_(NULL), infeasibility_(0.0) {}
+DwModel::DwModel(): DspModel(), branch_(NULL), infeasibility_(0.0) {}
 
 DwModel::DwModel(DecSolver* solver): DspModel(solver), infeasibility_(0.0) {
-	master_ = dynamic_cast<DwMaster*>(solver_);
-	primsol_.resize(master_->ncols_orig_);
+	DwMaster* master = dynamic_cast<DwMaster*>(solver_);
+	primsol_.resize(master->ncols_orig_);
 
 	if (par_->getBoolParam("DW/HEURISTICS")) {
 		/** add heuristics */
@@ -36,64 +36,65 @@ DwModel::~DwModel() {
 DSP_RTN_CODE DwModel::solve() {
 	BGN_TRY_CATCH
 
-	DspMessage* message = solver_->getMessagePtr();
+	DwMaster* master = dynamic_cast<DwMaster*>(solver_);
+	DspMessage* message = master->getMessagePtr();
 
 	/** set best primal objective value */
-	solver_->setBestPrimalObjective(bestprimobj_);
+	master->setBestPrimalObjective(bestprimobj_);
 
 	/** solve master */
-	solver_->solve();
+	master->solve();
 
-	status_ = solver_->getStatus();
+	status_ = master->getStatus();
 
 	switch (status_) {
 	case DSP_STAT_OPTIMAL:
 	case DSP_STAT_FEASIBLE:
 	case DSP_STAT_LIM_ITERorTIME: {
 
-		primobj_ = master_->getPrimalObjective();
-		dualobj_ = master_->getBestDualObjective();
+		primobj_ = master->getPrimalObjective();
+		dualobj_ = master->getBestDualObjective();
 
 		/** update best upper bound */
-		if (solver_->getBestPrimalObjective() < bestprimobj_) {
-			bestprimobj_ = solver_->getBestPrimalObjective();
-			bestprimsol_.resize(master_->ncols_orig_);
-			for (int j = 0; j < master_->ncols_orig_; ++j)
-				bestprimsol_[j] = solver_->getBestPrimalSolution()[j];
+		if (master->getBestPrimalObjective() < bestprimobj_) {
+			bestprimobj_ = master->getBestPrimalObjective();
+			bestprimsol_.resize(master->ncols_orig_);
+			for (int j = 0; j < master->ncols_orig_; ++j)
+				bestprimsol_[j] = master->getBestPrimalSolutionOrig()[j];
 			message->print(1, "Found new primal solution: %e\n", bestprimobj_);
 		}
 
 		if (primobj_ < 1.0e+20) {
 			/** parse solution */
 			int cpos = 0;
-			std::fill(primsol_.begin(), primsol_.begin() + master_->ncols_orig_, 0.0);
-			for (auto it = master_->cols_generated_.begin(); it != master_->cols_generated_.end(); it++) {
+			std::fill(primsol_.begin(), primsol_.begin() + master->ncols_orig_, 0.0);
+			for (auto it = master->cols_generated_.begin(); it != master->cols_generated_.end(); it++) {
 				if ((*it)->active_) {
-					if (fabs(master_->getPrimalSolution()[cpos]) > 1.0e-10) {
+					if (fabs(master->getPrimalSolution()[cpos]) > 1.0e-10) {
 						for (int i = 0; i < (*it)->x_.getNumElements(); ++i) {
-							if ((*it)->x_.getIndices()[i] < master_->ncols_orig_)
-								primsol_[(*it)->x_.getIndices()[i]] += (*it)->x_.getElements()[i] * master_->getPrimalSolution()[cpos];
+							if ((*it)->x_.getIndices()[i] < master->ncols_orig_)
+								primsol_[(*it)->x_.getIndices()[i]] += (*it)->x_.getElements()[i] * master->getPrimalSolution()[cpos];
 						}
 					}
 					cpos++;
 				}
 			}
-			//DspMessage::printArray(cpos, master_->getPrimalSolution());
+			//DspMessage::printArray(cpos, master->getPrimalSolution());
 
 			/** calculate infeasibility */
 			infeasibility_ = 0.0;
-			for (int j = 0; j < master_->ncols_orig_; ++j)
-				if (master_->ctype_orig_[j] != 'C') {
+			for (int j = 0; j < master->ncols_orig_; ++j)
+				if (master->ctype_orig_[j] != 'C') {
 					infeasibility_ += fabs(primsol_[j] - floor(primsol_[j] + 0.5));
 				}
 			message->print(3, "Infeasibility: %+e\n", infeasibility_);
 
 			bool isViolated = false;
-			for (int j = 0; j < master_->ncols_orig_; ++j) {
-				double viol = std::max(master_->clbd_node_[j] - primsol_[j], primsol_[j] - master_->cubd_node_[j]);
+			for (int j = 0; j < master->ncols_orig_; ++j) {
+				double viol = std::max(master->clbd_node_[j] - primsol_[j], primsol_[j] - master->cubd_node_[j]);
 				if (viol > 1.0e-6) {
 					printf("Violated variable at %d by %e (%+e <= %+e <= %+e)\n", j, viol,
-							master_->clbd_node_[j], primsol_[j], master_->cubd_node_[j]);
+							master->clbd_node_[j], primsol_[j], master->cubd_node_[j]);
 					isViolated = true;
 				}
 			}

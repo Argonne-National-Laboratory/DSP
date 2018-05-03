@@ -17,7 +17,7 @@ bool DwBranchInt::chooseBranchingObjects(
 	double branchingValue;
 
 	DecSolver* solver = model_->getSolver();
-	DwMaster* master = model_->getMasterPtr();
+	DwMaster* master = dynamic_cast<DwMaster*>(solver);
 	std::vector<double> primsol = model_->getPrimalSolution();
 
 	/** smip branching */

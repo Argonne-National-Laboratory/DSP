@@ -64,14 +64,14 @@ public:
     /** switch to phase 2 */
     DSP_RTN_CODE switchToPhase2();
 
+    /** get best primal solution (in original space) found during iteration */
+    virtual const double * getBestPrimalSolutionOrig() {return &bestprimsol_orig_[0];}
+
+    /** get best primal solution (in original space) found during iteration */
+    virtual std::vector<CoinPackedVector*>& getLastSubprobSolutions() {return recent_subsols_;}
+
 	/** set branching objects */
 	virtual void setBranchingObjects(const DspBranchObj* branchobj);
-
-	/** set best primal solution */
-	void setBestPrimalSolution(const double* solution);
-
-	/** set primal solution */
-	void setPrimalSolution(const double* solution);
 
 protected:
 
@@ -130,42 +130,7 @@ protected:
 
     /** termination test */
     virtual bool terminationTest();
-#if 0
-    /** Run heuristics */
-    virtual DSP_RTN_CODE heuristics();
-
-    /** pre-process for heuristics */
-    virtual DSP_RTN_CODE preHeuristic(
-    		double*& rlbd,    /**< [out] original row lower bounds */
-    		double*& rubd,    /**< [out] original row lower bounds */
-    		double*& primsol, /**< [out] original primal solution */
-    		double& primobj,  /**< [out] original primal objective */
-    		double& dualobj,  /**< [out] original dual objective */
-    		int& status       /**< [out] original solution status */);
-
-    /** post-process for heuristics */
-    virtual DSP_RTN_CODE postHeuristic(
-    		double*& rlbd,    /**< [out] original row lower bounds */
-    		double*& rubd,    /**< [out] original row lower bounds */
-    		double*& primsol, /**< [out] original primal solution */
-    		double& primobj,  /**< [out] original primal objective */
-    		double& dualobj,  /**< [out] original dual objective */
-    		int& status       /**< [out] original solution status */);
-
-    /** trivial heuristic */
-    virtual DSP_RTN_CODE heuristicTrivial();
-
-    /** FP-type heuristic */
-    virtual DSP_RTN_CODE heuristicFp(int direction);
-
-    /** Dive heuristic */
-    virtual DSP_RTN_CODE heuristicDive();
-
-    /** guts of Dive heuristic */
-    virtual DSP_RTN_CODE gutsOfDive(
-    		std::vector<CoinTriple<int,int,double> > branchList,
-    		int depth);
-#endif
+    
     /** print iteration information */
     virtual void printIterInfo();
 
@@ -203,7 +168,10 @@ public:
     std::vector<double> rlbd_orig_;
     std::vector<double> rubd_orig_;
 	std::vector<double> clbd_node_; /** current column lower bounds */
-	std::vector<double> cubd_node_; /** current column upper bounds */
+    std::vector<double> cubd_node_; /** current column upper bounds */
+
+    std::vector<double> bestprimsol_orig_; /** best primal solution in original space */
+    std::vector<CoinPackedVector*> recent_subsols_;
 
     int itercnt_;
     int ngenerated_;

@@ -102,6 +102,22 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 		double curUb = model->getPrimalObjective();
 		double curLb = model->getDualObjective();
 
+//#define WRITE_PRIM_SOL
+#ifdef WRITE_PRIM_SOL
+		{
+			char primsol_filename[128];
+			sprintf(primsol_filename, "primsol%d.txt", index_);
+			std::ofstream fp_primsol(primsol_filename);
+			for (unsigned i = 0; i < solver->getLastSubprobSolutions().size(); ++i) {
+				CoinPackedVector* sol = solver->getLastSubprobSolutions()[i];
+				for (int j = 0; j < sol->getNumElements(); ++j)
+					fp_primsol << sol->getIndices()[j] << "," << sol->getElements()[j] << std::endl;
+				sol = NULL;
+			}
+			fp_primsol.close();
+		}
+#endif
+
 		printf("[%f] curLb %.8e, curUb %.8e, bestUb %.8e, bestLb %.8e\n",
 			getKnowledgeBroker()->timer().getWallClock(), curLb, curUb, gUb, gLb);
 
