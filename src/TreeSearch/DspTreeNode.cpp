@@ -115,9 +115,9 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 		log_dualobjs_.open(par->getStrParam("DW/LOGFILE/OBJS").c_str(), ios::app);
 		if (isRoot) {
 			for (unsigned i = 0; i < solver->log_time_.size(); ++i)
-				log_dualobjs_ << solver->log_time_[i] << "," << solver->log_bestdual_bounds_[i] << std::endl;
+				log_dualobjs_ << solver->log_time_[i] << "," << solver->log_bestdual_bounds_[i] << "," << solver->log_bestprim_bounds_[i] << std::endl;
 		} else {
-			log_dualobjs_ << CoinGetTimeOfDay() << "," << gLb << std::endl;
+			log_dualobjs_ << CoinWallclockTime() << "," << gLb << "," << gUb << std::endl;
 		}
 		log_dualobjs_.close();
 

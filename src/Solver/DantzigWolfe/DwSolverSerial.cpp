@@ -20,10 +20,18 @@ DecSolver(model, par, message),
 master_(NULL),
 worker_(NULL),
 alps_(NULL) {
+
+	/** just reset the files */
+	std::ofstream ofs;
 	if (par->getStrParam("VBC/FILE").size() > 0) {
-		std::ofstream ofs(par->getStrParam("VBC/FILE").c_str());
+		ofs.open(par->getStrParam("VBC/FILE").c_str());
 		ofs.close();
 	}
+	ofs.open(par->getStrParam("DW/LOGFILE/OBJS").c_str());
+	ofs.close();
+
+	/** time stamp */
+	CoinWallclockTime();
 }
 
 DwSolverSerial::~DwSolverSerial() {

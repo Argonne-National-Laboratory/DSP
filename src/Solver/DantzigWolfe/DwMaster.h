@@ -178,6 +178,7 @@ public:
 
     std::vector<double> log_time_;
     std::vector<double> log_bestdual_bounds_;
+    std::vector<double> log_bestprim_bounds_;
 
     /**@name Time stamps */
     double t_start_; /**< solution start time */

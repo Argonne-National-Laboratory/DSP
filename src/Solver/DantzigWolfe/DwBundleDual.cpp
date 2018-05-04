@@ -796,6 +796,7 @@ void DwBundleDual::printIterInfo() {
 			-v_, absp_, alpha_, -linerr_, eps_, u_, counter_);
 
 	/** log */
-	log_time_.push_back(CoinGetTimeOfDay());
+	log_time_.push_back(CoinWallclockTime());
 	log_bestdual_bounds_.push_back(-bestdualobj_);
+	log_bestprim_bounds_.push_back(bestprimobj_);
 }
