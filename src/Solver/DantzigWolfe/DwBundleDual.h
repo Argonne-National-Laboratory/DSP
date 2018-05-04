@@ -35,7 +35,13 @@ public:
 	virtual DSP_RTN_CODE solve();
 
 	/** set branching objects */
-	virtual void setBranchingObjects(const DspBranch* branchobj);
+	virtual void setBranchingObjects(const DspBranchObj* branchobj);
+
+	/** get best dual objective */
+	virtual double getBestDualObjective() {return -bestdualobj_;}
+
+	/** get dual objective */
+	virtual double getDualObjective() {return -dualobj_;}
 
 protected:
 
@@ -59,7 +65,6 @@ protected:
 
 	/** Add columns */
 	virtual DSP_RTN_CODE addCols(
-			const double* piA,                   /**< [in] pi^T A */
 			std::vector<int>& indices,           /**< [in] subproblem indices corresponding to cols*/
 			std::vector<int>& statuses,          /**< [in] subproblem solution status */
 			std::vector<double>& cxs,            /**< [in] solution times original objective coefficients */
@@ -144,7 +149,7 @@ protected:
 	virtual void removeBranchingRowsCols();
 
 	/** add branching rows and columns */
-	virtual void addBranchingRowsCols(const DspBranch* branchobj);
+	virtual void addBranchingRowsCols(const DspBranchObj* branchobj);
 
 	//@}
 };

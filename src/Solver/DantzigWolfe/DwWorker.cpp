@@ -204,7 +204,7 @@ DSP_RTN_CODE DwWorker::generateCols(
 	/** solve subproblems */
 	DSP_RTN_CHECK_RTN_CODE(solveSubproblems());
 
-	/** cleanup */
+	/** cleanup and reserve memory*/
 	indices.clear();
 	statuses.clear();
 	cxs.clear();
@@ -212,6 +212,12 @@ DSP_RTN_CODE DwWorker::generateCols(
 	for (unsigned i = 0; i < sols.size(); ++i)
 		FREE_PTR(sols[i]);
 	sols.clear();
+	indices.reserve(parProcIdxSize_);
+	statuses.reserve(parProcIdxSize_);
+	cxs.reserve(parProcIdxSize_);
+	objs.reserve(parProcIdxSize_);
+	sols.reserve(parProcIdxSize_);
+
 
 	if (model_->isStochastic())
 		tss = dynamic_cast<TssModel*>(model_);
@@ -319,6 +325,129 @@ DSP_RTN_CODE DwWorker::generateCols(
 			message_->print(0, "Unexpected subproblem status (block: %d, status: %d)\n", sind, status);
 			/** store dummies */
 			cxs.push_back(0.0);
+			objs.push_back(0.0);
+			sols.push_back(new CoinPackedVector);
+		}
+	}
+
+	/** reset subproblems */
+	DSP_RTN_CHECK_RTN_CODE(resetSubproblems());
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
+}
+
+DSP_RTN_CODE DwWorker::generateColsByFix(
+		const double* x,                     /**< [in] solution to fix */
+		std::vector<int>& indices,           /**< [out] subproblem indices */
+		std::vector<int>& statuses,          /**< [out] solution status */
+		std::vector<double>& objs,           /**< [out] subproblem objective values */
+		std::vector<CoinPackedVector*>& sols /**< [out] subproblem coupling column solutions */) {
+
+	/** run only for stochastic models */
+	if (model_->isStochastic() == false)
+		return DSP_RTN_OK;
+
+	BGN_TRY_CATCH
+
+	double objval;
+	CoinPackedVector* sol = NULL;
+	TssModel* tss = dynamic_cast<TssModel*>(model_);
+	int ncols_first_stage = tss->getNumCols(0);
+
+	/** set objective function */
+	for (int s = 0; s < parProcIdxSize_; ++s) {
+		for (int j = 0; j < si_[s]->getNumCols(); ++j) {
+			si_[s]->setObjCoeff(j, sub_objs_[s][j]);
+			// message_->print(0, "sub_objs_[%d][%d] = %e\n", s, j, sub_objs_[s][j]);
+		}
+	}
+
+	/** fix column bounds */
+	for (int s = 0; s < parProcIdxSize_; ++s) {
+		for (int j = 0; j < ncols_first_stage; ++j)
+			si_[s]->setColBounds(j, x[j], x[j]);
+	}
+
+	/** solve subproblems */
+	DSP_RTN_CHECK_RTN_CODE(solveSubproblems());
+
+	/** cleanup and reserve memory*/
+	indices.clear();
+	statuses.clear();
+	objs.clear();
+	for (unsigned i = 0; i < sols.size(); ++i)
+		FREE_PTR(sols[i]);
+	sols.clear();
+	indices.reserve(parProcIdxSize_);
+	statuses.reserve(parProcIdxSize_);
+	objs.reserve(parProcIdxSize_);
+	sols.reserve(parProcIdxSize_);
+
+	for (int s = 0; s < parProcIdxSize_; ++s) {
+		OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_[s]);
+		int sind = parProcIdx_[s];
+
+		/** add subproblem index */
+		indices.push_back(sind);
+
+		/** store solution status */
+		int status;
+		int cpxstat = CPXgetstat(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
+		convertCoinToDspStatus(si_[s], status);
+		/** FIXME: Osi does not know this. */
+		if (cpxstat == CPXMIP_INFEASIBLE) {
+			message_->print(3, "  Upper bounding subproblem %d infeasible.\n", sind);
+			status = DSP_STAT_PRIM_INFEASIBLE;
+		} else if (cpxstat == CPXMIP_INForUNBD) {
+			message_->print(3, "  Upper bounding subproblem %d unbounded.\n", sind);
+			status = DSP_STAT_DUAL_INFEASIBLE;
+		} else if (cpxstat == CPXMIP_TIME_LIM_FEAS) {
+			message_->print(3, "  Upper bounding subproblem %d terminated due to time limit.\n", sind);
+			status = DSP_STAT_LIM_ITERorTIME;
+			num_timelim_stops_[s]++;
+		} else if (status != DSP_STAT_UNKNOWN) {
+			num_timelim_stops_[s] = 0;
+			setTimeLimit(par_->getDblParam("DW/SUB/TIME_LIM"));
+		}
+
+		DSPdebugMessage("sind %d status %d\n", sind, status);
+		statuses.push_back(status);
+
+		if (!si_[s]->isAbandoned() && !si_[s]->isProvenPrimalInfeasible()) {
+			sol = new CoinPackedVector;
+			sol->reserve(si_[s]->getNumCols());
+
+			if (!si_[s]->isProvenDualInfeasible()) {
+				const double* x = si_[s]->getColSolution();
+
+				/** subproblem objective value */
+				//objval = si_[s]->getObjValue();
+				CPXgetbestobjval(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), &objval);
+				DSPdebugMessage("Subprob %d: objval %e\n", sind, objval);
+
+				/** subproblem coupling solution */
+				for (int j = 0; j < si_[s]->getNumCols(); ++j) {
+					double xval = x[j];
+					//if (sub_clbd_[s][j] == sub_cubd_[s][j])
+					//	printf("sind %d j %d [%e, %e, %e]\n", sind, j, sub_clbd_[s][j], xval, sub_cubd_[s][j]);
+					if (fabs(xval) > 1.0e-8) {
+						if (j < tss->getNumCols(0))
+							sol->insert(sind * tss->getNumCols(0) + j, xval);
+						else
+							sol->insert((tss->getNumScenarios()-1) * tss->getNumCols(0) + sind * tss->getNumCols(1) + j, xval);
+					}
+				}
+			}
+
+			/** store objective and solution */
+			objs.push_back(objval);
+			sols.push_back(sol);
+			sol = NULL;
+		} else {
+			message_->print(0, "Unexpected subproblem status (block: %d, status: %d)\n", sind, status);
+			/** store dummies */
 			objs.push_back(0.0);
 			sols.push_back(new CoinPackedVector);
 		}

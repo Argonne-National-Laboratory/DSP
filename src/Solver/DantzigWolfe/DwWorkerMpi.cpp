@@ -69,6 +69,15 @@ DSP_RTN_CODE DwWorkerMpi::receiver() {
 			objs.clear();
 			sols.clear();
 			break;
+		case sig_generateColsByFix:
+			DSP_RTN_CHECK_RTN_CODE(
+					generateColsByFix(NULL, indices, statuses, objs, sols));
+			indices.clear();
+			statuses.clear();
+			cxs.clear();
+			objs.clear();
+			sols.clear();
+			break;
 		case sig_setColBounds:
 			setColBounds(0, NULL, NULL, NULL);
 			break;
@@ -95,10 +104,15 @@ DSP_RTN_CODE DwWorkerMpi::generateCols(
 		std::vector<double>& objs,           /**< [out] subproblem objective values */
 		std::vector<CoinPackedVector*>& sols /**< [out] subproblem coupling column solutions */) {
 #define FREE_MEMORY \
+		FREE_ARRAY_PTR(recvcounts) \
+		FREE_ARRAY_PTR(displs) \
 		FREE_ARRAY_PTR(_indices) \
 		FREE_ARRAY_PTR(_statuses) \
 		FREE_ARRAY_PTR(_cxs) \
-		FREE_ARRAY_PTR(_objs)
+		FREE_ARRAY_PTR(_objs) \
+		for (unsigned i = 0; i < _sols.size(); ++i) { \
+			FREE_PTR(_sols[i]) \
+		}
 
 	int* recvcounts = NULL; /**< number of subproblems for each rank */
 	int* displs = NULL;     /**< displacement for each receive buffer */
@@ -185,6 +199,111 @@ DSP_RTN_CODE DwWorkerMpi::generateCols(
 			indices.push_back(_indices[i]);
 			statuses.push_back(_statuses[i]);
 			cxs.push_back(_cxs[i]);
+			objs.push_back(_objs[i]);
+			DSPdebugMessage("_objs[%d] = %e\n", i, _objs[i]);
+			sols.push_back(_sols[i]);
+			_sols[i] = NULL;
+		}
+		_sols.clear();
+	}
+
+	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
+
+	FREE_MEMORY
+
+	return DSP_RTN_OK;
+#undef FREE_MEMORY
+}
+
+DSP_RTN_CODE DwWorkerMpi::generateColsByFix(
+		const double* x,                     /**< [in] solution to fix */
+		std::vector<int>& indices,           /**< [out] subproblem indices */
+		std::vector<int>& statuses,          /**< [out] solution status */
+		std::vector<double>& objs,           /**< [out] subproblem objective values */
+		std::vector<CoinPackedVector*>& sols /**< [out] subproblem coupling column solutions */) {
+#define FREE_MEMORY \
+		FREE_ARRAY_PTR(recvcounts) \
+		FREE_ARRAY_PTR(displs) \
+		FREE_ARRAY_PTR(_x) \
+		FREE_ARRAY_PTR(_indices) \
+		FREE_ARRAY_PTR(_statuses) \
+		FREE_ARRAY_PTR(_objs) \
+		for (unsigned i = 0; i < _sols.size(); ++i) { \
+			FREE_PTR(_sols[i]); \
+		}
+
+	int* recvcounts = NULL; /**< number of subproblems for each rank */
+	int* displs = NULL;     /**< displacement for each receive buffer */
+
+	/** temporary arrays to collect data from ranks */
+	double* _x = NULL;
+	int* _indices = NULL;
+	int* _statuses = NULL;
+	double* _objs = NULL;
+	std::vector<CoinPackedVector*> _sols;
+
+	/** run only for stochastic models */
+	if (model_->isStochastic() == false)
+		return DSP_RTN_OK;
+
+	BGN_TRY_CATCH
+
+	TssModel* tss = dynamic_cast<TssModel*>(model_);
+
+	/** memory for solution to evalute */
+	_x = new double [tss->getNumCols(0)];
+
+	if (comm_rank_ == 0) {
+		/** send signal */
+		int sig = sig_generateColsByFix;
+		DSPdebugMessage("Rank %d sends signal %d.\n", comm_rank_, sig);
+		MPI_Bcast(&sig, 1, MPI_INT, 0, comm_);
+
+		recvcounts = new int [comm_size_];
+		displs = new int [comm_size_];
+		_indices = new int [nsubprobs_];
+		_statuses = new int [nsubprobs_];
+		_objs = new double [nsubprobs_];
+
+		CoinCopyN(x, tss->getNumCols(0), _x);
+	}
+
+	MPI_Bcast(_x, tss->getNumCols(0), MPI_DOUBLE, 0, comm_);
+
+	/** actual function to generate columns */
+	DSP_RTN_CHECK_RTN_CODE(
+			DwWorker::generateColsByFix(_x, indices, statuses, objs, sols));
+	DSPdebugMessage("Rank %d generated %u indices, %u statuses, %u objs, and %u sols.\n",
+			comm_rank_, indices.size(), statuses.size(), objs.size(), sols.size());
+
+	/** The root rank gathers the number of subproblems for each process. */
+	MPI_Gather(&parProcIdxSize_, 1, MPI_INT, recvcounts, 1, MPI_INT, 0, comm_);
+
+	/** calculate displacement of the receive buffer */
+	if (comm_rank_ == 0) {
+		displs[0] = 0;
+		for (int i = 1; i < comm_size_; ++i)
+			displs[i] = displs[i-1] + recvcounts[i-1];
+	}
+
+	/** synchronize information */
+	MPI_Gatherv(&indices[0], parProcIdxSize_, MPI_INT,
+			_indices, recvcounts, displs, MPI_INT, 0, comm_);
+	MPI_Gatherv(&statuses[0], parProcIdxSize_, MPI_INT,
+			_statuses, recvcounts, displs, MPI_INT, 0, comm_);
+	MPI_Gatherv(&objs[0], parProcIdxSize_, MPI_DOUBLE,
+			_objs, recvcounts, displs, MPI_DOUBLE, 0, comm_);
+	MPIgatherCoinPackedVectors(comm_, sols, _sols);
+
+	/** construct output arguments */
+	if (comm_rank_ == 0) {
+		indices.clear();
+		statuses.clear();
+		objs.clear();
+		sols.clear();
+		for (int i = 0; i < nsubprobs_; ++i) {
+			indices.push_back(_indices[i]);
+			statuses.push_back(_statuses[i]);
 			objs.push_back(_objs[i]);
 			sols.push_back(_sols[i]);
 			_sols[i] = NULL;

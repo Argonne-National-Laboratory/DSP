@@ -8,7 +8,6 @@
 /** Coin */
 #include "CoinWarmStartBasis.hpp"
 /** Dsp */
-#include "TreeSearch/DspBranch.h"
 #include "Solver/DecSolver.h"
 #include "Solver/DantzigWolfe/DwCol.h"
 #include "Solver/DantzigWolfe/DwWorker.h"
@@ -65,14 +64,14 @@ public:
     /** switch to phase 2 */
     DSP_RTN_CODE switchToPhase2();
 
+    /** get best primal solution (in original space) found during iteration */
+    virtual const double * getBestPrimalSolutionOrig() {return &bestprimsol_orig_[0];}
+
+    /** get best primal solution (in original space) found during iteration */
+    virtual std::vector<CoinPackedVector*>& getLastSubprobSolutions() {return recent_subsols_;}
+
 	/** set branching objects */
-	virtual void setBranchingObjects(const DspBranch* branchobj);
-
-	/** set best primal solution */
-	void setBestPrimalSolution(const double* solution);
-
-	/** set primal solution */
-	void setPrimalSolution(const double* solution);
+	virtual void setBranchingObjects(const DspBranchObj* branchobj);
 
 protected:
 
@@ -106,13 +105,16 @@ protected:
     /** generate columns */
     virtual DSP_RTN_CODE generateCols();
 
+    /** generate columns by fixing first-stage variables of SMIP */
+    virtual DSP_RTN_CODE generateColsByFix(
+        int nsols /**< [in] number of solutions to evaluate in LIFO way */);
+
     /** calculate piA */
     virtual DSP_RTN_CODE calculatePiA(
 			std::vector<double>& piA /**< [out] pi^T A */);
 
     /** Add columns */
     virtual DSP_RTN_CODE addCols(
-    		const double* piA,                   /**< [in] pi^T A */
     		std::vector<int>& indices,           /**< [in] subproblem indices corresponding to cols*/
 			std::vector<int>& statuses,          /**< [in] subproblem solution status */
 			std::vector<double>& cxs,            /**< [in] solution times original objective coefficients */
@@ -128,42 +130,7 @@ protected:
 
     /** termination test */
     virtual bool terminationTest();
-#if 0
-    /** Run heuristics */
-    virtual DSP_RTN_CODE heuristics();
-
-    /** pre-process for heuristics */
-    virtual DSP_RTN_CODE preHeuristic(
-    		double*& rlbd,    /**< [out] original row lower bounds */
-    		double*& rubd,    /**< [out] original row lower bounds */
-    		double*& primsol, /**< [out] original primal solution */
-    		double& primobj,  /**< [out] original primal objective */
-    		double& dualobj,  /**< [out] original dual objective */
-    		int& status       /**< [out] original solution status */);
-
-    /** post-process for heuristics */
-    virtual DSP_RTN_CODE postHeuristic(
-    		double*& rlbd,    /**< [out] original row lower bounds */
-    		double*& rubd,    /**< [out] original row lower bounds */
-    		double*& primsol, /**< [out] original primal solution */
-    		double& primobj,  /**< [out] original primal objective */
-    		double& dualobj,  /**< [out] original dual objective */
-    		int& status       /**< [out] original solution status */);
-
-    /** trivial heuristic */
-    virtual DSP_RTN_CODE heuristicTrivial();
-
-    /** FP-type heuristic */
-    virtual DSP_RTN_CODE heuristicFp(int direction);
-
-    /** Dive heuristic */
-    virtual DSP_RTN_CODE heuristicDive();
-
-    /** guts of Dive heuristic */
-    virtual DSP_RTN_CODE gutsOfDive(
-    		std::vector<CoinTriple<int,int,double> > branchList,
-    		int depth);
-#endif
+    
     /** print iteration information */
     virtual void printIterInfo();
 
@@ -201,7 +168,10 @@ public:
     std::vector<double> rlbd_orig_;
     std::vector<double> rubd_orig_;
 	std::vector<double> clbd_node_; /** current column lower bounds */
-	std::vector<double> cubd_node_; /** current column upper bounds */
+    std::vector<double> cubd_node_; /** current column upper bounds */
+
+    std::vector<double> bestprimsol_orig_; /** best primal solution in original space */
+    std::vector<CoinPackedVector*> recent_subsols_;
 
     int itercnt_;
     int ngenerated_;
@@ -218,6 +188,7 @@ public:
 protected:
 
     std::vector<int> status_subs_; /**< subproblem status */
+    std::vector<CoinPackedVector*> stored_solutions_; /**< first-stage solutions that are evaluated for upper bounds */
 
 };
 

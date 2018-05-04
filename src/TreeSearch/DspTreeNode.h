@@ -11,7 +11,7 @@
 /** Coin */
 #include <AlpsTreeNode.h>
 /** Dsp */
-#include "TreeSearch/DspBranch.h"
+#include "TreeSearch/DspBranchObj.h"
 #include "TreeSearch/DspNodeDesc.h"
 
 class DspTreeNode: public AlpsTreeNode {
@@ -81,8 +81,7 @@ private:
     std::fstream logstream_;
 
 	/** branching object */
-    DspBranch* branchingUp_;
-    DspBranch* branchingDn_;
+    std::vector<DspBranchObj*> branchingObjs_;
 
 };
 

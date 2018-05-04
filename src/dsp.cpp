@@ -19,10 +19,11 @@ const char* gDspUsage =
 	"       --smps\tSMPS file name without extensions. For example, if your SMPS files are ../test/farmer.cor, ../test/farmer.sto, and ../test/farmer.tim, this value should be ../test/farmer\n"
 	"       --mps\tMPS file name\n"
 	"       --dec\tDEC file name\n"
+	"       --soln\toptional argument for solution file name.\n"
 	"       --param\toptional paramater for parameter file name\n";
 
 void setBlockIds(DspApiEnv* env, int nblocks, bool master_has_subblocks = false);
-void runDsp(char* smpsfile, char* mpsfile, char* decfile, char* paramfile);
+void runDsp(char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* paramfile);
 void readMpsDec(DspApiEnv* env, char* mpsfile, char* decfile);
 void parseDecFile(char* decfile, vector<vector<string> >& rows_in_blocks);
 void createBlockModel(DspApiEnv* env, CoinMpsIO& p, const CoinPackedMatrix* mat, 
@@ -52,12 +53,13 @@ int main(int argc, char* argv[]) {
 	exit(0); 
 #endif
 
-	if (argc < 5) {
+	if (argc < 3) {
 		EXIT_WITH_MSG
 	} else {
 		char* smpsfile = NULL;
 		char* mpsfile = NULL;
 		char* decfile = NULL;
+		char* solnfile = NULL;
 		char* paramfile = NULL;
 		for (int i = 1; i < argc; ++i) {
 			if (i + 1 != argc) {
@@ -67,6 +69,8 @@ int main(int argc, char* argv[]) {
 					mpsfile = argv[i+1];
 				} else if (std::string(argv[i]) == "--dec") {
 					decfile = argv[i+1];
+				} else if (std::string(argv[i]) == "--soln") {
+					solnfile = argv[i+1];
 				} else if (std::string(argv[i]) == "--param") {
 					paramfile = argv[i+1];
 				} else {
@@ -81,7 +85,7 @@ int main(int argc, char* argv[]) {
 		}
 
 		/** run dsp */
-		runDsp(smpsfile, mpsfile, decfile, paramfile);
+		runDsp(smpsfile, mpsfile, decfile, solnfile, paramfile);
 
 #ifdef DSP_HAS_MPI
 		MPI_Finalize();
@@ -92,7 +96,7 @@ int main(int argc, char* argv[]) {
 #undef EXIT_WITH_MSG
 }
 
-void runDsp(char* smpsfile, char* mpsfile, char* decfile, char* paramfile) {
+void runDsp(char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* paramfile) {
 	bool isroot = true;
 #ifdef DSP_HAS_MPI
 	int comm_rank, comm_size;
@@ -133,9 +137,27 @@ void runDsp(char* smpsfile, char* mpsfile, char* decfile, char* paramfile) {
 #endif
 		solveDw(env);
 
-	if (isroot) cout << "Primal bound: " << getPrimalBound(env) << endl;
+	if (isroot) {
+		cout << "Primal bound: " << getPrimalBound(env) << endl;
+		cout << "Dual bound  : " << getDualBound(env) << endl;
 
-	if (isroot) cout << "Deleting DSP environment" << endl;
+		/** write solution to file */
+		if (solnfile != NULL && getPrimalBound(env) < 1.0e+20) {
+			vector<double> sol(getTotalNumCols(env),0.0);
+			getPrimalSolution(env, getTotalNumCols(env), &sol[0]);
+
+			ofstream solstream(solnfile);
+			for (int j = 0; j < getTotalNumCols(env); ++j) {
+				if (fabs(sol[j]) > 1.0e-10)
+					solstream << "x[" << j << "] = " << sol[j] << endl;
+			}
+			solstream.close();
+
+			cout << "The solutions have been written in " << solnfile << ".\n";
+		}
+		cout << "Deleting DSP environment" << endl;
+	}
+
 	freeEnv(env);
 }
 

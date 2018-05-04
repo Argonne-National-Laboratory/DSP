@@ -54,15 +54,14 @@ public:
     std::vector<double>& getPrimalSolution() {return primsol_;}
 
     virtual bool chooseBranchingObjects(
-    			DspBranch*& branchingUp, /**< [out] branching-up object */
-    			DspBranch*& branchingDn  /**< [out] branching-down object */) {
+    			std::vector<DspBranchObj*>& branchingObjs /**< [out] branching objects */) {
     	return false;
     }
 
     void setIterLimit(int n) {solver_->setIterLimit(n);}
     void setTimeLimit(double t) {solver_->setTimeLimit(t);}
     void setBestPrimalObjective(double val) {bestprimobj_=val;}
-    void setBranchingObjects(const DspBranch* branchobj) {
+    void setBranchingObjects(const DspBranchObj* branchobj) {
     	solver_->setBranchingObjects(branchobj);
     }
 

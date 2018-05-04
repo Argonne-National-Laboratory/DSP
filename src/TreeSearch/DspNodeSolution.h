@@ -14,9 +14,6 @@
 #include "Utility/DspMacros.h"
 
 class DspNodeSolution: public AlpsSolution {
-protected:
-	std::vector<double> solution_; /**< solution */
-	double objvalue_;  /**< objective value */
 
 public:
 	/** default constructor */
@@ -39,6 +36,9 @@ public:
 				os << "x[" << j << "] = " << solution_[j] << std::endl;
 		}
 	}
+
+	std::vector<double> solution_; /**< solution */
+	double objvalue_;  /**< objective value */
 };
 
 #endif /* SRC_TREESEARCH_DSPNODESOLUTION_H_ */

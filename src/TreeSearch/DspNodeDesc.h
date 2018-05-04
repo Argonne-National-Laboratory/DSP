@@ -13,7 +13,7 @@
 #include "CoinWarmStartBasis.hpp"
 /** Dsp */
 #include "Utility/DspMacros.h"
-#include "TreeSearch/DspBranch.h"
+#include "TreeSearch/DspBranchObj.h"
 #include "TreeSearch/DspModel.h"
 
 /**
@@ -39,7 +39,7 @@ public:
 	}
 
 	/** constructor with branching object */
-	DspNodeDesc(DspModel* m, int branchdir, DspBranch*& branchobj):
+	DspNodeDesc(DspModel* m, int branchdir, DspBranchObj*& branchobj):
 			AlpsNodeDesc(m),
 			branchdir_(branchdir),
 			branchobj_(branchobj) {
@@ -54,12 +54,12 @@ public:
 	int branchdir() {return branchdir_;}
 
 	/** get branching object */
-	const DspBranch* getBranchingObject() {return branchobj_;}
+	const DspBranchObj* getBranchingObject() {return branchobj_;}
 
 private:
 
 	int branchdir_;        /**< branching direction: 1=up, -1=down */
-	DspBranch* branchobj_; /**< branching object */
+	DspBranchObj* branchobj_; /**< branching object */
 };
 
 #endif /* SRC_TREESEARCH_DSPNODEDESC_H_ */

@@ -6,6 +6,7 @@
  */
 
 #include "AlpsKnowledgeBrokerSerial.h"
+#include <Model/TssModel.h>
 #include <DantzigWolfe/DwSolverSerial.h>
 #include <DantzigWolfe/DwMaster.h>
 #include <DantzigWolfe/DwBundleDual.h>
@@ -18,7 +19,12 @@ DwSolverSerial::DwSolverSerial(
 DecSolver(model, par, message),
 master_(NULL),
 worker_(NULL),
-alps_(NULL) {}
+alps_(NULL) {
+	if (par->getStrParam("VBC/FILE").size() > 0) {
+		std::ofstream ofs(par->getStrParam("VBC/FILE").c_str());
+		ofs.close();
+	}
+}
 
 DwSolverSerial::~DwSolverSerial() {
 	FREE_PTR(master_);
@@ -34,7 +40,7 @@ DSP_RTN_CODE DwSolverSerial::init() {
 	worker_ = new DwWorker(model_, par_, message_);
 
 	/** create master */
-	message_->print(1, "Initializing master problems ... \n");
+	message_->print(1, "Initializing master problem ... \n");
 	//master_ = new DwMaster(worker_);
 	master_ = new DwBundleDual(worker_);
 
@@ -63,9 +69,22 @@ DSP_RTN_CODE DwSolverSerial::solve() {
 	/** solve */
 	AlpsKnowledgeBrokerSerial alpsBroker(0, NULL, *alps_);
     alpsBroker.search(alps_);
+	// alpsBroker.printBestSolution();
 
-//    DspNodeSolution* solution = dynamic_cast<DspNodeSolution*>(alpsBroker.getBestKnowledge(AlpsKnowledgeTypeSolution).first);
-//    solution->print(std::cout);
+	DspNodeSolution* solution = NULL;
+	if (alpsBroker.hasKnowledge(AlpsKnowledgeTypeSolution)) {
+		solution = dynamic_cast<DspNodeSolution*>(alpsBroker.getBestKnowledge(AlpsKnowledgeTypeSolution).first);
+		bestprimsol_ = solution->solution_;
+		if (model_->isStochastic()) {
+			TssModel* tss = dynamic_cast<TssModel*>(model_);
+			bestprimsol_.erase(bestprimsol_.begin(), bestprimsol_.begin() + tss->getNumCols(0) * (tss->getNumScenarios() - 1));
+		}
+	}
+	bestprimobj_ = alpsBroker.getBestQuality();
+	if (alpsBroker.getSolStatus() == AlpsExitStatusOptimal)
+		bestdualobj_ = bestprimobj_;
+	else
+		bestdualobj_ = alpsBroker.getBestKnowledge(AlpsKnowledgeTypeNode).second;
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;

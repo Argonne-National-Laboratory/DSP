@@ -393,21 +393,21 @@ double getPrimalBound(DspApiEnv * env)
 double getDualBound(DspApiEnv * env)
 {
 	DSP_API_CHECK_SOLVER(0.0);
-	return env->solver_->getDualObjective();
+	return env->solver_->getBestDualObjective();
 }
 
 /** get solution */
 void getPrimalSolution(DspApiEnv * env, int num, double * solution)
 {
 	DSP_API_CHECK_SOLVER();
-	CoinCopyN(env->solver_->getPrimalSolution(), num, solution);
+	CoinCopyN(env->solver_->getBestPrimalSolution(), num, solution);
 }
 
 /** get dual solution */
 void getDualSolution(DspApiEnv * env, int num, double * solution)
 {
 	DSP_API_CHECK_SOLVER();
-	CoinCopyN(env->solver_->getDualSolution(), num, solution);
+	CoinCopyN(env->solver_->getBestDualSolution(), num, solution);
 }
 
 /** get number of iterations */

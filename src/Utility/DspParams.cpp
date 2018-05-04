@@ -134,10 +134,7 @@ void DspParams::initBoolParams()
 	BoolParams_.createParam("DW/MASTER/BRANCH_ROWS", false);
 	BoolParams_.createParam("DW/TRUST_REGION", false);
 	BoolParams_.createParam("DW/HEURISTICS", false);
-	BoolParams_.createParam("DW/HEURISTICS/TRIVIAL", true);
-	BoolParams_.createParam("DW/HEURISTICS/DIVE", true);
-	BoolParams_.createParam("DW/HEURISTICS/FP1", false);
-	BoolParams_.createParam("DW/HEURISTICS/FP2", false);
+	BoolParams_.createParam("DW/STRONG_BRANCH", false);
 }
 
 void DspParams::initIntParams()
@@ -183,9 +180,11 @@ void DspParams::initIntParams()
 
 	/** evaluate upper bound */
 	IntParams_.createParam("DD/EVAL_UB", 1);
+	IntParams_.createParam("DW/EVAL_UB", 0);
 
 	/** maximum number of solutions to evaluate */
 	IntParams_.createParam("DD/MAX_EVAL_UB", 100);
+	IntParams_.createParam("DW/MAX_EVAL_UB", 100);
 
 	/** maximum queue size for asynchronous one */
 	IntParams_.createParam("DD/MAX_QSIZE", 5);
@@ -195,7 +194,7 @@ void DspParams::initIntParams()
 
 	IntParams_.createParam("ALPS/SEARCH_STRATEGY", 0);
 	IntParams_.createParam("ALPS/NODE_LIM", 1000000);
-	IntParams_.createParam("ALPS/NODE_LOG_INTERVAL", 100);
+	IntParams_.createParam("ALPS/NODE_LOG_INTERVAL", 1);
 
 	IntParams_.createParam("DW/MASTER/COL_AGE_LIM", 10);
     IntParams_.createParam("DW/ITER_LIM", MAX_INT_NUM);
@@ -203,6 +202,7 @@ void DspParams::initIntParams()
     IntParams_.createParam("DW/HEURISTICS/DIVE/ITER_LIM", MAX_INT_NUM);
     IntParams_.createParam("DW/SUB/THREADS", 1);
 	IntParams_.createParam("DW/SUB/ADVIND", 0);
+	IntParams_.createParam("DW/BRANCH", 0);
     IntParams_.createParam("CPX_PARAM_BARMAXCOR", -1);
     IntParams_.createParam("CPX_PARAM_BARALG", 0);
     IntParams_.createParam("CPX_PARAM_DEPIND", -1);
@@ -236,7 +236,7 @@ void DspParams::initDblParams()
 	DblParams_.createParam("ALPS/TIME_LIM", MAX_DBL_NUM);
 
 	DblParams_.createParam("DW/SUB/TIME_LIM", 300);
-	DblParams_.createParam("DW/GAPTOL", 1.0e-5);
+	DblParams_.createParam("DW/GAPTOL", 1.0e-4);
 	DblParams_.createParam("DW/MIN_INCREASE", 1.0e-5);
 	DblParams_.createParam("DW/SUB/GAPTOL", 0.0000);
 	DblParams_.createParam("DW/TIME_LIM", MAX_DBL_NUM);
@@ -250,6 +250,7 @@ void DspParams::initStrParams()
 	/** prefix for output files */
 	StrParams_.createParam("OUTPUT/PREFIX", "dsp");
 	StrParams_.createParam("DW/LOGFILE/OBJS", "objtrack.csv");
+	StrParams_.createParam("VBC/FILE", "");
 }
 
 void DspParams::initBoolPtrParams()

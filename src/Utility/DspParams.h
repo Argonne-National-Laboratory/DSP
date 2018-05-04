@@ -32,6 +32,11 @@ enum DSP_BD_INIT_LB_ALGO
 	SEPARATE_MILP,
 };
 
+enum DSP_DW_BRANCH {
+	BRANCH_INT = 0,
+	BRANCH_NONANT,
+};
+
 /**
  * This class create, set and get parameters.
  */

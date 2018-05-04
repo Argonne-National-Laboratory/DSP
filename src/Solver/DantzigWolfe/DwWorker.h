@@ -41,6 +41,14 @@ public:
 			std::vector<double>& objs,           /**< [out] subproblem objective values */
 			std::vector<CoinPackedVector*>& sols /**< [out] subproblem coupling column solutions */);
 
+	/** generate variables by fixing some of the varialbes (e.g., upper bounding for SMIP) */
+	virtual DSP_RTN_CODE generateColsByFix(
+			const double* x,                     /**< [in] solution to fix */
+			std::vector<int>& indices,           /**< [out] subproblem indices */
+			std::vector<int>& statuses,          /**< [out] solution status */
+			std::vector<double>& objs,           /**< [out] subproblem objective values */
+			std::vector<CoinPackedVector*>& sols /**< [out] subproblem coupling column solutions */);
+
 	/** get number of total subproblems */
 	virtual int getNumSubprobs() {return nsubprobs_;}
 
