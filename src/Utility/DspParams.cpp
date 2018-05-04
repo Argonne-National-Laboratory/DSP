@@ -134,10 +134,6 @@ void DspParams::initBoolParams()
 	BoolParams_.createParam("DW/MASTER/BRANCH_ROWS", false);
 	BoolParams_.createParam("DW/TRUST_REGION", false);
 	BoolParams_.createParam("DW/HEURISTICS", false);
-	BoolParams_.createParam("DW/HEURISTICS/TRIVIAL", true);
-	BoolParams_.createParam("DW/HEURISTICS/DIVE", true);
-	BoolParams_.createParam("DW/HEURISTICS/FP1", false);
-	BoolParams_.createParam("DW/HEURISTICS/FP2", false);
 	BoolParams_.createParam("DW/STRONG_BRANCH", false);
 }
 
@@ -206,6 +202,7 @@ void DspParams::initIntParams()
     IntParams_.createParam("DW/HEURISTICS/DIVE/ITER_LIM", MAX_INT_NUM);
     IntParams_.createParam("DW/SUB/THREADS", 1);
 	IntParams_.createParam("DW/SUB/ADVIND", 0);
+	IntParams_.createParam("DW/BRANCH", 0);
     IntParams_.createParam("CPX_PARAM_BARMAXCOR", -1);
     IntParams_.createParam("CPX_PARAM_BARALG", 0);
     IntParams_.createParam("CPX_PARAM_DEPIND", -1);

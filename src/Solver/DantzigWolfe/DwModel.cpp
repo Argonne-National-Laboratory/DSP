@@ -10,6 +10,7 @@
 #include <DantzigWolfe/DwModel.h>
 #include <DantzigWolfe/DwHeuristic.h>
 #include <DantzigWolfe/DwBranchInt.h>
+#include <DantzigWolfe/DwBranchNonant.h>
 #include <Model/TssModel.h>
 
 DwModel::DwModel(): DspModel(), branch_(NULL), infeasibility_(0.0) {}
@@ -23,7 +24,22 @@ DwModel::DwModel(DecSolver* solver): DspModel(solver), infeasibility_(0.0) {
 		heuristics_.push_back(new DwRounding("Rounding", *this));
 	}
 
-	branch_ = new DwBranchInt(this);
+	switch (par_->getIntParam("DW/BRANCH")) {
+		case BRANCH_INT:
+			branch_ = new DwBranchInt(this);
+			break;
+		case BRANCH_NONANT:
+			if (solver_->getModelPtr()->isStochastic())
+				branch_ = new DwBranchNonant(this);
+			else {
+				solver_->getMessagePtr()->print(0, "Disabled nonanticipativity branching.\n");
+				branch_ = new DwBranchInt(this);
+			}
+			break;
+		default:
+			branch_ = new DwBranchInt(this);
+			break;
+	}
 }
 
 DwModel::~DwModel() {

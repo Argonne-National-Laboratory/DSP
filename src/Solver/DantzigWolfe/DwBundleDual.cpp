@@ -778,7 +778,7 @@ void DwBundleDual::addBranchingRowsCols(const DspBranchObj* branchobj) {
 			primal_si_->addCol((*it)->col_, 0.0, COIN_DBL_MAX, (*it)->obj_);
 		}
 	}
-	message_->print(3, "Appended dynamic columns in the master (%d / %u cols).\n", si_->getNumRows(), cols_generated_.size());
+	message_->print(2, "Appended dynamic columns in the master (%d / %u cols).\n", si_->getNumRows(), cols_generated_.size());
 }
 
 void DwBundleDual::printIterInfo() {
