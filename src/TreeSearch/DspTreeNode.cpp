@@ -20,21 +20,12 @@
 #include "TreeSearch/DspNodeSolution.h"
 #include "Solver/DantzigWolfe/DwMaster.h"
 
-DspTreeNode::DspTreeNode() : AlpsTreeNode() {
-#ifdef WRITELOG
-	//const char* logname = getKnowledgeBroker()->getModel()->AlpsPar()->entry(AlpsParams::logFile).c_str();
-	DSPdebugMessage("Writing log file to DspAlps.vbc.\n");
-	logstream_.open("DspAlps.vbc", ios::app);
-#endif
-}
+DspTreeNode::DspTreeNode() : AlpsTreeNode() {}
 
 DspTreeNode::~DspTreeNode() {
 	for (auto obj = branchingObjs_.begin(); obj != branchingObjs_.end(); obj++) {
 		FREE_PTR(*obj);
 	}
-#ifdef WRITELOG
-	logstream_.close();
-#endif
 }
 
 int DspTreeNode::process(bool isRoot, bool rampUp) {
@@ -286,28 +277,36 @@ DspTreeNode* DspTreeNode::createNewTreeNode(AlpsNodeDesc*& desc) const {
 }
 
 void DspTreeNode::wirteLog(const char* status, DspNodeDesc* desc, double lpbound, double infeas, int suminfeas) {
-#ifdef WRITELOG
-	logstream_ << getKnowledgeBroker()->timer().getWallClock() << " " << status << " ";
-	if (strcmp(status, "candidate") == 0) {
-		int nextindex = getKnowledgeBroker()->getNextNodeIndex();
-		if (desc->branchdir() > 0)
-			logstream_ << nextindex << " " << index_ << " ";
+
+	DspModel* model = dynamic_cast<DspModel*>(desc->getModel());
+	DspParams* par = model->getParPtr();
+
+	if (par->getStrParam("VBC/FILE").size() > 0) {
+		logstream_.open(par->getStrParam("VBC/FILE").c_str(), ios::app);
+
+		logstream_ << getKnowledgeBroker()->timer().getWallClock() << " " << status << " ";
+		if (strcmp(status, "candidate") == 0) {
+			int nextindex = getKnowledgeBroker()->getNextNodeIndex();
+			if (desc->branchdir() > 0)
+				logstream_ << nextindex << " " << index_ << " ";
+			else
+				logstream_ << nextindex + 1 << " " << index_ << " ";
+		} else if (index_ == 0)
+			logstream_ << index_ << " " << index_ << " ";
 		else
-			logstream_ << nextindex + 1 << " " << index_ << " ";
-	} else if (index_ == 0)
-		logstream_ << index_ << " " << index_ << " ";
-	else
-		logstream_ << index_ << " " << parentIndex_ << " ";
-	if (index_ == 0)
-		logstream_ << "M";
-	else if (desc->branchdir() > 0)
-		logstream_ << "L";
-	else
-		logstream_ << "R";
-	if (strcmp(status, "branched") == 0)
-		logstream_ << " " << lpbound << " " << infeas << " " << suminfeas;
-	else if (strcmp(status, "candidate") == 0 || strcmp(status, "heuristic") == 0 || strcmp(status, "integer") == 0)
-		logstream_ << " " << lpbound;
-	logstream_ << std::endl;
-#endif
+			logstream_ << index_ << " " << parentIndex_ << " ";
+		if (index_ == 0)
+			logstream_ << "M";
+		else if (desc->branchdir() > 0)
+			logstream_ << "L";
+		else
+			logstream_ << "R";
+		if (strcmp(status, "branched") == 0)
+			logstream_ << " " << lpbound << " " << infeas << " " << suminfeas;
+		else if (strcmp(status, "candidate") == 0 || strcmp(status, "heuristic") == 0 || strcmp(status, "integer") == 0)
+			logstream_ << " " << lpbound;
+		logstream_ << std::endl;
+
+		logstream_.close();
+	}
 }

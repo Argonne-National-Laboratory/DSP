@@ -19,7 +19,12 @@ DwSolverSerial::DwSolverSerial(
 DecSolver(model, par, message),
 master_(NULL),
 worker_(NULL),
-alps_(NULL) {}
+alps_(NULL) {
+	if (par->getStrParam("VBC/FILE").size() > 0) {
+		std::ofstream ofs(par->getStrParam("VBC/FILE").c_str());
+		ofs.close();
+	}
+}
 
 DwSolverSerial::~DwSolverSerial() {
 	FREE_PTR(master_);
