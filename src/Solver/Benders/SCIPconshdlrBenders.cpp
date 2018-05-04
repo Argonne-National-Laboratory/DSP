@@ -486,6 +486,10 @@ void SCIPconshdlrBenders::aggregateCuts(
 			isInfeasible = true;
 			break;
 		}
+		
+		/** When some subproblems were primal infeasible, the rest are not solved. Then, just skip them. */
+		if (bdsub_->getStatus(i) == DSP_STAT_NOT_SOLVED)
+			break;
 
 		if (bdsub_->getStatus(i) != DSP_STAT_OPTIMAL)
 		{
