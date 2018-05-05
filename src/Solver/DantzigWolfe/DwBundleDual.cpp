@@ -727,8 +727,8 @@ void DwBundleDual::addBranchingRowsCols(const DspBranchObj* branchobj) {
 		for (unsigned j = 0, i = 0; j < branchobj->index_.size(); ++j) {
 			int sparse_index = (*it)->x_.findIndex(branchobj->index_[j]);
 			double val = 0.0;
-			if (sparse_index > -1)
-				val = (*it)->x_.getElements()[sparse_index];
+			if (sparse_index <= -1) continue;
+			val = (*it)->x_.getElements()[sparse_index];
 			if (val < branchobj->lb_[j] || val > branchobj->ub_[j]) {
 				(*it)->active_ = false;
 				break;
@@ -737,8 +737,10 @@ void DwBundleDual::addBranchingRowsCols(const DspBranchObj* branchobj) {
 
 		if ((*it)->active_) {
 			/** create a column for core rows */
-			rind.clear();
+			rind.clear(); 
 			rval.clear();
+			rind.reserve((*it)->col_.getNumElements());
+			rval.reserve((*it)->col_.getNumElements());
 			for (int i = 0; i < (*it)->col_.getNumElements(); ++i) {
 				if ((*it)->col_.getIndices()[i] < nrows_core_) {
 					rind.push_back((*it)->col_.getIndices()[i]);
