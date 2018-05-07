@@ -216,14 +216,14 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 						AlpsNodeStatusFathomed,
 						ALPS_OBJ_MAX));
 				wirteLog("infeasible", node);
-				DSPdebugMessage("Strong branching fathomed the child.\n");
+				solver->getMessagePtr()->print(1, "Branching fathomed the child.\n");
 			} else {
 				newNodes.push_back(CoinMakeTriple(
 						static_cast<AlpsNodeDesc*>(node),
 						AlpsNodeStatusCandidate,
 						model->getDualObjective()));
 				wirteLog("candidate", node, model->getDualObjective());
-				DSPdebugMessage("Strong branching estimates objective value %e.\n", model->getDualObjective());
+				solver->getMessagePtr()->print(1, "Branching estimates objective value %e.\n", model->getDualObjective());
 			}
 		}
 		node = NULL;

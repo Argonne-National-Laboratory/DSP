@@ -56,7 +56,7 @@ bool DwBranchNonant::chooseBranchingObjects(
 		std::vector<double> dsol(tss->getNumCols(0), 0.0);
 		for (int j = 0; j < sol->getNumElements(); ++j) {
 			if (sol->getIndices()[j] < ncols_first_stage) {
-				refsol[sol->getIndices()[j] % tss->getNumCols(0)] += sol->getElements()[j] / master->getLastSubprobSolutions().size();
+				refsol[sol->getIndices()[j] % tss->getNumCols(0)] += sol->getElements()[j] * tss->getProbability()[i];
 				dsol[sol->getIndices()[j] % tss->getNumCols(0)] += sol->getElements()[j];
 			}
 		}
@@ -69,7 +69,7 @@ bool DwBranchNonant::chooseBranchingObjects(
 	for (unsigned i = 0; i < master->getLastSubprobSolutions().size(); ++i) {
 		CoinPackedVector* sol = master->getLastSubprobSolutions()[i];
 		for (int j = 0; j < tss->getNumCols(0); ++j)
-			devsol[j] += pow(densesol[i][j] - refsol[j],2) / (master->getLastSubprobSolutions().size() - 1);
+			devsol[j] += pow(densesol[i][j] - refsol[j],2) * tss->getProbability()[i];
 		sol = NULL;
 	}
 
