@@ -141,6 +141,10 @@ void runDsp(char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* 
 		cout << "Primal bound: " << getPrimalBound(env) << endl;
 		cout << "Dual bound  : " << getDualBound(env) << endl;
 
+		if (getPrimalBound(env) < 1.0e+20) {
+		cout << "Gap (%)     : " << fabs(getPrimalBound(env)-getDualBound(env))/(getPrimalBound(env)+1.0e-10)*100 << endl;
+		}
+
 		/** write solution to file */
 		if (solnfile != NULL && getPrimalBound(env) < 1.0e+20) {
 			vector<double> sol(getTotalNumCols(env),0.0);
