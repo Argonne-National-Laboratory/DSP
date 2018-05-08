@@ -142,7 +142,7 @@ void runDsp(char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* 
 		cout << "Dual bound  : " << getDualBound(env) << endl;
 
 		if (getPrimalBound(env) < 1.0e+20) {
-		cout << "Gap (%)     : " << fabs(getPrimalBound(env)-getDualBound(env))/(getPrimalBound(env)+1.0e-10)*100 << endl;
+		cout << "Gap (%)     : " << fabs(getPrimalBound(env)-getDualBound(env))/fabs(getPrimalBound(env)+1.0e-10)*100 << endl;
 		}
 
 		/** write solution to file */
