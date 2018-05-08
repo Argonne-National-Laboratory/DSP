@@ -26,6 +26,7 @@ DspTreeNode::~DspTreeNode() {
 	for (auto obj = branchingObjs_.begin(); obj != branchingObjs_.end(); obj++) {
 		FREE_PTR(*obj);
 	}
+	branchingObjs_.clear();
 }
 
 int DspTreeNode::process(bool isRoot, bool rampUp) {
@@ -201,6 +202,7 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 		/** Do strong down-branching */
 		model->setBranchingObjects(*obj);
 		ret = model->solve();
+		//printf("strong branching returns %d\n", ret);
 
 		/** add branching-down node */
 		node = new DspNodeDesc(model, (*obj)->direction_, *obj);
@@ -216,14 +218,14 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 						AlpsNodeStatusFathomed,
 						ALPS_OBJ_MAX));
 				wirteLog("infeasible", node);
-				solver->getMessagePtr()->print(1, "Branching fathomed the child.\n");
+				//printf("Branching fathomed the child.\n");
 			} else {
 				newNodes.push_back(CoinMakeTriple(
 						static_cast<AlpsNodeDesc*>(node),
 						AlpsNodeStatusCandidate,
 						model->getDualObjective()));
 				wirteLog("candidate", node, model->getDualObjective());
-				solver->getMessagePtr()->print(1, "Branching estimates objective value %e.\n", model->getDualObjective());
+				//printf("Branching estimates objective value %e.\n", model->getDualObjective());
 			}
 		}
 		node = NULL;

@@ -294,7 +294,7 @@ DSP_RTN_CODE DwBundleDual::callMasterSolver() {
 		//CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARALG, par_->getIntParam("CPX_PARAM_BARALG"));
 		//CPXsetdblparam(cpx->getEnvironmentPtr(), CPX_PARAM_BAREPCOMP, 1e-6);
 		/** use dual simplex for QP, which is numerically much more stable than Barrier */
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_QPMETHOD, 2);
+		//CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_QPMETHOD, 2);
 		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_DEPIND, par_->getIntParam("CPX_PARAM_DEPIND"));
 		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, par_->getIntParam("CPX_PARAM_NUMERICALEMPHASIS"));
 	}
@@ -314,6 +314,8 @@ DSP_RTN_CODE DwBundleDual::callMasterSolver() {
 	case CPX_STAT_UNBOUNDED:
 	case CPX_STAT_INForUNBD:
 		status_ = DSP_STAT_PRIM_INFEASIBLE;
+		message_->print(0, "Unexpected CPLEX status %d\n", cpxstat);
+		si_->writeMps("unbounded_master");
 		break;
 	case CPX_STAT_ABORT_OBJ_LIM:
 	case CPX_STAT_ABORT_PRIM_OBJ_LIM:
