@@ -19,9 +19,12 @@ DwModel::DwModel(DecSolver* solver): DspModel(solver), infeasibility_(0.0) {
 	DwMaster* master = dynamic_cast<DwMaster*>(solver_);
 	primsol_.resize(master->ncols_orig_);
 
+	/** add heuristics */
 	if (par_->getBoolParam("DW/HEURISTICS")) {
-		/** add heuristics */
-		heuristics_.push_back(new DwRounding("Rounding", *this));
+		if (par_->getBoolParam("DW/HEURISTICS/ROUNDING"))
+			heuristics_.push_back(new DwRounding("Rounding", *this));
+		if (par_->getBoolParam("DW/HEURISTICS/SMIP") && solver_->getModelPtr()->isStochastic())
+			heuristics_.push_back(new DwSmip("Smip", *this));
 	}
 
 	switch (par_->getIntParam("DW/BRANCH")) {
