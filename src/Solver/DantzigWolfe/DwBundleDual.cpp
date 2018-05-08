@@ -272,11 +272,15 @@ DSP_RTN_CODE DwBundleDual::updateCenter(double penalty) {
 				coef -= rlbd[j];
 			if (rubd[j] < 1.0e+20)
 				coef -= rubd[j];
+			if (fabs(coef) >= 1.0e+20) {
+				CoinError("Invalid objective coefficient.", "updateCenter", "DwBundleDual");
+				return DSP_RTN_ERR;
+			}
 			si_->setObjCoeff(j, coef);
 			CPXchgqpcoef(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), j, j, penalty);
 		}
 	} else {
-		CoinError("This supports OsiCpxSolverInterface only.", "updateQuadratic", "DwBundle");
+		CoinError("This supports OsiCpxSolverInterface only.", "updateCenter", "DwBundleDual");
 		return DSP_RTN_ERR;
 	}
 	return DSP_RTN_OK;
