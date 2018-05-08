@@ -20,14 +20,13 @@ int DwRounding::solution(double &objective, std::vector<double> &solution) {
 	double stime = CoinGetTimeOfDay();
 	std::shared_ptr<DwMaster> master(dynamic_cast<DwMaster*>(model_->getSolver()->clone()));
 	//printf("Time to copy DwMaster: %.10f seconds\n", CoinGetTimeOfDay() - stime);
-	std::vector<double> primsol(model_->getPrimalSolution());
 
 	/** round and fix */
 	double rounded;
 	for (int j = 0; j < master->ncols_orig_; ++j) {
 		if (master->ctype_orig_[j] != 'C') {
 			/** round */
-			rounded = round(primsol[j]);
+			rounded = round(model_->getPrimalSolution()[j]);
 			rounded = std::min(rounded, master->cubd_node_[j]);
 			rounded = std::max(rounded, master->clbd_node_[j]);
 			/** fix */
@@ -53,7 +52,7 @@ int DwRounding::solution(double &objective, std::vector<double> &solution) {
 	case DSP_STAT_FEASIBLE:
 	case DSP_STAT_LIM_ITERorTIME: {
 		if (master->getPrimalObjective() < objective) {
-			objective = -master->getBestDualObjective();
+			objective = master->getBestDualObjective();
 			/** parse solution */
 			int cpos = 0;
 			solution.resize(master->ncols_orig_);
@@ -99,12 +98,11 @@ int DwSmip::solution(double &objective, std::vector<double> &solution) {
 	double stime = CoinGetTimeOfDay();
 	std::shared_ptr<DwMaster> master(dynamic_cast<DwMaster*>(solver->clone()));
 	//printf("Time to copy DwMaster: %.10f seconds\n", CoinGetTimeOfDay() - stime);
-	std::vector<double> primsol(model_->getPrimalSolution());
 
 	/** round and fix */
 	double fixed;
 	for (int j = 0; j < tss->getNumCols(0); ++j) {
-		fixed = primsol[j];
+		fixed = model_->getPrimalSolution()[j];
 		if (master->ctype_orig_[j] != 'C') {
 			/** round */
 			double rounded = round(fixed);
@@ -131,8 +129,8 @@ int DwSmip::solution(double &objective, std::vector<double> &solution) {
 	case DSP_STAT_OPTIMAL:
 	case DSP_STAT_FEASIBLE:
 	case DSP_STAT_LIM_ITERorTIME: {
-		if (-master->getDualObjective() < objective) {
-			objective = -master->getBestDualObjective();
+		if (master->getDualObjective() < objective) {
+			objective = master->getBestDualObjective();
 			message->print(1, "found a better upper bound %e.\n", objective);
 			/** parse solution */
 			int cpos = 0;
