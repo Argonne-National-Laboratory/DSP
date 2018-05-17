@@ -77,15 +77,17 @@ DSP_RTN_CODE DwSolverSerial::solve() {
 	/** solve */
 	AlpsKnowledgeBrokerSerial alpsBroker(0, NULL, *alps_);
     alpsBroker.search(alps_);
-	// alpsBroker.printBestSolution();
+	//alpsBroker.printBestSolution();
 
 	DspNodeSolution* solution = NULL;
 	if (alpsBroker.hasKnowledge(AlpsKnowledgeTypeSolution)) {
 		solution = dynamic_cast<DspNodeSolution*>(alpsBroker.getBestKnowledge(AlpsKnowledgeTypeSolution).first);
-		bestprimsol_ = solution->solution_;
-		if (model_->isStochastic()) {
-			TssModel* tss = dynamic_cast<TssModel*>(model_);
-			bestprimsol_.erase(bestprimsol_.begin(), bestprimsol_.begin() + tss->getNumCols(0) * (tss->getNumScenarios() - 1));
+		if (solution) {
+			bestprimsol_ = solution->solution_;
+			if (model_->isStochastic() && bestprimsol_.size() > 0) {
+				TssModel* tss = dynamic_cast<TssModel*>(model_);
+				bestprimsol_.erase(bestprimsol_.begin(), bestprimsol_.begin() + tss->getNumCols(0) * (tss->getNumScenarios() - 1));
+			}
 		}
 	}
 	bestprimobj_ = alpsBroker.getBestQuality();
