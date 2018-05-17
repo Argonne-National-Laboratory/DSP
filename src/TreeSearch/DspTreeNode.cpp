@@ -67,7 +67,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 	double dwTimeLim = CoinMin(par->getDblParam("DW/TIME_LIM"), alpsTimeRemain);
 	model->setIterLimit(par->getIntParam("DW/ITER_LIM"));
 	model->setTimeLimit(dwTimeLim);
-	model->setBestPrimalObjective(std::min(gUb, 1.0e+10));
+	model->setBestPrimalObjective(std::min(gUb, ALPS_OBJ_MAX));
 
 	/** solve the bounding problem */
 	ret = model->solve();
@@ -123,7 +123,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 		log_dualobjs_.close();
 
 		/** fathom if LB is larger than UB. */
-		if (curLb >= gUb || curUb >= 1.0e+20) {
+		if (curLb >= gUb || curUb >= ALPS_OBJ_MAX) {
 			setStatus(AlpsNodeStatusFathomed);
 			wirteLog("fathomed", desc);
 		} else {
