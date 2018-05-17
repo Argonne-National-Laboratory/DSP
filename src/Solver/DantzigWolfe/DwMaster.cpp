@@ -498,7 +498,7 @@ DSP_RTN_CODE DwMaster::gutsOfSolve() {
 
 		/** subproblem solution may declare infeasibility. */
 		for (auto st = status_subs_.begin(); st != status_subs_.end(); st++) {
-			DSPdebugMessage("subproblem status %d\n", *st);
+			//DSPdebugMessage("subproblem status %d\n", *st);
 			if (*st == DSP_STAT_PRIM_INFEASIBLE) {
 				status_ = DSP_STAT_PRIM_INFEASIBLE;
 				break;
@@ -692,6 +692,7 @@ DSP_RTN_CODE DwMaster::generateCols() {
 	/** generate columns */
 	DSP_RTN_CHECK_RTN_CODE(
 			worker_->generateCols(phase_, &piA[0], subinds, status_subs_, subcxs, subobjs, subsols));
+	DSPdebugMessage("status_subs_.size() %u\n", status_subs_.size());
 
 	/** any subproblem primal/dual infeasible? */
 	bool isInfeasible = false;
@@ -865,38 +866,38 @@ DSP_RTN_CODE DwMaster::addCols(
 		double cutoff = dualsol_[sind];
 		DSPdebugMessage("pricing out: %e < %e ? (colobj %e, status %d)\n", objs[s], cutoff, cxs[s], statuses[s]);
 
+		/** retrieve subproblem solution */
+		const CoinPackedVector* x = sols[s];
+
+		/** create a column objective */
+		double newcoef = cxs[s];
+
+		/** take A x^k */
+		mat_orig_->times(*x, Ax);
+
+		/** clear a column vector */
+		colvec.clear();
+
+		/** convex combination constraints */
+		if (statuses[s] != DSP_STAT_DUAL_INFEASIBLE)
+			colvec.insert(sind, 1.0);
+
+		/** original constraints */
+		for (int i = 0; i < nrows_orig_; ++i)
+			if (fabs(Ax[i]) > 1.0e-10)
+				colvec.insert(nrows_conv_+i, Ax[i]);
+
+		/** branching constraints */
+		for (int i = 0; i < nrows_branch_; ++i) {
+			int j = branch_row_to_col_[nrows_core_ + i];
+			int sparse_index = x->findIndex(j);
+			if (sparse_index == -1) continue;
+			double val = x->getElements()[sparse_index];
+			if (fabs(val) > 1.0e-10)
+				colvec.insert(nrows_core_ + i, val);
+		}
+
 		if (statuses[s] == DSP_STAT_DUAL_INFEASIBLE || objs[s] < cutoff - 1.0e-4) {
-			/** retrieve subproblem solution */
-			const CoinPackedVector* x = sols[s];
-
-			/** create a column objective */
-			double newcoef = cxs[s];
-
-			/** take A x^k */
-			mat_orig_->times(*x, Ax);
-
-			/** clear a column vector */
-			colvec.clear();
-
-			/** convex combination constraints */
-			if (statuses[s] != DSP_STAT_DUAL_INFEASIBLE)
-				colvec.insert(sind, 1.0);
-
-			/** original constraints */
-			for (int i = 0; i < nrows_orig_; ++i)
-				if (fabs(Ax[i]) > 1.0e-10)
-					colvec.insert(nrows_conv_+i, Ax[i]);
-
-			/** branching constraints */
-			for (int i = 0; i < nrows_branch_; ++i) {
-				int j = branch_row_to_col_[nrows_core_ + i];
-				int sparse_index = x->findIndex(j);
-				if (sparse_index == -1) continue;
-				double val = x->getElements()[sparse_index];
-				if (fabs(val) > 1.0e-10)
-					colvec.insert(nrows_core_ + i, val);
-			}
-
 			/** add the column vector */
 			if (phase_ == 1)
 				si_->addCol(colvec, 0.0, COIN_DBL_MAX, 0.0);
@@ -906,6 +907,10 @@ DSP_RTN_CODE DwMaster::addCols(
 			/** store columns */
 			cols_generated_.push_back(new DwCol(sind, *x, colvec, newcoef, 0.0, COIN_DBL_MAX));
 			ngenerated_++;
+		} else {
+			/** store columns */
+			cols_generated_.push_back(new DwCol(sind, *x, colvec, newcoef, 0.0, COIN_DBL_MAX, false));
+			DSPdebugMessage("added inactive column\n");
 		}
 	}
 	DSPdebugMessage("Number of columns in the pool: %u\n", cols_generated_.size());
