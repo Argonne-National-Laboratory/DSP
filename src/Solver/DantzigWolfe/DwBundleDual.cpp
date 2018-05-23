@@ -607,6 +607,9 @@ DSP_RTN_CODE DwBundleDual::addRows(
 			/** store columns */
 			cols_generated_.push_back(new DwCol(sind, *x, cutvec, cutrhs, 0.0, COIN_DBL_MAX));
 			ngenerated_++;
+		} else {
+			/** store columns */
+			cols_generated_.push_back(new DwCol(sind, *x, cutvec, cutrhs, 0.0, COIN_DBL_MAX, false));
 		}
 	}
 	DSPdebugMessage("Number of columns in the pool: %u\n", cols_generated_.size());

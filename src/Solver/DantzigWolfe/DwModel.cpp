@@ -98,6 +98,20 @@ DSP_RTN_CODE DwModel::solve() {
 					cpos++;
 				}
 			}
+// #define WRITE_ALL_SOLS
+#ifdef WRITE_ALL_SOLS
+			{
+				std::cout << "Number of columns: " << master->cols_generated_.size() << std::endl;
+				std::ofstream fp_primsol("x.csv");
+				for (auto it = master->cols_generated_.begin(); it != master->cols_generated_.end(); it++) {
+					fp_primsol << (*it)->blockid_ << "," << (*it)->obj_;
+					for (int j = 0; j < (*it)->x_.getNumElements(); ++j)
+						fp_primsol << "," << (*it)->x_.getIndices()[j] << "," << (*it)->x_.getElements()[j];
+					fp_primsol << std::endl;
+				}
+				fp_primsol.close();
+			}
+#endif
 			//DspMessage::printArray(cpos, master->getPrimalSolution());
 
 			/** calculate infeasibility */

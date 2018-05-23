@@ -24,6 +24,19 @@ public:
 		/** that's it */
 	}
 
+	/** constructor */
+	DwCol(int blockid, CoinPackedVector x, CoinPackedVector col, double obj, double lb, double ub, bool active):
+		blockid_(blockid),
+		x_(x),
+		col_(col),
+		obj_(obj),
+		lb_(lb),
+		ub_(ub),
+		active_(active),
+		age_(0) {
+		/** that's it */
+	}
+
 	/** copy constructor */
 	DwCol(const DwCol& rhs):
 		blockid_(rhs.blockid_),
