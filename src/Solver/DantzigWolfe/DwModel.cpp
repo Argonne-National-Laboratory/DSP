@@ -123,9 +123,12 @@ DSP_RTN_CODE DwModel::solve() {
 			if (par_->getBoolParam("DW/HEURISTICS") && infeasibility_ > 1.0e-6) {
 				/** FIXME */
 				for (auto it = heuristics_.begin(); it != heuristics_.end(); it++) {
-					message->print(1, "Running [%s] heuristic:\n", (*it)->name());
+					message->print(2, "Running [%s] heuristic:\n", (*it)->name());
 					int found = (*it)->solution(bestprimobj_, bestprimsol_);
-					message->print(1, "found %d bestprimobj %+e\n", found, bestprimobj_);
+					if (found)
+						message->print(2, "found bestprimobj %+e\n", bestprimobj_);
+					else
+						message->print(2, "Not found better primal solution\n");
 				}
 			}
 		}

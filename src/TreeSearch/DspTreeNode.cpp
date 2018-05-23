@@ -188,7 +188,6 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 	solver_loglevel = solver->getLogLevel();
 	solver->setLogLevel(0);
 	/** set other parameters */
-	//solver->setHeuristicRuns(false);
 	bool run_heuristics = par->getBoolParam("DW/HEURISTICS");
 	par->setBoolParam("DW/HEURISTICS", false);
 

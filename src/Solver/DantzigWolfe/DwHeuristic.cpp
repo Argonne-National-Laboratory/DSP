@@ -113,16 +113,19 @@ int DwSmip::solution(double &objective, std::vector<double> &solution) {
 		for (int s = 0; s < tss->getNumScenarios(); ++s)
 			branch->push_back(tss->getNumCols(0) * s + j, fixed, fixed);
 	}
-	branch->bestBound_ = master->getBestDualObjective();
-	branch->dualsol_.assign(master->getBestDualSolution(), master->getBestDualSolution() + master->nrows_);
+	//branch->bestBound_ = master->getBestDualObjective();
+	//branch->dualsol_.assign(master->getBestDualSolution(), master->getBestDualSolution() + master->nrows_);
 
 	master->setBranchingObjects(branch.get());
 
+	int loglevel = master->getParPtr()->getIntParam("LOG_LEVEL");
 	double gaptol = master->getParPtr()->getDblParam("DW/GAPTOL");
+	master->getParPtr()->setIntParam("LOG_LEVEL", 0);
 	master->getParPtr()->setDblParam("DW/GAPTOL", 0.0);
 
 	DSP_RTN_CHECK_THROW(master->solve());
 
+	master->getParPtr()->setIntParam("LOG_LEVEL", loglevel);
 	master->getParPtr()->setDblParam("DW/GAPTOL", gaptol);
 
 	switch (master->getStatus()) {
