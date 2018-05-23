@@ -75,16 +75,16 @@ DSP_RTN_CODE DwBundleDual::solve() {
 	log_time_.clear();
 	log_bestdual_bounds_.clear();
 
+	/** initial price to generate columns */
+	bestdualsol_.resize(nrows_, 0.0);
+	dualsol_ = bestdualsol_;
+	std::fill(dualsol_.begin(), dualsol_.begin() + nrows_conv_, COIN_DBL_MAX);
+
 	/** update quadratic term */
 	u_ = par_->getDblParam("DW/INIT_CENTER");
 	counter_ = 0;
 	eps_ = COIN_DBL_MAX;
 	updateCenter(u_);
-
-	/** initial price to generate columns */
-	bestdualsol_.resize(nrows_, 0.0);
-	dualsol_ = bestdualsol_;
-	std::fill(dualsol_.begin(), dualsol_.begin() + nrows_conv_, COIN_DBL_MAX);
 
 	/** generate initial columns */
 	double stime = CoinGetTimeOfDay();
@@ -268,11 +268,12 @@ DSP_RTN_CODE DwBundleDual::updateCenter(double penalty) {
 		for (int j = nrows_conv_; j < nrows_; ++j) {
 			/** objective coefficient */
 			coef = -penalty*bestdualsol_[j];
-			if (rlbd[j] > -1.0e+20)
+			if (fabs(rlbd[j]) < 1.0e+20)
 				coef -= rlbd[j];
-			if (rubd[j] < 1.0e+20)
+			if (fabs(rubd[j]) < 1.0e+20)
 				coef -= rubd[j];
 			if (fabs(coef) >= 1.0e+20) {
+				printf("penalty = %e, bestdualsol_[%d] = %e, coef = %e\n", penalty, j, bestdualsol_[j], coef);
 				CoinError("Invalid objective coefficient.", "updateCenter", "DwBundleDual");
 				return DSP_RTN_ERR;
 			}
@@ -298,7 +299,7 @@ DSP_RTN_CODE DwBundleDual::callMasterSolver() {
 		//CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARALG, par_->getIntParam("CPX_PARAM_BARALG"));
 		//CPXsetdblparam(cpx->getEnvironmentPtr(), CPX_PARAM_BAREPCOMP, 1e-6);
 		/** use dual simplex for QP, which is numerically much more stable than Barrier */
-		//CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_QPMETHOD, 2);
+		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_QPMETHOD, 2);
 		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_DEPIND, par_->getIntParam("CPX_PARAM_DEPIND"));
 		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, par_->getIntParam("CPX_PARAM_NUMERICALEMPHASIS"));
 	}
@@ -675,7 +676,8 @@ void DwBundleDual::setBranchingObjects(const DspBranchObj* branchobj) {
 
 	/** set known best bound */
 	bestdualobj_ = COIN_DBL_MAX;
-	bestdualsol_ = branchobj->dualsol_;
+	/** TODO: This is problematic because of different column size. */
+	//bestdualsol_ = branchobj->dualsol_;
 
 	END_TRY_CATCH(;)
 }
