@@ -86,57 +86,40 @@ DSP_RTN_CODE DwBundleDual::solve() {
 	eps_ = COIN_DBL_MAX;
 	updateCenter(u_);
 
-	/** generate initial columns */
-	double stime = CoinGetTimeOfDay();
-	DSP_RTN_CHECK_RTN_CODE(generateCols());
-	t_colgen_ += CoinGetTimeOfDay() - stime;
+	if (si_->getNumRows() == 0) {
+		/** generate initial columns */
+		double stime = CoinGetTimeOfDay();
+		DSP_RTN_CHECK_RTN_CODE(generateCols());
+		t_colgen_ += CoinGetTimeOfDay() - stime;
 
-	/** subproblem solution may declare infeasibility. */
-	for (auto st = status_subs_.begin(); st != status_subs_.end(); st++)
-		if (*st == DSP_STAT_PRIM_INFEASIBLE) {
-			status_ = DSP_STAT_PRIM_INFEASIBLE;
-			message_->print(1, "Subproblem solution is infeasible.\n");
-			break;
+		/** subproblem solution may declare infeasibility. */
+		for (auto st = status_subs_.begin(); st != status_subs_.end(); st++)
+			if (*st == DSP_STAT_PRIM_INFEASIBLE) {
+				status_ = DSP_STAT_PRIM_INFEASIBLE;
+				message_->print(1, "Subproblem solution is infeasible.\n");
+				break;
+			}
+
+		/** check time limit */
+		t_total_ = CoinGetTimeOfDay() - t_start_;
+		if (time_remains_ < t_total_) {
+			message_->print(1, "Time limit reached.\n");
+			status_ = DSP_STAT_LIM_ITERorTIME;
 		}
 
-	/**
-	 * The codes below are experimental to see if deactivating some dual variables would help convergence.
-	 */
-#if 0
-	/** deactivate some dual variables (by fixed to zeros) */
-	std::vector<pairIntDbl> weight;
-	const CoinPackedMatrix* mat = si_->getMatrixByCol();
-	for (int j = nrows_conv_; j < si_->getNumCols(); ++j) {
-		const CoinShallowPackedVector col = mat->getVector(j);
-		double val = 0.0;
-		for (int i = 0; i < col.getNumElements(); ++i)
-			val -= col.getElements()[i];
-		weight.push_back(std::make_pair(j,val));
-	}
-	std::sort(weight.begin(), weight.end(), compPair);
-
-	/** FIXME: Let's try 90% activation */
-	int ndeactive = nrows_orig_ - floor(nrows_orig_*0.9);
-	for (int j = 0; j < ndeactive; ++j) {
-		//printf("Fixed column(%d) bounds to zeros.\n", weight[j].first);
-		si_->setColBounds(weight[j].first, 0.0, 0.0);
-	}
-#endif
-	/** check time limit */
-	t_total_ = CoinGetTimeOfDay() - t_start_;
-	if (time_remains_ < t_total_) {
-		message_->print(1, "Time limit reached.\n");
-		status_ = DSP_STAT_LIM_ITERorTIME;
-	}
-
-	if (status_ == DSP_STAT_FEASIBLE) {
-		message_->print(1, "Generated %u initial columns. Initial dual bound %.12e\n", ngenerated_, -dualobj_);
-		if (dualobj_ < bestdualobj_) {
-			bestdualobj_ = dualobj_;
-			bestdualsol_ = dualsol_;
-		}
+		if (status_ == DSP_STAT_FEASIBLE) {
+			message_->print(1, "Generated %u initial columns. Initial dual bound %.12e\n", ngenerated_, -dualobj_);
+			if (dualobj_ < bestdualobj_) {
+				bestdualobj_ = dualobj_;
+				bestdualsol_ = dualsol_;
+			}
+			DSP_RTN_CHECK_RTN_CODE(gutsOfSolve());
+		}		
+	} else {
+		message_->print(1, "Starting with %u existing columns.\n", si_->getNumRows());
 		DSP_RTN_CHECK_RTN_CODE(gutsOfSolve());
 	}
+
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
