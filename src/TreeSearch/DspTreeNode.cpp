@@ -191,41 +191,45 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 	bool run_heuristics = par->getBoolParam("DW/HEURISTICS");
 	par->setBoolParam("DW/HEURISTICS", false);
 
-	if (par->getBoolParam("DW/STRONG_BRANCH")) {
-		solver->getMessagePtr()->print(1, "Strong branching ...\n");
-		solver->setIterLimit(10);
-	} else
-		solver->setIterLimit(1);
-
 	for (auto obj = branchingObjs_.begin(); obj != branchingObjs_.end(); obj++) {
 		/** Do strong down-branching */
 		model->setBranchingObjects(*obj);
-		ret = model->solve();
-		//printf("strong branching returns %d\n", ret);
 
 		/** add branching-down node */
 		node = new DspNodeDesc(model, (*obj)->direction_, *obj);
-		if (ret != DSP_RTN_OK) {
+
+		if (par->getBoolParam("DW/STRONG_BRANCH")) {
+			solver->getMessagePtr()->print(1, "Strong branching ...\n");
+			solver->setIterLimit(10);
+			ret = model->solve();
+
+			if (ret != DSP_RTN_OK) {
+				newNodes.push_back(CoinMakeTriple(
+						static_cast<AlpsNodeDesc*>(node),
+						AlpsNodeStatusDiscarded,
+						ALPS_OBJ_MAX));
+			} else {
+				if (model->getStatus() == DSP_STAT_PRIM_INFEASIBLE) {
+					newNodes.push_back(CoinMakeTriple(
+							static_cast<AlpsNodeDesc*>(node),
+							AlpsNodeStatusFathomed,
+							ALPS_OBJ_MAX));
+					wirteLog("infeasible", node);
+					//printf("Branching fathomed the child.\n");
+				} else {
+					newNodes.push_back(CoinMakeTriple(
+							static_cast<AlpsNodeDesc*>(node),
+							AlpsNodeStatusCandidate,
+							CoinMax(getQuality(), model->getDualObjective())));
+					wirteLog("candidate", node, model->getDualObjective());
+					//printf("Branching estimates objective value %e.\n", model->getDualObjective());
+				}
+			}
+		} else {
 			newNodes.push_back(CoinMakeTriple(
 					static_cast<AlpsNodeDesc*>(node),
-					AlpsNodeStatusDiscarded,
-					ALPS_OBJ_MAX));
-		} else {
-			if (model->getStatus() == DSP_STAT_PRIM_INFEASIBLE) {
-				newNodes.push_back(CoinMakeTriple(
-						static_cast<AlpsNodeDesc*>(node),
-						AlpsNodeStatusFathomed,
-						ALPS_OBJ_MAX));
-				wirteLog("infeasible", node);
-				//printf("Branching fathomed the child.\n");
-			} else {
-				newNodes.push_back(CoinMakeTriple(
-						static_cast<AlpsNodeDesc*>(node),
-						AlpsNodeStatusCandidate,
-						model->getDualObjective()));
-				wirteLog("candidate", node, model->getDualObjective());
-				//printf("Branching estimates objective value %e.\n", model->getDualObjective());
-			}
+					AlpsNodeStatusCandidate,
+					getQuality()));
 		}
 		node = NULL;
 
