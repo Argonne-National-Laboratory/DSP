@@ -85,17 +85,16 @@ DSP_RTN_CODE DwModel::solve() {
 
 		if (primobj_ < 1.0e+20) {
 			/** parse solution */
-			int cpos = 0;
 			std::fill(primsol_.begin(), primsol_.begin() + master->ncols_orig_, 0.0);
 			for (auto it = master->cols_generated_.begin(); it != master->cols_generated_.end(); it++) {
 				if ((*it)->active_) {
-					if (fabs(master->getPrimalSolution()[cpos]) > 1.0e-10) {
+					int master_index = (*it)->master_index_;
+					if (fabs(master->getPrimalSolution()[master_index]) > 1.0e-10) {
 						for (int i = 0; i < (*it)->x_.getNumElements(); ++i) {
 							if ((*it)->x_.getIndices()[i] < master->ncols_orig_)
-								primsol_[(*it)->x_.getIndices()[i]] += (*it)->x_.getElements()[i] * master->getPrimalSolution()[cpos];
+								primsol_[(*it)->x_.getIndices()[i]] += (*it)->x_.getElements()[i] * master->getPrimalSolution()[master_index];
 						}
 					}
-					cpos++;
 				}
 			}
 // #define WRITE_ALL_SOLS
