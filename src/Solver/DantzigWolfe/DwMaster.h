@@ -96,8 +96,11 @@ protected:
     /** solver master */
     virtual DSP_RTN_CODE solveMaster();
 
+    /** update column vector */
+    virtual DSP_RTN_CODE updateCol(DwCol* col);
+
     /** restore columns: adding all the columns back */
-    virtual DSP_RTN_CODE restoreCols();
+    virtual DSP_RTN_CODE restoreCols(int &num_restored);
 
     /** reduce columns (e.g., reduced cost fixing) */
     virtual DSP_RTN_CODE reduceCols();

@@ -487,12 +487,20 @@ DSP_RTN_CODE DwMaster::gutsOfSolve() {
 
 		stime = CoinGetTimeOfDay();
 
-		/** generate columns */
-		prev_nsols = stored_solutions_.size();
-		DSP_RTN_CHECK_RTN_CODE(generateCols());
+		/** restore columns */
+		int num_restored = 0;
+		DSP_RTN_CHECK_RTN_CODE(restoreCols(num_restored));
 
-		/** generate extra columns by fixing the first-stage variables for SMIP */
-		DSP_RTN_CHECK_RTN_CODE(generateColsByFix(stored_solutions_.size() - prev_nsols));
+		if (num_restored > 0) {
+			message_->print(1, "Restored %u columns.\n", num_restored);
+		} else {
+			/** generate columns */
+			prev_nsols = stored_solutions_.size();
+			DSP_RTN_CHECK_RTN_CODE(generateCols());
+
+			/** generate extra columns by fixing the first-stage variables for SMIP */
+			DSP_RTN_CHECK_RTN_CODE(generateColsByFix(stored_solutions_.size() - prev_nsols));
+		}
 
 		t_colgen_ += CoinGetTimeOfDay() - stime;
 
@@ -590,37 +598,72 @@ DSP_RTN_CODE DwMaster::solveMaster() {
 	return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE DwMaster::restoreCols() {
-
-	std::vector<int> existingCols;
-	std::vector<int> delCols;
-
+DSP_RTN_CODE DwMaster::updateCol(DwCol* col) {
 	BGN_TRY_CATCH
 
-	/** delete auxiliary columns */
-	si_->deleteCols(auxcolindices_.size(), &auxcolindices_[0]);
-	auxcolindices_.clear();
+	std::vector<int> col_inds;
+	std::vector<double> col_elems;
+	col_inds.reserve(nrows_);
+	col_elems.reserve(nrows_);
 
-	/** mark the existing columns to match with basis; and mark columns to delete */
-	for (unsigned k = 0, j = 0; k < cols_generated_.size(); ++k)
-		if (cols_generated_[k]->active_) {
-			existingCols.push_back(k);
-			delCols.push_back(j++);
+	/** create a column for core rows */
+	for (int i = 0; i < col->col_.getNumElements(); ++i) {
+		if (col->col_.getIndices()[i] < nrows_core_) {
+			col_inds.push_back(col->col_.getIndices()[i]);
+			col_elems.push_back(col->col_.getElements()[i]);
 		}
+	}
 
-	if (delCols.size() > 0) {
-		/** delete columns */
-		si_->deleteCols(delCols.size(), &delCols[0]);
+	for (int i = 0; i < nrows_branch_; ++i) {
+		int j = branch_row_to_col_[nrows_core_ + i];
+		int sparse_index = col->x_.findIndex(j);
+		if (sparse_index == -1) continue;
+		double val = col->x_.getElements()[sparse_index];
+		if (fabs(val) > 1.0e-10) {
+			col_inds.push_back(nrows_core_ + i);
+			col_elems.push_back(val);
+		}
+	}
 
-		/** add columns */
+	/** assign the core-row column */
+	col->col_.setVector(col_inds.size(), &col_inds[0], &col_elems[0]);
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+	return DSP_RTN_OK;
+}
+
+DSP_RTN_CODE DwMaster::restoreCols(int &num_restored) {
+	BGN_TRY_CATCH
+
+	num_restored = 0;
+
+	/** do only at phase 2 */
+	if (phase_ == 2) {
+		/** mark the existing columns to match with basis; and mark columns to delete */
 		for (unsigned k = 0; k < cols_generated_.size(); ++k) {
-			cols_generated_[k]->active_ = true;
-			si_->addCol(cols_generated_[k]->col_, cols_generated_[k]->lb_, cols_generated_[k]->ub_, cols_generated_[k]->obj_);
+			if (cols_generated_[k]->active_) continue;
+			if (cols_generated_[k]->age_ < COIN_INT_MAX) {
+				/** update column */
+				DSP_RTN_CHECK_RTN_CODE(updateCol(cols_generated_[k]));
+
+				/** add column */
+				double lhs = cols_generated_[k]->col_.dotProduct(&dualsol_[0]);
+				if (lhs - cols_generated_[k]->obj_ > 1.0e-6) {
+					cols_generated_[k]->active_ = true;
+					cols_generated_[k]->age_ = 0;
+
+					/** set master index */
+					cols_generated_[k]->master_index_ = si_->getNumCols();
+
+					/** add column */
+					si_->addCol(cols_generated_[k]->col_, cols_generated_[k]->lb_, cols_generated_[k]->ub_, cols_generated_[k]->obj_);
+					num_restored++;
+				}
+			}
 		}
 	}
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
-
 	return DSP_RTN_OK;
 }
 
@@ -905,11 +948,11 @@ DSP_RTN_CODE DwMaster::addCols(
 				si_->addCol(colvec, 0.0, COIN_DBL_MAX, newcoef);
 
 			/** store columns */
-			cols_generated_.push_back(new DwCol(sind, *x, colvec, newcoef, 0.0, COIN_DBL_MAX));
+			cols_generated_.push_back(new DwCol(sind, si_->getNumCols() - 1, *x, colvec, newcoef, 0.0, COIN_DBL_MAX));
 			ngenerated_++;
 		} else {
 			/** store columns */
-			cols_generated_.push_back(new DwCol(sind, *x, colvec, newcoef, 0.0, COIN_DBL_MAX, false));
+			cols_generated_.push_back(new DwCol(sind, -1, *x, colvec, newcoef, 0.0, COIN_DBL_MAX, false));
 			DSPdebugMessage("added inactive column\n");
 		}
 	}
@@ -1057,7 +1100,23 @@ void DwMaster::setBranchingObjects(const DspBranchObj* branchobj) {
 
 	/** add branching rows */
 	for (auto it = cols_generated_.begin(); it != cols_generated_.end(); it++) {
+		(*it)->active_ = true;
+		(*it)->age_ = 0;
+		for (unsigned j = 0, i = 0; j < branchobj->index_.size(); ++j) {
+			int sparse_index = (*it)->x_.findIndex(branchobj->index_[j]);
+			double val = 0.0;
+			if (sparse_index <= -1) continue;
+			val = (*it)->x_.getElements()[sparse_index];
+			if (val < branchobj->lb_[j] || val > branchobj->ub_[j]) {
+				(*it)->active_ = false;
+				(*it)->age_ = COIN_INT_MAX;
+				break;
+			}
+		}
+
 		if ((*it)->active_) {
+			DSP_RTN_CHECK_THROW(updateCol(*it));
+#if 0
 			/** create a column for core rows */
 			col_inds.clear();
 			col_elems.clear();
@@ -1092,6 +1151,9 @@ void DwMaster::setBranchingObjects(const DspBranchObj* branchobj) {
 
 			/** assign the core-row column */
 			(*it)->col_.setVector(col_inds.size(), &col_inds[0], &col_elems[0]);
+#endif
+			/** set master index */
+			(*it)->master_index_ = si_->getNumCols();
 
 			/** add column */
 			si_->addCol((*it)->col_, 0.0, COIN_DBL_MAX, (*it)->obj_);

@@ -277,10 +277,6 @@ DSP_RTN_CODE DwBundleDual::callMasterSolver() {
 		return DSP_RTN_ERR;
 	} else {
 		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("NUM_CORES"));
-		//CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARORDER, 3);
-		//CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARMAXCOR, par_->getIntParam("CPX_PARAM_BARMAXCOR"));
-		//CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARALG, par_->getIntParam("CPX_PARAM_BARALG"));
-		//CPXsetdblparam(cpx->getEnvironmentPtr(), CPX_PARAM_BAREPCOMP, 1e-6);
 		/** use dual simplex for QP, which is numerically much more stable than Barrier */
 		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_QPMETHOD, 2);
 		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_DEPIND, par_->getIntParam("CPX_PARAM_DEPIND"));
@@ -588,11 +584,11 @@ DSP_RTN_CODE DwBundleDual::addRows(
 			primal_si_->addCol(cutvec, 0.0, COIN_DBL_MAX, cutrhs);
 
 			/** store columns */
-			cols_generated_.push_back(new DwCol(sind, *x, cutvec, cutrhs, 0.0, COIN_DBL_MAX));
+			cols_generated_.push_back(new DwCol(sind, primal_si_->getNumCols() - 1, *x, cutvec, cutrhs, 0.0, COIN_DBL_MAX));
 			ngenerated_++;
 		} else {
 			/** store columns */
-			cols_generated_.push_back(new DwCol(sind, *x, cutvec, cutrhs, 0.0, COIN_DBL_MAX, false));
+			cols_generated_.push_back(new DwCol(sind, -1, *x, cutvec, cutrhs, 0.0, COIN_DBL_MAX, false));
 		}
 	}
 	DSPdebugMessage("Number of columns in the pool: %u\n", cols_generated_.size());
@@ -623,6 +619,39 @@ DSP_RTN_CODE DwBundleDual::getLagrangianBound(
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
+	return DSP_RTN_OK;
+}
+
+DSP_RTN_CODE DwBundleDual::restoreCols(int &num_restored) {
+
+	num_restored = 0;
+#if 0
+	BGN_TRY_CATCH
+
+	/** mark the existing columns to match with basis; and mark columns to delete */
+	for (unsigned k = 0; k < cols_generated_.size(); ++k) {
+		if (cols_generated_[k]->active_) continue;
+		if (cols_generated_[k]->age_ < COIN_INT_MAX) {
+			/** update column */
+			DSP_RTN_CHECK_RTN_CODE(updateCol(cols_generated_[k]));
+
+			/** add column */
+			double lhs = cols_generated_[k]->col_.dotProduct(&dualsol_[0]);
+			if (lhs - cols_generated_[k]->obj_ > 1.0e-6) {
+				cols_generated_[k]->active_ = true;
+				cols_generated_[k]->age_ = 0;
+				/** set master index */
+				cols_generated_[k]->master_index_ = primal_si_->getNumCols();
+				/** add row and column */
+				addDualRow(cols_generated_[k]->col_, -COIN_DBL_MAX, cols_generated_[k]->obj_);
+				primal_si_->addCol(cols_generated_[k]->col_, 0.0, COIN_DBL_MAX, cols_generated_[k]->obj_);
+				num_restored++;
+			}
+		}
+	}
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+#endif
 	return DSP_RTN_OK;
 }
 
@@ -691,7 +720,10 @@ void DwBundleDual::removeBranchingRowsCols() {
 }
 
 void DwBundleDual::addBranchingRowsCols(const DspBranchObj* branchobj) {
-#define BRANCH_ROW
+
+	/** If we add branching rows to the master, the master becomes numerically instable. */
+	
+// #define BRANCH_ROW
 #ifdef BRANCH_ROW
 	for (unsigned j = 0; j < branchobj->index_.size(); ++j) {
 		if (branchobj->lb_[j] > clbd_orig_[branchobj->index_[j]]) {
@@ -717,7 +749,22 @@ void DwBundleDual::addBranchingRowsCols(const DspBranchObj* branchobj) {
 
 	/** add branching columns and rows */
 	for (auto it = cols_generated_.begin(); it != cols_generated_.end(); it++) {
+#if 1
+		(*it)->active_ = false;
+		(*it)->age_ = 0;
+		for (unsigned j = 0, i = 0; j < branchobj->index_.size(); ++j) {
+			int sparse_index = (*it)->x_.findIndex(branchobj->index_[j]);
+			double val = 0.0;
+			if (sparse_index <= -1) continue;
+			val = (*it)->x_.getElements()[sparse_index];
+			if (val < branchobj->lb_[j] || val > branchobj->ub_[j]) {
+				(*it)->age_ = COIN_INT_MAX;
+				break;
+			}
+		}
+#else
 		(*it)->active_ = true;
+		(*it)->age_ = 0;
 		for (unsigned j = 0, i = 0; j < branchobj->index_.size(); ++j) {
 			int sparse_index = (*it)->x_.findIndex(branchobj->index_[j]);
 			double val = 0.0;
@@ -725,11 +772,15 @@ void DwBundleDual::addBranchingRowsCols(const DspBranchObj* branchobj) {
 			val = (*it)->x_.getElements()[sparse_index];
 			if (val < branchobj->lb_[j] || val > branchobj->ub_[j]) {
 				(*it)->active_ = false;
+				(*it)->age_ = COIN_INT_MAX;
 				break;
 			}
 		}
 
 		if ((*it)->active_) {
+#ifdef BRANCH_ROW
+			DSP_RTN_CHECK_THROW(updateCol(*it));
+#else			
 			/** create a column for core rows */
 			rind.clear(); 
 			rval.clear();
@@ -741,38 +792,17 @@ void DwBundleDual::addBranchingRowsCols(const DspBranchObj* branchobj) {
 					rval.push_back((*it)->col_.getElements()[i]);
 				}
 			}
-
-#ifdef BRANCH_ROW
-			/** append column elements for the branching rows */
-			for (unsigned j = 0, i = 0; j < branchobj->index_.size(); ++j) {
-				int sparse_index = (*it)->x_.findIndex(branchobj->index_[j]);
-				double val = 0.0;
-				if (sparse_index > -1)
-					val = (*it)->x_.getElements()[sparse_index];
-				if (branchobj->lb_[j] > clbd_orig_[branchobj->index_[j]]) {
-					if (fabs(val) > 1.0e-10) {
-						rind.push_back(nrows_core_+i);
-						rval.push_back(val);
-					}
-					i++;
-				}
-				if (branchobj->ub_[j] < cubd_orig_[branchobj->index_[j]]) {
-					if (fabs(val) > 1.0e-10) {
-						rind.push_back(nrows_core_+i);
-						rval.push_back(val);
-					}
-					i++;
-				}
-			}
-#endif
-
 			/** assign the core-row column */
 			(*it)->col_.setVector(rind.size(), &rind[0], &rval[0]);
+#endif
+			/** set master index */
+			(*it)->master_index_ = primal_si_->getNumCols();
 
 			/** add row and column */
 			addDualRow((*it)->col_, -COIN_DBL_MAX, (*it)->obj_);
 			primal_si_->addCol((*it)->col_, 0.0, COIN_DBL_MAX, (*it)->obj_);
 		}
+#endif
 	}
 	message_->print(2, "Appended dynamic columns in the master (%d / %u cols).\n", si_->getNumRows(), cols_generated_.size());
 }

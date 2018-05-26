@@ -12,8 +12,9 @@ class DwCol {
 public:
 
 	/** constructor */
-	DwCol(int blockid, CoinPackedVector x, CoinPackedVector col, double obj, double lb, double ub):
+	DwCol(int blockid, int master_index, CoinPackedVector x, CoinPackedVector col, double obj, double lb, double ub):
 		blockid_(blockid),
+		master_index_(master_index),
 		x_(x),
 		col_(col),
 		obj_(obj),
@@ -25,8 +26,9 @@ public:
 	}
 
 	/** constructor */
-	DwCol(int blockid, CoinPackedVector x, CoinPackedVector col, double obj, double lb, double ub, bool active):
+	DwCol(int blockid, int master_index, CoinPackedVector x, CoinPackedVector col, double obj, double lb, double ub, bool active):
 		blockid_(blockid),
+		master_index_(master_index),
 		x_(x),
 		col_(col),
 		obj_(obj),
@@ -40,6 +42,7 @@ public:
 	/** copy constructor */
 	DwCol(const DwCol& rhs):
 		blockid_(rhs.blockid_),
+		master_index_(rhs.master_index_),
 		x_(rhs.x_),
 		col_(rhs.col_),
 		obj_(rhs.obj_),
@@ -53,6 +56,7 @@ public:
 	virtual ~DwCol() {}
 
 	int blockid_; /**< subproblem block id based on zero */
+	int master_index_;
 	CoinPackedVector x_;
 	CoinPackedVector col_;
 	double obj_;
