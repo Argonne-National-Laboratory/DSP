@@ -8,7 +8,9 @@
 #ifndef SRC_SOLVER_DANTZIGWOLFE_DWHEURISTIC_H_
 #define SRC_SOLVER_DANTZIGWOLFE_DWHEURISTIC_H_
 
-#include "TreeSearch/DspHeuristic.h"
+#include <TreeSearch/DspHeuristic.h>
+#include <Model/TssModel.h>
+#include <DantzigWolfe/DwMaster.h>
 
 class DwRounding: public DspHeuristic {
 public:
@@ -26,6 +28,7 @@ public:
 	~DwSmip() {}
 
 	virtual int solution(double &objective, std::vector<double> &solution);
+	virtual void fixSolution(TssModel* tss, DwMaster* master, DspBranchObj* branch, std::vector<double>& sol);
 };
 
 #endif /* SRC_SOLVER_DANTZIGWOLFE_DWHEURISTIC_H_ */
