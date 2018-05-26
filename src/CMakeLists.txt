@@ -30,6 +30,7 @@ set(DSP_SRC_FILES
 	Model/TssModel.cpp
 	Solver/DantzigWolfe/DwBranchInt.cpp
 	Solver/DantzigWolfe/DwBranchNonant.cpp
+	Solver/DantzigWolfe/DwBranchNonant2.cpp
 	Solver/DantzigWolfe/DwModel.cpp
 	Solver/DantzigWolfe/DwMaster.cpp
 	Solver/DantzigWolfe/DwBundleDual.cpp

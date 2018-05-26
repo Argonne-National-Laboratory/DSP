@@ -11,6 +11,7 @@
 #include <DantzigWolfe/DwHeuristic.h>
 #include <DantzigWolfe/DwBranchInt.h>
 #include <DantzigWolfe/DwBranchNonant.h>
+#include <DantzigWolfe/DwBranchNonant2.h>
 #include <Model/TssModel.h>
 
 DwModel::DwModel(): DspModel(), branch_(NULL), infeasibility_(0.0) {}
@@ -28,17 +29,17 @@ DwModel::DwModel(DecSolver* solver): DspModel(solver), infeasibility_(0.0) {
 	}
 
 	switch (par_->getIntParam("DW/BRANCH")) {
-		case BRANCH_INT:
-			branch_ = new DwBranchInt(this);
-			break;
 		case BRANCH_NONANT:
-			if (solver_->getModelPtr()->isStochastic())
+			if (solver_->getModelPtr()->isStochastic()) {
 				branch_ = new DwBranchNonant(this);
-			else {
-				solver_->getMessagePtr()->print(0, "Disabled nonanticipativity branching.\n");
-				branch_ = new DwBranchInt(this);
+				break;
 			}
-			break;
+		case BRANCH_NONANT2:
+			if (solver_->getModelPtr()->isStochastic()){
+				branch_ = new DwBranchNonant2(this);
+				break;
+			}
+		case BRANCH_INT:
 		default:
 			branch_ = new DwBranchInt(this);
 			break;
@@ -111,7 +112,6 @@ DSP_RTN_CODE DwModel::solve() {
 				fp_primsol.close();
 			}
 #endif
-			//DspMessage::printArray(cpos, master->getPrimalSolution());
 
 			/** calculate infeasibility */
 			infeasibility_ = 0.0;
