@@ -185,8 +185,8 @@ void DspParams::initIntParams()
 	IntParams_.createParam("DW/EVAL_UB", 0);
 
 	/** maximum number of solutions to evaluate */
-	IntParams_.createParam("DD/MAX_EVAL_UB", 100);
-	IntParams_.createParam("DW/MAX_EVAL_UB", 100);
+	IntParams_.createParam("DD/MAX_EVAL_UB", 1);
+	IntParams_.createParam("DW/MAX_EVAL_UB", 1);
 
 	/** maximum queue size for asynchronous one */
 	IntParams_.createParam("DD/MAX_QSIZE", 5);
