@@ -119,7 +119,7 @@ DSP_RTN_CODE DwModel::solve() {
 				if (master->ctype_orig_[j] != 'C') {
 					infeasibility_ += fabs(primsol_[j] - floor(primsol_[j] + 0.5));
 				}
-			message->print(3, "Infeasibility: %+e\n", infeasibility_);
+			message->print(1, "Infeasibility: %+e\n", infeasibility_);
 
 			bool isViolated = false;
 			for (int j = 0; j < master->ncols_orig_; ++j) {
