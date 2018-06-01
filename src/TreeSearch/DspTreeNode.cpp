@@ -47,37 +47,40 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 	double relTol = par->getDblParam("DW/GAPTOL");
 	//printf("Solving node %d, parentObjValue %e, gUb %e, gLb %e, gap %.2f\n", index_, parentObjValue, gUb, gLb, gap);
 
-	if (isRoot) {
-		/** quality_ represents the best-known lower bound */
-		quality_ = -ALPS_OBJ_MAX;
-	} else {
-		/** fathom if the relative gap is small enough */
-		if (gap < relTol) {
-			setStatus(AlpsNodeStatusFathomed);
-			wirteLog("fathomed", desc);
-			return status;
-		}
-		/** set branching objects */
-		model->setBranchingObjects(desc->getBranchingObject());
-
-		if (par->getIntParam("DW/EVAL_UB") <= 0)
-			par->setIntParam("DW/MAX_EVAL_UB", 0);
-	}
-
-	double alpsTimeRemain = par->getDblParam("ALPS/TIME_LIM") - getKnowledgeBroker()->timer().getWallClock();
-	double dwTimeLim = CoinMin(par->getDblParam("DW/TIME_LIM"), alpsTimeRemain);
-	model->setIterLimit(par->getIntParam("DW/ITER_LIM"));
-	model->setTimeLimit(dwTimeLim);
-	model->setBestPrimalObjective(std::min(gUb, ALPS_OBJ_MAX));
-
-	/** solve the bounding problem */
-	ret = model->solve();
-	if (ret != DSP_RTN_OK) {
-		setStatus(AlpsNodeStatusDiscarded);
+	/** fathom if the relative gap is small enough */
+	if (gap < relTol) {
+		setStatus(AlpsNodeStatusFathomed);
 		wirteLog("fathomed", desc);
-		return AlpsReturnStatusErr;
+		return status;
 	}
-	DSPdebugMessage("Bounding solution status: %d\n", model->getStatus());
+
+	//if (getStatus() != AlpsNodeStatusEvaluated) {
+		if (isRoot) {
+			/** quality_ represents the best-known lower bound */
+			quality_ = -ALPS_OBJ_MAX;
+		} else {
+			/** set branching objects */
+			model->setBranchingObjects(desc->getBranchingObject());
+
+			if (par->getIntParam("DW/EVAL_UB") <= 0)
+				par->setIntParam("DW/MAX_EVAL_UB", 0);
+		}
+
+		double alpsTimeRemain = par->getDblParam("ALPS/TIME_LIM") - getKnowledgeBroker()->timer().getWallClock();
+		double dwTimeLim = CoinMin(par->getDblParam("DW/TIME_LIM"), alpsTimeRemain);
+		model->setIterLimit(par->getIntParam("DW/ITER_LIM"));
+		model->setTimeLimit(dwTimeLim);
+		model->setBestPrimalObjective(std::min(gUb, ALPS_OBJ_MAX));
+
+		/** solve the bounding problem */
+		ret = model->solve();
+		if (ret != DSP_RTN_OK) {
+			setStatus(AlpsNodeStatusDiscarded);
+			wirteLog("fathomed", desc);
+			return AlpsReturnStatusErr;
+		}
+		DSPdebugMessage("Bounding solution status: %d\n", model->getStatus());
+	//}
 
 	/** any heuristic solution */
 	if (model->getBestPrimalObjective() < gUb) {
