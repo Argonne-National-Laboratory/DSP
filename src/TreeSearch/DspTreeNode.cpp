@@ -155,6 +155,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 		break;
 	}
 	case DSP_STAT_PRIM_INFEASIBLE:
+	case DSP_STAT_LIM_DUAL_OBJ:
 		DSPdebugMessage("Fathom the current node.\n");
 		setStatus(AlpsNodeStatusFathomed);
 		wirteLog("infeasible", desc);

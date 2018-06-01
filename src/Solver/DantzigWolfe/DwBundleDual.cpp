@@ -461,6 +461,7 @@ bool DwBundleDual::terminationTest() {
 
 	if (-bestdualobj_ >= bestprimobj_) {
 		message_->print(3, "Terminated due to best dual bound (%e) >= best primal bound (%e)\n", -bestdualobj_, bestprimobj_);
+		status_ = DSP_STAT_LIM_DUAL_OBJ;
 		return true;
 	}
 
