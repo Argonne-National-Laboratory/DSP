@@ -128,6 +128,26 @@ void DwBranchNonant::getRefSol(std::vector<double>& refsol) {
 
 void DwBranchNonant::getDevSol(std::vector<double>& refsol, std::vector<double>& devsol) {
 	devsol.resize(tss_->getNumCols(0), 0.0);
+	std::vector<double> maxsol(tss_->getNumCols(0), -COIN_DBL_MAX);
+	std::vector<double> minsol(tss_->getNumCols(0), +COIN_DBL_MAX);
+	/** calculate max value first */
+	for (unsigned s = 0; s < master_->getLastSubprobSolutions().size(); ++s) {
+		const CoinPackedVector* sol = master_->getLastSubprobSolutions()[s];
+		int sNumElements = sol->getNumElements();
+		const int* sIndices = sol->getIndices();
+		const double* sElements = sol->getElements();
+		for (int j = 0; j < sNumElements; ++j)
+			if (sIndices[j] < tss_->getNumCols(0) * tss_->getNumScenarios()) {
+				int k = sIndices[j] % tss_->getNumCols(0);
+				maxsol[k] = CoinMax(maxsol[k], sElements[j]);
+				minsol[k] = CoinMin(minsol[k], sElements[j]);
+			}
+	}
+	for (int k = 0; k < tss_->getNumCols(0); ++k)
+		devsol[k] = maxsol[k] - minsol[k];
+
+	/** The following calculates the dispersion as a variance. */
+#if 0
 	for (unsigned s = 0; s < master_->getLastSubprobSolutions().size(); ++s) {
 		const CoinPackedVector* sol = master_->getLastSubprobSolutions()[s];
 		int sNumElements = sol->getNumElements();
@@ -139,4 +159,5 @@ void DwBranchNonant::getDevSol(std::vector<double>& refsol, std::vector<double>&
 				devsol[k] += pow(sElements[j] - refsol[k],2) * tss_->getProbability()[s];
 			}
 	}
+#endif
 }
