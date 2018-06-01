@@ -140,7 +140,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 			if (hasObjs) {
 				/** set solution estimate; the lower the better */
 				solEstimate_ = branchingObjs_[0]->solEstimate_;
-				message->print(1, "solEstimate_ %e\n", solEstimate_);
+				//message->print(1, "solEstimate_ %e\n", solEstimate_);
 
 				DSPdebugMessage("Branching on the current node.\n");
 				setStatus(AlpsNodeStatusPregnant);
