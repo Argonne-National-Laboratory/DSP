@@ -51,7 +51,7 @@ bool DwBranchNonant::chooseBranchingObjects(
 
 	double maxdev = 0.0;
 	for (int j = 0; j < tss_->getNumCols(0); ++j) {
-		if (devsol[j] > epsilon_) {
+		if (devsol[j] > CoinMax(epsilon_, maxdev)) {
 			maxdev = devsol[j];
 			branchingIndex = j;
 			branchingValue = refsol[j];
