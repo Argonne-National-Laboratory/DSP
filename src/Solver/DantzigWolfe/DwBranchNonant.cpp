@@ -101,6 +101,9 @@ bool DwBranchNonant::chooseBranchingObjects(
 		branchingUp->direction_ = 1;
 		branchingDn->direction_ = -1;
 
+		branchingUp->solEstimate_ = maxdev;
+		branchingDn->solEstimate_ = maxdev;
+
 		/** add branching objects */
 		branchingObjs.push_back(branchingUp);
 		branchingObjs.push_back(branchingDn);

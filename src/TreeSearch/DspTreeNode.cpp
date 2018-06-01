@@ -38,6 +38,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 	DspModel* model = dynamic_cast<DspModel*>(desc_->getModel());
 	DwMaster* solver = dynamic_cast<DwMaster*>(model->getSolver());
 	DspParams* par = model->getParPtr();
+	DspMessage* message = solver->getMessagePtr();
 
 	/** bounds */
 	double gUb = getKnowledgeBroker()->getIncumbentValue();
@@ -110,7 +111,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 		}
 #endif
 
-		printf("[%f] curLb %.8e, curUb %.8e, bestUb %.8e, bestLb %.8e\n",
+		message->print(1, "[%f] curLb %.8e, curUb %.8e, bestUb %.8e, bestLb %.8e\n",
 			getKnowledgeBroker()->timer().getWallClock(), curLb, curUb, gUb, gLb);
 
 		log_dualobjs_.open(par->getStrParam("DW/LOGFILE/OBJS").c_str(), ios::app);
@@ -134,6 +135,10 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 			bool hasObjs = model->chooseBranchingObjects(branchingObjs_);
 
 			if (hasObjs) {
+				/** set solution estimate; the lower the better */
+				solEstimate_ = branchingObjs_[0]->solEstimate_;
+				message->print(1, "solEstimate_ %e\n", solEstimate_);
+
 				DSPdebugMessage("Branching on the current node.\n");
 				setStatus(AlpsNodeStatusPregnant);
 			} else {
