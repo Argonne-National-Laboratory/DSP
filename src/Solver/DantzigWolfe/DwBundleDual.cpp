@@ -278,7 +278,7 @@ DSP_RTN_CODE DwBundleDual::callMasterSolver() {
 	} else {
 		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("NUM_CORES"));
 		/** use dual simplex for QP, which is numerically much more stable than Barrier */
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_QPMETHOD, 2);
+		//CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_QPMETHOD, 2);
 		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_DEPIND, par_->getIntParam("CPX_PARAM_DEPIND"));
 		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, par_->getIntParam("CPX_PARAM_NUMERICALEMPHASIS"));
 	}
