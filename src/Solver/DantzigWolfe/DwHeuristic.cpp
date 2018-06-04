@@ -28,9 +28,7 @@ int DwRounding::solution(double &objective, std::vector<double> &solution) {
 			rounded = std::min(rounded, master->cubd_node_[j]);
 			rounded = std::max(rounded, master->clbd_node_[j]);
 			/** fix */
-			branch->index_.push_back(j);
-			branch->lb_.push_back(rounded);
-			branch->ub_.push_back(rounded);
+			branch->push_back(j, rounded, rounded);
 		}
 	}
 	branch->bestBound_ = master->getBestDualObjective();

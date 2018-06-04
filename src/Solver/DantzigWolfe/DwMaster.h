@@ -158,7 +158,8 @@ public:
     int nrows_conv_;   /**< number of rows representing the convexification constraints */
     int nrows_core_;   /**< nrows_orig_ + nrows_conv_ */
     int nrows_branch_; /**< number of rows representing integer columns in the original master */
-    std::map<int,int> branch_row_to_col_; /**< maps each branching row to column in the original master */
+    //std::map<int,int> branch_row_to_col_; /**< maps each branching row to column in the original master */
+    std::map<int,CoinPackedVector> branch_row_to_vec_;
 
     std::vector<DwCol*> cols_generated_; /**< columns generated */
 

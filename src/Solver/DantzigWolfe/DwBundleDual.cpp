@@ -557,6 +557,7 @@ DSP_RTN_CODE DwBundleDual::addRows(
 		cutrhs = cxs[s];
 
 		/** branching objects */
+#if 0
 		for (int i = 0; i < nrows_branch_; ++i) {
 			int j = branch_row_to_col_[nrows_core_ + i];
 			int sparse_index = x->findIndex(j);
@@ -566,6 +567,18 @@ DSP_RTN_CODE DwBundleDual::addRows(
 			if (fabs(cutcoef) > 1.0e-10)
 				cutvec.insert(nrows_core_+i, cutcoef);
 		}
+#else
+		if (nrows_branch_ > 0) {
+			double* dx = x->denseVector(ncols_orig_);
+			for (int i = 0; i < nrows_branch_; ++i) {
+				cutcoef = branch_row_to_vec_[nrows_core_+i].dotProduct(dx);
+				linerr_ -= cutcoef * d_[nrows_orig_+i];
+				if (fabs(cutcoef) > 1.0e-10)
+					cutvec.insert(nrows_core_+i, cutcoef);
+			}
+			FREE_ARRAY_PTR(dx);
+		}
+#endif
 
 		DSPdebugMessage("subproblem %d: status %d, objective %+e, violation %+e\n", sind, statuses[s], objs[s], dualsol_[sind] - objs[s]);
 		if (statuses[s] == DSP_STAT_UNKNOWN)
@@ -668,9 +681,9 @@ void DwBundleDual::setBranchingObjects(const DspBranchObj* branchobj) {
 	cubd_node_ = cubd_orig_;
 
 	/** update column bounds at the current node */
-	for (unsigned j = 0; j < branchobj->index_.size(); ++j) {
-		clbd_node_[branchobj->index_[j]] = branchobj->lb_[j];
-		cubd_node_[branchobj->index_[j]] = branchobj->ub_[j];
+	for (unsigned j = 0; j < branchobj->getNumObjs(); ++j) {
+		clbd_node_[branchobj->getIndex(j)] = branchobj->getLb(j);
+		cubd_node_[branchobj->getIndex(j)] = branchobj->getUb(j);
 	}
 
 	/** remove all columns in the primal master */
@@ -724,17 +737,19 @@ void DwBundleDual::addBranchingRowsCols(const DspBranchObj* branchobj) {
 
 	/** If we add branching rows to the master, the master becomes numerically instable. */
 	if (par_->getBoolParam("DW/MASTER/BRANCH_ROWS")) {
-		for (unsigned j = 0; j < branchobj->index_.size(); ++j) {
-			if (branchobj->lb_[j] > clbd_orig_[branchobj->index_[j]]) {
-				branch_row_to_col_[nrows_core_ + nrows_branch_] = branchobj->index_[j];
-				primal_si_->addRow(0, NULL, NULL, branchobj->lb_[j], COIN_DBL_MAX);
-				si_->addCol(0, NULL, NULL, 0.0, COIN_DBL_MAX, branchobj->lb_[j]);
+		for (unsigned j = 0; j < branchobj->getNumObjs(); ++j) {
+			if (branchobj->getLb(j) > clbd_orig_[branchobj->getIndex(j)]) {
+				//branch_row_to_col_[nrows_core_ + nrows_branch_] = branchobj->getIndex(j);
+				branch_row_to_vec_[nrows_core_ + nrows_branch_] = *(branchobj->getVector(j));
+				primal_si_->addRow(0, NULL, NULL, branchobj->getLb(j), COIN_DBL_MAX);
+				si_->addCol(0, NULL, NULL, 0.0, COIN_DBL_MAX, branchobj->getLb(j));
 				nrows_branch_++;
 			}
-			if (branchobj->ub_[j] < cubd_orig_[branchobj->index_[j]]) {
-				branch_row_to_col_[nrows_core_ + nrows_branch_] = branchobj->index_[j];
-				primal_si_->addRow(0, NULL, NULL, -COIN_DBL_MAX, branchobj->ub_[j]);
-				si_->addCol(0, NULL, NULL, -COIN_DBL_MAX, 0.0, branchobj->ub_[j]);
+			if (branchobj->getUb(j) < cubd_orig_[branchobj->getIndex(j)]) {
+				//branch_row_to_col_[nrows_core_ + nrows_branch_] = branchobj->getIndex(j);
+				branch_row_to_vec_[nrows_core_ + nrows_branch_] = *(branchobj->getVector(j));
+				primal_si_->addRow(0, NULL, NULL, -COIN_DBL_MAX, branchobj->getUb(j));
+				si_->addCol(0, NULL, NULL, -COIN_DBL_MAX, 0.0, branchobj->getUb(j));
 				nrows_branch_++;
 			}
 		}
@@ -752,12 +767,12 @@ void DwBundleDual::addBranchingRowsCols(const DspBranchObj* branchobj) {
 		for (auto it = cols_generated_.begin(); it != cols_generated_.end(); it++) {
 			(*it)->active_ = true;
 			(*it)->age_ = 0;
-			for (unsigned j = 0, i = 0; j < branchobj->index_.size(); ++j) {
-				int sparse_index = (*it)->x_.findIndex(branchobj->index_[j]);
+			for (unsigned j = 0, i = 0; j < branchobj->getNumObjs(); ++j) {
+				int sparse_index = (*it)->x_.findIndex(branchobj->getIndex(j));
 				double val = 0.0;
 				if (sparse_index <= -1) continue;
 				val = (*it)->x_.getElements()[sparse_index];
-				if (val < branchobj->lb_[j] || val > branchobj->ub_[j]) {
+				if (val < branchobj->getLb(j) || val > branchobj->getUb(j)) {
 					(*it)->active_ = false;
 					(*it)->age_ = COIN_INT_MAX;
 					break;
@@ -800,12 +815,12 @@ void DwBundleDual::addBranchingRowsCols(const DspBranchObj* branchobj) {
 		for (auto it = cols_generated_.begin(); it != cols_generated_.end(); it++) {
 			(*it)->active_ = false;
 			(*it)->age_ = 0;
-			for (unsigned j = 0, i = 0; j < branchobj->index_.size(); ++j) {
-				int sparse_index = (*it)->x_.findIndex(branchobj->index_[j]);
+			for (unsigned j = 0, i = 0; j < branchobj->getNumObjs(); ++j) {
+				int sparse_index = (*it)->x_.findIndex(branchobj->getIndex(j));
 				double val = 0.0;
 				if (sparse_index <= -1) continue;
 				val = (*it)->x_.getElements()[sparse_index];
-				if (val < branchobj->lb_[j] || val > branchobj->ub_[j]) {
+				if (val < branchobj->getLb(j) || val > branchobj->getUb(j)) {
 					(*it)->age_ = COIN_INT_MAX;
 					break;
 				}

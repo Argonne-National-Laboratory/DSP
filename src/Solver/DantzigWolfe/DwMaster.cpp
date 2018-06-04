@@ -49,7 +49,8 @@ nrows_orig_(rhs.nrows_orig_),
 nrows_conv_(rhs.nrows_conv_),
 nrows_core_(rhs.nrows_core_),
 nrows_branch_(rhs.nrows_branch_),
-branch_row_to_col_(rhs.branch_row_to_col_),
+//branch_row_to_col_(rhs.branch_row_to_col_),
+branch_row_to_vec_(rhs.branch_row_to_vec_),
 clbd_orig_(rhs.clbd_orig_),
 cubd_orig_(rhs.cubd_orig_),
 obj_orig_(rhs.obj_orig_),
@@ -88,7 +89,8 @@ DwMaster& DwMaster::operator=(const DwMaster& rhs) {
 	nrows_conv_ = rhs.nrows_conv_;
 	nrows_core_ = rhs.nrows_core_;
 	nrows_branch_ = rhs.nrows_branch_;
-	branch_row_to_col_ = rhs.branch_row_to_col_;
+	//branch_row_to_col_ = rhs.branch_row_to_col_;
+	branch_row_to_vec_ = rhs.branch_row_to_vec_;
 	clbd_orig_ = rhs.clbd_orig_;
 	cubd_orig_ = rhs.cubd_orig_;
 	obj_orig_ = rhs.obj_orig_;
@@ -614,6 +616,7 @@ DSP_RTN_CODE DwMaster::updateCol(DwCol* col) {
 		}
 	}
 
+#if 0
 	for (int i = 0; i < nrows_branch_; ++i) {
 		int j = branch_row_to_col_[nrows_core_ + i];
 		int sparse_index = col->x_.findIndex(j);
@@ -624,6 +627,19 @@ DSP_RTN_CODE DwMaster::updateCol(DwCol* col) {
 			col_elems.push_back(val);
 		}
 	}
+#else
+	if (nrows_branch_ > 0) {
+		double* dx = col->x_.denseVector(ncols_orig_);
+		for (int i = 0; i < nrows_branch_; ++i) {
+			double val = branch_row_to_vec_[nrows_core_+i].dotProduct(dx);
+			if (fabs(val) > 1.0e-10) {
+				col_inds.push_back(nrows_core_ + i);
+				col_elems.push_back(val);
+			}
+		}
+		FREE_ARRAY_PTR(dx);
+	}
+#endif
 
 	/** assign the core-row column */
 	col->col_.setVector(col_inds.size(), &col_inds[0], &col_elems[0]);
@@ -931,6 +947,7 @@ DSP_RTN_CODE DwMaster::addCols(
 				colvec.insert(nrows_conv_+i, Ax[i]);
 
 		/** branching constraints */
+#if 0
 		for (int i = 0; i < nrows_branch_; ++i) {
 			int j = branch_row_to_col_[nrows_core_ + i];
 			int sparse_index = x->findIndex(j);
@@ -939,6 +956,17 @@ DSP_RTN_CODE DwMaster::addCols(
 			if (fabs(val) > 1.0e-10)
 				colvec.insert(nrows_core_ + i, val);
 		}
+#else
+		if (nrows_branch_ > 0) {
+			double* dx = x->denseVector(ncols_orig_);
+			for (int i = 0; i < nrows_branch_; ++i) {
+				double val = branch_row_to_vec_[nrows_core_+i].dotProduct(dx);
+				if (fabs(val) > 1.0e-10)
+					colvec.insert(nrows_core_ + i, val);
+			}
+			FREE_ARRAY_PTR(dx);
+		}
+#endif
 
 		if (statuses[s] == DSP_STAT_DUAL_INFEASIBLE || objs[s] < cutoff - 1.0e-4) {
 			/** add the column vector */
@@ -1037,8 +1065,17 @@ DSP_RTN_CODE DwMaster::calculatePiA(
 
 	piA.resize(ncols_orig_);
 	mat_orig_->transposeTimes(&dualsol_[nrows_conv_], &piA[0]);
+#if 0
 	for (int i = nrows_core_; i < nrows_; ++i)
 		piA[branch_row_to_col_[i]] += dualsol_[i];
+#else
+	for (int i = 0; i < nrows_branch_; ++i) {
+		const CoinPackedVector* vec = &branch_row_to_vec_[nrows_core_+i];
+		int numels = vec->getNumElements();
+		for (int j = 0; j < numels; ++j)
+			piA[vec->getIndices()[j]] += vec->getElements()[j] * dualsol_[nrows_core_ + i];
+	}
+#endif
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;
@@ -1077,15 +1114,17 @@ void DwMaster::setBranchingObjects(const DspBranchObj* branchobj) {
 	DSPdebugMessage("Deleted %d columns in the master.\n", ndelcols);
 
 	/** count nrows_branch_ */
-	for (unsigned j = 0; j < branchobj->index_.size(); ++j) {
-		if (branchobj->lb_[j] > clbd_orig_[branchobj->index_[j]]) {
-			branch_row_to_col_[nrows_core_ + nrows_branch_] = branchobj->index_[j];
-			si_->addRow(0, NULL, NULL, branchobj->lb_[j], COIN_DBL_MAX);
+	for (int j = 0; j < branchobj->getNumObjs(); ++j) {
+		if (branchobj->getLb(j) > clbd_orig_[branchobj->getIndex(j)]) {
+			//branch_row_to_col_[nrows_core_ + nrows_branch_] = branchobj->getIndex(j);
+			branch_row_to_vec_[nrows_core_ + nrows_branch_] = *(branchobj->getVector(j));
+			si_->addRow(0, NULL, NULL, branchobj->getLb(j), COIN_DBL_MAX);
 			nrows_branch_++;
 		}
-		if (branchobj->ub_[j] < cubd_orig_[branchobj->index_[j]]) {
-			branch_row_to_col_[nrows_core_ + nrows_branch_] = branchobj->index_[j];
-			si_->addRow(0, NULL, NULL, -COIN_DBL_MAX, branchobj->ub_[j]);
+		if (branchobj->getUb(j) < cubd_orig_[branchobj->getIndex(j)]) {
+			//branch_row_to_col_[nrows_core_ + nrows_branch_] = branchobj->getIndex(j);
+			branch_row_to_vec_[nrows_core_ + nrows_branch_] = *(branchobj->getVector(j));
+			si_->addRow(0, NULL, NULL, -COIN_DBL_MAX, branchobj->getUb(j));
 			nrows_branch_++;
 		}
 	}
@@ -1102,12 +1141,12 @@ void DwMaster::setBranchingObjects(const DspBranchObj* branchobj) {
 	for (auto it = cols_generated_.begin(); it != cols_generated_.end(); it++) {
 		(*it)->active_ = true;
 		(*it)->age_ = 0;
-		for (unsigned j = 0, i = 0; j < branchobj->index_.size(); ++j) {
-			int sparse_index = (*it)->x_.findIndex(branchobj->index_[j]);
+		for (unsigned j = 0, i = 0; j < branchobj->getNumObjs(); ++j) {
+			int sparse_index = (*it)->x_.findIndex(branchobj->getIndex(j));
 			double val = 0.0;
 			if (sparse_index <= -1) continue;
 			val = (*it)->x_.getElements()[sparse_index];
-			if (val < branchobj->lb_[j] || val > branchobj->ub_[j]) {
+			if (val < branchobj->getLb(j) || val > branchobj->getUb(j)) {
 				(*it)->active_ = false;
 				(*it)->age_ = COIN_INT_MAX;
 				break;
@@ -1128,19 +1167,19 @@ void DwMaster::setBranchingObjects(const DspBranchObj* branchobj) {
 			}
 
 			/** append column elements for the branching rows */
-			for (unsigned j = 0, i = 0; j < branchobj->index_.size(); ++j) {
-				int sparse_index = (*it)->x_.findIndex(branchobj->index_[j]);
+			for (unsigned j = 0, i = 0; j < branchobj->getNumObjs(); ++j) {
+				int sparse_index = (*it)->x_.findIndex(branchobj->getIndex(j));
 				double val = 0.0;
 				if (sparse_index > -1)
 					val = (*it)->x_.getElements()[sparse_index];
-				if (branchobj->lb_[j] > clbd_orig_[branchobj->index_[j]]) {
+				if (branchobj->getLb(j) > clbd_orig_[branchobj->getIndex(j)]) {
 					if (fabs(val) > 1.0e-10) {
 						col_inds.push_back(nrows_core_+i);
 						col_elems.push_back(val);
 					}
 					i++;
 				}
-				if (branchobj->ub_[j] < cubd_orig_[branchobj->index_[j]]) {
+				if (branchobj->getUb(j) < cubd_orig_[branchobj->getIndex(j)]) {
 					if (fabs(val) > 1.0e-10) {
 						col_inds.push_back(nrows_core_+i);
 						col_elems.push_back(val);
@@ -1166,11 +1205,11 @@ void DwMaster::setBranchingObjects(const DspBranchObj* branchobj) {
 	cubd_node_ = cubd_orig_;
 
 	/** update column bounds at the current node */
-	for (unsigned j = 0, irow = nrows_core_; j < branchobj->index_.size(); ++j) {
-		clbd_node_[branchobj->index_[j]] = branchobj->lb_[j];
-		cubd_node_[branchobj->index_[j]] = branchobj->ub_[j];
+	for (unsigned j = 0, irow = nrows_core_; j < branchobj->getNumObjs(); ++j) {
+		clbd_node_[branchobj->getIndex(j)] = branchobj->getLb(j);
+		cubd_node_[branchobj->getIndex(j)] = branchobj->getUb(j);
 #ifdef DSP_DEBUG
-		printf("Branch Obj: index %d lb %e ub %e\n", branchobj->index_[j], branchobj->lb_[j], branchobj->ub_[j]);
+		printf("Branch Obj: index %d lb %e ub %e\n", branchobj->getIndex(j), branchobj->getLb(j), branchobj->getUb(j));
 		CoinShallowPackedVector row = si_->getMatrixByRow()->getVector(irow);
 		for (int i = 0, j = 0; i < row.getNumElements(); ++i) {
 			if (j > 0 && j % 5 == 0) printf("\n");
