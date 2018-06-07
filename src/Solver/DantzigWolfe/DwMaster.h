@@ -5,6 +5,8 @@
 #ifndef DSP_DWMASTER_H
 #define DSP_DWMASTER_H
 
+//#define USE_ROW_TO_COL
+
 /** Coin */
 #include "CoinWarmStartBasis.hpp"
 /** Dsp */
@@ -124,6 +126,21 @@ protected:
 			std::vector<double>& objs,           /**< [in] subproblem objective values */
     		std::vector<CoinPackedVector*>& sols /**< [in] subproblem solutions */);
 
+    /** remove all columns in the master */
+    virtual void removeAllCols();
+
+    /** remove branching rows */
+    virtual void removeBranchingRows();
+
+    /** add branching rows and columns */
+    virtual void addBranchingRowsCols(const DspBranchObj* branchobj);
+
+    /** add branching row */
+    virtual void addBranchingRow(double lb, double ub);
+
+    /** add branching column */
+    virtual void addBranchingCol(const CoinPackedVector& col, double obj);
+
     /** Calculate Lagrangian bound */
     virtual DSP_RTN_CODE getLagrangianBound(
 			std::vector<double>& objs /**< [in] subproblem objective values */);
@@ -158,8 +175,11 @@ public:
     int nrows_conv_;   /**< number of rows representing the convexification constraints */
     int nrows_core_;   /**< nrows_orig_ + nrows_conv_ */
     int nrows_branch_; /**< number of rows representing integer columns in the original master */
-    //std::map<int,int> branch_row_to_col_; /**< maps each branching row to column in the original master */
+#ifdef USE_ROW_TO_COL
+    std::map<int,int> branch_row_to_col_; /**< maps each branching row to column in the original master */
+#else
     std::map<int,CoinPackedVector> branch_row_to_vec_;
+#endif
 
     std::vector<DwCol*> cols_generated_; /**< columns generated */
 

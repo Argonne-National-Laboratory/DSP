@@ -34,9 +34,6 @@ public:
 	/** solve */
 	virtual DSP_RTN_CODE solve();
 
-	/** set branching objects */
-	virtual void setBranchingObjects(const DspBranchObj* branchobj);
-
 	/** get best dual objective */
 	virtual double getBestDualObjective() {return -bestdualobj_;}
 
@@ -142,17 +139,26 @@ protected:
 		si_->addRow(v, lb, ub);
 	}
 
+    /** remove all columns in the DW master */
+    virtual void removeAllCols();
+
 	/** remove all columns in the primal master */
 	virtual void removeAllPrimCols();
 
 	/** remove all rows in the dual master */
 	virtual void removeAllDualRows();
 
-	/** remove branching rows and columns */
-	virtual void removeBranchingRowsCols();
+	/** remove branching rows from the DW master */
+	virtual void removeBranchingRows();
 
 	/** add branching rows and columns */
-	virtual void addBranchingRowsCols(const DspBranchObj* branchobj);
+	//virtual void addBranchingRowsCols(const DspBranchObj* branchobj);
+
+    /** add branching row */
+    virtual void addBranchingRow(double lb, double ub);
+
+    /** add branching column */
+    virtual void addBranchingCol(const CoinPackedVector& col, double obj);
 
 	//@}
 };
