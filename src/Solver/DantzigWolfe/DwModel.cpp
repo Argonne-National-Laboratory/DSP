@@ -148,6 +148,9 @@ DSP_RTN_CODE DwModel::solve() {
 
 		break;
 	}
+	case DSP_STAT_LIM_DUAL_OBJ:
+		dualobj_ = master->getBestDualObjective();
+		break;
 	default:
 		break;
 	}

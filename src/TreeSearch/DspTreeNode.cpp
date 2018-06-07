@@ -43,22 +43,22 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 	/** bounds */
 	double gUb = getKnowledgeBroker()->getIncumbentValue();
 	double gLb = getKnowledgeBroker()->getBestNode()->getQuality();
-	double gap = (gUb - gLb) / (fabs(gUb) + 1e-10);
+	double parentLb = isRoot ? -ALPS_OBJ_MAX : getParent()->getQuality();
+	double gap = (gUb - parentLb) / (fabs(gUb) + 1e-10);
 	double relTol = par->getDblParam("DW/GAPTOL");
 	//printf("Solving node %d, parentObjValue %e, gUb %e, gLb %e, gap %.2f\n", index_, parentObjValue, gUb, gLb, gap);
 
 	/** fathom if the relative gap is small enough */
 	if (gap < relTol) {
+		//gap = (gUb - model->getBestDualObjective()) / (fabs(gUb) + 1e-10);
+		//message->print(1, "The current node is fathomed (gap %.2f %%).\n", gap * 100);
 		setStatus(AlpsNodeStatusFathomed);
 		wirteLog("fathomed", desc);
 		return status;
 	}
 
 	//if (getStatus() != AlpsNodeStatusEvaluated) {
-		if (isRoot) {
-			/** quality_ represents the best-known lower bound */
-			quality_ = -ALPS_OBJ_MAX;
-		} else {
+		if (!isRoot) {
 			/** set branching objects */
 			model->setBranchingObjects(desc->getBranchingObject());
 
@@ -128,11 +128,15 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 
 		/** fathom if LB is larger than UB. */
 		if (curLb >= gUb || curUb >= ALPS_OBJ_MAX) {
+			message->print(1, "The current node is fathomed.\n");
 			setStatus(AlpsNodeStatusFathomed);
 			wirteLog("fathomed", desc);
 		} else {
 			/** FIXME: quality_, the lower is the better. */
 			quality_ = curLb;
+
+			/** set global dual bound */
+			model->setBestDualObjective(gLb);
 
 			/** Branching otherwise */
 			bool hasObjs = model->chooseBranchingObjects(branchingObjs_);
@@ -158,13 +162,18 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 		break;
 	}
 	case DSP_STAT_PRIM_INFEASIBLE:
-	case DSP_STAT_LIM_DUAL_OBJ:
-		DSPdebugMessage("Fathom the current node.\n");
+		//message->print(1, "The current node is infeasible.\n");
 		setStatus(AlpsNodeStatusFathomed);
 		wirteLog("infeasible", desc);
 		break;
+	case DSP_STAT_LIM_DUAL_OBJ:
+		quality_ = model->getDualObjective();
+		//message->print(1, "The current node is fathomed.\n");
+		setStatus(AlpsNodeStatusFathomed);
+		wirteLog("fathomed", desc);
+		break;
 	default:
-		DSPdebugMessage("Unexpected solution status: %d.\n", model->getStatus());
+		message->print(1, "Unexpected solution status: %d.\n", model->getStatus());
 		setStatus(AlpsNodeStatusDiscarded);
 		wirteLog("fathomed", desc);
 		//status = AlpsReturnStatusErr;
@@ -189,6 +198,18 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 	/** new nodes to be returned */
 	std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > newNodes;
 	DspNodeDesc* node = NULL;
+
+	/** bounds */
+	double gUb = getKnowledgeBroker()->getIncumbentValue();
+	double gap = (gUb - getQuality()) / (fabs(gUb) + 1e-10);
+	double relTol = par->getDblParam("DW/GAPTOL");
+
+	/** fathom if the relative gap is small enough */
+	if (gap < relTol) {
+		setStatus(AlpsNodeStatusFathomed);
+		wirteLog("fathomed", desc);
+		return newNodes;
+	}
 
 	/** set status */
 	setStatus(AlpsNodeStatusBranched);

@@ -61,6 +61,7 @@ public:
     void setIterLimit(int n) {solver_->setIterLimit(n);}
     void setTimeLimit(double t) {solver_->setTimeLimit(t);}
     void setBestPrimalObjective(double val) {bestprimobj_=val;}
+    void setBestDualObjective(double val) {bestdualobj_=val;}
     void setBranchingObjects(const DspBranchObj* branchobj) {
     	solver_->setBranchingObjects(branchobj);
     }

@@ -91,10 +91,7 @@ DSP_RTN_CODE DwSolverSerial::solve() {
 		}
 	}
 	bestprimobj_ = alpsBroker.getBestQuality();
-	if (alpsBroker.getSolStatus() == AlpsExitStatusOptimal)
-		bestdualobj_ = bestprimobj_;
-	else
-		bestdualobj_ = alpsBroker.getBestKnowledge(AlpsKnowledgeTypeNode).second;
+	bestdualobj_ = alps_->getBestDualObjective();
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;

@@ -86,10 +86,7 @@ DSP_RTN_CODE DwSolverMpi::solve() {
 			}
 		}
 		bestprimobj_ = alpsBroker.getBestQuality();
-		if (alpsBroker.getSolStatus() == AlpsExitStatusOptimal)
-			bestdualobj_ = bestprimobj_;
-		else
-			bestdualobj_ = alpsBroker.getBestKnowledge(AlpsKnowledgeTypeNode).second;
+		bestdualobj_ = alps_->getBestDualObjective();
 
 		/** send signal */
 		int sig = DwWorkerMpi::sig_terminate;
