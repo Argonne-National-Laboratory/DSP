@@ -1176,9 +1176,16 @@ void DwMaster::addBranchingRowsCols(const DspBranchObj* branchobj) {
 				nrows_branch_++;
 			}
 #else
-			branch_row_to_vec_[nrows_core_ + nrows_branch_] = *(branchobj->getVector(j));
-			addBranchingRow(branchobj->getLb(j), branchobj->getUb(j));
-			nrows_branch_++;
+			if (branchobj->getLb(j) > clbd_orig_[branchobj->getIndex(j)]) {
+				branch_row_to_vec_[nrows_core_ + nrows_branch_] = *(branchobj->getVector(j));
+				addBranchingRow(branchobj->getLb(j), COIN_DBL_MAX);
+				nrows_branch_++;
+			}
+			if (branchobj->getUb(j) < cubd_orig_[branchobj->getIndex(j)]) {
+				branch_row_to_vec_[nrows_core_ + nrows_branch_] = *(branchobj->getVector(j));
+				addBranchingRow(-COIN_DBL_MAX, branchobj->getUb(j));
+				nrows_branch_++;
+			}
 #endif
 		}
 	}
