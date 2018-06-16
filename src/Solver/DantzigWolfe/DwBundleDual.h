@@ -57,6 +57,9 @@ protected:
 	/** termination test */
 	virtual bool terminationTest();
 
+    /** reduce columns */
+    virtual DSP_RTN_CODE reduceCols(int &num_removed);
+
     /** restore columns: adding all the columns back */
     virtual DSP_RTN_CODE restoreCols(int &num_restored);
 

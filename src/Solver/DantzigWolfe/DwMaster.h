@@ -105,7 +105,7 @@ protected:
     virtual DSP_RTN_CODE restoreCols(int &num_restored);
 
     /** reduce columns (e.g., reduced cost fixing) */
-    virtual DSP_RTN_CODE reduceCols();
+    virtual DSP_RTN_CODE reduceCols(int &num_removed);
 
     /** generate columns */
     virtual DSP_RTN_CODE generateCols();

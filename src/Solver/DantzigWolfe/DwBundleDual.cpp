@@ -667,6 +667,59 @@ DSP_RTN_CODE DwBundleDual::getLagrangianBound(
 	return DSP_RTN_OK;
 }
 
+DSP_RTN_CODE DwBundleDual::reduceCols(int &num_removed) {
+	
+	//if (nstalls_ < 3 || si_->getNumRows() <= si_->getNumCols())
+		return DSP_RTN_OK;
+
+	BGN_TRY_CATCH
+
+	/** row indices to delete */
+	std::vector<int> delrows;
+	std::vector<int> delblk(model_->getNumSubproblems(), 0);
+
+	for (unsigned k = 0; k < cols_generated_.size(); ++k) {
+		if (cols_generated_[k]->active_)
+			delblk[cols_generated_[k]->blockid_]++;
+	}
+
+	/** increment age */
+	for (unsigned k = 0; k < cols_generated_.size(); ++k) {
+		if (cols_generated_[k]->active_) {
+			int j = cols_generated_[k]->master_index_;
+			if (si_->getRowPrice()[j] < 1.0e-6)
+				cols_generated_[k]->age_++;
+			else
+				cols_generated_[k]->age_ = 0;
+			/** reduced cost fixing */
+			if (cols_generated_[k]->age_ >= par_->getIntParam("DW/MASTER/COL_AGE_LIM") &&
+				delblk[cols_generated_[k]->blockid_] > 1 &&
+				si_->getNumRows() - delrows.size() > si_->getNumCols()) {
+
+				cols_generated_[k]->active_ = false;
+				delrows.push_back(j);
+				delblk[cols_generated_[k]->blockid_]--;
+			}
+		}
+	}
+
+	if (delrows.size() > 0) {
+		si_->deleteRows(delrows.size(), &delrows[0]);
+		primal_si_->deleteCols(delrows.size(), &delrows[0]);
+
+		/** reset age? */
+		for (unsigned k = 0; k < cols_generated_.size(); ++k) {
+			if (cols_generated_[k]->active_)
+				cols_generated_[k]->age_ = 0;
+		}
+	}
+
+	num_removed = delrows.size();
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+	return DSP_RTN_OK;
+}
+
 DSP_RTN_CODE DwBundleDual::restoreCols(int &num_restored) {
 
 	num_restored = 0;

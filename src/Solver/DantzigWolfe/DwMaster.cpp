@@ -488,43 +488,48 @@ DSP_RTN_CODE DwMaster::gutsOfSolve() {
 	printIterInfo();
 	itercnt_++;
 
+	int num_removed = 0, num_restored = 0;
 	while (status_ == DSP_STAT_OPTIMAL) {
 
 		/** column management */
-		DSP_RTN_CHECK_RTN_CODE(reduceCols());
+		num_removed = 0;
+		DSP_RTN_CHECK_RTN_CODE(reduceCols(num_removed));
 
-		stime = CoinGetTimeOfDay();
+		if (num_removed > 0)
+			message_->print(1, "Removed %u columns.\n", num_removed);
+		else {
+			/** restore columns */
+			num_restored = 0;
+			DSP_RTN_CHECK_RTN_CODE(restoreCols(num_restored));
 
-		/** restore columns */
-		int num_restored = 0;
-		DSP_RTN_CHECK_RTN_CODE(restoreCols(num_restored));
+			if (num_restored > 0)
+				message_->print(1, "Restored %u columns.\n", num_restored);
+			else {
+				stime = CoinGetTimeOfDay();
+				/** generate columns */
+				prev_nsols = stored_solutions_.size();
+				DSP_RTN_CHECK_RTN_CODE(generateCols());
 
-		if (num_restored > 0) {
-			message_->print(1, "Restored %u columns.\n", num_restored);
-		} else {
-			/** generate columns */
-			prev_nsols = stored_solutions_.size();
-			DSP_RTN_CHECK_RTN_CODE(generateCols());
+				/** generate extra columns by fixing the first-stage variables for SMIP */
+				DSP_RTN_CHECK_RTN_CODE(generateColsByFix(stored_solutions_.size() - prev_nsols));
 
-			/** generate extra columns by fixing the first-stage variables for SMIP */
-			DSP_RTN_CHECK_RTN_CODE(generateColsByFix(stored_solutions_.size() - prev_nsols));
-		}
+				t_colgen_ += CoinGetTimeOfDay() - stime;
 
-		t_colgen_ += CoinGetTimeOfDay() - stime;
+				/** subproblem solution may declare infeasibility. */
+				for (auto st = status_subs_.begin(); st != status_subs_.end(); st++) {
+					//DSPdebugMessage("subproblem status %d\n", *st);
+					if (*st == DSP_STAT_PRIM_INFEASIBLE) {
+						status_ = DSP_STAT_PRIM_INFEASIBLE;
+						break;
+					}
+				}
+				if (status_ == DSP_STAT_PRIM_INFEASIBLE)
+					break;
 
-		/** subproblem solution may declare infeasibility. */
-		for (auto st = status_subs_.begin(); st != status_subs_.end(); st++) {
-			//DSPdebugMessage("subproblem status %d\n", *st);
-			if (*st == DSP_STAT_PRIM_INFEASIBLE) {
-				status_ = DSP_STAT_PRIM_INFEASIBLE;
-				break;
+				/** update master */
+				DSP_RTN_CHECK_RTN_CODE(updateModel());
 			}
 		}
-		if (status_ == DSP_STAT_PRIM_INFEASIBLE)
-			break;
-
-		/** update master */
-		DSP_RTN_CHECK_RTN_CODE(updateModel());
 
 		/** solver the master problem */
 		stime = CoinGetTimeOfDay();
@@ -689,7 +694,7 @@ DSP_RTN_CODE DwMaster::restoreCols(int &num_restored) {
 	return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE DwMaster::reduceCols() {
+DSP_RTN_CODE DwMaster::reduceCols(int &num_removed) {
 	BGN_TRY_CATCH
 	/** FIXME:
 	 * Be careful! Phase 2 can be infeasible by deleting columns.
@@ -736,6 +741,8 @@ DSP_RTN_CODE DwMaster::reduceCols() {
 			if (useBarrier_ == false)
 				ws = dynamic_cast<CoinWarmStartBasis*>(si_->getWarmStart());
 		}
+
+		num_removed = delcols.size();
 	}
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;
