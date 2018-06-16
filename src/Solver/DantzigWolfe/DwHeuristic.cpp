@@ -81,6 +81,7 @@ int DwSmip::solution(double &objective, std::vector<double> &solution) {
 	DwMaster* m = dynamic_cast<DwMaster*>(solver);
 	DecModel* model = solver->getModelPtr();
 	DspMessage* message = solver->getMessagePtr();
+	DspParams* par = solver->getParPtr();
 
 	/** get stochastic model pointer */
 	if (model->isStochastic()) {
@@ -89,74 +90,69 @@ int DwSmip::solution(double &objective, std::vector<double> &solution) {
 		return found;
 	}
 
-	/** maximum number of iterations to look back for solutions */
-	int maxiter = CoinMin(m->itercnt_, 1);
+	std::shared_ptr<DwMaster> master(m->clone());
 
-	for (int k = m->cols_generated_.size() - maxiter * tss->getNumScenarios(); k < m->cols_generated_.size(); ) {
+	/** create branching objects */
+	std::shared_ptr<DspBranchObj> branch(new DspBranchObj);
 
-		std::shared_ptr<DwMaster> master(m->clone());
-
-		/** create branching objects */
-		std::shared_ptr<DspBranchObj> branch(new DspBranchObj);
-
-		// fixSolution(tss, master.get(), branch.get(), model_->getPrimalSolution());
+	if (par->getIntParam("DW/BRANCH") == BRANCH_NONANT) {
 		std::vector<double> fixedsol(tss->getNumCols(0), 0.0);
-
 		DwCol* colgen = NULL;
 		for (int s = 0; s < tss->getNumScenarios(); ++s) {
-			colgen = master->cols_generated_[k];
-			for (int j = 0; j < colgen->x_.getNumElements(); ++j) {
-				if (colgen->x_.getIndices()[j] < tss->getNumCols(0) * tss->getNumScenarios())
-					fixedsol[colgen->x_.getIndices()[j] % tss->getNumCols(0)] += colgen->x_.getElements()[j] / tss->getNumScenarios();
+			const CoinPackedVector* sol = m->getLastSubprobSolutions()[s];
+			for (int j = 0; j < sol->getNumElements(); ++j) {
+				if (sol->getIndices()[j] < tss->getNumCols(0) * tss->getNumScenarios())
+					fixedsol[sol->getIndices()[j] % tss->getNumCols(0)] += sol->getElements()[j] * tss->getProbability()[s];
 			}
-			k++;
 		}
 		fixSolution(tss, master.get(), branch.get(), fixedsol);
-		// printf("fixed and rounded solution:\n");
-		// DspMessage::printArray(fixedsol.size(), &fixedsol[0]);
+	} else {
+		fixSolution(tss, master.get(), branch.get(), model_->getPrimalSolution());
+	}
+	// printf("fixed and rounded solution:\n");
+	// DspMessage::printArray(fixedsol.size(), &fixedsol[0]);
 
-		master->setBranchingObjects(branch.get());
+	master->setBranchingObjects(branch.get());
 
-		int loglevel = master->getParPtr()->getIntParam("LOG_LEVEL");
-		int dwevalub = master->getParPtr()->getIntParam("DW/EVAL_UB");
-		double gaptol = master->getParPtr()->getDblParam("DW/GAPTOL");
-		message->logLevel_ = 0;
-		master->getParPtr()->setIntParam("DW/EVAL_UB", -1);
-		master->getParPtr()->setDblParam("DW/GAPTOL", 0.0);
+	int loglevel = master->getParPtr()->getIntParam("LOG_LEVEL");
+	int dwevalub = master->getParPtr()->getIntParam("DW/EVAL_UB");
+	double gaptol = master->getParPtr()->getDblParam("DW/GAPTOL");
+	message->logLevel_ = 0;
+	master->getParPtr()->setIntParam("DW/EVAL_UB", -1);
+	master->getParPtr()->setDblParam("DW/GAPTOL", 0.0);
 
-		DSP_RTN_CHECK_THROW(master->solve());
+	DSP_RTN_CHECK_THROW(master->solve());
 
-		message->logLevel_ = loglevel;
-		master->getParPtr()->setIntParam("DW/EVAL_UB", dwevalub);
-		master->getParPtr()->setDblParam("DW/GAPTOL", gaptol);
+	message->logLevel_ = loglevel;
+	master->getParPtr()->setIntParam("DW/EVAL_UB", dwevalub);
+	master->getParPtr()->setDblParam("DW/GAPTOL", gaptol);
 
-		switch (master->getStatus()) {
-		case DSP_STAT_OPTIMAL:
-		case DSP_STAT_FEASIBLE:
-		case DSP_STAT_LIM_ITERorTIME: {
-			if (master->getDualObjective() < objective) {
-				objective = master->getBestDualObjective();
-				message->print(1, "found a better upper bound %e.\n", objective);
-				/** parse solution */
-				int cpos = 0;
-				solution.resize(master->ncols_orig_);
-				std::fill(solution.begin(), solution.end(), 0.0);
-				for (auto it = master->cols_generated_.begin(); it != master->cols_generated_.end(); it++) {
-					if ((*it)->active_) {
-						for (int i = 0; i < (*it)->x_.getNumElements(); ++i) {
-							if ((*it)->x_.getIndices()[i] < master->ncols_orig_)
-								solution[(*it)->x_.getIndices()[i]] += (*it)->x_.getElements()[i] * master->getPrimalSolution()[cpos];
-						}
-						cpos++;
+	switch (master->getStatus()) {
+	case DSP_STAT_OPTIMAL:
+	case DSP_STAT_FEASIBLE:
+	case DSP_STAT_LIM_ITERorTIME: {
+		if (master->getDualObjective() < objective) {
+			objective = master->getBestDualObjective();
+			message->print(1, "found a better upper bound %e.\n", objective);
+			/** parse solution */
+			int cpos = 0;
+			solution.resize(master->ncols_orig_);
+			std::fill(solution.begin(), solution.end(), 0.0);
+			for (auto it = master->cols_generated_.begin(); it != master->cols_generated_.end(); it++) {
+				if ((*it)->active_) {
+					for (int i = 0; i < (*it)->x_.getNumElements(); ++i) {
+						if ((*it)->x_.getIndices()[i] < master->ncols_orig_)
+							solution[(*it)->x_.getIndices()[i]] += (*it)->x_.getElements()[i] * master->getPrimalSolution()[cpos];
 					}
+					cpos++;
 				}
-				found = 1;
 			}
-			break;
+			found = 1;
 		}
-		default:
-			break;
-		}
+		break;
+	}
+	default:
+		break;
 	}
 
 	return found;
