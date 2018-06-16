@@ -79,8 +79,8 @@ bool DwBranchNonant::chooseBranchingObjects(
 			if (branchingIndex == j % tss_->getNumCols(0)) {
 				DSPdebugMessage("Creating branch objects on column %d (value %e): [%e,%e] and [%e,%e]\n", 
 					j, branchingValue, branchingUpValue, master_->cubd_node_[j], master_->clbd_node_[j], branchingDownValue);
-				branchingUp->push_back(j, branchingUpValue, master_->cubd_node_[j]);
-				branchingDn->push_back(j, master_->clbd_node_[j], branchingDownValue);
+				branchingUp->push_back(j, CoinMin(branchingUpValue, master_->cubd_node_[j]), master_->cubd_node_[j]);
+				branchingDn->push_back(j, master_->clbd_node_[j], CoinMax(master_->clbd_node_[j], branchingDownValue));
 			} else if (master_->clbd_node_[j] > master_->clbd_orig_[j] || master_->cubd_node_[j] < master_->cubd_orig_[j]) {
 				/** store any bound changes made in parent nodes */
 				DSPdebugMessage("Adjusting bound change on column %d: [%e,%e]\n", j, master_->clbd_node_[j], master_->cubd_node_[j]);
