@@ -375,7 +375,7 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 	case DSP_STAT_LIM_ITERorTIME: {
 
 		assignMasterSolution(dualsol_);
-		//DspMessage::printArray(nrows_, &dualsol_[0]);
+		//DspMessage::printArray(si_->getNumRows(), si_->getRowPrice());
 
 		d_.resize(nrows_-nrows_conv_);
 		p_.resize(nrows_-nrows_conv_);
@@ -450,37 +450,34 @@ DSP_RTN_CODE DwBundleDual::updateModel() {
 			u = 2 * u_ * (1 - (dualobj_ - bestdualobj_) / v_);
 		else if (counter_ > 3)
 			u = 0.5 * u_;
-		newu = std::max(std::max(u, 0.1*u_), umin_);
+		newu = std::min(std::max(std::max(u, 0.1*u_), umin_), umax_);
 		eps_ = std::max(eps_, -2*v_);
-		counter_ = std::max(counter_+1,1);
-		if (u_ != newu)
-			counter_ = 1;
-		else
-			counter_++;
-		u_ = newu;
+		counter_ = fabs(u_-newu) > 1.0e-6 ? 1 : std::max(counter_+1,1);
+
+		// This is my customization.
+		if (ngenerated_ == 0 || counter_ > 3)
+			newu = std::max(0.1*u_, umin_);
 		bestdualobj_ = dualobj_;
 		bestdualsol_ = dualsol_;
 		nstalls_ = 0;
 	} else {
-		/** increment number of iterations making no progress */
-		nstalls_ = fabs(prev_dualobj_-dualobj_) < 1.0e-6 ? nstalls_ + 1 : 0;
-		if (nstalls_ > 0)
-			message_->print(3, "number of stalls: %d\n", nstalls_);
-
 		eps_ = std::min(eps_, absp_ + alpha_);
 		if (-linerr_ > std::max(eps_, -10*v_) && counter_ < -3)
 			u = 2 * u_ * (1 - (dualobj_ - bestdualobj_) / v_);
-//		printf("#### linerr_ %+e, eps_ %+e, -10*v_ %+e, u %+e\n", -linerr_, eps_, -10*v_, u);
-		newu = std::max(std::min(u, 10*u_), umin_);
-		counter_ = std::min(counter_-1,-1);
-		if (u_ != newu)
-			counter_ = -1;
-		else if (ngenerated_ == 0 || nstalls_ > 3 ||
+		newu = std::min(std::max(std::min(u, 10*u_), umin_), umax_);
+		counter_ = fabs(u_-newu) > 1.0e-6 ? -1 : std::min(counter_-1,-1);
+
+		// My customization
+		/** increment number of iterations making no progress */
+		nstalls_ = fabs(dualobj_ - prev_dualobj_) < 1.0e-6 ? nstalls_ + 1 : 0;
+		if (nstalls_ > 0)
+			message_->print(3, "number of stalls: %d\n", nstalls_);
+		if (ngenerated_ == 0 || nstalls_ > 3 || counter_ < -3 ||
 				(primobj_ >= 1.0e+20 && v_ >= -par_->getDblParam("DW/MIN_INCREASE"))) {
-			newu = std::max(0.1*u_, umin_);
+			newu = std::min(std::max(0.1*u_, umin_), umax_);
 		}
-		u_ = newu;
 	}
+	u_ = newu;
 	updateCenter(u_);
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
