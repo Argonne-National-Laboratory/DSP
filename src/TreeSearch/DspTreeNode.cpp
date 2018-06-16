@@ -6,7 +6,6 @@
  */
 
 //#define DSP_DEBUG
-#define WRITELOG
 
 /** Coin */
 #include "CoinHelperFunctions.hpp"
@@ -51,7 +50,8 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 	/** fathom if the relative gap is small enough */
 	if (gap < relTol) {
 		//gap = (gUb - model->getBestDualObjective()) / (fabs(gUb) + 1e-10);
-		//message->print(1, "The current node is fathomed (gap %.2f %%).\n", gap * 100);
+		message->print(2, "The current node is fathomed (gap %.4f tol %.4f).\n", gap, relTol);
+		model->setBestDualObjective(gLb);
 		setStatus(AlpsNodeStatusFathomed);
 		wirteLog("fathomed", desc);
 		return status;
@@ -88,7 +88,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 		DSPdebugMessage("Found new upper bound %e\n", gUb);
 		DspNodeSolution* nodesol = new DspNodeSolution(model->getBestPrimalSolution(), gUb);
 		getKnowledgeBroker()->addKnowledge(AlpsKnowledgeTypeSolution, nodesol, gUb);
-		//wirteLog("heuristic", desc, gUb);
+		wirteLog("heuristic", desc, gUb);
 	}
 
 	switch (model->getStatus()) {
@@ -139,7 +139,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 			model->setBestDualObjective(gLb);
 
 			/** Branching otherwise */
-			bool hasObjs = model->chooseBranchingObjects(branchingObjs_);
+			bool hasObjs = model->infeasibility() > 1.0e-6 ? model->chooseBranchingObjects(branchingObjs_) : false;
 
 			if (hasObjs) {
 				/** set solution estimate; the lower the better */
@@ -206,6 +206,7 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 
 	/** fathom if the relative gap is small enough */
 	if (gap < relTol) {
+		message->print(2, "The current node is fathomed (gap %.4f tol %.4f).\n", gap, relTol);
 		setStatus(AlpsNodeStatusFathomed);
 		wirteLog("fathomed", desc);
 		return newNodes;
@@ -276,6 +277,7 @@ std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::bra
 					static_cast<AlpsNodeDesc*>(node),
 					AlpsNodeStatusCandidate,
 					getQuality()));
+			wirteLog("candidate", node, getQuality());
 		}
 		node = NULL;
 

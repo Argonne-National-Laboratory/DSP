@@ -710,7 +710,7 @@ void DwBundleDual::addBranchingCol(const CoinPackedVector& col, double obj) {
 
 void DwBundleDual::printIterInfo() {
 	message_->print(1, "Iteration %3d: DW Bound %+e, ", itercnt_, primobj_);
-	message_->print(3, "Dual %+e, Approx %+e, ", -dualobj_, -bestdualobj_-v_);
+	message_->print(2, "Dual %+e, Approx %+e, ", -dualobj_, -bestdualobj_-v_);
 	message_->print(1, "Best Dual %+e ", -bestdualobj_);
 	if (relgap_ < 1000)
 		message_->print(1, "(gap %.2f %%), ", relgap_*100);
@@ -719,7 +719,7 @@ void DwBundleDual::printIterInfo() {
 	message_->print(1, "nrows %d, ncols %d, ", si_->getNumRows(), si_->getNumCols());
 	message_->print(1, "timing (total %.2f, master %.2f, gencols %.2f), statue %d\n",
 			t_total_, t_master_, t_colgen_, status_);
-	message_->print(3, "  predicted ascent %+e, |p| %+e, alpha %+e, linerr %+e, eps %+e, u %+e, counter %d\n",
+	message_->print(2, "  predicted ascent %+e, |p| %+e, alpha %+e, linerr %+e, eps %+e, u %+e, counter %d\n",
 			-v_, absp_, alpha_, -linerr_, eps_, u_, counter_);
 
 	/** log */

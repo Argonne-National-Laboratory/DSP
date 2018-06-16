@@ -210,8 +210,6 @@ public:
     double t_master_; /**< master solution time */
     double t_colgen_; /**< column generation time */
 
-protected:
-
     std::vector<int> status_subs_; /**< subproblem status */
     std::vector<CoinPackedVector*> stored_solutions_; /**< first-stage solutions that are evaluated for upper bounds */
 
