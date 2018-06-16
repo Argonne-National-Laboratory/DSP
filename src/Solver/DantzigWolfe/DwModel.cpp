@@ -12,19 +12,26 @@
 #include <DantzigWolfe/DwBranchInt.h>
 #include <DantzigWolfe/DwBranchNonant.h>
 #include <DantzigWolfe/DwBranchNonant2.h>
+#include <DantzigWolfe/DwBranchGenDisj.h>
 #include <Model/TssModel.h>
 
-DwModel::DwModel(): DspModel(), branch_(NULL), infeasibility_(0.0) {}
+DwModel::DwModel(): DspModel(), branch_(NULL) {}
 
-DwModel::DwModel(DecSolver* solver): DspModel(solver), infeasibility_(0.0) {
+DwModel::DwModel(DecSolver* solver): DspModel(solver) {
 	DwMaster* master = dynamic_cast<DwMaster*>(solver_);
 	primsol_.resize(master->ncols_orig_);
 
 	/** add heuristics */
+	if (solver_->getModelPtr()->isStochastic()) {
+		par_->setBoolParam("DW/HEURISTICS", true);
+		par_->setBoolParam("DW/HEURISTICS/SMIP", true);
+	} else {
+		par_->setBoolParam("DW/HEURISTICS/SMIP", false);
+	}
 	if (par_->getBoolParam("DW/HEURISTICS")) {
 		if (par_->getBoolParam("DW/HEURISTICS/ROUNDING"))
 			heuristics_.push_back(new DwRounding("Rounding", *this));
-		if (par_->getBoolParam("DW/HEURISTICS/SMIP") && solver_->getModelPtr()->isStochastic())
+		if (par_->getBoolParam("DW/HEURISTICS/SMIP"))
 			heuristics_.push_back(new DwSmip("Smip", *this));
 	}
 

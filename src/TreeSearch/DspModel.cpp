@@ -21,7 +21,8 @@ DspModel::DspModel() :
 		bestprimobj_(COIN_DBL_MAX),
 		primobj_(COIN_DBL_MAX),
 		bestdualobj_(-COIN_DBL_MAX),
-		dualobj_(-COIN_DBL_MAX) {
+		dualobj_(-COIN_DBL_MAX),
+		infeasibility_(0.0) {
 	/** nothing to do */
 }
 
@@ -32,7 +33,8 @@ DspModel::DspModel(DecSolver* solver) :
 		bestprimobj_(COIN_DBL_MAX),
 		primobj_(COIN_DBL_MAX),
 		bestdualobj_(-COIN_DBL_MAX),
-		dualobj_(-COIN_DBL_MAX) {
+		dualobj_(-COIN_DBL_MAX),
+		infeasibility_(0.0) {
 	/** nothing to do */
 }
 
