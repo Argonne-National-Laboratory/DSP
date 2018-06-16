@@ -278,47 +278,78 @@ DSP_RTN_CODE DwBundleDual::callMasterSolver() {
 	} else {
 		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("NUM_CORES"));
 		/** use dual simplex for QP, which is numerically much more stable than Barrier */
-		//CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_QPMETHOD, 2);
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_DEPIND, par_->getIntParam("CPX_PARAM_DEPIND"));
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, par_->getIntParam("CPX_PARAM_NUMERICALEMPHASIS"));
+		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_QPMETHOD, 0);
+		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, 0);
 	}
 
-	CPXqpopt(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_PROBLEM));
-	int cpxstat = CPXgetstat(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
-	message_->print(5, "CPLEX status %d\n", cpxstat);
-	switch (cpxstat) {
-	case CPX_STAT_OPTIMAL:
-	case CPX_STAT_NUM_BEST:
-		status_ = DSP_STAT_OPTIMAL;
-		break;
-	case CPX_STAT_INFEASIBLE:
-		status_ = DSP_STAT_DUAL_INFEASIBLE;
-		message_->print(0, "Unexpected CPLEX status %d\n", cpxstat);
-		break;
-	case CPX_STAT_UNBOUNDED:
-	case CPX_STAT_INForUNBD:
-		status_ = DSP_STAT_PRIM_INFEASIBLE;
-		message_->print(0, "Unexpected CPLEX status %d\n", cpxstat);
-		si_->writeMps("unbounded_master");
-		break;
-	case CPX_STAT_ABORT_OBJ_LIM:
-	case CPX_STAT_ABORT_PRIM_OBJ_LIM:
-		status_ = DSP_STAT_LIM_PRIM_OBJ;
-		break;
-	case CPX_STAT_ABORT_DUAL_OBJ_LIM:
-		status_ = DSP_STAT_LIM_DUAL_OBJ;
-		break;
-	case CPX_STAT_ABORT_IT_LIM:
-	case CPX_STAT_ABORT_TIME_LIM:
-		status_ = DSP_STAT_LIM_ITERorTIME;
-		break;
-	case CPX_STAT_ABORT_USER:
-		status_ = DSP_STAT_ABORT;
-		break;
-	default:
-		message_->print(0, "Unexpected CPLEX status %d\n", cpxstat);
-		status_ = DSP_STAT_UNKNOWN;
-		break;
+	int pass = 0;
+	while (pass <= 2) {
+		CPXqpopt(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_PROBLEM));
+		int cpxstat = CPXgetstat(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
+		message_->print(5, "CPLEX status %d\n", cpxstat);
+		switch (cpxstat) {
+		case CPX_STAT_OPTIMAL:
+		case CPX_STAT_NUM_BEST:
+		case CPX_STAT_OPTIMAL_INFEAS:
+			status_ = DSP_STAT_OPTIMAL;
+			pass = 10;
+			break;
+		case CPX_STAT_INFEASIBLE:
+			status_ = DSP_STAT_DUAL_INFEASIBLE;
+			message_->print(0, "Unexpected CPLEX status %d\n", cpxstat);
+			pass = 10;
+			break;
+		case CPX_STAT_UNBOUNDED:
+		case CPX_STAT_INForUNBD:
+			if (pass == 0) {
+				CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, 1);
+				message_->print(1, "Re-running CPLEX with numerical emphasis\n");
+			} else if (pass == 1) {
+				CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_QPMETHOD, 2);
+				message_->print(1, "Re-running CPLEX with dual simplex\n");
+			} else {
+				status_ = DSP_STAT_PRIM_INFEASIBLE;
+				message_->print(1, "CPLEX failed to optimize\n");
+				message_->print(0, "Unexpected CPLEX status %d\n", cpxstat);
+				si_->writeMps("unbounded_master");
+			}
+			pass++;
+			break;
+		case CPX_STAT_ABORT_OBJ_LIM:
+		case CPX_STAT_ABORT_PRIM_OBJ_LIM:
+			if (pass == 0) {
+				CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, 1);
+				message_->print(1, "Re-running CPLEX with numerical emphasis\n");
+			} else if (pass == 1) {
+				CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_QPMETHOD, 2);
+				message_->print(1, "Re-running CPLEX with dual simplex\n");
+			} else {
+				status_ = DSP_STAT_LIM_PRIM_OBJ;
+				message_->print(1, "CPLEX failed to optimize\n");
+				message_->print(0, "Unexpected CPLEX status %d\n", cpxstat);
+				si_->writeMps("unbounded_master");
+			}
+			pass++;
+			break;
+		case CPX_STAT_ABORT_DUAL_OBJ_LIM:
+			status_ = DSP_STAT_LIM_DUAL_OBJ;
+			pass = 10;
+			break;
+		case CPX_STAT_ABORT_IT_LIM:
+		case CPX_STAT_ABORT_TIME_LIM:
+			status_ = DSP_STAT_LIM_ITERorTIME;
+			pass = 10;
+			break;
+		case CPX_STAT_ABORT_USER:
+			status_ = DSP_STAT_ABORT;
+			pass = 10;
+			break;
+		default:
+			message_->print(0, "Unexpected CPLEX status %d\n", cpxstat);
+			status_ = DSP_STAT_UNKNOWN;
+			pass = 10;
+			break;
+		}
 	}
 	return status_;
 }

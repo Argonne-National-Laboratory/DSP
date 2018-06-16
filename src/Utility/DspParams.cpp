@@ -206,10 +206,6 @@ void DspParams::initIntParams()
     IntParams_.createParam("DW/SUB/THREADS", 1);
 	IntParams_.createParam("DW/SUB/ADVIND", 0);
 	IntParams_.createParam("DW/BRANCH", 0);
-    IntParams_.createParam("CPX_PARAM_BARMAXCOR", -1);
-    IntParams_.createParam("CPX_PARAM_BARALG", 0);
-    IntParams_.createParam("CPX_PARAM_DEPIND", -1);
-    IntParams_.createParam("CPX_PARAM_NUMERICALEMPHASIS", 1);
 }
 
 void DspParams::initDblParams()
