@@ -81,6 +81,9 @@ DSP_RTN_CODE DwWorkerMpi::receiver() {
 		case sig_setColBounds:
 			setColBounds(0, NULL, NULL, NULL);
 			break;
+		case sig_addRow:
+			addRow(NULL, 0.0, 0.0);
+			break;
 		case sig_terminate:
 			terminate = true;
 			break;
@@ -360,6 +363,60 @@ void DwWorkerMpi::setColBounds(int size, const int* indices, const double* lbs, 
 		_indices = NULL;
 		_lbs = NULL;
 		_ubs = NULL;
+	}
+
+	END_TRY_CATCH(FREE_MEMORY)
+	FREE_MEMORY
+#undef FREE_MEMORY
+}
+
+void DwWorkerMpi::addRow(const CoinPackedVector* vec, double lb, double ub) {
+#define FREE_MEMORY \
+	FREE_ARRAY_PTR(_indices) \
+	FREE_ARRAY_PTR(_elements) \
+	FREE_PTR(_vec)
+
+	int _size;
+	int* _indices = NULL;
+	double* _elements = NULL;
+	double _lb, _ub;
+	CoinPackedVector* _vec = NULL;
+
+	BGN_TRY_CATCH
+
+	/** send signal */
+	if (comm_rank_ == 0) {
+		int sig = sig_addRow;
+		MPI_Bcast(&sig, 1, MPI_INT, 0, comm_);
+		DSPdebugMessage("Rank 0 sent signal %d.\n", sig);
+		_size = vec->getNumElements();
+		_indices = const_cast<int*>(vec->getIndices());
+		_elements = const_cast<double*>(vec->getElements());
+		_lb = lb;
+		_ub = ub;
+		_vec = const_cast<CoinPackedVector*>(vec);
+	}
+
+	/** synchronize information */
+	MPI_Bcast(&_size, 1, MPI_INT, 0, comm_);
+	DSPdebugMessage("Rank %d broadcasted size [%d].\n", comm_rank_, _size);
+	if (comm_rank_ > 0) {
+		_indices = new int [_size];
+		_elements = new double [_size];
+	}
+	MPI_Bcast(_indices, _size, MPI_INT, 0, comm_);
+	MPI_Bcast(_elements, _size, MPI_DOUBLE, 0, comm_);
+	MPI_Bcast(&_lb, 1, MPI_DOUBLE, 0, comm_);
+	MPI_Bcast(&_ub, 1, MPI_DOUBLE, 0, comm_);
+	if (comm_rank_ > 0) {
+		_vec = new CoinPackedVector(_size, _indices, _elements);
+	}
+	DwWorker::addRow(_vec, _lb, _ub);
+
+	if (comm_rank_ == 0) {
+		_indices = NULL;
+		_elements = NULL;
+		_vec = NULL;
 	}
 
 	END_TRY_CATCH(FREE_MEMORY)

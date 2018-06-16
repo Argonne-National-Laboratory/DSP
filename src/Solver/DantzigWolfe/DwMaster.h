@@ -191,8 +191,13 @@ public:
     std::vector<char> ctype_orig_;
     std::vector<double> rlbd_orig_;
     std::vector<double> rubd_orig_;
+
+
 	std::vector<double> clbd_node_; /** current column lower bounds */
     std::vector<double> cubd_node_; /** current column upper bounds */
+
+    const DspBranchObj* branchObj_; /** branching object (not owned by this class) */
+
 
     std::vector<double> bestprimsol_orig_; /** best primal solution in original space */
     std::vector<CoinPackedVector*> recent_subsols_;

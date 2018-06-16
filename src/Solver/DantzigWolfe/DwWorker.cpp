@@ -72,6 +72,8 @@ DwWorker::DwWorker(DecModel * model, DspParams * par, DspMessage * message) :
 
 	/** set number of cores */
 	omp_set_num_threads(par_->getIntParam("DW/SUB/THREADS"));
+
+	added_rowids_.resize(parProcIdxSize_);
 }
 
 DwWorker::~DwWorker() {
@@ -556,6 +558,25 @@ void DwWorker::setColBounds(int j, double lb, double ub) {
 void DwWorker::setColBounds(int size, const int* indices, const double* lbs, const double* ubs) {
 	for (int i = 0; i < size; ++i)
 		setColBounds(indices[i], lbs[i], ubs[i]);
+}
+
+void DwWorker::addRow(const CoinPackedVector* vec, double lb, double ub) {
+	for (int s = 0; s < parProcIdxSize_; ++s) {
+		si_[s]->addRow(*vec, lb, ub);
+		added_rowids_[s].push_back(si_[s]->getNumRows()-1);
+		//printf("addRow: s %d size %u row index %d\n", s, added_rowids_[s].size(), si_[s]->getNumRows()-1);
+	}
+}
+
+void DwWorker::removeAddedRows() {
+	for (int s = 0; s < parProcIdxSize_; ++s) {
+		//printf("removeAddedRows (s %u)\n", added_rowids_[s].size());
+		if (added_rowids_[s].size() > 0) {
+			//DspMessage::printArray(added_rowids_[s].size(), &(added_rowids_[s])[0]);
+			si_[s]->deleteRows(added_rowids_[s].size(), &(added_rowids_[s])[0]);
+			added_rowids_[s].clear();
+		}
+	}
 }
 
 DSP_RTN_CODE DwWorker::solveSubproblems() {

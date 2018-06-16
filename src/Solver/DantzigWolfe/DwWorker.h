@@ -55,6 +55,12 @@ public:
 	/** set column bounds */
 	virtual void setColBounds(int size, const int* indices, const double* lbs, const double* ubs);
 
+	/** add row (for branching disjunction) */
+	virtual void addRow(const CoinPackedVector* vec, double lb, double ub);
+
+	/** remove all the rows added */
+	virtual void removeAddedRows();
+
 	/** set time limit */
 	virtual void setTimeLimit(double limit);
 
@@ -109,6 +115,8 @@ protected:
 	int nsubprobs_; /**< number of total subproblems */
 
 	std::vector<int> num_timelim_stops_; /**< number of stops due to time limit */
+
+	std::vector<std::vector<int>> added_rowids_; /**< added row ids */
 };
 
 #endif /* SRC_SOLVER_DANTZIGWOLFE_DWWORKER_H_ */

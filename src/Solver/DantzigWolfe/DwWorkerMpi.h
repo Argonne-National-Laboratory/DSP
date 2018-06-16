@@ -45,6 +45,9 @@ public:
 	/** set column bounds */
 	virtual void setColBounds(int size, const int* indices, const double* lbs, const double* ubs);
 
+	/** add row (for branching disjunction) */
+	virtual void addRow(const CoinPackedVector* vec, double lb, double ub);
+
 	/** reset time increment */
 	virtual void resetTimeIncrement() {
 		resetTimeIncrement_ = 1;
@@ -58,6 +61,7 @@ public:
 		sig_generateCols = 0,
 		sig_generateColsByFix,
 		sig_setColBounds,
+		sig_addRow,
 		sig_terminate
 	};
 

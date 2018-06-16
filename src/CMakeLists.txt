@@ -31,6 +31,7 @@ set(DSP_SRC_FILES
 	Solver/DantzigWolfe/DwBranchInt.cpp
 	Solver/DantzigWolfe/DwBranchNonant.cpp
 	Solver/DantzigWolfe/DwBranchNonant2.cpp
+	Solver/DantzigWolfe/DwBranchGenDisj.cpp
 	Solver/DantzigWolfe/DwModel.cpp
 	Solver/DantzigWolfe/DwMaster.cpp
 	Solver/DantzigWolfe/DwBundleDual.cpp

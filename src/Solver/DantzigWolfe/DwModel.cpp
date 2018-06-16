@@ -39,13 +39,19 @@ DwModel::DwModel(DecSolver* solver): DspModel(solver) {
 		case BRANCH_NONANT:
 			if (solver_->getModelPtr()->isStochastic()) {
 				branch_ = new DwBranchNonant(this);
-				break;
 			}
+			break;
 		case BRANCH_NONANT2:
 			if (solver_->getModelPtr()->isStochastic()){
 				branch_ = new DwBranchNonant2(this);
-				break;
 			}
+			break;
+		case BRANCH_DISJUNCTION_TEST:
+			if (solver_->getModelPtr()->isStochastic()){
+				printf("\n*** WARNING: This is a testing code for branching on general disjunctions. ***\n\n");
+				branch_ = new DwBranchGenDisj(this);
+			}
+			break;
 		case BRANCH_INT:
 		default:
 			branch_ = new DwBranchInt(this);

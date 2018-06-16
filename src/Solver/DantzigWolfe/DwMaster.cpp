@@ -27,6 +27,7 @@ nrows_conv_(0),
 nrows_core_(0),
 nrows_branch_(0),
 mat_orig_(NULL),
+branchObj_(NULL),
 itercnt_(0),
 ngenerated_(0),
 t_start_(0.0),
@@ -62,6 +63,7 @@ rlbd_orig_(rhs.rlbd_orig_),
 rubd_orig_(rhs.rubd_orig_),
 clbd_node_(rhs.clbd_node_),
 cubd_node_(rhs.cubd_node_),
+branchObj_(rhs.branchObj_),
 itercnt_(rhs.itercnt_),
 ngenerated_(rhs.ngenerated_),
 t_start_(rhs.t_start_),
@@ -105,6 +107,7 @@ DwMaster& DwMaster::operator=(const DwMaster& rhs) {
 	rubd_orig_ = rhs.rubd_orig_;
 	clbd_node_ = rhs.clbd_node_;
 	cubd_node_ = rhs.cubd_node_;
+	branchObj_ = rhs.branchObj_;
 	itercnt_ = rhs.itercnt_;
 	ngenerated_ = rhs.ngenerated_;
 	t_start_ = rhs.t_start_;
@@ -123,6 +126,7 @@ DwMaster& DwMaster::operator=(const DwMaster& rhs) {
 }
 
 DwMaster::~DwMaster() {
+	branchObj_ = NULL;
 	FREE_PTR(mat_orig_);
 	for (unsigned i = 0; i < cols_generated_.size(); ++i)
 		FREE_PTR(cols_generated_[i]);
@@ -1115,29 +1119,73 @@ void DwMaster::setBranchingObjects(const DspBranchObj* branchobj) {
 	cubd_node_ = cubd_orig_;
 
 	/** update column bounds at the current node */
-	for (unsigned j = 0, irow = nrows_core_; j < branchobj->getNumObjs(); ++j) {
-		clbd_node_[branchobj->getIndex(j)] = branchobj->getLb(j);
-		cubd_node_[branchobj->getIndex(j)] = branchobj->getUb(j);
-#ifdef DSP_DEBUG
-		printf("Branch Obj: index %d lb %e ub %e\n", branchobj->getIndex(j), branchobj->getLb(j), branchobj->getUb(j));
-		CoinShallowPackedVector row = si_->getMatrixByRow()->getVector(irow);
-		for (int i = 0, j = 0; i < row.getNumElements(); ++i) {
-			if (j > 0 && j % 5 == 0) printf("\n");
-			printf("  [%6d] %+e", row.getIndices()[i], row.getElements()[i]);
-			j++;
+	int numColBranches = 0;
+	for (unsigned j = 0; j < branchobj->getNumObjs(); ++j) {
+		if (branchobj->getVector(j)->getNumElements() == 1) {
+			clbd_node_[branchobj->getIndex(j)] = branchobj->getLb(j);
+			cubd_node_[branchobj->getIndex(j)] = branchobj->getUb(j);
+			numColBranches++;
 		}
-		printf("\n");
-		irow++;
-#endif
 	}
 
 	/** apply column bounds */
-	std::vector<int> ncols_inds(ncols_orig_);
-	CoinIotaN(&ncols_inds[0], ncols_orig_, 0);
-	worker_->setColBounds(ncols_orig_, &ncols_inds[0], &clbd_node_[0], &cubd_node_[0]);
+	if (numColBranches > 0) {
+		std::vector<int> ncols_inds(ncols_orig_);
+		CoinIotaN(&ncols_inds[0], ncols_orig_, 0);
+		worker_->setColBounds(ncols_orig_, &ncols_inds[0], &clbd_node_[0], &cubd_node_[0]);
+	}
+
+	/** TODO: This is very specific to a certain SMIP form 
+		and thus needs to be generalized later. */
+	if (model_->isStochastic()) {
+		TssModel* tss = dynamic_cast<TssModel*>(model_);
+		bool isFirstStage = true;
+		for (unsigned j = 0; j < branchobj->getNumObjs(); ++j) {
+			if (branchobj->getVector(j)->getMaxIndex() >= tss->getNumScenarios() * tss->getNumCols(0)) {
+				isFirstStage = false;
+				break;
+			}
+		}
+		if (isFirstStage) {
+			//printf("Adding general branching disjunctions (num: %d) to subproblem.\n", branchobj->getNumObjs());
+
+			/** remove all rows added in the previous iteration */
+			worker_->removeAddedRows();
+
+			/** add general branching disjunctions */
+			/** FIXME: add one by one is not efficient particularly in parallel mode. */
+			CoinPackedVector* vec_copy = new CoinPackedVector;
+			for (unsigned j = 0; j < branchobj->getNumObjs(); ++j) {
+				if (branchobj->getVector(j)->getNumElements() > 1) {
+					vec_copy->reserve(branchobj->getVector(j)->getNumElements());
+					//printf("Reserved vec_copy %d\n", branchobj->getVector(j)->getNumElements());
+					/** adjust column indices */
+					for (int i = 0; i < branchobj->getVector(j)->getNumElements(); ++i)
+						vec_copy->insert(
+							branchobj->getVector(j)->getIndices()[i] % tss->getNumCols(0), 
+							branchobj->getVector(j)->getElements()[i]);
+
+					//printf("Branching object %d:\n", j);
+					//DspMessage::printArray(vec_copy);
+					//printf("lb %e ub %e\n", branchobj->getLb(j), branchobj->getUb(j));
+					/** add branching disjunction */
+					worker_->addRow(vec_copy, branchobj->getLb(j), branchobj->getUb(j));
+					vec_copy->clear();
+				}
+			}
+			FREE_PTR(vec_copy);
+		} else {
+			message_->print(0, "General disjunction branching is allowed on first-stage variables only.\n");
+		}
+	} else {
+		message_->print(0, "General disjunction branching is allowed on SMIP only.\n");
+	}
 
 	/** set known best bound */
 	bestdualobj_ = COIN_DBL_MAX;
+
+	/** set braching object pointer */
+	branchObj_ = branchobj;
 
 	END_TRY_CATCH(;)
 }
