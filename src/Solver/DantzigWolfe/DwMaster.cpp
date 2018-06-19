@@ -800,6 +800,10 @@ DSP_RTN_CODE DwMaster::generateCols() {
 		DSP_RTN_CHECK_RTN_CODE(
 				addCols(subinds, status_subs_, subcxs, subobjs, subsols));
 
+		if (par_->getBoolParam("DW/APP/ENERGY_STORAGE")) {
+			/** TODO: This is the place for implementing heuristics for energey storage application */
+		}
+
 		if (model_->isStochastic() && par_->getIntParam("DW/EVAL_UB") >= 0) {
 			/** maximum number of solutions to evaluate */
 			int max_stores = par_->getIntParam("DW/MAX_EVAL_UB");

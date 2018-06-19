@@ -138,6 +138,7 @@ void DspParams::initBoolParams()
 	BoolParams_.createParam("DW/HEURISTICS/ROUNDING", false);
 	BoolParams_.createParam("DW/HEURISTICS/SMIP", false);
 	BoolParams_.createParam("DW/STRONG_BRANCH", false);
+	BoolParams_.createParam("DW/APP/ENERGY_STORAGE", false);
 }
 
 void DspParams::initIntParams()
