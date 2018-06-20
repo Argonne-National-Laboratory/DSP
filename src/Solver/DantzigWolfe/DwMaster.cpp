@@ -9,6 +9,7 @@
 #include "OsiCpxSolverInterface.hpp"
 #include "CoinUtility.hpp"
 /** Dsp */
+#include "Model/DecBlkModel.h"
 #include "Model/TssModel.h"
 /** TODO: Replace this by PIPS */
 //#include "SolverInterface/OoqpEps.h"
@@ -801,7 +802,83 @@ DSP_RTN_CODE DwMaster::generateCols() {
 				addCols(subinds, status_subs_, subcxs, subobjs, subsols));
 
 		if (par_->getBoolParam("DW/APP/ENERGY_STORAGE")) {
-			/** TODO: This is the place for implementing heuristics for energey storage application */
+			/** TODO: This is the place for implementing heuristics for energey storage application 
+				Algorithmic Steps
+					1. access the master block
+					2. loop over the rows of the master
+					3. for each row, loop over columns
+					4. identify column type
+					5. identify one subproblem that contains the column
+					6. store soltuions
+			*/
+			DecBlkModel* dec = dynamic_cast<DecBlkModel*>(model_);
+			DetBlock* master_block = dec->blkPtr()->block(0);
+			const CoinPackedMatrix* master_mat = master_block->getConstraintMatrix();
+
+			/** collect coupling columns with nonzero coefficient */
+			std::vector<int> coupling_cols(master_mat->getNumElements(), 0);
+			/** get all column indices from the master matrix */
+			for (int i = 0; i < master_mat->getNumElements(); ++i)
+				coupling_cols[i] = master_mat->getIndices()[i];
+			/** remove duplicates */
+			std::sort(coupling_cols.begin(), coupling_cols.end());
+			coupling_cols.erase(std::unique(coupling_cols.begin(), coupling_cols.end()), coupling_cols.end());
+			printf("master block: total columns %d coupling columns: %d\n", master_block->getNumCols(), coupling_cols.size());
+
+			/** collect coupling solutions */
+			CoinPackedMatrix* coupling_solution = new CoinPackedMatrix(false, 0, 0);
+			std::vector<int> coupling_solution_index;
+			std::vector<double> coupling_solution_value;
+			for (int i = 0; i < master_mat->getNumRows(); ++i) {
+				const CoinShallowPackedVector row = master_mat->getVector(i);
+				for (int j = 0; j < row.getNumElements(); ++j) {
+					int colindex = row.getIndices()[j];
+					char coltype = master_block->getCtype()[colindex];
+					int sindex = -1;
+					for (int s = 0; s < dec->getNumSubproblems(); ++s) {
+						int num_sub_coupling_cols = dec->getNumSubproblemCouplingCols(s);
+						const int* sub_coupling_cols = dec->getSubproblemCouplingColIndices(s);
+						const int* pos = std::find(sub_coupling_cols, sub_coupling_cols + num_sub_coupling_cols, colindex);
+						if (pos != sub_coupling_cols + num_sub_coupling_cols) {
+							//printf("colindex %6d (type %c) is found in subproblem %d\n", colindex, coltype, s);
+							sindex = s;
+							break;
+						}
+					}
+
+					if (sindex >= 0) {
+						bool isfound = false;
+						for (int k = 0; k < subsols[sindex]->getNumElements(); ++k) {
+							if (subsols[sindex]->getIndices()[k] == colindex) {
+								coupling_solution_index.push_back(colindex);
+								coupling_solution_value.push_back(subsols[sindex]->getElements()[k]);
+								isfound = true;
+							} else if (subsols[sindex]->getIndices()[k] > colindex)
+								break;
+						}
+						if (!isfound) {
+							coupling_solution_index.push_back(colindex);
+							coupling_solution_value.push_back(0.0);
+						}
+					} else {
+						/** throw an error if subproblem is not found */
+						char errmsg[256];
+						sprintf(errmsg, "Cannot find a subproblem for coupling column (index %d type %c) !!!", colindex, coltype);
+						throw errmsg;
+					}
+				}
+				if (coupling_solution_index.size() > 0) {
+					coupling_solution->appendRow(
+						coupling_solution_index.size(), &coupling_solution_index[0], &coupling_solution_value[0]);
+				}
+				coupling_solution_index.clear();
+				coupling_solution_value.clear();
+			}
+
+			/** print coupling solutions */
+			coupling_solution->dumpMatrix();
+
+			FREE_PTR(coupling_solution);
 		}
 
 		if (model_->isStochastic() && par_->getIntParam("DW/EVAL_UB") >= 0) {
