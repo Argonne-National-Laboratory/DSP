@@ -1137,48 +1137,50 @@ void DwMaster::setBranchingObjects(const DspBranchObj* branchobj) {
 
 	/** TODO: This is very specific to a certain SMIP form 
 		and thus needs to be generalized later. */
-	if (model_->isStochastic()) {
-		TssModel* tss = dynamic_cast<TssModel*>(model_);
-		bool isFirstStage = true;
-		for (unsigned j = 0; j < branchobj->getNumObjs(); ++j) {
-			if (branchobj->getVector(j)->getMaxIndex() >= tss->getNumScenarios() * tss->getNumCols(0)) {
-				isFirstStage = false;
-				break;
-			}
-		}
-		if (isFirstStage) {
-			//printf("Adding general branching disjunctions (num: %d) to subproblem.\n", branchobj->getNumObjs());
-
-			/** remove all rows added in the previous iteration */
-			worker_->removeAddedRows();
-
-			/** add general branching disjunctions */
-			/** FIXME: add one by one is not efficient particularly in parallel mode. */
-			CoinPackedVector* vec_copy = new CoinPackedVector;
+	if (par_->getIntParam("DW/BRANCH") == BRANCH_DISJUNCTION_TEST) {
+		if (model_->isStochastic()) {
+			TssModel* tss = dynamic_cast<TssModel*>(model_);
+			bool isFirstStage = true;
 			for (unsigned j = 0; j < branchobj->getNumObjs(); ++j) {
-				if (branchobj->getVector(j)->getNumElements() > 1) {
-					vec_copy->reserve(branchobj->getVector(j)->getNumElements());
-					//printf("Reserved vec_copy %d\n", branchobj->getVector(j)->getNumElements());
-					/** adjust column indices */
-					for (int i = 0; i < branchobj->getVector(j)->getNumElements(); ++i)
-						vec_copy->insert(
-							branchobj->getVector(j)->getIndices()[i] % tss->getNumCols(0), 
-							branchobj->getVector(j)->getElements()[i]);
-
-					//printf("Branching object %d:\n", j);
-					//DspMessage::printArray(vec_copy);
-					//printf("lb %e ub %e\n", branchobj->getLb(j), branchobj->getUb(j));
-					/** add branching disjunction */
-					worker_->addRow(vec_copy, branchobj->getLb(j), branchobj->getUb(j));
-					vec_copy->clear();
+				if (branchobj->getVector(j)->getMaxIndex() >= tss->getNumScenarios() * tss->getNumCols(0)) {
+					isFirstStage = false;
+					break;
 				}
 			}
-			FREE_PTR(vec_copy);
+			if (isFirstStage) {
+				//printf("Adding general branching disjunctions (num: %d) to subproblem.\n", branchobj->getNumObjs());
+
+				/** remove all rows added in the previous iteration */
+				worker_->removeAddedRows();
+
+				/** add general branching disjunctions */
+				/** FIXME: add one by one is not efficient particularly in parallel mode. */
+				CoinPackedVector* vec_copy = new CoinPackedVector;
+				for (unsigned j = 0; j < branchobj->getNumObjs(); ++j) {
+					if (branchobj->getVector(j)->getNumElements() > 1) {
+						vec_copy->reserve(branchobj->getVector(j)->getNumElements());
+						//printf("Reserved vec_copy %d\n", branchobj->getVector(j)->getNumElements());
+						/** adjust column indices */
+						for (int i = 0; i < branchobj->getVector(j)->getNumElements(); ++i)
+							vec_copy->insert(
+								branchobj->getVector(j)->getIndices()[i] % tss->getNumCols(0), 
+								branchobj->getVector(j)->getElements()[i]);
+
+						//printf("Branching object %d:\n", j);
+						//DspMessage::printArray(vec_copy);
+						//printf("lb %e ub %e\n", branchobj->getLb(j), branchobj->getUb(j));
+						/** add branching disjunction */
+						worker_->addRow(vec_copy, branchobj->getLb(j), branchobj->getUb(j));
+						vec_copy->clear();
+					}
+				}
+				FREE_PTR(vec_copy);
+			} else {
+				message_->print(0, "General disjunction branching is allowed on first-stage variables only.\n");
+			}
 		} else {
-			message_->print(0, "General disjunction branching is allowed on first-stage variables only.\n");
+			message_->print(0, "General disjunction branching is allowed on SMIP only.\n");
 		}
-	} else {
-		message_->print(0, "General disjunction branching is allowed on SMIP only.\n");
 	}
 
 	/** set known best bound */
