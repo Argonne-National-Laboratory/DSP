@@ -5,7 +5,7 @@
  *      Author: Kibaek Kim
  */
 
-// #define DSP_DEBUG
+//#define DSP_DEBUG
 #include <DantzigWolfe/DwBranchNonant.h>
 
 DwBranchNonant::DwBranchNonant(DwModel* model) : DwBranch(model) {
@@ -64,6 +64,7 @@ bool DwBranchNonant::chooseBranchingObjects(
 			}
 		}
 	}
+	DSPdebugMessage("maxdev %e\n", maxdev);
 
 	if (branchingIndex > -1) {
 
@@ -77,13 +78,11 @@ bool DwBranchNonant::chooseBranchingObjects(
 		branchingDn = new DspBranchObj();
 		for (int j = 0; j < tss_->getNumCols(0) * tss_->getNumScenarios(); ++j) {
 			if (branchingIndex == j % tss_->getNumCols(0)) {
-				DSPdebugMessage("Creating branch objects on column %d (value %e): [%e,%e] and [%e,%e]\n", 
-					j, branchingValue, branchingUpValue, master_->cubd_node_[j], master_->clbd_node_[j], branchingDownValue);
 				branchingUp->push_back(j, CoinMin(branchingUpValue, master_->cubd_node_[j]), master_->cubd_node_[j]);
 				branchingDn->push_back(j, master_->clbd_node_[j], CoinMax(master_->clbd_node_[j], branchingDownValue));
 			} else if (master_->clbd_node_[j] > master_->clbd_orig_[j] || master_->cubd_node_[j] < master_->cubd_orig_[j]) {
 				/** store any bound changes made in parent nodes */
-				DSPdebugMessage("Adjusting bound change on column %d: [%e,%e]\n", j, master_->clbd_node_[j], master_->cubd_node_[j]);
+				//DSPdebugMessage("Adjusting bound change on column %d: [%e,%e]\n", j, master_->clbd_node_[j], master_->cubd_node_[j]);
 				branchingUp->push_back(j, master_->clbd_node_[j], master_->cubd_node_[j]);
 				branchingDn->push_back(j, master_->clbd_node_[j], master_->cubd_node_[j]);
 			}
@@ -147,20 +146,5 @@ void DwBranchNonant::getDevSol(std::vector<double>& refsol, std::vector<double>&
 			}
 	}
 	for (int k = 0; k < tss_->getNumCols(0); ++k)
-		devsol[k] = maxsol[k] - minsol[k];
-
-	/** The following calculates the dispersion as a variance. */
-#if 0
-	for (unsigned s = 0; s < master_->getLastSubprobSolutions().size(); ++s) {
-		const CoinPackedVector* sol = master_->getLastSubprobSolutions()[s];
-		int sNumElements = sol->getNumElements();
-		const int* sIndices = sol->getIndices();
-		const double* sElements = sol->getElements();
-		for (int j = 0; j < sNumElements; ++j)
-			if (sIndices[j] < tss_->getNumCols(0) * tss_->getNumScenarios()) {
-				int k = sIndices[j] % tss_->getNumCols(0);
-				devsol[k] += pow(sElements[j] - refsol[k],2) * tss_->getProbability()[s];
-			}
-	}
-#endif
+		devsol[k] = CoinMax(maxsol[k] - minsol[k], 0.0);
 }

@@ -171,6 +171,14 @@ DSP_RTN_CODE DwBundleDual::createPrimalProblem() {
 	primal_si_->messageHandler()->setLogLevel(0);
 	DSPdebug(primal_si_->messageHandler()->setLogLevel(1));
 
+	OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(primal_si_.get());
+	if (!cpx) {
+		CoinError("Failed to case Osi to OsiCpx", "createPrimalProblem", "DwBundleDual");
+		return DSP_RTN_ERR;
+	} else {
+		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("NUM_CORES"));
+	}
+
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
@@ -236,6 +244,14 @@ DSP_RTN_CODE DwBundleDual::createDualProblem() {
 	/** set quadratic objective term */
 	updateCenter(u_);
 
+	OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
+	if (!cpx) {
+		CoinError("Failed to case Osi to OsiCpx", "createDualProblem", "DwBundleDual");
+		return DSP_RTN_ERR;
+	} else {
+		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("NUM_CORES"));
+	}
+
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
@@ -276,7 +292,6 @@ DSP_RTN_CODE DwBundleDual::callMasterSolver() {
 		CoinError("Failed to case Osi to OsiCpx", "solveMaster", "DwBundle");
 		return DSP_RTN_ERR;
 	} else {
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("NUM_CORES"));
 		/** use dual simplex for QP, which is numerically much more stable than Barrier */
 		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_QPMETHOD, 0);
 		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, 0);
