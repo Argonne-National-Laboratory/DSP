@@ -126,13 +126,18 @@ DSP_RTN_CODE DwModel::solve() {
 			}
 #endif
 
-			/** calculate infeasibility */
-			infeasibility_ = 0.0;
-			for (int j = 0; j < master->ncols_orig_; ++j)
-				if (master->ctype_orig_[j] != 'C') {
-					infeasibility_ += fabs(primsol_[j] - floor(primsol_[j] + 0.5));
-				}
-			message->print(1, "Infeasibility: %+e\n", infeasibility_);
+			if (solver_->getModelPtr()->isStochastic() == true && 
+				par_->getIntParam("DW/BRANCH") == BRANCH_NONANT) {
+				infeasibility_ = COIN_DBL_MAX;
+			} else {
+				/** calculate infeasibility */
+				infeasibility_ = 0.0;
+				for (int j = 0; j < master->ncols_orig_; ++j)
+					if (master->ctype_orig_[j] != 'C') {
+						infeasibility_ += fabs(primsol_[j] - floor(primsol_[j] + 0.5));
+					}
+				message->print(1, "Infeasibility: %+e\n", infeasibility_);
+			}
 
 			bool isViolated = false;
 			for (int j = 0; j < master->ncols_orig_; ++j) {
@@ -148,7 +153,9 @@ DSP_RTN_CODE DwModel::solve() {
 			/** run heuristics */
 			if (par_->getBoolParam("DW/HEURISTICS") && infeasibility_ > 1.0e-6) {
 				/** FIXME */
+				std::vector<double> primsol(primsol_);
 				for (auto it = heuristics_.begin(); it != heuristics_.end(); it++) {
+					primsol_ = primsol;
 					message->print(2, "Running [%s] heuristic:\n", (*it)->name());
 					int found = (*it)->solution(bestprimobj_, bestprimsol_);
 					if (found)
@@ -156,6 +163,7 @@ DSP_RTN_CODE DwModel::solve() {
 					else
 						message->print(2, "Not found better primal solution\n");
 				}
+				primsol_ = primsol;
 			}
 		}
 
