@@ -470,8 +470,11 @@ DSP_RTN_CODE DwBundleDual::updateModel() {
 		counter_ = fabs(u_-newu) > 1.0e-6 ? 1 : std::max(counter_+1,1);
 
 		// This is my customization.
+		double relimproved = (dualobj_ - bestdualobj_) / fabs(dualobj_+1.0e-10);
 		if (ngenerated_ == 0 || counter_ > 3)
 			newu = std::max(0.1*u_, umin_);
+		else if (relimproved < par_->getDblParam("DW/GAPTOL"))
+			newu = std::max(0.5*u_, umin_);
 		bestdualobj_ = dualobj_;
 		bestdualsol_ = dualsol_;
 		nstalls_ = 0;
