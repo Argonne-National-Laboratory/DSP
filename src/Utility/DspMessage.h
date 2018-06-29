@@ -35,7 +35,7 @@ public:
 
 	int logLevel_;
 
-	static void printArray(CoinPackedVector * values)
+	static void printArray(const CoinPackedVector * values)
 	{
 		for (int i = 0, j = 0; i < values->getNumElements(); ++i)
 		{
