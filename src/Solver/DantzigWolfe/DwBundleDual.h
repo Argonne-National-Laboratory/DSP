@@ -117,6 +117,8 @@ protected:
 	double prev_dualobj_; /**< dual objective at the previous iteration */
 	int nstalls_; /**< number of iterations making no progress on objective value */
 
+	int numFixedRows_; /**< number of fixed rows in the dual master */
+
 	std::shared_ptr<OsiSolverInterface> primal_si_;
 
 	//@{
@@ -127,7 +129,9 @@ protected:
 			const CoinPackedMatrix& m, 
 			std::vector<double>& clbd, 
 			std::vector<double>& cubd, 
-			std::vector<double>& obj);
+			std::vector<double>& obj, 
+			std::vector<double>& rlbd, 
+			std::vector<double>& rubd);
 
 	/** call external solver for solveMaster() */
 	virtual DSP_RTN_CODE callMasterSolver();
@@ -139,8 +143,11 @@ protected:
 	virtual double getObjValue() { return si_->getObjValue(); }
 
 	/** add row to the dual master */
-	virtual void addDualRow(const CoinPackedVector& v, const double lb, const double ub) {
+	virtual void addDualRow(const CoinPackedVector* x, const CoinPackedVector& v, const double lb, const double ub) {
 		si_->addRow(v, lb, ub);
+	}
+	virtual void addDualRow(const CoinPackedVector& v, const double lb, const double ub) {
+		addDualRow(NULL, v, lb, ub);
 	}
 
     /** remove all columns in the DW master */

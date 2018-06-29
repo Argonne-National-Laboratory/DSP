@@ -176,7 +176,11 @@ DSP_RTN_CODE DwMaster::init() {
 		mat_orig_ = new CoinPackedMatrix(org_mat->isColOrdered(), 0, 0);
 		mat_orig_->setDimensions(0, ncols);
 
-		/** add non-anticipativity constraints */
+		/** add non-anticipativity constraints in the following form:
+		   x_1 - x_2      = 0
+		        x_2 - x_3 = 0 
+		  -x_1      + x_3 = 0
+		*/
 		int indices[2];
 		double elements[] = {1.0, -1.0};
 		for (int i = 0; i < nscen; ++i) {

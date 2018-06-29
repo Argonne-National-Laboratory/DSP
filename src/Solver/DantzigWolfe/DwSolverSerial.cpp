@@ -10,6 +10,7 @@
 #include <DantzigWolfe/DwSolverSerial.h>
 #include <DantzigWolfe/DwMaster.h>
 #include <DantzigWolfe/DwBundleDual.h>
+#include <DantzigWolfe/DwBundleDualSmip.h>
 #include <DantzigWolfe/DwWorker.h>
 
 DwSolverSerial::DwSolverSerial(
@@ -50,7 +51,10 @@ DSP_RTN_CODE DwSolverSerial::init() {
 	/** create master */
 	message_->print(1, "Initializing master problem ... \n");
 	//master_ = new DwMaster(worker_);
-	master_ = new DwBundleDual(worker_);
+	if (model_->isStochastic())
+		master_ = new DwBundleDualSmip(worker_);
+	else
+		master_ = new DwBundleDual(worker_);
 
 	/** initialize master */
 	DSP_RTN_CHECK_THROW(master_->init());

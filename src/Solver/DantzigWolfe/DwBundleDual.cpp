@@ -22,7 +22,8 @@ absp_(COIN_DBL_MAX),
 alpha_(COIN_DBL_MAX),
 linerr_(COIN_DBL_MAX),
 prev_dualobj_(COIN_DBL_MAX),
-nstalls_(0) {
+nstalls_(0),
+numFixedRows_(0) {
 }
 
 DwBundleDual::DwBundleDual(const DwBundleDual& rhs):
@@ -35,7 +36,8 @@ DwBundleDual::DwBundleDual(const DwBundleDual& rhs):
 	alpha_(rhs.alpha_),
 	linerr_(rhs.linerr_),
 	prev_dualobj_(rhs.prev_dualobj_),
-	nstalls_(rhs.nstalls_) {
+	nstalls_(rhs.nstalls_),
+	numFixedRows_(rhs.numFixedRows_) {
 	d_ = rhs.d_;
 	p_ = rhs.p_;
 	primal_si_.reset(rhs.primal_si_->clone());
@@ -52,6 +54,7 @@ DwBundleDual& DwBundleDual::operator =(const DwBundleDual& rhs) {
 	linerr_ = rhs.linerr_;
 	prev_dualobj_ = rhs.prev_dualobj_;
 	nstalls_ = rhs.nstalls_;
+	numFixedRows_ = rhs.numFixedRows_;
 	d_ = rhs.d_;
 	p_ = rhs.p_;
 	primal_si_.reset(rhs.primal_si_->clone());
@@ -86,11 +89,15 @@ DSP_RTN_CODE DwBundleDual::solve() {
 	eps_ = COIN_DBL_MAX;
 	updateCenter(u_);
 
-	if (si_->getNumRows() == 0) {
+	DSPdebugMessage("Initial Setting at solve()\n");
+
+	if (si_ == NULL || si_->getNumRows() == numFixedRows_) {
 		/** generate initial columns */
+		DSPdebugMessage("Generating columns..\n");
 		double stime = CoinGetTimeOfDay();
 		DSP_RTN_CHECK_RTN_CODE(generateCols());
 		t_colgen_ += CoinGetTimeOfDay() - stime;
+		DSPdebugMessage("Generated columns..\n");
 
 		/** subproblem solution may declare infeasibility. */
 		for (auto st = status_subs_.begin(); st != status_subs_.end(); st++)
@@ -188,14 +195,19 @@ void DwBundleDual::initDualSolver(
 		const CoinPackedMatrix& m, 
 		std::vector<double>& clbd, 
 		std::vector<double>& cubd, 
-		std::vector<double>& obj) {
+		std::vector<double>& obj, 
+		std::vector<double>& rlbd, 
+		std::vector<double>& rubd) {
 	/** create solver */
 	si_ = new OsiCpxSolverInterface();
 	OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
 	/** set display */
 	si_->messageHandler()->setLogLevel(std::max(-1,par_->getIntParam("LOG_LEVEL")-4));
 	/** load problem data */
-	si_->loadProblem(m, &clbd[0], &cubd[0], &obj[0], NULL, NULL);
+	if (rlbd.size() == 0)
+		si_->loadProblem(m, &clbd[0], &cubd[0], &obj[0], NULL, NULL);
+	else
+		si_->loadProblem(m, &clbd[0], &cubd[0], &obj[0], &rlbd[0], &rubd[0]);
 }
 
 DSP_RTN_CODE DwBundleDual::createDualProblem() {
@@ -239,15 +251,16 @@ DSP_RTN_CODE DwBundleDual::createDualProblem() {
 	}
 
 	/** initialize external solver */
-	initDualSolver(*mat, clbd, cubd, obj);
+	std::vector<double> rlbd, rubd;
+	initDualSolver(*mat, clbd, cubd, obj, rlbd, rubd);
 
 	/** set quadratic objective term */
 	updateCenter(u_);
 
 	OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
 	if (!cpx) {
-		CoinError("Failed to case Osi to OsiCpx", "createDualProblem", "DwBundleDual");
-		return DSP_RTN_ERR;
+		// CoinError("Failed to case Osi to OsiCpx", "createDualProblem", "DwBundleDual");
+		// return DSP_RTN_ERR;
 	} else {
 		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("NUM_CORES"));
 	}
@@ -390,7 +403,10 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 	case DSP_STAT_LIM_ITERorTIME: {
 
 		assignMasterSolution(dualsol_);
-		//DspMessage::printArray(si_->getNumRows(), si_->getRowPrice());
+#ifdef DSP_DEBUG
+		printf("dualsol_:\n");
+		DspMessage::printArray(dualsol_.size(), &dualsol_[0]);
+#endif
 
 		d_.resize(nrows_-nrows_conv_);
 		p_.resize(nrows_-nrows_conv_);
@@ -632,13 +648,13 @@ DSP_RTN_CODE DwBundleDual::addRows(
 
 		if (dualsol_[sind] > objs[s] + 1.0e-8 ||
 				statuses[s] == DSP_STAT_DUAL_INFEASIBLE) {
-#ifdef DSP_DEBUG_MORE
+#ifdef DSP_DEBUG
 			DspMessage::printArray(&cutvec);
 			printf("cutrhs %+e\n", cutrhs);
 #endif
 
 			/** add row to the dual master */
-			addDualRow(cutvec, -COIN_DBL_MAX, cutrhs);
+			addDualRow(x, cutvec, -COIN_DBL_MAX, cutrhs);
 
 			/** add column to the primal master */
 			primal_si_->addCol(cutvec, 0.0, COIN_DBL_MAX, cutrhs);

@@ -11,6 +11,7 @@
 #include <DantzigWolfe/DwSolverMpi.h>
 #include <DantzigWolfe/DwMaster.h>
 #include <DantzigWolfe/DwBundleDual.h>
+#include <DantzigWolfe/DwBundleDualSmip.h>
 #include <DantzigWolfe/DwWorkerMpi.h>
 #ifdef HAS_PIPS
 #include <DantzigWolfe/DwBundleDualPips.h>
@@ -36,7 +37,10 @@ DSP_RTN_CODE DwSolverMpi::init() {
 
 	/** create worker */
 #ifdef HAS_PIPS
-	worker_ = new DwWorkerPips(model_, par_, message_, comm_);
+	if (model_->isStochastic())
+		worker_ = new DwWorkerPips(model_, par_, message_, comm_);
+	else
+		worker_ = new DwWorkerMpi(model_, par_, message_, comm_);
 #else
 	worker_ = new DwWorkerMpi(model_, par_, message_, comm_);
 #endif
@@ -44,7 +48,12 @@ DSP_RTN_CODE DwSolverMpi::init() {
 	if (comm_rank_ == 0) {
 		/** create master */
 #ifdef HAS_PIPS
-		master_ = new DwBundleDualPips(worker_);
+		if (model_->isStochastic()) {
+			master_ = new DwBundleDualSmip(worker_);
+			// master_ = new DwBundleDualPips(worker_);
+			printf("Using PIPS-IPM for the bundle master\n");
+		} else
+			master_ = new DwBundleDual(worker_);
 #else
 		master_ = new DwBundleDual(worker_);
 #endif

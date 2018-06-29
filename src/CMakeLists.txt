@@ -35,6 +35,7 @@ set(DSP_SRC_FILES
 	Solver/DantzigWolfe/DwModel.cpp
 	Solver/DantzigWolfe/DwMaster.cpp
 	Solver/DantzigWolfe/DwBundleDual.cpp
+	Solver/DantzigWolfe/DwBundleDualSmip.cpp
 	Solver/DantzigWolfe/DwHeuristic.cpp
 	Solver/DantzigWolfe/DwSolverSerial.cpp
 	Solver/DantzigWolfe/DwWorker.cpp
