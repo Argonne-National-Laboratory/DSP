@@ -983,9 +983,22 @@ DSP_RTN_CODE DwMaster::generateCols() {
 			}
 			coupling_solution_heu->appendRow(
 				coupling_solution_heu_index.size(), &coupling_solution_heu_index[0], &coupling_solution_heu_value[0]);
+			/** store coupling solutions */
+			CoinPackedVector* coupling_solution_temp = new CoinPackedVector;
+			coupling_solution_temp->reserve(coupling_cols.size());
+			for (int i = 0; i < coupling_cols.size(); ++i) {
+			    for (int j = 0; j < coupling_solution_heu_index.size(); ++j) {
+				if (coupling_solution_heu_index[j] == coupling_cols[i]) {
+				    coupling_solution_temp->insert(i,coupling_solution_heu_value[j]);
+				}
+			    }
+			}
+			stored_solutions_.push_back(coupling_solution_temp);
+			
+
 		    }
 
-            /** print generated columns */
+                    /** print generated columns */
 		    coupling_solution_heu->dumpMatrix();
 
 		    /** print coupling solutions */
@@ -1035,7 +1048,7 @@ DSP_RTN_CODE DwMaster::generateCols() {
 DSP_RTN_CODE DwMaster::generateColsByFix(
 		int nsols /**< [in] number of solutions to evaluate in LIFO way */) {
 
-	if (model_->isStochastic() == false) 
+	if (model_->isStochastic() == false && par_->getBoolParam("DW/APP/ENERGY_STORAGE") == false) 
 		return DSP_RTN_OK;
 	if (nsols <= 0)
 		return DSP_RTN_OK;
@@ -1048,14 +1061,15 @@ DSP_RTN_CODE DwMaster::generateColsByFix(
 	std::vector<CoinPackedVector*> solutions_to_evaluate(nsols, NULL);
 
 	BGN_TRY_CATCH
+	/** fixing columns for stochastic programming models*/
+	if (model_->isStochastic()) {
+	    TssModel* tss = dynamic_cast<TssModel*>(model_);
 
-	TssModel* tss = dynamic_cast<TssModel*>(model_);
-
-	for (unsigned i = stored_solutions_.size() - 1, j = 0; i >= stored_solutions_.size() - nsols; --i)
+	    for (unsigned i = stored_solutions_.size() - 1, j = 0; i >= stored_solutions_.size() - nsols; --i)
 		solutions_to_evaluate[j++] = stored_solutions_[i];
 
-	std::vector<double> first_stage_solution_dense(tss->getNumCols(0));
-	for (unsigned i = 0; i < solutions_to_evaluate.size(); ++i) {
+	    std::vector<double> first_stage_solution_dense(tss->getNumCols(0));
+	    for (unsigned i = 0; i < solutions_to_evaluate.size(); ++i) {
 		/** generate columns */
 		std::fill(first_stage_solution_dense.begin(), first_stage_solution_dense.end(), 0.0);
 		for (int j = 0; j < solutions_to_evaluate[i]->getNumElements(); ++j)
@@ -1097,8 +1111,76 @@ DSP_RTN_CODE DwMaster::generateColsByFix(
 		for (unsigned i = 0; i < subsols.size(); ++i)
 			FREE_PTR(subsols[i]);
 		subsols.clear();
+	    }
 	}
+	/** fixing columns for energy storage model */
+	if (par_->getBoolParam("DW/APP/ENERGY_STORAGE")) {
+	   DecBlkModel* dec = dynamic_cast<DecBlkModel*>(model_);
+	   DetBlock* master_block = dec->blkPtr()->block(0);
+	   const CoinPackedMatrix* master_mat = master_block->getConstraintMatrix();
+			
+	   /** set weight parameter for time-related variables in coupling constraints */
+           double weight_con_cols = 0.5;
 
+	   /** collect coupling columns with nonzero coefficient */
+	   std::vector<int> coupling_cols(master_mat->getNumElements(), 0);
+	   /** get all column indices from the master matrix */
+	   for (int i = 0; i < master_mat->getNumElements(); ++i)
+		coupling_cols[i] = master_mat->getIndices()[i];
+	   /** remove duplicates */
+	   std::sort(coupling_cols.begin(), coupling_cols.end());
+	   coupling_cols.erase(std::unique(coupling_cols.begin(), coupling_cols.end()), coupling_cols.end()); 
+	   
+	   for (unsigned i = stored_solutions_.size() - 1, j = 0; i >= stored_solutions_.size() - nsols; --i)
+		solutions_to_evaluate[j++] = stored_solutions_[i];
+
+	   std::vector<double> coupling_solution_dense(coupling_cols.size());
+	    for (unsigned i = 0; i < solutions_to_evaluate.size(); ++i) {
+		/** generate columns */
+		std::fill(coupling_solution_dense.begin(), coupling_solution_dense.end(), 0.0);
+		for (int j = 0; j < coupling_cols.size(); ++j)
+			coupling_solution_dense[coupling_cols[j]] = solutions_to_evaluate[i]->getElements()[j];
+		DSP_RTN_CHECK_RTN_CODE(
+				worker_->generateColsByFix(&coupling_solution_dense[0], subinds, substatuses, subobjs, subsols));
+
+		/** any subproblem primal/dual infeasible? */
+		bool isInfeasibleFix = false;
+		for (auto status = substatuses.begin(); status != substatuses.end(); status++)
+			if (*status == DSP_STAT_PRIM_INFEASIBLE ||
+				*status == DSP_STAT_DUAL_INFEASIBLE) {
+				isInfeasibleFix = true;
+				break;
+			}
+
+		if (!isInfeasibleFix) {
+			/** create and add columns */
+			DSP_RTN_CHECK_RTN_CODE(
+					addCols(subinds, substatuses, subobjs, subobjs, subsols));
+
+			double newbound = 0.0;
+			for (auto it = subobjs.begin(); it != subobjs.end(); it++)
+				newbound += *it;
+			if (newbound < bestprimobj_) {
+				message_->print(3, "  Found new primal bound %e (< %e)\n", newbound, bestprimobj_);
+				bestprimobj_ = newbound;
+				bestprimsol_orig_.resize(ncols_orig_, 0.0);
+				for (unsigned s = 0; s < subsols.size(); s++)
+					for (int j = 0; j < subsols[s]->getNumElements(); ++j)
+						bestprimsol_orig_[subsols[s]->getIndices()[j]] = subsols[s]->getElements()[j];
+			}
+		}
+
+		/** clean up */
+		subinds.clear();
+		substatuses.clear();
+		subobjs.clear();
+		for (unsigned i = 0; i < subsols.size(); ++i)
+			FREE_PTR(subsols[i]);
+		subsols.clear();
+	    } 
+	   
+	   
+	}
 	/** clear solution vector */
 	for (unsigned i = 0; i < solutions_to_evaluate.size(); ++i)
 		solutions_to_evaluate[i] = NULL;
