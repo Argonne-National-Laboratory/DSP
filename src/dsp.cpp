@@ -22,7 +22,7 @@ const char* gDspUsage =
 	"       --soln\toptional argument for solution file name.\n"
 	"       --param\toptional paramater for parameter file name\n";
 
-void setBlockIds(DspApiEnv* env, int nblocks, bool master_has_subblocks = false);
+void setBlockIds(DspApiEnv* env, int nblocks, bool master_has_subblocks = true);
 void runDsp(char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* paramfile);
 void readMpsDec(DspApiEnv* env, char* mpsfile, char* decfile);
 void parseDecFile(char* decfile, vector<vector<string> >& rows_in_blocks);
@@ -326,6 +326,20 @@ void setBlockIds(DspApiEnv* env, int nblocks, bool master_has_subblocks) {
 					g_proc_idx_set.push_back(s);
 				}
 			}
+		}
+	} else {
+		// assign sub-blocks in round-robin fashion
+		for (int s = modrank; s < nblocks; s += comm_size) {
+			g_proc_idx_set.push_back(s);
+		}
+
+		for (int i = 0; i < comm_size; ++i) {
+			if (i == comm_rank) {
+				printf("comm_rank %d:\n", i);
+				for (int j = 0; j < g_proc_idx_set.size(); ++j)
+					printf("  %d\n", g_proc_idx_set[j]);
+			}
+			MPI_Barrier(MPI_COMM_WORLD);
 		}
 	}
 
