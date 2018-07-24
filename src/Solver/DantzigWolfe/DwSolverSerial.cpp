@@ -90,7 +90,8 @@ DSP_RTN_CODE DwSolverSerial::solve() {
 			bestprimsol_ = solution->solution_;
 			if (model_->isStochastic() && bestprimsol_.size() > 0) {
 				TssModel* tss = dynamic_cast<TssModel*>(model_);
-				bestprimsol_.erase(bestprimsol_.begin(), bestprimsol_.begin() + tss->getNumCols(0) * (tss->getNumScenarios() - 1));
+				if (bestprimsol_.size() > 0)
+					bestprimsol_.erase(bestprimsol_.begin(), bestprimsol_.begin() + tss->getNumCols(0) * (tss->getNumScenarios() - 1));
 			}
 		}
 	}

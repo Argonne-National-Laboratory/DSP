@@ -893,7 +893,7 @@ DSP_RTN_CODE DwMaster::generateColsByFix(
 			if (newbound < bestprimobj_) {
 				message_->print(3, "  Found new primal bound %e (< %e)\n", newbound, bestprimobj_);
 				bestprimobj_ = newbound;
-				bestprimsol_orig_.resize(ncols_orig_, 0.0);
+				bestprimsol_orig_.assign(ncols_orig_, 0.0);
 				for (unsigned s = 0; s < subsols.size(); s++)
 					for (int j = 0; j < subsols[s]->getNumElements(); ++j)
 						bestprimsol_orig_[subsols[s]->getIndices()[j]] = subsols[s]->getElements()[j];

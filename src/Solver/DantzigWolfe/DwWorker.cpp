@@ -103,7 +103,7 @@ DSP_RTN_CODE DwWorker::createSubproblems() {
 	if (model_->isStochastic())
 		tss = dynamic_cast<TssModel*>(model_);
 
-	num_timelim_stops_.resize(parProcIdxSize_, 0);
+	num_timelim_stops_.assign(parProcIdxSize_, 0);
 
 	for (int s = 0; s < parProcIdxSize_; ++s) {
 		if (model_->isStochastic()) {

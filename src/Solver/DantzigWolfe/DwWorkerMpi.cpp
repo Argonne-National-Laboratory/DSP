@@ -67,6 +67,10 @@ DSP_RTN_CODE DwWorkerMpi::receiver() {
 			statuses.clear();
 			cxs.clear();
 			objs.clear();
+			for (size_t i = 0; i < sols.size(); ++i) {
+				delete sols[i];
+				sols[i] = NULL;
+			}
 			sols.clear();
 			break;
 		case sig_generateColsByFix:

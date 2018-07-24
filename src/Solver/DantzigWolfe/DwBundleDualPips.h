@@ -8,15 +8,19 @@
 #ifndef SRC_SOLVER_DANTZIGWOLFE_DWBUNDLEDUALPIPS_H_
 #define SRC_SOLVER_DANTZIGWOLFE_DWBUNDLEDUALPIPS_H_
 
-#include "Solver/DantzigWolfe/DwBundleDual.h"
+#include "Solver/DantzigWolfe/DwWorkerPips.h"
+#include "Solver/DantzigWolfe/DwBundleDualSmip.h"
 
-class DwBundleDualPips: public DwBundleDual {
+class DwBundleDualPips: public DwBundleDualSmip {
 public:
 	/** constructor with worker */
-	DwBundleDualPips(DwWorker* worker) : DwBundleDual(worker) {}
+	DwBundleDualPips(DwWorker* worker) : DwBundleDualSmip(worker) {
+		pips_worker_ = dynamic_cast<DwWorkerPips*>(worker_);
+	}
 
 	/** copy constructor */
-	DwBundleDualPips(const DwBundleDualPips& rhs) : DwBundleDual(rhs) {
+	DwBundleDualPips(const DwBundleDualPips& rhs) : DwBundleDualSmip(rhs) {
+		pips_worker_ = rhs.pips_worker_;
 	}
 
 	/** copy operator */
@@ -27,7 +31,9 @@ public:
 	}
 
 	/** default destructor */
-	virtual ~DwBundleDualPips() {}
+	virtual ~DwBundleDualPips() {
+		pips_worker_ = NULL;
+	}
 
 protected:
 
@@ -45,7 +51,9 @@ protected:
 			const CoinPackedMatrix& m, 
 			std::vector<double>& clbd, 
 			std::vector<double>& cubd, 
-			std::vector<double>& obj);
+			std::vector<double>& obj, 
+			std::vector<double>& rlbd, 
+			std::vector<double>& rubd);
 
 	/** call master solver */
 	virtual DSP_RTN_CODE callMasterSolver();
@@ -57,12 +65,15 @@ protected:
 	virtual double getObjValue();
 
 	/** add row to the dual problem */
-	virtual void addDualRow(const CoinPackedVector& v, const double lb, const double ub);
+	virtual void addDualRow(const CoinPackedVector& v, double lb, double ub);
 
 	/** remove all rows in the dual master */
 	virtual void removeAllDualRows();
 
 	//@}
+
+	/** pips worker */
+	DwWorkerPips* pips_worker_;
 };
 
 #endif /* SRC_SOLVER_DANTZIGWOLFE_DWBUNDLEDUAL_H_ */

@@ -8,8 +8,10 @@
 #ifndef SRC_SOLVER_DANTZIGWOLFE_DWWORKERPIPS_H_
 #define SRC_SOLVER_DANTZIGWOLFE_DWWORKERPIPS_H_
 
+#include "Model/TssModel.h"
+#include "Solver/DantzigWolfe/DwCol.h"
 #include "Solver/DantzigWolfe/DwWorkerMpi.h"
-#include "Solver/DantzigWolfe/PipsInterface.h"
+#include "Solver/DantzigWolfe/DwBundlePipsInput.h"
 
 class DwWorkerPips: public DwWorkerMpi {
 public:
@@ -23,6 +25,7 @@ public:
 
 	/** default destructor */
 	virtual ~DwWorkerPips() {
+		tss_ = NULL;
 		delete pips_;
 		pips_ = NULL;
 	}
@@ -32,25 +35,26 @@ public:
 	virtual DSP_RTN_CODE receiver();
 
 	enum {
-		sig_initPips = 100,
-		sig_solvePips,
-		sig_clearMats	
+		sig_sync = 100,
+		sig_solvePips	
 	};
 
-	/** initialize PIPS */
-	virtual void initPips(int nscen = 0, int ncols = 0);
+	/** run PIPS */
+	virtual DSP_RTN_CODE sync(std::vector<double> bestdualsol, std::vector<DwCol*> dwcols);
 
 	/** Solve the master together using PIPS */
-	virtual DSP_RTN_CODE solvePips(double weight = 0.0);
-
-	/** clear rows added to PIPS matrices */
-	virtual void clearMats();
-
-	PipsInterface* pips() { return pips_; }
+	virtual DSP_RTN_CODE solvePips(double weight);
 
 protected:
-	PipsInterface* pips_;
-	std::vector<int> rstart_; /**< to count number of rows added for each scenario */
+	TssModel* tss_;
+	DwBundlePipsInput* pips_;
+
+public:
+
+	/** PIPS solutions */
+	double pips_objval_;
+	std::vector<std::vector<double>> pips_beta_;
+	std::vector<std::vector<double>> pips_theta_;
 };
 
 #endif /* SRC_SOLVER_DANTZIGWOLFE_DWWORKERPIPS_H_ */

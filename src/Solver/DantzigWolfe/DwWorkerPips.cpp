@@ -5,10 +5,19 @@
  *      Author: Kibaek Kim
  */
 
-//#define DSP_DEBUG
+// #define DSP_DEBUG
 #include "Model/TssModel.h"
 #include "Solver/DantzigWolfe/DwWorkerPips.h"
 #include "Utility/DspMpi.h"
+#include "PIPSIpmInterface.h"
+#include "sFactoryAug.h"
+// #include "sFactoryAugSchurLeaf.h"
+#include "MehrotraStochSolver.h"
+
+//#define SCALE_TAU
+
+/** display option for PIPS */
+int gOoqpPrintLevel = 10;
 
 DwWorkerPips::DwWorkerPips(
 		DecModel * model,
@@ -16,6 +25,7 @@ DwWorkerPips::DwWorkerPips(
 		DspMessage * message,
 		MPI_Comm comm):
 DwWorkerMpi(model, par, message, comm), pips_(NULL) {
+	tss_ = dynamic_cast<TssModel*>(model_);
 }
 
 DSP_RTN_CODE DwWorkerPips::receiver() {
@@ -27,6 +37,8 @@ DSP_RTN_CODE DwWorkerPips::receiver() {
 	std::vector<CoinPackedVector*> sols;
 	bool terminate = false;
 	CoinError::printErrors_ = true;
+	std::vector<double> dummy;
+	std::vector<DwCol*> cols;
 
 	BGN_TRY_CATCH
 
@@ -43,16 +55,17 @@ DSP_RTN_CODE DwWorkerPips::receiver() {
 			statuses.clear();
 			cxs.clear();
 			objs.clear();
+			for (size_t i = 0; i < sols.size(); ++i) {
+				delete sols[i];
+				sols[i] = NULL;
+			}
 			sols.clear();
 			break;
-		case sig_initPips:
-			initPips();
+		case sig_sync:
+			sync(dummy, cols);
 			break;
 		case sig_solvePips:
-			DSP_RTN_CHECK_RTN_CODE(solvePips());
-			break;
-		case sig_clearMats:
-			clearMats();
+			DSP_RTN_CHECK_RTN_CODE(solvePips(0.0));
 			break;
 		case sig_setColBounds:
 			setColBounds(0, NULL, NULL, NULL);
@@ -71,35 +84,123 @@ DSP_RTN_CODE DwWorkerPips::receiver() {
 	return DSP_RTN_OK;
 }
 
-void DwWorkerPips::initPips(int nscen, int ncols) {
+DSP_RTN_CODE DwWorkerPips::sync(std::vector<double> bestdualsol, std::vector<DwCol*> dwcols) {
+
+	int num_blocks;
+	int total_length;
+	int num_elems;
+	std::vector<int> block_ids;
+	std::vector<int> x_lengths;
+	std::vector<int> x_indices;
+	std::vector<double> x_elements;
+	std::vector<double> objs;
+
+	BGN_TRY_CATCH
+
+	if (tss_ == NULL) throw "tss_ is not defined.\n";
 
 	if (comm_rank_ == 0) {
 		/** send signal */
-		int sig = sig_initPips;
+		int sig = sig_sync;
 		DSPdebugMessage("Rank %d sends signal %d.\n", comm_rank_, sig);
 		MPI_Bcast(&sig, 1, MPI_INT, 0, comm_);
 	}
-	MPI_Bcast(&nscen, 1, MPI_INT, 0, comm_);
-	MPI_Bcast(&ncols, 1, MPI_INT, 0, comm_);
-
-	//printf("Rank %d creates PipsInterface(%d, %d).\n", comm_rank_, nscen, ncols);
-	pips_ = new PipsInterface(nscen, ncols);
 
 	if (comm_rank_ == 0) {
-		/** initialize rstart for adding rows to workers */
-		rstart_.resize(nscen, ncols);
+		num_blocks = 0;
+		total_length = 0;
+		block_ids.reserve(dwcols.size());
+		x_lengths.reserve(dwcols.size());
+		x_indices.reserve(dwcols.size() * tss_->getNumCols(0));
+		x_elements.reserve(dwcols.size() * tss_->getNumCols(0));
+		objs.reserve(dwcols.size());
+
+		/** store column data */
+		for (auto col = dwcols.begin(); col != dwcols.end(); col++)
+			if ((*col)->active_) {
+				num_blocks++;
+				num_elems = 0;
+				block_ids.push_back((*col)->blockid_);
+				for (int j = 0; j < (*col)->x_.getNumElements(); ++j)
+					if ((*col)->x_.getIndices()[j] < tss_->getNumCols(0) * tss_->getNumScenarios()) {
+						x_indices.push_back((*col)->x_.getIndices()[j] % tss_->getNumCols(0));
+						x_elements.push_back((*col)->x_.getElements()[j]);
+						num_elems++;
+					}
+				x_lengths.push_back(num_elems);
+				total_length += num_elems;
+				objs.push_back((*col)->obj_);
+			}
 	}
+
+	/** sync data */
+	MPI_Bcast(&num_blocks, 1, MPI_INT, 0, comm_);
+	MPI_Bcast(&total_length, 1, MPI_INT, 0, comm_);
+	if (comm_rank_ > 0) {
+		block_ids.resize(num_blocks);
+		x_lengths.resize(num_blocks);
+		objs.reserve(num_blocks);
+		x_indices.resize(total_length);
+		x_elements.resize(total_length);
+		bestdualsol.resize((tss_->getNumCols(0) + 1) * tss_->getNumScenarios(), 0.0);
+	}
+	MPI_Bcast(&block_ids[0], num_blocks, MPI_INT, 0, comm_);
+	MPI_Bcast(&x_lengths[0], num_blocks, MPI_INT, 0, comm_);
+	MPI_Bcast(&x_indices[0], total_length, MPI_INT, 0, comm_);
+	MPI_Bcast(&x_elements[0], total_length, MPI_DOUBLE, 0, comm_);
+	MPI_Bcast(&objs[0], num_blocks, MPI_DOUBLE, 0, comm_);
+	MPI_Bcast(&bestdualsol[0], (tss_->getNumCols(0) + 1) * tss_->getNumScenarios(), MPI_DOUBLE, 0, comm_);
+
+	/** free the previous pips_ */
+	FREE_PTR(pips_);
+
+	/** create PIPS input data */
+	pips_ = new DwBundlePipsInput(tss_->getNumScenarios(), tss_->getNumCols(0));
+
+#if 0
+	for (int i = 0; i < comm_size_; ++i) {
+		if (i == comm_rank_) {
+			printf("Rank %d\n", i);
+			printf("Block ID:\n"); DspMessage::printArray(block_ids.size(), &block_ids[0]);
+			printf("Length of x:\n"); DspMessage::printArray(x_lengths.size(), &x_lengths[0]);
+			printf("Indices:\n"); DspMessage::printArray(x_indices.size(), &x_indices[0]);
+			printf("Elements:\n"); DspMessage::printArray(x_elements.size(), &x_elements[0]);
+		}
+		MPI_Barrier(comm_);
+	}
+#endif
+
+	if (comm_rank_ == 0) {
+		printf("bestdualsol:\n");
+		DspMessage::printArray(bestdualsol.size(), &bestdualsol[0]);
+	}
+
+	/** add proximal center */
+	std::vector<std::vector<double>> prox_center(tss_->getNumScenarios());
+	for (int s = 0; s < tss_->getNumScenarios(); ++s) {
+		prox_center[s].assign(tss_->getNumCols(0), 0.0);
+		for (int j = 0; j < tss_->getNumCols(0); ++j) {
+			prox_center[s][j] = bestdualsol[tss_->getNumScenarios() + s * tss_->getNumCols(0) + j];
+		}
+	}
+	pips_->setProxCenter(prox_center);
+
+	/** add bundle information */
+	int pos = 0;
+	for (size_t s = 0; s < block_ids.size(); ++s) {
+		// if (block_ids[s] % comm_size_ == comm_rank_)
+			pips_->addBundleInfo(block_ids[s], x_lengths[s], &x_indices[pos], &x_elements[pos], objs[s]);
+		pos += x_lengths[s];
+	}
+
+	// if (comm_rank_ == 0)
+	// 	pips_->displayBundle();
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+	return DSP_RTN_OK;
 }
 
 DSP_RTN_CODE DwWorkerPips::solvePips(double weight) {
-#define FREE_MEMORY \
-	for (int i = 0; i < vecs.size(); ++i) \
-		FREE_PTR(vecs[i]);
-
-	std::vector<CoinPackedVector*> vecs;
-	std::vector<double> rlbd, rubd;
-	int nrows;
-	std::vector<int> nscen(comm_size_), scens, rcnt(comm_size_), displs(comm_size_);
 
 	BGN_TRY_CATCH
 
@@ -110,139 +211,96 @@ DSP_RTN_CODE DwWorkerPips::solvePips(double weight) {
 		MPI_Bcast(&sig, 1, MPI_INT, 0, comm_);
 	}
 
-	/** time lapse for communication */
-	double time_to_comm = MPI_Wtime();
-
-	/** gather number of subproblems for each rank */
-	MPI_Gather(&parProcIdxSize_, 1, MPI_INT, &nscen[0], 1, MPI_INT, 0, comm_);
-	if (comm_rank_ == 0) {
-		for (int j = 0; j < comm_size_; ++j) {
-			rcnt[j] = nscen[j];
-			if (j == 0)
-				displs[j] = 0;
-			else
-				displs[j] = displs[j-1] + rcnt[j-1];
-		}
-		scens.resize(displs[comm_size_-1] + rcnt[comm_size_-1]);
-	}
-	MPI_Gatherv(parProcIdx_, parProcIdxSize_, MPI_INT, &scens[0], &rcnt[0], &displs[0], MPI_INT, 0, comm_);
-
-	/** reset (clear matrices in) PIPS object */
-	//pips_->clearMatricesTW();
-
-	if (comm_rank_ == 0) {
-#if 0
-		//printf("Distributing data...\n");
-		for (int j = 0; j < comm_size_; ++j) {
-			//printf("comm_rank %d: nscen %d: ", j, nscen[j]);
-			for (int i = 0; i < nscen[j]; ++i)
-				printf("%d ", scens[displs[j]+i]);
-			printf("\n");
-		}
-#endif
-		pips_->retrieveBundles(rstart_, vecs, rlbd, rubd, scens);
-		nrows = rlbd.size();
-		MPIbcastCoinPackedVectors(comm_, vecs);
-		MPI_Bcast(&nrows, 1, MPI_INT, 0, comm_);
-		MPI_Bcast(&rlbd[0], nrows, MPI_DOUBLE, 0, comm_);
-		MPI_Bcast(&rubd[0], nrows, MPI_DOUBLE, 0, comm_);
-		MPI_Bcast(&scens[0], nrows, MPI_INT, 0, comm_);
-		
-#if 0
-		for (int i = 0; i < nrows; ++i) {
-			printf("rlbd %e rubd %e, vec[%d]:\n", rlbd[i], rubd[i], i);
-			DspMessage::printArray(vecs[i]);
-		}
-#endif
-	} else {
-		vecs.clear();
-		MPIbcastCoinPackedVectors(comm_, vecs);
-		MPI_Bcast(&nrows, 1, MPI_INT, 0, comm_);
-		rlbd.resize(nrows); rubd.resize(nrows); scens.resize(nrows);
-		MPI_Bcast(&rlbd[0], nrows, MPI_DOUBLE, 0, comm_);
-		MPI_Bcast(&rubd[0], nrows, MPI_DOUBLE, 0, comm_);
-		MPI_Bcast(&scens[0], nrows, MPI_INT, 0, comm_);
-		for (int i = 0; i < nrows; ++i) {
-			/** adjust indices of vector */
-			vecs[i]->getIndices()[0] = scens[i];
-			for (int j = 1; j < vecs[i]->getNumElements(); ++j)
-				vecs[i]->getIndices()[j] += pips_->getNumScenarios() - 1;
-#if 0
-			if (comm_rank_ == 1) {
-				printf("row vectori[%d] scens %d\n", i, scens[i]);
-				DspMessage::printArray(vecs[i]);
-			}
-#endif
-			pips_->addRow(*(vecs[i]), rlbd[i], rubd[i]);
-		}
-	}
-
-	//printf("Broadcasting weight...\n");
+	/** set tau */
 	MPI_Bcast(&weight, 1, MPI_DOUBLE, 0, comm_);
+	pips_->setTau(weight);
 
-#if 0
-	for (int i = 0; i < comm_size_; ++i) {
-		if (i == comm_rank_) {
-			printf("comm rank %d\n", comm_rank_);
-			pips_->print();
+	/** Create PIPS-IPM object */
+	if (comm_rank_ == 0) printf("creating PIPS-IPM object...\n");
+	PIPSIpmInterface<sFactoryAug, MehrotraStochSolver> solver(*pips_);
+	// PIPSIpmInterface<sFactoryAugSchurLeaf, MehrotraStochSolver> solver(*input_);
+fflush(stdout);
+MPI_Barrier(comm_);
+
+	if (comm_rank_ == 0) printf("solving the master with PIPS-IPM... \n");
+	solver.go();
+	pips_objval_ = solver.getObjective();
+#ifdef SCALE_TAU
+	pips_objval_ /= weight;
+#endif
+	if (comm_rank_ == 0) printf("done with objective %e\n", pips_objval_);
+
+	/** store first-stage variable solution */
+	std::vector<double> const& soln_w = solver.getFirstStagePrimalColSolution();
+	assert(soln_w.size() == pips_->nvars1_);
+#ifdef SCALE_TAU
+	for (size_t j = 0; j < soln_w.size(); ++j)
+		soln_w[j] /= weight;
+#endif
+	// if (comm_rank_ == 0) {
+	// 	printf("w:\n"); DspMessage::printArray(soln_w.size(), &soln_w[0]);
+	// }
+
+	/** store second-stage variable solution */
+	std::vector<std::vector<double>> soln_z(pips_->nscen_);
+	std::vector<std::vector<double>> soln_theta(pips_->nscen_);
+	for (int s = 0; s < pips_->nscen_; ++s) {
+		soln_z[s] = solver.getSecondStagePrimalColSolution(s);
+		soln_theta[s] = solver.getSecondStageDualRowSolution(s);
+#ifdef SCALE_TAU
+		for (size_t j = 0; j < soln_theta[s].size(); ++j)
+			soln_theta[s][j] /= weight;
+#endif
+		// if (soln_z[s].size() > 0) {
+		// 	printf("z[%d]:\n", s); 
+		// 	DspMessage::printArray(soln_z[s].size(), &soln_z[s][0]);
+		// }
+	}
+
+	/** calculate beta for each scenario */
+	std::vector<std::vector<double>> soln_beta(pips_->nscen_);
+	for (int s = 0; s < pips_->nscen_; ++s) {
+		if (soln_z[s].size() > 0) {
+			soln_beta[s].assign(tss_->getNumCols(0), 0.0);
+			CoinPackedMatrix H = pips_->getSecondStageCrossHessian(s);
+			assert(H.getNumRows() == soln_z[s].size());
+			assert(H.getNumCols() == soln_beta[s].size());
+			H.transposeTimes(&soln_z[s][0], &soln_beta[s][0]);
+			assert(soln_w.size() <= soln_beta[s].size());
+			for (size_t j = 0; j < soln_beta[s].size(); ++j) {
+				// soln_beta[s][j] *= -1.0;
+				soln_beta[s][j] += soln_w[j] / weight;
+			}
+		}
+	}
+
+	/** collect the second-stage solutions to root */
+	int length_of_beta, length_of_theta;
+	for (int s = 0; s < pips_->nscen_; ++s) {
+		if (comm_rank_ == 0 && soln_beta[s].size() == 0) {
+			MPI_Recv(&length_of_beta, 1, MPI_INT, MPI_ANY_SOURCE, 0, comm_, MPI_STATUS_IGNORE);
+			MPI_Recv(&length_of_theta, 1, MPI_INT, MPI_ANY_SOURCE, 0, comm_, MPI_STATUS_IGNORE);
+			soln_beta[s].resize(length_of_beta, 0.0);
+			soln_theta[s].resize(length_of_theta, 0.0);
+			MPI_Recv(&soln_beta[s][0], length_of_beta, MPI_DOUBLE, MPI_ANY_SOURCE, 0, comm_, MPI_STATUS_IGNORE);
+			MPI_Recv(&soln_theta[s][0], length_of_theta, MPI_DOUBLE, MPI_ANY_SOURCE, 0, comm_, MPI_STATUS_IGNORE);
+		} else if (comm_rank_ > 0 && soln_beta[s].size() > 0) {
+			length_of_beta = soln_beta[s].size();
+			length_of_theta = soln_theta[s].size();
+			MPI_Send(&length_of_beta, 1, MPI_INT, 0, 0, comm_);
+			MPI_Send(&length_of_theta, 1, MPI_INT, 0, 0, comm_);
+			MPI_Send(&soln_beta[s][0], length_of_beta, MPI_DOUBLE, 0, 0, comm_);
+			MPI_Send(&soln_theta[s][0], length_of_theta, MPI_DOUBLE, 0, 0, comm_);
 		}
 		MPI_Barrier(comm_);
 	}
-#endif
-	//if (comm_rank_ == 0) pips_->print();
-	if (comm_rank_ == 0) printf("Time to distribute PIPS data: %.2f seconds.\n", MPI_Wtime() - time_to_comm);
 
-	/** run PIPS */
-	pips_->solve(weight);
-
-	/** gather number of scenarios distributed in PIPS */
-	int nscen_in_pips = pips_->scenarios_.size();
-	std::vector<int> nscen_distributed_in_pips(comm_size_);
-	MPI_Gather(&nscen_in_pips, 1, MPI_INT, &nscen_distributed_in_pips[0], 1, MPI_INT, 0, comm_);
-
-	/** gather second-stage solution (theta) */
-	std::vector<int> scen_distributed_in_pips(model_->getNumSubproblems());
-	std::vector<double> thetas_distributed_in_pips(model_->getNumSubproblems());
-	displs.resize(comm_size_, 0);
-	for (int i = 1; i < comm_size_; ++i) 
-		displs[i] = displs[i-1] + nscen_distributed_in_pips[i-1];
-	MPI_Gatherv(&pips_->scenarios_[0], nscen_in_pips, MPI_INT, &scen_distributed_in_pips[0], &nscen_distributed_in_pips[0], &displs[0], MPI_INT, 0, comm_);
-	MPI_Gatherv(&pips_->thetas_[0], nscen_in_pips, MPI_DOUBLE, &thetas_distributed_in_pips[0], &nscen_distributed_in_pips[0], &displs[0], MPI_DOUBLE, 0, comm_);
-	if (comm_rank_ == 0)
-		for (unsigned j = 0; j < scen_distributed_in_pips.size(); ++j)
-			pips_->solution_[ scen_distributed_in_pips[ j ] ] = thetas_distributed_in_pips[ j ];
-#if 0
 	if (comm_rank_ == 0) {
-		//printf("nscen_distributed_in_pips:\n");
-		//DspMessage::printArray(nscen_distributed_in_pips.size(), &nscen_distributed_in_pips[0]);
-		//printf("scen_distributed_in_pips:\n");
-		//DspMessage::printArray(scen_distributed_in_pips.size(), &scen_distributed_in_pips[0]);
-		printf("thetas_distributed_in_pips:\n");
-		DspMessage::printArray(thetas_distributed_in_pips.size(), &thetas_distributed_in_pips[0]);
-		printf("DwWorkerPips solution (%u):\n", pips_->solution_.size());
-		DspMessage::printArray(pips_->solution_.size(), &pips_->solution_[0]);
+		pips_beta_ = soln_beta;
+		pips_theta_ = soln_theta;
 	}
-#endif
 
-	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
-
-	FREE_MEMORY
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
-#undef FREE_MEMORY
 }
-
-void DwWorkerPips::clearMats() {
-	if (comm_rank_ == 0) {
-		/** send signal */
-		int sig = sig_clearMats;
-		DSPdebugMessage("Rank %d sends signal %d.\n", comm_rank_, sig);
-		MPI_Bcast(&sig, 1, MPI_INT, 0, comm_);
-	}
-
-	pips_->clearMatricesTW();
-
-	if (comm_rank_ == 0)
-		rstart_.resize(pips_->input_->nScenarios(), pips_->input_->nFirstStageVars());
-}
-

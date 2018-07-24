@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+#define DSP_DEBUG
 
 #include "cplex.h"
 #include "OsiCpxSolverInterface.hpp"
@@ -79,7 +79,7 @@ DSP_RTN_CODE DwBundleDual::solve() {
 	log_bestdual_bounds_.clear();
 
 	/** initial price to generate columns */
-	bestdualsol_.resize(nrows_, 0.0);
+	bestdualsol_.assign(nrows_, 0.0);
 	dualsol_ = bestdualsol_;
 	std::fill(dualsol_.begin(), dualsol_.begin() + nrows_conv_, COIN_DBL_MAX);
 
@@ -404,6 +404,8 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 
 		assignMasterSolution(dualsol_);
 #ifdef DSP_DEBUG
+		printf("bestdualsol_:\n");
+		DspMessage::printArray(bestdualsol_.size(), &bestdualsol_[0]);
 		printf("dualsol_:\n");
 		DspMessage::printArray(dualsol_.size(), &dualsol_[0]);
 #endif
@@ -422,8 +424,8 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 		}
 		//printf("u*dualsol*(bestdualsol-0.5*dualsol) = %+e\n", polyapprox);
 		polyapprox += getObjValue();
-		//printf("polyapprox %e\n", polyapprox);
 
+		DSPdebugMessage("getObjValue %e, polyapprox %e, bestdualobj_ %e\n", getObjValue(), polyapprox, bestdualobj_);
 		v_ = polyapprox - bestdualobj_;
 
 		/** adjust v if subproblem was not solved to optimality */
@@ -468,6 +470,7 @@ DSP_RTN_CODE DwBundleDual::updateModel() {
 
 	/** descent test */
 	bool foundBetter = false;
+	DSPdebugMessage("dualobj_ %e bestdualobj_ %e serious step? %e\n", dualobj_, bestdualobj_, bestdualobj_ + mL_ * v_ - dualobj_);
 	if (dualobj_ <= bestdualobj_ + mL_ * v_) {
 		message_->print(2, "  Serious step: best dual %+e -> %e\n", -bestdualobj_, -dualobj_);
 		foundBetter = true;
@@ -654,7 +657,7 @@ DSP_RTN_CODE DwBundleDual::addRows(
 #endif
 
 			/** add row to the dual master */
-			addDualRow(x, cutvec, -COIN_DBL_MAX, cutrhs);
+			addDualRow(cutvec, -COIN_DBL_MAX, cutrhs);
 
 			/** add column to the primal master */
 			primal_si_->addCol(cutvec, 0.0, COIN_DBL_MAX, cutrhs);

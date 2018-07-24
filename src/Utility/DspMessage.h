@@ -46,6 +46,17 @@ public:
 		printf("\n");
 	}
 
+	static void printArray(int n, const int * indices, const double * values)
+	{
+		for (int i = 0, j = 0; i < n; ++i)
+		{
+			if (j > 0 && j % 5 == 0) printf("\n");
+			printf("  [%6d] %+e", indices[i], values[i]);
+			j++;
+		}
+		printf("\n");
+	}
+
 	static void printArray(int n, const double * values)
 	{
 		for (int i = 0, j = 0; i < n; ++i)

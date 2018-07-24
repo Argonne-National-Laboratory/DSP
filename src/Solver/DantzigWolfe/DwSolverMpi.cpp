@@ -36,27 +36,28 @@ DSP_RTN_CODE DwSolverMpi::init() {
 	BGN_TRY_CATCH
 
 	/** create worker */
+	if (model_->isStochastic()) {
 #ifdef HAS_PIPS
-	if (model_->isStochastic())
-		worker_ = new DwWorkerPips(model_, par_, message_, comm_);
+		if (par_->getBoolParam("DW/MASTER/PIPS"))
+			worker_ = new DwWorkerPips(model_, par_, message_, comm_);
+		else
+#endif
+			worker_ = new DwWorkerMpi(model_, par_, message_, comm_);
+	}
 	else
 		worker_ = new DwWorkerMpi(model_, par_, message_, comm_);
-#else
-	worker_ = new DwWorkerMpi(model_, par_, message_, comm_);
-#endif
 
 	if (comm_rank_ == 0) {
 		/** create master */
-#ifdef HAS_PIPS
 		if (model_->isStochastic()) {
-			master_ = new DwBundleDualSmip(worker_);
-			// master_ = new DwBundleDualPips(worker_);
-			printf("Using PIPS-IPM for the bundle master\n");
+#ifdef HAS_PIPS
+			if (par_->getBoolParam("DW/MASTER/PIPS"))
+				master_ = new DwBundleDualPips(worker_);
+			else
+#endif
+				master_ = new DwBundleDualSmip(worker_);
 		} else
 			master_ = new DwBundleDual(worker_);
-#else
-		master_ = new DwBundleDual(worker_);
-#endif
 
 		/** initialize master */
 		DSP_RTN_CHECK_THROW(master_->init());
@@ -91,7 +92,8 @@ DSP_RTN_CODE DwSolverMpi::solve() {
 			bestprimsol_ = solution->solution_;
 			if (model_->isStochastic()) {
 				TssModel* tss = dynamic_cast<TssModel*>(model_);
-				bestprimsol_.erase(bestprimsol_.begin(), bestprimsol_.begin() + tss->getNumCols(0) * (tss->getNumScenarios() - 1));
+				if (bestprimsol_.size() > 0)
+					bestprimsol_.erase(bestprimsol_.begin(), bestprimsol_.begin() + tss->getNumCols(0) * (tss->getNumScenarios() - 1));
 			}
 		}
 		bestprimobj_ = alpsBroker.getBestQuality();

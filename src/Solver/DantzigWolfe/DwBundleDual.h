@@ -143,11 +143,8 @@ protected:
 	virtual double getObjValue() { return si_->getObjValue(); }
 
 	/** add row to the dual master */
-	virtual void addDualRow(const CoinPackedVector* x, const CoinPackedVector& v, const double lb, const double ub) {
-		si_->addRow(v, lb, ub);
-	}
 	virtual void addDualRow(const CoinPackedVector& v, const double lb, const double ub) {
-		addDualRow(NULL, v, lb, ub);
+		si_->addRow(v, lb, ub);
 	}
 
     /** remove all columns in the DW master */
