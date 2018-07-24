@@ -139,7 +139,9 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 			model->setBestDualObjective(gLb);
 
 			/** Branching otherwise */
+			message->print(3, "need to branch?");
 			bool hasObjs = model->infeasibility() > 1.0e-6 ? model->chooseBranchingObjects(branchingObjs_) : false;
+			message->print(3, " %s\n", hasObjs ? "yes" : "no");
 
 			if (hasObjs) {
 				/** set solution estimate; the lower the better */
