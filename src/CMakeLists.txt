@@ -80,32 +80,34 @@ endif()
 # Do we want to use PIPS-IPM?
 ##################################################
 
-#find_library(PIPS_LIB pipsipm-shared PATHS ${PIPS_LIB_DIR})
-#if(${PIPS_LIB} MATCHES "PIPS_LIB-NOTFOUND")
-#else()
-#	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DHAS_PIPS")
-#	include_directories(
-#		${PIPS_DIR}/Input
-#		${PIPS_DIR}/PIPS-IPM/Core/Abstract
-#		${PIPS_DIR}/PIPS-IPM/Core/Vector
-#		${PIPS_DIR}/PIPS-IPM/Core/QpGen
-#		${PIPS_DIR}/PIPS-IPM/Core/QpStoch
-#		${PIPS_DIR}/PIPS-IPM/Core/QpSolvers
-#		${PIPS_DIR}/PIPS-IPM/Core/StochLinearAlgebra
-#		${PIPS_DIR}/PIPS-IPM/Core/SparseLinearAlgebra
-#	)
-#	set(DSP_SRC_FILES ${DSP_SRC_FILES}
-#		${PIPS_DIR}/Input/stochasticInput.cpp
-#		Solver/DantzigWolfe/DwBundleDualPips.cpp
-#		Solver/DantzigWolfe/DwWorkerPips.cpp
-#		Solver/DantzigWolfe/PipsInterface.cpp
-#	)
-#	link_directories(${PIPS_LIB_DIR})
-#	set(DSP_LIBS ${DSP_LIBS}
-#		pipsipm-shared
-#		ma57 metis pardiso
-#	)
-#endif()
+find_library(PIPS_LIB pipsipm-shared PATHS ${PIPS_LIB_DIR})
+if(${PIPS_LIB} MATCHES "PIPS_LIB-NOTFOUND")
+else()
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DHAS_PIPS")
+	include_directories(
+		${PIPS_DIR}/Input
+		${PIPS_DIR}/PIPS-IPM/Core/Abstract
+		${PIPS_DIR}/PIPS-IPM/Core/Vector
+		${PIPS_DIR}/PIPS-IPM/Core/QpGen
+		${PIPS_DIR}/PIPS-IPM/Core/QpStoch
+		${PIPS_DIR}/PIPS-IPM/Core/QpSolvers
+		${PIPS_DIR}/PIPS-IPM/Core/StochLinearAlgebra
+		${PIPS_DIR}/PIPS-IPM/Core/SparseLinearAlgebra
+	)
+	set(DSP_SRC_FILES ${DSP_SRC_FILES}
+		${PIPS_DIR}/Input/stochasticInput.cpp
+		Solver/DantzigWolfe/DwBundleDualPips.cpp
+		Solver/DantzigWolfe/DwWorkerPips.cpp
+		Solver/DantzigWolfe/DwBundlePipsInput.cpp
+	)
+	link_directories(${PIPS_LIB_DIR})
+	set(DSP_LIBS ${DSP_LIBS}
+		pipsipm-shared
+		ma57 
+		metis 
+		# pardiso
+	)
+endif()
 
 ##################################################
 # Shared library
