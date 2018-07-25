@@ -19,9 +19,8 @@ public:
 	}
 
 	/** copy constructor */
-	DwBundleDualPips(const DwBundleDualPips& rhs) : DwBundleDualSmip(rhs) {
-		pips_worker_ = rhs.pips_worker_;
-	}
+	DwBundleDualPips(const DwBundleDualPips& rhs) : 
+		DwBundleDualSmip(rhs), pips_worker_(rhs.pips_worker_) {}
 
 	/** copy operator */
 	DwBundleDualPips& operator=(const DwBundleDualPips& rhs);

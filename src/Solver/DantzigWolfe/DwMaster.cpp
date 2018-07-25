@@ -74,10 +74,10 @@ status_subs_(rhs.status_subs_) {
 	mat_orig_ = new CoinPackedMatrix(*(rhs.mat_orig_));
 	for (auto it = rhs.cols_generated_.begin(); it != rhs.cols_generated_.end(); it++)
 		cols_generated_.push_back(new DwCol(**it));
-	for (auto it = rhs.stored_solutions_.begin(); it != rhs.stored_solutions_.end(); it++)
-		stored_solutions_.push_back(new CoinPackedVector(**it));
 	for (auto it = rhs.recent_subsols_.begin(); it != rhs.recent_subsols_.end(); it++)
 		recent_subsols_.push_back(new CoinPackedVector(**it));
+	for (auto it = rhs.stored_solutions_.begin(); it != rhs.stored_solutions_.end(); it++)
+		stored_solutions_.push_back(new CoinPackedVector(**it));
 }
 
 /** copy operator */

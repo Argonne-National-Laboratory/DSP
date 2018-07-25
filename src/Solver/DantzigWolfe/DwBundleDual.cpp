@@ -27,17 +27,17 @@ numFixedRows_(0) {
 }
 
 DwBundleDual::DwBundleDual(const DwBundleDual& rhs):
-	DwMaster(rhs),
-	v_(rhs.v_),
-	counter_(rhs.counter_),
-	u_(rhs.u_),
-	eps_(rhs.eps_),
-	absp_(rhs.absp_),
-	alpha_(rhs.alpha_),
-	linerr_(rhs.linerr_),
-	prev_dualobj_(rhs.prev_dualobj_),
-	nstalls_(rhs.nstalls_),
-	numFixedRows_(rhs.numFixedRows_) {
+DwMaster(rhs),
+v_(rhs.v_),
+counter_(rhs.counter_),
+u_(rhs.u_),
+eps_(rhs.eps_),
+absp_(rhs.absp_),
+alpha_(rhs.alpha_),
+linerr_(rhs.linerr_),
+prev_dualobj_(rhs.prev_dualobj_),
+nstalls_(rhs.nstalls_),
+numFixedRows_(rhs.numFixedRows_) {
 	d_ = rhs.d_;
 	p_ = rhs.p_;
 	primal_si_.reset(rhs.primal_si_->clone());

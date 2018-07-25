@@ -16,7 +16,7 @@ DwBundleDualSmip::DwBundleDualSmip(DwWorker* worker):
 	DwBundleDual(worker) {}
 
 DwBundleDualSmip::DwBundleDualSmip(const DwBundleDualSmip& rhs):
-	DwBundleDual(rhs), tss_(rhs.tss_) {}
+DwBundleDual(rhs), tss_(rhs.tss_) {}
 
 DwBundleDualSmip& DwBundleDualSmip::operator =(const DwBundleDualSmip& rhs) {
 	DwBundleDual::operator =(rhs);
