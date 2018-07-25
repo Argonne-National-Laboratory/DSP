@@ -17,7 +17,7 @@
 //#define SCALE_TAU
 
 /** display option for PIPS */
-int gOoqpPrintLevel = 10;
+int gOoqpPrintLevel = 0;
 
 DwWorkerPips::DwWorkerPips(
 		DecModel * model,
