@@ -332,7 +332,7 @@ void setBlockIds(DspApiEnv* env, int nblocks, bool master_has_subblocks) {
 		for (int s = modrank; s < nblocks; s += comm_size) {
 			g_proc_idx_set.push_back(s);
 		}
-
+#if 0
 		for (int i = 0; i < comm_size; ++i) {
 			if (i == comm_rank) {
 				printf("comm_rank %d:\n", i);
@@ -341,6 +341,7 @@ void setBlockIds(DspApiEnv* env, int nblocks, bool master_has_subblocks) {
 			}
 			MPI_Barrier(MPI_COMM_WORLD);
 		}
+#endif
 	}
 
 	// set the block ids to Dsp

@@ -76,6 +76,11 @@ int DwRounding::solution(double &objective, std::vector<double> &solution) {
 }
 
 int DwSmip::solution(double &objective, std::vector<double> &solution) {
+#ifdef DSP_DEBUG
+	printf("objective = %e\n", objective);
+	printf("solution (size %u):\n", solution.size());
+	DspMessage::printArray(solution.size(), &solution[0]);
+#endif
 
 	int found = 0;
 	TssModel* tss = NULL;
@@ -91,11 +96,14 @@ int DwSmip::solution(double &objective, std::vector<double> &solution) {
 	} else {
 		return found;
 	}
+	DSPdebugMessage("Retrieved objects.\n");
 
 	std::shared_ptr<DwMaster> master(m->clone());
+	DSPdebugMessage("Cloned the master.\n");
 
 	/** create branching objects */
 	std::shared_ptr<DspBranchObj> branch(new DspBranchObj);
+	DSPdebugMessage("Created a branch object.\n");
 
 	if (par->getIntParam("DW/BRANCH") == BRANCH_NONANT) {
 		std::vector<double> fixedsol(tss->getNumCols(0), 0.0);
@@ -108,13 +116,16 @@ int DwSmip::solution(double &objective, std::vector<double> &solution) {
 			}
 		}
 		fixSolution(tss, master.get(), branch.get(), fixedsol);
+#ifdef DSP_DEBUG
+		printf("fixed and rounded solution:\n");
+		DspMessage::printArray(fixedsol.size(), &fixedsol[0]);
+#endif
 	} else {
 		fixSolution(tss, master.get(), branch.get(), model_->getPrimalSolution());
 	}
-	// printf("fixed and rounded solution:\n");
-	// DspMessage::printArray(fixedsol.size(), &fixedsol[0]);
 
 	master->setBranchingObjects(branch.get());
+	DSPdebugMessage("Set a branch object.\n");
 
 	int loglevel = master->getParPtr()->getIntParam("LOG_LEVEL");
 	int dwevalub = master->getParPtr()->getIntParam("DW/EVAL_UB");
@@ -124,6 +135,7 @@ int DwSmip::solution(double &objective, std::vector<double> &solution) {
 	master->getParPtr()->setDblParam("DW/GAPTOL", 0.0);
 
 	DSP_RTN_CHECK_THROW(master->solve());
+	DSPdebugMessage("Solved the master.\n");
 
 	message->logLevel_ = loglevel;
 	master->getParPtr()->setIntParam("DW/EVAL_UB", dwevalub);
