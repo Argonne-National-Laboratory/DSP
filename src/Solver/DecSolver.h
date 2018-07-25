@@ -51,29 +51,31 @@ public:
 
 	/** copy constructor */
 	DecSolver(const DecSolver& rhs):
-		model_(rhs.model_),
-		par_(rhs.par_),
-		message_(rhs.message_),
-		si_(rhs.si_->clone()),
-		status_(rhs.status_),
-		bestprimobj_(rhs.bestprimobj_),
-		primobj_(rhs.primobj_),
-		bestdualobj_(rhs.bestdualobj_),
-		dualobj_(rhs.dualobj_),
-		bestprimsol_(rhs.bestprimsol_),
-		primsol_(rhs.primsol_),
-		bestdualsol_(rhs.bestdualsol_),
-		dualsol_(rhs.dualsol_),
-		absgap_(rhs.absgap_),
-		relgap_(rhs.relgap_),
-		cputime_(rhs.cputime_),
-		walltime_(rhs.walltime_),
-		time_remains_(rhs.time_remains_),
-		tic_(rhs.tic_),
-		numIterations_(rhs.numIterations_),
-		numNodes_(rhs.numNodes_),
-		iterlim_(rhs.iterlim_) {
-		/** nothing to do */
+	model_(rhs.model_),
+	par_(rhs.par_),
+	message_(rhs.message_),
+	status_(rhs.status_),
+	bestprimobj_(rhs.bestprimobj_),
+	primobj_(rhs.primobj_),
+	bestdualobj_(rhs.bestdualobj_),
+	dualobj_(rhs.dualobj_),
+	bestprimsol_(rhs.bestprimsol_),
+	primsol_(rhs.primsol_),
+	bestdualsol_(rhs.bestdualsol_),
+	dualsol_(rhs.dualsol_),
+	absgap_(rhs.absgap_),
+	relgap_(rhs.relgap_),
+	cputime_(rhs.cputime_),
+	walltime_(rhs.walltime_),
+	time_remains_(rhs.time_remains_),
+	tic_(rhs.tic_),
+	numIterations_(rhs.numIterations_),
+	numNodes_(rhs.numNodes_),
+	iterlim_(rhs.iterlim_) {
+		if (rhs.si_ != NULL)
+			si_ = rhs.si_->clone();
+		else
+			si_ = NULL;
 	}
 
 	/** copy operator */
@@ -81,7 +83,10 @@ public:
 		model_ = rhs.model_;
 		par_ = rhs.par_;
 		message_ = rhs.message_;
-		si_ = rhs.si_->clone();
+		if (rhs.si_ != NULL)
+			si_ = rhs.si_->clone();
+		else
+			si_ = NULL;
 		status_ = rhs.status_;
 		bestprimobj_ = rhs.bestprimobj_;
 		primobj_ = rhs.primobj_;
