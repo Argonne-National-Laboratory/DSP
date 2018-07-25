@@ -5,7 +5,7 @@
  *      Author: Kibaek Kim
  */
 
-#define DSP_DEBUG
+//#define DSP_DEBUG
 
 #include "cplex.h"
 #include "OsiCpxSolverInterface.hpp"

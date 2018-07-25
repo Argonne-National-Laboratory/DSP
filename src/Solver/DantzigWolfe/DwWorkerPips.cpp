@@ -14,8 +14,6 @@
 // #include "sFactoryAugSchurLeaf.h"
 #include "MehrotraStochSolver.h"
 
-//#define SCALE_TAU
-
 /** display option for PIPS */
 int gOoqpPrintLevel = 0;
 
@@ -216,30 +214,29 @@ DSP_RTN_CODE DwWorkerPips::solvePips(double weight) {
 	pips_->setTau(weight);
 
 	/** Create PIPS-IPM object */
+#ifdef DSP_DEBUG
 	if (comm_rank_ == 0) printf("creating PIPS-IPM object...\n");
+#endif
 	PIPSIpmInterface<sFactoryAug, MehrotraStochSolver> solver(*pips_);
 	// PIPSIpmInterface<sFactoryAugSchurLeaf, MehrotraStochSolver> solver(*input_);
-fflush(stdout);
-MPI_Barrier(comm_);
 
+#ifdef DSP_DEBUG
 	if (comm_rank_ == 0) printf("solving the master with PIPS-IPM... \n");
+#endif
 	solver.go();
 	pips_objval_ = solver.getObjective();
-#ifdef SCALE_TAU
-	pips_objval_ /= weight;
-#endif
+#ifdef DSP_DEBUG
 	if (comm_rank_ == 0) printf("done with objective %e\n", pips_objval_);
+#endif
 
 	/** store first-stage variable solution */
 	std::vector<double> const& soln_w = solver.getFirstStagePrimalColSolution();
 	assert(soln_w.size() == pips_->nvars1_);
-#ifdef SCALE_TAU
-	for (size_t j = 0; j < soln_w.size(); ++j)
-		soln_w[j] /= weight;
+#ifdef DSP_DEBUG
+	if (comm_rank_ == 0) {
+	 	printf("w:\n"); DspMessage::printArray(soln_w.size(), &soln_w[0]);
+	}
 #endif
-	// if (comm_rank_ == 0) {
-	// 	printf("w:\n"); DspMessage::printArray(soln_w.size(), &soln_w[0]);
-	// }
 
 	/** store second-stage variable solution */
 	std::vector<std::vector<double>> soln_z(pips_->nscen_);
@@ -247,14 +244,12 @@ MPI_Barrier(comm_);
 	for (int s = 0; s < pips_->nscen_; ++s) {
 		soln_z[s] = solver.getSecondStagePrimalColSolution(s);
 		soln_theta[s] = solver.getSecondStageDualRowSolution(s);
-#ifdef SCALE_TAU
-		for (size_t j = 0; j < soln_theta[s].size(); ++j)
-			soln_theta[s][j] /= weight;
+#ifdef DSP_DEBUG
+		if (soln_z[s].size() > 0) {
+		 	printf("z[%d]:\n", s); 
+		 	DspMessage::printArray(soln_z[s].size(), &soln_z[s][0]);
+		}
 #endif
-		// if (soln_z[s].size() > 0) {
-		// 	printf("z[%d]:\n", s); 
-		// 	DspMessage::printArray(soln_z[s].size(), &soln_z[s][0]);
-		// }
 	}
 
 	/** calculate beta for each scenario */
