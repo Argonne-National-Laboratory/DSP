@@ -117,6 +117,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 		message->print(1, "[%f] curLb %.8e, curUb %.8e, bestUb %.8e, bestLb %.8e\n",
 			getKnowledgeBroker()->timer().getWallClock(), curLb, curUb, gUb, gLb);
 
+/*
 		log_dualobjs_.open(par->getStrParam("DW/LOGFILE/OBJS").c_str(), ios::app);
 		if (isRoot) {
 			for (unsigned i = 0; i < solver->log_time_.size(); ++i)
@@ -125,6 +126,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 			log_dualobjs_ << CoinWallclockTime() << "," << gLb << "," << gUb << std::endl;
 		}
 		log_dualobjs_.close();
+*/
 
 		/** fathom if LB is larger than UB. */
 		if (curLb >= gUb || curUb >= ALPS_OBJ_MAX) {
