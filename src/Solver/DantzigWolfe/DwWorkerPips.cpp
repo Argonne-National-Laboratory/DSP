@@ -168,12 +168,12 @@ DSP_RTN_CODE DwWorkerPips::sync(std::vector<double> bestdualsol, std::vector<DwC
 		}
 		MPI_Barrier(comm_);
 	}
-#endif
 
 	if (comm_rank_ == 0) {
 		printf("bestdualsol:\n");
 		DspMessage::printArray(bestdualsol.size(), &bestdualsol[0]);
 	}
+#endif
 
 	/** add proximal center */
 	std::vector<std::vector<double>> prox_center(tss_->getNumScenarios());
