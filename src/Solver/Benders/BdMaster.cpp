@@ -64,7 +64,7 @@ DSP_RTN_CODE BdMaster::solve()
 	DSPdebugMessage("Start solving...\n");
 
 	/** set time limit */
-	si_->setTimeLimit(CoinMax(0.01, time_remains_));
+	si_->setTimeLimit(CoinMax(0.01, CoinMin(1.0e+20,time_remains_)));
 	tic_ = CoinGetTimeOfDay();
 
 	/** solve */
