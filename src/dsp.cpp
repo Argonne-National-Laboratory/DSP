@@ -98,7 +98,8 @@ void runDsp(char* algotype, char* smpsfile, char* solnfile, char* paramfile) {
 	DspApiEnv* env = createEnv();
 
 	if (isroot) cout << "Reading SMPS files: " << smpsfile << endl;
-	readSmps(env, smpsfile);
+	int ret = readSmps(env, smpsfile);
+	if (ret != 0) return;
 	setBlockIds(env, false);
 
 	if (paramfile != NULL) {
@@ -163,18 +164,20 @@ void runDsp(char* algotype, char* smpsfile, char* solnfile, char* paramfile) {
 					delete [] primsol;
 				}
 	
-				double *dualsol = new double [nrows];
-				getDualSolution(env, nrows, dualsol);
-
-				char dsolname[128];
-				sprintf(dsolname, "%s.dual.txt", solnfile);
-				ofstream dsolstream(dsolname);
-				//cout << "Dual Solution:" << endl;
-				for (int j = 0; j < nrows; ++j)
-					dsolstream << dualsol[j] << endl;
-				dsolstream.close();
-				
-				delete [] dualsol;
+				if (string(algotype) == "dd") {
+					double *dualsol = new double [nrows];
+					getDualSolution(env, nrows, dualsol);
+	
+					char dsolname[128];
+					sprintf(dsolname, "%s.dual.txt", solnfile);
+					ofstream dsolstream(dsolname);
+					//cout << "Dual Solution:" << endl;
+					for (int j = 0; j < nrows; ++j)
+						dsolstream << dualsol[j] << endl;
+					dsolstream.close();
+					
+					delete [] dualsol;
+				}
 			}
 		}
 	}

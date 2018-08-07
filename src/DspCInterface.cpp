@@ -116,9 +116,9 @@ void setDimensions(
 }
 
 /** read smps files */
-void readSmps(DspApiEnv * env, const char * smps)
+int readSmps(DspApiEnv * env, const char * smps)
 {
-	getTssModel(env)->readSmps(smps);
+	return getTssModel(env)->readSmps(smps);
 }
 
 /** load first-stage problem */

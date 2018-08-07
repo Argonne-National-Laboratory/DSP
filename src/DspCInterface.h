@@ -56,7 +56,7 @@ void setDimensions(
 		const int   nrows2  /**< number of second-stage rows */);
 
 /** read smps files */
-void readSmps(DspApiEnv * env, const char * smps);
+int readSmps(DspApiEnv * env, const char * smps);
 
 /** load first-stage problem */
 void loadFirstStage(
