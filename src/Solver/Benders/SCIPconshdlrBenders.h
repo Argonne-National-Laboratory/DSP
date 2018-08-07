@@ -9,6 +9,7 @@
 #define SCIPCONSHDLRBENDERS_H_
 
 /** SCIP */
+#include "scip/def.h"
 #include "objscip/objconshdlr.h"
 
 /** DSP */
@@ -40,9 +41,15 @@ public:
 				0,        /**< disable the preprocessing callback of the constraint handler */
 				TRUE,     /**< delay separation method */
 				FALSE,    /**< do not delay propatation method */
+#if SCIP_VERSION < 320
 				FALSE,    /**< do not delay presolving method */
 				TRUE,     /**< skip constraint handler even if no constraints are available. */
 				SCIP_PROPTIMING_BEFORELP /**< propagation method is called before solving LP */),
+#else
+				TRUE,     /**< skip constraint handler even if no constraints are available. */
+				SCIP_PROPTIMING_BEFORELP, /**< propagation method is called before solving LP */
+				SCIP_PRESOLTIMING_FAST),
+#endif
 	model_(NULL),
 	bdsub_(NULL),
 	nvars_(0),
