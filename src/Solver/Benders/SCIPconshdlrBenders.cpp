@@ -266,10 +266,12 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 
 		/** is optimality cut? */
 		bool isOptimalityCut = false;
+		DSPdebugMessage("naux_ %d nvars_ %d\n", naux_, nvars_);
 		for (int j = nvars_ - naux_; j < nvars_; ++j)
 		{
 			if (cutrow.getMaxIndex() == j)
 			{
+				DSPdebugMessage("cutrow.getMaxIndex() = %d\n", j);
 				isOptimalityCut = true;
 				break;
 			}
@@ -467,11 +469,19 @@ void SCIPconshdlrBenders::aggregateCuts(
 	aggrhs = new double [naux_];
 	CoinZeroN(aggrhs, naux_);
 
-	for (int i = 0; i < nsubprobs; ++i)
+	// TODO: The order of checking cuts should be the following, because of the feasibility cuts. 
+	// The implementation can be vulnerable to any change to the cut generation algorithm.
+	// This needs improved! -- Kibaek Kim 8/8/2018
+	for (int i = nsubprobs - 1; i >= 0; --i)
 	{
+		DSPdebugMessage("bdsub_->getStatus(%d) = %d\n", i, bdsub_->getStatus(i));
 		/** generate feasibility cut */
 		if (bdsub_->getStatus(i) == DSP_STAT_PRIM_INFEASIBLE)
 		{
+#ifdef DSP_DEBUG
+			printf("cutvec[%d]:\n", i);
+			DspMessage::printArray(nvars_, cutvec[i]);
+#endif
 			/** set cut body */
 			for (int j = 0; j < nvars_; ++j)
 				if (fabs(cutvec[i][j]) > 1.0e-8)
