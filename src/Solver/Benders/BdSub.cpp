@@ -250,6 +250,7 @@ void BdSub::solveOneSubproblem(
 	{
 		/** save solution status */
 		cgl->status_[s] = DSP_STAT_PRIM_INFEASIBLE;
+		DSPdebugMessage("  Subproblem %d is infeasible (infeasibility %e).\n", s, cglp->getObjValue());
 
 		/** calculate feasibility cut elements */
 		calculateCutElements(
@@ -271,7 +272,11 @@ void BdSub::solveOneSubproblem(
 	chgToOrgProblem(cglp, cgl->cglp_[s]->getObjCoefficients(), nAddedCols);
 
 	/** prepare for generating optimality cuts */
+#ifdef DSP_DEBUG
+	cglp->messageHandler()->setLogLevel(5);
+#else
 	cglp->messageHandler()->setLogLevel(0);
+#endif
 	cglp->setHintParam(OsiDoScale);
 	cglp->setHintParam(OsiDoPresolveInResolve);
 	cglp->setHintParam(OsiDoDualInResolve);
