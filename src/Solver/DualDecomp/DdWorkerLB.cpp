@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-#define DSP_DEBUG
+//#define DSP_DEBUG
 
 #include "Solver/DualDecomp/DdWorkerLB.h"
 
@@ -36,6 +36,7 @@ DSP_RTN_CODE DdWorkerLB::init() {
 DSP_RTN_CODE DdWorkerLB::solve() {
     double cputime;
     double walltime;
+	int rtncode = DSP_RTN_OK;
 
     BGN_TRY_CATCH
 
@@ -50,7 +51,8 @@ DSP_RTN_CODE DdWorkerLB::solve() {
 		walltime = CoinGetTimeOfDay();
 
 		/** reset gap tolerance */
-		subprobs_[s]->setGapTol(par_->getDblParam("MIP/GAP_TOL"));
+		if (subprobs_[s]->si_->getNumIntegers() > 0)
+			subprobs_[s]->setGapTol(par_->getDblParam("MIP/GAP_TOL"));
 
 		bool resolve = true;
 		while (resolve) {
@@ -75,6 +77,7 @@ DSP_RTN_CODE DdWorkerLB::solve() {
 					break;
 				default:
 					status_ = DSP_STAT_MW_STOP;
+					rtncode = DSP_RTN_ERR;
 					message_->print(0, "Warning: subproblem %d solution status is %d\n",
 									subprobs_[s]->sind_, subprobs_[s]->si_->getStatus());
 					break;
@@ -83,15 +86,17 @@ DSP_RTN_CODE DdWorkerLB::solve() {
 				break;
 
 			/** set solution gap tolerance */
-			if (isInit_ == false &&
-					subprobs_[s]->getPrimalObjective() >= subprobs_[s]->theta_ &&
-					subprobs_[s]->gapTol_ > pargaptol) {
-				/** TODO parameterize this */
-				double gapTol = subprobs_[s]->gapTol_ * 0.5;
-				if (gapTol < pargaptol)
-					gapTol = pargaptol;
-				subprobs_[s]->setGapTol(gapTol);
-				resolve = true;
+			if (subprobs_[s]->si_->getNumIntegers() > 0) {
+				if (isInit_ == false &&
+						subprobs_[s]->getPrimalObjective() >= subprobs_[s]->theta_ &&
+						subprobs_[s]->gapTol_ > pargaptol) {
+					/** TODO parameterize this */
+					double gapTol = subprobs_[s]->gapTol_ * 0.5;
+					if (gapTol < pargaptol)
+						gapTol = pargaptol;
+					subprobs_[s]->setGapTol(gapTol);
+					resolve = true;
+				}
 			}
 		}
 
@@ -121,7 +126,7 @@ DSP_RTN_CODE DdWorkerLB::solve() {
 
     END_TRY_CATCH_RTN(;, DSP_RTN_ERR)
 
-    return DSP_RTN_OK;
+    return rtncode;
 }
 
 DSP_RTN_CODE DdWorkerLB::createProblem(int nsubprobs, int* subindex) {
