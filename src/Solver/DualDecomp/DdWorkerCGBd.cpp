@@ -74,7 +74,7 @@ DSP_RTN_CODE DdWorkerCGBd::generateCuts(
 	 * Probability is already applied to the recourse problems.
 	 ***********************************************************/
 
-	for (int j = 0; j < bdsub_->getNumSubprobs(); ++j)
+	for (int j = bdsub_->getNumSubprobs() - 1; j >= 0; --j)
 	{
 		switch (bdsub_->getStatus(j))
 		{
@@ -87,7 +87,8 @@ DSP_RTN_CODE DdWorkerCGBd::generateCuts(
 			cuttype.push_back(Opt);
 			break;
 		default:
-			throw "Unexpected return from Benders cut generation.";
+			message_->print(0, "Benders subproblem %d returns code %d.\n", j, bdsub_->getStatus(j));
+			//throw "Unexpected return from Benders cut generation.";
 			break;
 		}
 
@@ -108,6 +109,9 @@ DSP_RTN_CODE DdWorkerCGBd::generateCuts(
 			DSPdebug(cut.print());
 			cuts->insert(cut);
 		}
+
+		if (bdsub_->getStatus(j) == DSP_STAT_PRIM_INFEASIBLE)
+			break;
 	}
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
