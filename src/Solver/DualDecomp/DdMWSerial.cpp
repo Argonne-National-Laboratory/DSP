@@ -262,7 +262,7 @@ DSP_RTN_CODE DdMWSerial::run()
 					workerub->setTimeLimit(remainingTime());
 					/** evaluate upper bounds */
 					double newub = workerub->evaluate(coupling_solutions[i]);
-					DSPdebugMessage("Current upper bound %+e, time remained %.2f\n", newub, remainingTime());
+					DSPdebugMessage("Current upper bound %+e, time remained %e\n", newub, remainingTime());
 					if (newub < master_->bestprimobj_)
 					{
 						master_->bestprimobj_ = newub;
@@ -502,7 +502,9 @@ DSP_RTN_CODE DdMWSerial::generateBendersCuts(
 					OsiRowCut * rc = localcuts.rowCutPtr(j);
 					DSPdebug2(rc->print());
 					cuts.insertIfNotDuplicate(*rc);
-					ret = DSP_STAT_MW_RESOLVE;
+
+					// TODO: this causes an infinite loop.
+					//ret = DSP_STAT_MW_RESOLVE;
 				}
 			}
 		}
