@@ -91,56 +91,64 @@ DSP_RTN_CODE DdMasterTr::solve()
 	double cputime  = CoinCpuTime();
 	double walltime = CoinGetTimeOfDay();
 
-	/** solve */
-	DSPdebugMessage("SOLVE\n");
-	si_->solve();
-	DSPdebugMessage("SOLVED\n");
+	/** trust-region may trigger infeasibility */
+	bool resolve = true;
 
-	/** mark as solved */
-	isSolved_ = true;
+	while (resolve) {
+		/** solve */
+		si_->solve();
+	
+		/** mark as solved */
+		isSolved_ = true;
+	
+		/** solver status */
+		switch(si_->getStatus())
+		{
+		case DSP_STAT_PRIM_INFEASIBLE:
+			// increase the trust-region size
+			stability_param_ *= 2;
+			setTrustRegion(stability_param_, stability_center_);
+			break;
+		case DSP_STAT_OPTIMAL:
+		case DSP_STAT_LIM_ITERorTIME:
+		case DSP_STAT_STOPPED_GAP:
+		case DSP_STAT_STOPPED_NODE:
+		case DSP_STAT_STOPPED_TIME:
+		{
+			/** objective value */
+			primobj_ = si_->getPrimalBound();
+			/** get solution */
+			CoinCopyN(si_->getSolution(), si_->getNumCols(), primsol_);
+			/** retrieve lambda */
+			lambda_ = primsol_ + nthetas_;
+#ifdef DSP_DEBUG
+			printf("Master solution (obj %+e):\n", primobj_);
+			DspMessage::printArray(si_->getNumCols(), primsol_);
+#endif
+	
+			/** update statistics */
+			s_statuses_.push_back(si_->getStatus());
+			s_primobjs_.push_back(si_->getPrimalBound());
+			s_dualobjs_.push_back(si_->getDualBound());
+			double * s_primsol = new double [si_->getNumCols()];
+			CoinCopyN(si_->getSolution(), si_->getNumCols(), s_primsol);
+			s_primsols_.push_back(s_primsol);
+			s_primsol = NULL;
+			s_cputimes_.push_back(CoinCpuTime() - cputime);
+			s_walltimes_.push_back(CoinGetTimeOfDay() - walltime);
+			message_->print(3, "Master solution time %.2f sec.\n", CoinGetTimeOfDay() - walltime);
 
-	/** solver status */
-	switch(si_->getStatus())
-	{
-	case DSP_STAT_OPTIMAL:
-	case DSP_STAT_LIM_ITERorTIME:
-	case DSP_STAT_STOPPED_GAP:
-	case DSP_STAT_STOPPED_NODE:
-	case DSP_STAT_STOPPED_TIME:
-	{
-		/** objective value */
-		primobj_ = si_->getPrimalBound();
-		/** get solution */
-		CoinCopyN(si_->getSolution(), si_->getNumCols(), primsol_);
-		/** retrieve lambda */
-		lambda_ = primsol_ + nthetas_;
-//		for (int j = 0, k = 0; j < si_->getNumCols(); ++j)
-//		{
-//			if (fabs(primsol_[j]) < 1.0e-10) continue;
-//			if (k > 0 && k % 5 == 0) printf("\n");
-//			printf("  [%6d] %+e", j, primsol_[j]);
-//			k++;
-//		}
-//		printf("\n");
-
-		/** update statistics */
-		s_statuses_.push_back(si_->getStatus());
-		s_primobjs_.push_back(si_->getPrimalBound());
-		s_dualobjs_.push_back(si_->getDualBound());
-		double * s_primsol = new double [si_->getNumCols()];
-		CoinCopyN(si_->getSolution(), si_->getNumCols(), s_primsol);
-		s_primsols_.push_back(s_primsol);
-		s_primsol = NULL;
-		s_cputimes_.push_back(CoinCpuTime() - cputime);
-		s_walltimes_.push_back(CoinGetTimeOfDay() - walltime);
-		message_->print(3, "Master solution time %.2f sec.\n", CoinGetTimeOfDay() - walltime);
-
-		break;
-	}
-	default:
-		status_ = DSP_STAT_MW_STOP;
-		message_->print(0, "Warning: master solution status is %d\n", si_->getStatus());
-		break;
+			resolve = false;
+	
+			break;
+		}
+		default:
+			status_ = DSP_STAT_MW_STOP;
+			resolve = false;
+			message_->print(0, "Warning: master solution status is %d\n", si_->getStatus());
+			DSPdebug(si_->writeMps("master"));
+			break;
+		}
 	}
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
@@ -370,6 +378,7 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 	/** update trust region FIRST, because this does not change problem. */
 	if (parTr_)
 	{
+		DSPdebugMessage("stability_param_ %e\n", stability_param_);
 		DSPdebugMessage("newdual %+e, bestdualobj %+e, curprimobj %+e\n", newdual, bestdualobj_, curprimobj);
 		DSPdebugMessage("Serious test %+e >= 0\n", newdual - bestdualobj_ - 1.0e-4 * (curprimobj - bestdualobj_));
 		if (newdual >= bestdualobj_ + 1.0e-4 * (curprimobj - bestdualobj_))
@@ -529,8 +538,6 @@ int DdMasterTr::addCuts(
 	/** add row cuts by looping over each scenario */
 	for (int s = 0; s < model_->getNumSubproblems(); ++s)
 	{
-		assert(fabs(subprimobj_[s]) < 1.0e+20);
-
 		/** cut index */
 		int cutidx = s % nthetas_;
 
@@ -573,6 +580,8 @@ int DdMasterTr::addCuts(
 		rc->setLb(-COIN_DBL_MAX);
 		rc->setUb(cutrhs);
 		rc->setEffectiveness(rc->violated(primsol_));
+		DSPdebug(rc->print());
+		DSPdebugMessage("cut effectiveness: %e\n", rc->effectiveness());
 
 		if (rc->effectiveness() > 1.0e-6)
 		{
@@ -596,7 +605,7 @@ int DdMasterTr::addCuts(
 	}
 
 	nCutsAdded = cuts.sizeCuts();
-	//DSPdebug(cuts.printCuts());
+	DSPdebug(cuts.printCuts());
 	if (nCutsAdded > 0)
 		/** apply cuts */
 		si_->addCuts(cuts);
@@ -984,7 +993,9 @@ DSP_RTN_CODE DdMasterTr::terminationTest()
 	double absgap = getAbsApproxGap();
 	double relgap = getRelApproxGap();
 	DSPdebugMessage("absgap %+e relgap %+e\n", getAbsApproxGap(), relgap);
-	if (relgap <= par_->getDblParam("DD/STOP_TOL") + par_->getDblParam("MIP/GAP_TOL")) {
+	double gaptol = par_->getDblParam("DD/STOP_TOL");
+	if (si_->getNumIntegers() > 0) gaptol += par_->getDblParam("MIP/GAP_TOL");
+	if (relgap <= gaptol) {
 		status_ = DSP_STAT_MW_STOP;
 		message_->print(1, "Tr  STOP with gap tolerance %+e (%.2f%%).\n", absgap, relgap*100);
 	}
