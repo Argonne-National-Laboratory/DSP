@@ -74,23 +74,46 @@ DSP_RTN_CODE DdSub::init()
 /** solve problem */
 DSP_RTN_CODE DdSub::solve()
 {
-	si_->solve();
+	/** check dual infeasibility */
+	bool dualinfeas = false;
 
-	/** check status. there might be unexpected results. */
-	status_ = si_->getStatus();
-	switch (status_) {
-	case DSP_STAT_OPTIMAL:
-	case DSP_STAT_LIM_ITERorTIME:
-	case DSP_STAT_STOPPED_GAP:
-	case DSP_STAT_STOPPED_NODE:
-	case DSP_STAT_STOPPED_TIME:
-		primobj_ = si_->getPrimalBound();
-		dualobj_ = si_->getDualBound();
-		CoinCopyN(si_->getSolution(), si_->getNumCols(), primsol_);
-		DSPdebugMessage("primal objective %+e\n", primobj_);
-		break;
-	default:
-		break;
+	while (1) {
+		si_->solve();
+	
+		/** check status. there might be unexpected results. */
+		status_ = si_->getStatus();
+		switch (status_) {
+		case DSP_STAT_OPTIMAL:
+		case DSP_STAT_LIM_ITERorTIME:
+		case DSP_STAT_STOPPED_GAP:
+		case DSP_STAT_STOPPED_NODE:
+		case DSP_STAT_STOPPED_TIME:
+			primobj_ = si_->getPrimalBound();
+			dualobj_ = si_->getDualBound();
+			CoinCopyN(si_->getSolution(), si_->getNumCols(), primsol_);
+			DSPdebugMessage("primal objective %+e\n", primobj_);
+			dualinfeas = false;
+			break;
+		case DSP_STAT_DUAL_INFEASIBLE:
+			message_->print(0, "Subproblem %d is dual infeasible. DSP will fix any unbounded column bounds to a large number.\n", sind_);
+			for (int j = 0; j < si_->getNumCols(); ++j) {
+				if (si_->getColLower()[j] < -1.0e+20) {
+					DSPdebugMessage("Fix column %d lower bound %+e to %+e\n", j, si_->getColLower()[j], -1.0e+10);
+					si_->setColLower(j, -1.0e+10);
+				}
+				if (si_->getColUpper()[j] > 1.0e+20) {
+					DSPdebugMessage("Fix column %d upper bound %+e to %+e\n", j, si_->getColUpper()[j], 1.0e+10);
+					si_->setColUpper(j, 1.0e+10);
+				}
+			}
+			dualinfeas = true;
+			//DSPdebugMessage("Dual infeasible subproblem!\n");
+			//DSPdebug(si_->writeMps("dual_infeas_sub"));
+			break;
+		default:
+			break;
+		}
+		if (!dualinfeas) break;
 	}
 
 	return DSP_RTN_OK;
@@ -226,7 +249,8 @@ DSP_RTN_CODE DdSub::createProblem() {
     DSPdebug(mat->verifyMtx(4));
 
     /** set solution gap tolerance */
-    si_->setGapTol(gapTol_);
+	if (nIntegers > 0)
+	    si_->setGapTol(gapTol_);
 
     END_TRY_CATCH_RTN(FREE_MEMORY, DSP_RTN_ERR)
 
