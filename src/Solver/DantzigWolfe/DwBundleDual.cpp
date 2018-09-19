@@ -22,7 +22,6 @@ absp_(COIN_DBL_MAX),
 alpha_(COIN_DBL_MAX),
 linerr_(COIN_DBL_MAX),
 prev_dualobj_(COIN_DBL_MAX),
-nstalls_(0),
 numFixedRows_(0) {
 }
 
@@ -36,7 +35,6 @@ absp_(rhs.absp_),
 alpha_(rhs.alpha_),
 linerr_(rhs.linerr_),
 prev_dualobj_(rhs.prev_dualobj_),
-nstalls_(rhs.nstalls_),
 numFixedRows_(rhs.numFixedRows_) {
 	d_ = rhs.d_;
 	p_ = rhs.p_;
@@ -53,7 +51,6 @@ DwBundleDual& DwBundleDual::operator =(const DwBundleDual& rhs) {
 	alpha_ = rhs.alpha_;
 	linerr_ = rhs.linerr_;
 	prev_dualobj_ = rhs.prev_dualobj_;
-	nstalls_ = rhs.nstalls_;
 	numFixedRows_ = rhs.numFixedRows_;
 	d_ = rhs.d_;
 	p_ = rhs.p_;
@@ -466,6 +463,7 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 DSP_RTN_CODE DwBundleDual::updateModel() {
 	BGN_TRY_CATCH
 
+	int counter_adjustment;
 	double u = u_, newu;
 
 	/** descent test */
@@ -486,34 +484,30 @@ DSP_RTN_CODE DwBundleDual::updateModel() {
 			u = 0.5 * u_;
 		newu = std::min(std::max(std::max(u, 0.1*u_), umin_), umax_);
 		eps_ = std::max(eps_, -2*v_);
-		counter_ = fabs(u_-newu) > 1.0e-6 ? 1 : std::max(counter_+1,1);
+		counter_adjustment = 1;
 
 		// This is my customization.
 		double relimproved = (dualobj_ - bestdualobj_) / fabs(dualobj_+1.0e-10);
-		if (ngenerated_ == 0 || counter_ > 3)
-			newu = std::max(0.1*u_, umin_);
-		else if (relimproved < par_->getDblParam("DW/GAPTOL"))
+		if (relimproved < par_->getDblParam("DW/GAPTOL"))
 			newu = std::max(0.5*u_, umin_);
+
 		bestdualobj_ = dualobj_;
 		bestdualsol_ = dualsol_;
-		nstalls_ = 0;
 	} else {
 		eps_ = std::min(eps_, absp_ + alpha_);
-		if (-linerr_ > std::max(eps_, -10*v_) && counter_ < -3)
+		// if (-linerr_ > std::max(eps_, -10*v_) && counter_ < -3)
+		if (-linerr_ > std::max(absp_ + alpha_, -10*v_) && counter_ < -3)
 			u = 2 * u_ * (1 - (dualobj_ - bestdualobj_) / v_);
 		newu = std::min(std::max(std::min(u, 10*u_), umin_), umax_);
-		counter_ = fabs(u_-newu) > 1.0e-6 ? -1 : std::min(counter_-1,-1);
+		counter_adjustment = -1;
 
 		// My customization
-		/** increment number of iterations making no progress */
-		nstalls_ = fabs(dualobj_ - prev_dualobj_) < 1.0e-6 ? nstalls_ + 1 : 0;
-		if (nstalls_ > 0)
-			message_->print(3, "number of stalls: %d\n", nstalls_);
-		if (ngenerated_ == 0 || nstalls_ > 3 || counter_ < -3 ||
+		if (ngenerated_ == 0 || 
 				(primobj_ >= 1.0e+20 && v_ >= -par_->getDblParam("DW/MIN_INCREASE"))) {
 			newu = std::min(std::max(0.1*u_, umin_), umax_);
 		}
 	}
+	counter_ = fabs(u_-newu) > 1.0e-6 ? counter_adjustment : std::max(counter_+counter_adjustment,counter_adjustment);
 	u_ = newu;
 	updateCenter(u_);
 
@@ -536,7 +530,7 @@ bool DwBundleDual::terminationTest() {
 	if (primobj_ < 1.0e+20 && v_ >= -par_->getDblParam("DW/MIN_INCREASE"))
 		return true;
 
-	if (iterlim_ <= itercnt_ || nstalls_ >= 30) {
+	if (iterlim_ <= itercnt_) {
 		message_->print(3, "Warning: Iteration limit reached.\n");
 		status_ = DSP_STAT_LIM_ITERorTIME;
 		return true;
@@ -558,7 +552,10 @@ DSP_RTN_CODE DwBundleDual::addCols(
 		std::vector<double>& cxs,            /**< [in] solution times original objective coefficients */
 		std::vector<double>& objs,           /**< [in] subproblem objective values */
 		std::vector<CoinPackedVector*>& sols /**< [in] subproblem solutions */) {
-	return addRows(indices, statuses, cxs, objs, sols);
+	if (itercnt_ > 0 && dualobj_ <= bestdualobj_ + mL_ * v_)
+		return DSP_RTN_OK;
+	else
+		return addRows(indices, statuses, cxs, objs, sols);
 }
 
 DSP_RTN_CODE DwBundleDual::addRows(
