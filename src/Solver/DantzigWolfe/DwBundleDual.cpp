@@ -411,16 +411,18 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 		p_.resize(nrows_-nrows_conv_);
 		double polyapprox = 0.0;
 		absp_ = 0.0;
+		for (int j = 0; j < nrows_conv_; ++j)
+			polyapprox -= si_->getColSolution()[j];
 		for (int j = nrows_conv_; j < nrows_; ++j) {
 			d_[j-nrows_conv_] = dualsol_[j] - bestdualsol_[j];
 			p_[j-nrows_conv_] = -u_ * d_[j-nrows_conv_];
-			polyapprox += u_ * dualsol_[j] * (bestdualsol_[j] - 0.5 * dualsol_[j]);
+			// polyapprox += u_ * dualsol_[j] * (bestdualsol_[j] - 0.5 * dualsol_[j]);
 			absp_ += fabs(p_[j-nrows_conv_]);
 			//printf("j %d: dualsol %+e, bestdualsol %+e, d %+e, p %+e, polyapprox %+e\n",
 			//		j, dualsol_[j], bestdualsol_[j], d_[j-nrows_conv_], p_[j-nrows_conv_], polyapprox);
 		}
 		//printf("u*dualsol*(bestdualsol-0.5*dualsol) = %+e\n", polyapprox);
-		polyapprox += getObjValue();
+		// polyapprox += getObjValue();
 
 		DSPdebugMessage("getObjValue %e, polyapprox %e, bestdualobj_ %e\n", getObjValue(), polyapprox, bestdualobj_);
 		v_ = polyapprox - bestdualobj_;
@@ -463,7 +465,6 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 DSP_RTN_CODE DwBundleDual::updateModel() {
 	BGN_TRY_CATCH
 
-	int counter_adjustment;
 	double u = u_, newu;
 
 	/** descent test */
@@ -484,30 +485,41 @@ DSP_RTN_CODE DwBundleDual::updateModel() {
 			u = 0.5 * u_;
 		newu = std::min(std::max(std::max(u, 0.1*u_), umin_), umax_);
 		eps_ = std::max(eps_, -2*v_);
-		counter_adjustment = 1;
+
+		/** update counter */
+		if (fabs(u_-newu) > 1.0e-8)
+			counter_ = 1;
+		else
+			counter_ = std::max(counter_+1,1);
 
 		// This is my customization.
-		double relimproved = (dualobj_ - bestdualobj_) / fabs(dualobj_+1.0e-10);
-		if (relimproved < par_->getDblParam("DW/GAPTOL"))
-			newu = std::max(0.5*u_, umin_);
+		// double relimproved = (dualobj_ - bestdualobj_) / fabs(dualobj_+1.0e-10);
+		// if (relimproved < par_->getDblParam("DW/GAPTOL"))
+		// 	newu = std::max(0.5*u_, umin_);
 
 		bestdualobj_ = dualobj_;
 		bestdualsol_ = dualsol_;
 	} else {
 		eps_ = std::min(eps_, absp_ + alpha_);
-		// if (-linerr_ > std::max(eps_, -10*v_) && counter_ < -3)
-		if (-linerr_ > std::max(absp_ + alpha_, -10*v_) && counter_ < -3)
+		if (-linerr_ > std::max(eps_, -10*v_) && counter_ < -3)
+		// if (-linerr_ > std::max(absp_ + alpha_, -10*v_) && counter_ < -3)
 			u = 2 * u_ * (1 - (dualobj_ - bestdualobj_) / v_);
 		newu = std::min(std::max(std::min(u, 10*u_), umin_), umax_);
-		counter_adjustment = -1;
 
 		// My customization
-		if (ngenerated_ == 0 || 
-				(primobj_ >= 1.0e+20 && v_ >= -par_->getDblParam("DW/MIN_INCREASE"))) {
-			newu = std::min(std::max(0.1*u_, umin_), umax_);
-		}
+		// if (ngenerated_ == 0 || counter_ < -3 ||
+		// 		(primobj_ >= 1.0e+20 && v_ >= -par_->getDblParam("DW/MIN_INCREASE"))) {
+			// newu = std::min(std::max(0.1*u_, umin_ / pow(nstalls_, 2.0)), umax_);
+		// }
+		if (primobj_ >= 1.0e+20 && v_ >= -par_->getDblParam("DW/MIN_INCREASE"))
+			newu = 0.1*u_;
+
+		/** update counter */
+		if (fabs(u_-newu) > 1.0e-8)
+			counter_ = -1;
+		else
+			counter_ = std::min(counter_-1,-1);
 	}
-	counter_ = fabs(u_-newu) > 1.0e-6 ? counter_adjustment : std::max(counter_+counter_adjustment,counter_adjustment);
 	u_ = newu;
 	updateCenter(u_);
 
@@ -552,10 +564,7 @@ DSP_RTN_CODE DwBundleDual::addCols(
 		std::vector<double>& cxs,            /**< [in] solution times original objective coefficients */
 		std::vector<double>& objs,           /**< [in] subproblem objective values */
 		std::vector<CoinPackedVector*>& sols /**< [in] subproblem solutions */) {
-	if (itercnt_ > 0 && dualobj_ <= bestdualobj_ + mL_ * v_)
-		return DSP_RTN_OK;
-	else
-		return addRows(indices, statuses, cxs, objs, sols);
+	return addRows(indices, statuses, cxs, objs, sols);
 }
 
 DSP_RTN_CODE DwBundleDual::addRows(
