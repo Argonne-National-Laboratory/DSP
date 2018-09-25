@@ -23,14 +23,13 @@ void DwBranchNonant2::getDevSol(std::vector<double>& refsol, std::vector<double>
 	for (auto it = master_->cols_generated_.begin(); it != master_->cols_generated_.end(); it++) {
 		if ((*it)->active_) {
 			int master_index = (*it)->master_index_;
+			int sind = (*it)->blockid_;
 			double weight = master_->getPrimalSolution()[master_index];
 			if (weight > 1.0e-10) {
 				for (int i = 0; i < (*it)->x_.getNumElements(); ++i) {
 					if ((*it)->x_.getIndices()[i] < tss_->getNumCols(0) * tss_->getNumScenarios()) {
 						int k = (*it)->x_.getIndices()[i] % tss_->getNumCols(0);
-						//maxsol[k] = CoinMax(maxsol[k], (*it)->x_.getElements()[i]);
-						//minsol[k] = CoinMin(minsol[k], (*it)->x_.getElements()[i]);
-						diffsol[k] += pow((*it)->x_.getElements()[i] - refsol[k], 2.0) * weight;
+						diffsol[k] += pow((*it)->x_.getElements()[i] - refsol[k], 2.0) * weight * tss_->getProbability()[sind];
 					}
 				}
 			}
