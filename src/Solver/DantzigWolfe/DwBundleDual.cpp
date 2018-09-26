@@ -470,7 +470,7 @@ DSP_RTN_CODE DwBundleDual::updateModel() {
 	/** descent test */
 	bool foundBetter = false;
 	DSPdebugMessage("dualobj_ %e bestdualobj_ %e serious step? %e\n", dualobj_, bestdualobj_, bestdualobj_ + mL_ * v_ - dualobj_);
-	if (dualobj_ <= bestdualobj_ + mL_ * v_) {
+	if (dualobj_ <= bestdualobj_ + mL_ * v_ && v_ < 0) {
 		message_->print(2, "  Serious step: best dual %+e -> %e\n", -bestdualobj_, -dualobj_);
 		foundBetter = true;
 		/** reset subproblem time increment */
@@ -502,9 +502,8 @@ DSP_RTN_CODE DwBundleDual::updateModel() {
 	} else {
 		eps_ = std::min(eps_, absp_ + alpha_);
 		if (-linerr_ > std::max(eps_, -10*v_) && counter_ < -3)
-		// if (-linerr_ > std::max(absp_ + alpha_, -10*v_) && counter_ < -3)
 			u = 2 * u_ * (1 - (dualobj_ - bestdualobj_) / v_);
-		newu = std::min(std::max(std::min(u, 10*u_), umin_), umax_);
+		newu = std::min(u, 10*u_);
 
 		// My customization
 		// if (ngenerated_ == 0 || counter_ < -3 ||
@@ -513,6 +512,8 @@ DSP_RTN_CODE DwBundleDual::updateModel() {
 		// }
 		if (primobj_ >= 1.0e+20 && v_ >= -par_->getDblParam("DW/MIN_INCREASE"))
 			newu = 0.1*u_;
+		else if (counter_ < -5)
+			newu = 10*u_;
 
 		/** update counter */
 		if (fabs(u_-newu) > 1.0e-8)
