@@ -22,15 +22,11 @@ DwModel::DwModel(DecSolver* solver): DspModel(solver) {
 	primsol_.resize(master->ncols_orig_);
 
 	/** add heuristics */
-	if (solver_->getModelPtr()->isStochastic()) {
-		par_->setBoolParam("DW/HEURISTICS", true);
-		par_->setBoolParam("DW/HEURISTICS/SMIP", true);
-	} else {
-		par_->setBoolParam("DW/HEURISTICS/SMIP", false);
-	}
 	if (par_->getBoolParam("DW/HEURISTICS")) {
 		if (par_->getBoolParam("DW/HEURISTICS/ROUNDING"))
 			heuristics_.push_back(new DwRounding("Rounding", *this));
+		if (solver_->getModelPtr()->isStochastic() == false)
+			par_->setBoolParam("DW/HEURISTICS/SMIP", false);
 		if (par_->getBoolParam("DW/HEURISTICS/SMIP"))
 			heuristics_.push_back(new DwSmip("Smip", *this));
 	}

@@ -135,9 +135,9 @@ void DspParams::initBoolParams()
 	BoolParams_.createParam("DW/MASTER/BRANCH_ROWS", false);
 	BoolParams_.createParam("DW/MASTER/REUSE_COLS", false);
 	BoolParams_.createParam("DW/TRUST_REGION", false);
-	BoolParams_.createParam("DW/HEURISTICS", false);
+	BoolParams_.createParam("DW/HEURISTICS", true);
 	BoolParams_.createParam("DW/HEURISTICS/ROUNDING", false);
-	BoolParams_.createParam("DW/HEURISTICS/SMIP", false);
+	BoolParams_.createParam("DW/HEURISTICS/SMIP", true);
 	BoolParams_.createParam("DW/STRONG_BRANCH", false);
 }
 
