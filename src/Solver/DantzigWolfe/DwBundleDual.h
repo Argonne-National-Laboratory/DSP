@@ -115,6 +115,7 @@ protected:
 	double linerr_; /**< linearization error */
 
 	double prev_dualobj_; /**< dual objective at the previous iteration */
+	int nstalls_; /**< number of iterations making no progress on objective value */
 
 	int numFixedRows_; /**< number of fixed rows in the dual master */
 

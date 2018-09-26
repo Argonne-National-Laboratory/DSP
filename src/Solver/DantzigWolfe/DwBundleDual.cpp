@@ -22,6 +22,7 @@ absp_(COIN_DBL_MAX),
 alpha_(COIN_DBL_MAX),
 linerr_(COIN_DBL_MAX),
 prev_dualobj_(COIN_DBL_MAX),
+nstalls_(0),
 numFixedRows_(0) {
 }
 
@@ -35,6 +36,7 @@ absp_(rhs.absp_),
 alpha_(rhs.alpha_),
 linerr_(rhs.linerr_),
 prev_dualobj_(rhs.prev_dualobj_),
+nstalls_(rhs.nstalls_),
 numFixedRows_(rhs.numFixedRows_) {
 	d_ = rhs.d_;
 	p_ = rhs.p_;
@@ -51,6 +53,7 @@ DwBundleDual& DwBundleDual::operator =(const DwBundleDual& rhs) {
 	alpha_ = rhs.alpha_;
 	linerr_ = rhs.linerr_;
 	prev_dualobj_ = rhs.prev_dualobj_;
+	nstalls_ = rhs.nstalls_;
 	numFixedRows_ = rhs.numFixedRows_;
 	d_ = rhs.d_;
 	p_ = rhs.p_;
@@ -499,6 +502,7 @@ DSP_RTN_CODE DwBundleDual::updateModel() {
 
 		bestdualobj_ = dualobj_;
 		bestdualsol_ = dualsol_;
+		nstalls_ = 0;
 	} else {
 		eps_ = std::min(eps_, absp_ + alpha_);
 		if (-linerr_ > std::max(eps_, -10*v_) && counter_ < -3)
@@ -506,14 +510,13 @@ DSP_RTN_CODE DwBundleDual::updateModel() {
 		newu = std::min(u, 10*u_);
 
 		// My customization
-		// if (ngenerated_ == 0 || counter_ < -3 ||
-		// 		(primobj_ >= 1.0e+20 && v_ >= -par_->getDblParam("DW/MIN_INCREASE"))) {
-			// newu = std::min(std::max(0.1*u_, umin_ / pow(nstalls_, 2.0)), umax_);
-		// }
-		if (primobj_ >= 1.0e+20 && v_ >= -par_->getDblParam("DW/MIN_INCREASE"))
+		nstalls_ = fabs(dualobj_ - prev_dualobj_) < 1.0e-6 ? nstalls_ + 1 : 0;
+		if (nstalls_ > 0)
+			message_->print(3, "number of stalls: %d\n", nstalls_);
+		if ((primobj_ >= 1.0e+20 && v_ >= -par_->getDblParam("DW/MIN_INCREASE")) || nstalls_ > 3)
 			newu = 0.1*u_;
-		else if (counter_ < -5)
-			newu = 10*u_;
+		// else if (counter_ < -5)
+		// 	newu = 10*u_;
 
 		/** update counter */
 		if (fabs(u_-newu) > 1.0e-8)
@@ -543,7 +546,7 @@ bool DwBundleDual::terminationTest() {
 	if (primobj_ < 1.0e+20 && v_ >= -par_->getDblParam("DW/MIN_INCREASE"))
 		return true;
 
-	if (iterlim_ <= itercnt_) {
+	if (iterlim_ <= itercnt_ || nstalls_ >= 30) {
 		message_->print(3, "Warning: Iteration limit reached.\n");
 		status_ = DSP_STAT_LIM_ITERorTIME;
 		return true;
