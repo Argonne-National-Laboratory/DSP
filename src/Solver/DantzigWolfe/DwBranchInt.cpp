@@ -5,6 +5,8 @@
  *      Author: Kibaek Kim
  */
 
+//#define DSP_DEBUG
+
 #include <DantzigWolfe/DwBranchInt.h>
 #include <Model/TssModel.h>
 
@@ -52,9 +54,10 @@ bool DwBranchInt::chooseBranchingObjects(
 			}
 		}
 
+#if 0
 		/** for the first pass of smip, look through expected first-stage integer variable values */
 		if (ncols_first_stage > 0 && findPhase == 0 && branchingIndex < 0) {
-			maxdist = 1.0e-8;
+			maxdist = 1.0e-6;
 			for (int j = 0; j < tss->getNumCols(0); ++j) {
 				if (master->ctype_orig_[j] == 'C') continue;
 				double expval = 0.0;
@@ -68,7 +71,7 @@ bool DwBranchInt::chooseBranchingObjects(
 				}
 			}
 		}
-
+#endif
 		findPhase++;
 	}
 
