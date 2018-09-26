@@ -495,11 +495,6 @@ DSP_RTN_CODE DwBundleDual::updateModel() {
 		else
 			counter_ = std::max(counter_+1,1);
 
-		// This is my customization.
-		// double relimproved = (dualobj_ - bestdualobj_) / fabs(dualobj_+1.0e-10);
-		// if (relimproved < par_->getDblParam("DW/GAPTOL"))
-		// 	newu = std::max(0.5*u_, umin_);
-
 		bestdualobj_ = dualobj_;
 		bestdualsol_ = dualsol_;
 		nstalls_ = 0;
@@ -513,8 +508,10 @@ DSP_RTN_CODE DwBundleDual::updateModel() {
 		nstalls_ = fabs(dualobj_ - prev_dualobj_) < 1.0e-6 ? nstalls_ + 1 : 0;
 		if (nstalls_ > 0)
 			message_->print(3, "number of stalls: %d\n", nstalls_);
-		if ((primobj_ >= 1.0e+20 && v_ >= -par_->getDblParam("DW/MIN_INCREASE")) || nstalls_ > 3)
+		if (nstalls_ > 3)
 			newu = 0.1*u_;
+		else if ((primobj_ >= 1.0e+20 && v_ >= -par_->getDblParam("DW/MIN_INCREASE")) || nstalls_ > 0)
+			newu = 0.5*u_;
 		// else if (counter_ < -5)
 		// 	newu = 10*u_;
 
