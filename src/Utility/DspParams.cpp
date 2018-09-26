@@ -242,7 +242,7 @@ void DspParams::initDblParams()
 	DblParams_.createParam("DW/TIME_LIM", MAX_DBL_NUM);
 	DblParams_.createParam("DW/HEURISTICS/TRIVIAL/TIME_LIM", MAX_DBL_NUM);
 	DblParams_.createParam("DW/HEURISTICS/DIVE/TIME_LIM", MAX_DBL_NUM);
-	DblParams_.createParam("DW/INIT_CENTER", 100);
+	DblParams_.createParam("DW/INIT_CENTER", 0.1);
 }
 
 void DspParams::initStrParams()
