@@ -106,9 +106,7 @@ void runDsp(char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* 
 #endif
 
 	if (isroot) cout << "Creating DSP environment" << endl;
-#ifdef DSP_HAS_MPI
 	DspApiEnv* env = createEnv();
-#endif
 
 	// Read problem instance from file(s)
 	if (smpsfile != NULL) {
