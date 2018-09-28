@@ -89,7 +89,7 @@ bool DwBranchInt::chooseBranchingObjects(
 		for (int j = 0; j < master->ncols_orig_; ++j) {
 			if (master->ctype_orig_[j] == 'C') continue;
 			/** NOTE: branching on all the first-stage variables if SMIP */
-			if (branchingIndex == j || (tss != NULL && branchingFirstStage == j % tss->getNumCols(0))) {
+			if (branchingIndex == j || (tss != NULL && branchingFirstStage == j % tss->getNumCols(0) && j < ncols_first_stage)) {
 				DSPdebugMessage("Creating branch objects on column %d (value %e): [%e,%e] and [%e,%e]\n", 
 					j, branchingValue, ceil(branchingValue), master->cubd_node_[j], master->clbd_node_[j], floor(branchingValue));
 				branchingUp->push_back(j, ceil(branchingValue), master->cubd_node_[j]);
