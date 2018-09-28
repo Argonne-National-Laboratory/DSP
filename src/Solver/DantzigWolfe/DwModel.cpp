@@ -94,19 +94,6 @@ DSP_RTN_CODE DwModel::solve() {
 		}
 
 		if (primobj_ < 1.0e+20) {
-			/** parse solution */
-			std::fill(primsol_.begin(), primsol_.begin() + master->ncols_orig_, 0.0);
-			for (auto it = master->cols_generated_.begin(); it != master->cols_generated_.end(); it++) {
-				if ((*it)->active_) {
-					int master_index = (*it)->master_index_;
-					if (fabs(master->getPrimalSolution()[master_index]) > 1.0e-10) {
-						for (int i = 0; i < (*it)->x_.getNumElements(); ++i) {
-							if ((*it)->x_.getIndices()[i] < master->ncols_orig_)
-								primsol_[(*it)->x_.getIndices()[i]] += (*it)->x_.getElements()[i] * master->getPrimalSolution()[master_index];
-						}
-					}
-				}
-			}
 // #define WRITE_ALL_SOLS
 #ifdef WRITE_ALL_SOLS
 			{
@@ -122,10 +109,45 @@ DSP_RTN_CODE DwModel::solve() {
 			}
 #endif
 
+			/** parse solution */
+			std::fill(primsol_.begin(), primsol_.begin() + master->ncols_orig_, 0.0);
+
 			if (solver_->getModelPtr()->isStochastic() == true && 
 				par_->getIntParam("DW/BRANCH") == BRANCH_NONANT) {
 				infeasibility_ = COIN_DBL_MAX;
+
+				/** parse solution */
+				/** NOTE: 
+					This is purely for reporting numerical experiment to paper.
+					Using the restricted master solution makes more sense in practice. */
+				TssModel* tss = dynamic_cast<TssModel*>(solver_->getModelPtr());
+				for (unsigned s = 0; s < master->getLastSubprobSolutions().size(); ++s) {
+					const CoinPackedVector* sol = master->getLastSubprobSolutions()[s];
+					int sNumElements = sol->getNumElements();
+					const int* sIndices = sol->getIndices();
+					const double* sElements = sol->getElements();
+					for (int j = 0; j < sNumElements; ++j) {
+						if (sIndices[j] < tss->getNumCols(0) * tss->getNumScenarios()) {
+							for (unsigned ss = 0; ss < tss->getNumScenarios(); ++ss)
+								primsol_[ss * tss->getNumCols(0) + sIndices[j] % tss->getNumCols(0)] += sElements[j] * tss->getProbability()[s];
+						} else
+							primsol_[sIndices[j]] = sElements[j];
+					}
+				}
 			} else {
+
+				/** parse solution */
+				for (auto it = master->cols_generated_.begin(); it != master->cols_generated_.end(); it++) {
+					if ((*it)->active_) {
+						int master_index = (*it)->master_index_;
+						if (fabs(master->getPrimalSolution()[master_index]) > 1.0e-10) {
+							for (int i = 0; i < (*it)->x_.getNumElements(); ++i) {
+								if ((*it)->x_.getIndices()[i] < master->ncols_orig_)
+									primsol_[(*it)->x_.getIndices()[i]] += (*it)->x_.getElements()[i] * master->getPrimalSolution()[master_index];
+							}
+						}
+					}
+				}
 				/** calculate infeasibility */
 				infeasibility_ = 0.0;
 				for (int j = 0; j < master->ncols_orig_; ++j)
@@ -133,18 +155,18 @@ DSP_RTN_CODE DwModel::solve() {
 						infeasibility_ += fabs(primsol_[j] - floor(primsol_[j] + 0.5));
 					}
 				message->print(1, "Infeasibility: %+e\n", infeasibility_);
-			}
 
-			bool isViolated = false;
-			for (int j = 0; j < master->ncols_orig_; ++j) {
-				double viol = std::max(master->clbd_node_[j] - primsol_[j], primsol_[j] - master->cubd_node_[j]);
-				if (viol > 1.0e-6) {
-					printf("Violated variable at %d by %e (%+e <= %+e <= %+e)\n", j, viol,
-							master->clbd_node_[j], primsol_[j], master->cubd_node_[j]);
-					isViolated = true;
+				bool isViolated = false;
+				for (int j = 0; j < master->ncols_orig_; ++j) {
+					double viol = std::max(master->clbd_node_[j] - primsol_[j], primsol_[j] - master->cubd_node_[j]);
+					if (viol > 1.0e-6) {
+						printf("Violated variable at %d by %e (%+e <= %+e <= %+e)\n", j, viol,
+								master->clbd_node_[j], primsol_[j], master->cubd_node_[j]);
+						isViolated = true;
+					}
 				}
+				if (isViolated) throw "Invalid branching was performed.";
 			}
-			if (isViolated) throw "Invalid branching was performed.";
 
 			/** run heuristics */
 			if (par_->getBoolParam("DW/HEURISTICS") && infeasibility_ > 1.0e-6) {
