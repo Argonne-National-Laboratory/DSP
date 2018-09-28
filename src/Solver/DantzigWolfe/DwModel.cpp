@@ -31,27 +31,27 @@ DwModel::DwModel(DecSolver* solver): DspModel(solver) {
 			heuristics_.push_back(new DwSmip("Smip", *this));
 	}
 
-	switch (par_->getIntParam("DW/BRANCH")) {
-		case BRANCH_NONANT:
-			if (solver_->getModelPtr()->isStochastic()) {
+	if (solver_->getModelPtr()->isStochastic()) {
+		switch (par_->getIntParam("DW/BRANCH")) {
+			case BRANCH_NONANT:
 				branch_ = new DwBranchNonant(this);
-			}
-			break;
-		case BRANCH_NONANT2:
-			if (solver_->getModelPtr()->isStochastic()){
+				break;
+			case BRANCH_NONANT2:
 				branch_ = new DwBranchNonant2(this);
-			}
-			break;
-		case BRANCH_DISJUNCTION_TEST:
-			if (solver_->getModelPtr()->isStochastic()){
+				break;
+			case BRANCH_DISJUNCTION_TEST:
 				printf("\n*** WARNING: This is a testing code for branching on general disjunctions. ***\n\n");
 				branch_ = new DwBranchGenDisj(this);
-			}
-			break;
-		case BRANCH_INT:
-		default:
-			branch_ = new DwBranchInt(this);
-			break;
+				break;
+			case BRANCH_INT:
+			default:
+				branch_ = new DwBranchInt(this);
+				break;
+		}
+	} else {
+		if (par_->getIntParam("DW/BRANCH") != BRANCH_INT)
+			printf("\n*** WARNING: Changed the branching method. The problem structure supports the integer branching method only. ***\n\n");
+		branch_ = new DwBranchInt(this);
 	}
 }
 
