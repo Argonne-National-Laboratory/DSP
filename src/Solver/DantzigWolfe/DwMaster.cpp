@@ -1130,11 +1130,19 @@ void DwMaster::setBranchingObjects(const DspBranchObj* branchobj) {
 	int numColBranches = 0;
 	for (unsigned j = 0; j < branchobj->getNumObjs(); ++j) {
 		if (branchobj->getVector(j)->getNumElements() == 1) {
+			//printf("Updated column bound [%d]: [%e, %e]\n", branchobj->getIndex(j), branchobj->getLb(j), branchobj->getUb(j));
 			clbd_node_[branchobj->getIndex(j)] = branchobj->getLb(j);
 			cubd_node_[branchobj->getIndex(j)] = branchobj->getUb(j);
 			numColBranches++;
 		}
 	}
+
+#ifdef DSP_DEBUG
+	for (int j = 0; j < ncols_orig_; ++j) {
+		if (fabs(clbd_node_[j] - clbd_orig_[j]) > 1.0e-8 || fabs(cubd_node_[j] - cubd_orig_[j]) > 1.0e-8)
+			printf("Changed column bound [%d]: [%e,%e]\n", j, clbd_node_[j], cubd_node_[j]);
+	}
+#endif
 
 	/** apply column bounds */
 	if (numColBranches > 0) {

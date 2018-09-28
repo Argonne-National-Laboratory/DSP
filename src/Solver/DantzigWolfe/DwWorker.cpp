@@ -163,7 +163,7 @@ DSP_RTN_CODE DwWorker::createSubproblems() {
 		if (s >= 0) {
 			/** write MPS */
 			char ofname[128];
-			sprintf(ofname, "sub%d", s);
+			sprintf(ofname, "sub%d", parProcIdx_[s]);
 			DSPdebugMessage("Writing MPS file: %s\n", ofname);
 			si_[s]->writeMps(ofname);
 		}
