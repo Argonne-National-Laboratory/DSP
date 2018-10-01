@@ -8,7 +8,7 @@ DSP is an open-source and parallel package that implements decomposition methods
 
 where x and y_s are decision variable vectors with dimensions n_1 and n_2, respectively, A, T_s and W_s are matrices of dimensions m_1 by n_1, m_2 by n_1 and m_2 by n_2, respectively, and c, q_s, b, and h_s are vectors of appropriate dimensions.
 
-DSP provides **parallel** implementations of **Dantzig-Wolfe decomposition** methods with branch-and-bound procedure.
+DSP provides **parallel dual decomposition** methods with **branch-and-bound** procedure.
 
 The methods can be run on computing clusters and multi-core processors.
 
@@ -16,11 +16,11 @@ The methods can be run on computing clusters and multi-core processors.
 
 You can clone this repository in your preferred directory by typing:
 ```bash
-git clone -b dev-coin --recursive https://github.com/Argonne-National-Laboratory/DSP.git
+git clone -b dsp-bb --recursive https://github.com/Argonne-National-Laboratory/DSP.git
 ```
 or
 ```bash
-git clone -b dev-coin https://github.com/Argonne-National-Laboratory/DSP.git
+git clone -b dsp-bb https://github.com/Argonne-National-Laboratory/DSP.git
 cd DSP
 git submodule update --init --recursive
 ```
