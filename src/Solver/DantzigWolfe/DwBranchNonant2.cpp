@@ -17,8 +17,14 @@ void DwBranchNonant2::getDevSol(std::vector<double>& refsol, std::vector<double>
 	devsol.resize(tss_->getNumCols(0), 0.0);
 	//std::vector<double> maxsol(tss_->getNumCols(0), -COIN_DBL_MAX);
 	//std::vector<double> minsol(tss_->getNumCols(0), +COIN_DBL_MAX);
-	std::vector<double> diffsol(tss_->getNumCols(0), 0.0);
 
+	for (int j = 0; j < tss_->getNumCols(0); ++j) {
+		devsol[j] = CoinMin(fabs(refsol[j] - master_->clbd_node_[j]), fabs(refsol[j] - master_->cubd_node_[j]));
+		DSPdebugMessage("col %d: devsol %e\n", j, devsol[j]);
+	}
+
+#if 0
+	std::vector<double> diffsol(tss_->getNumCols(0), 0.0);
 	/** use l2-norm */
 	for (auto it = master_->cols_generated_.begin(); it != master_->cols_generated_.end(); it++) {
 		if ((*it)->active_) {
@@ -41,4 +47,5 @@ void DwBranchNonant2::getDevSol(std::vector<double>& refsol, std::vector<double>
 		devsol[k] = diffsol[k] > 1.0e-10 ? sqrt(diffsol[k]) : 0.0;
 		DSPdebugMessage("col %d: devsol %e diffsol %e\n", k, devsol[k], diffsol[k]);
 	}
+#endif
 }

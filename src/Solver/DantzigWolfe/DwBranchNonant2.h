@@ -15,10 +15,14 @@
 class DwBranchNonant2 : public DwBranchNonant {
 public:
 	/** default constructor */
-	DwBranchNonant2() : DwBranchNonant() {}
+	DwBranchNonant2() : DwBranchNonant() {
+		epsilonBB_ = 0.0;
+	}
 
 	/** default constructor with solver */
-	DwBranchNonant2(DwModel* model) : DwBranchNonant(model) {}
+	DwBranchNonant2(DwModel* model) : DwBranchNonant(model) {
+		epsilonBB_ = 0.0;
+	}
 
 	/** default destructor */
 	virtual ~DwBranchNonant2() {

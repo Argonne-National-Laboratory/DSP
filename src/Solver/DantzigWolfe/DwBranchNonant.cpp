@@ -56,8 +56,8 @@ bool DwBranchNonant::chooseBranchingObjects(
 			branchingIndex = j;
 			branchingValue = refsol[j];
 			if (tss_->getCtypeCore(0)[j] == 'C') {
-				branchingDownValue = refsol[j] - epsilon_;
-				branchingUpValue = refsol[j] + epsilon_;
+				branchingDownValue = refsol[j] - epsilonBB_;
+				branchingUpValue = refsol[j] + epsilonBB_;
 			} else {
 				branchingDownValue = floor(refsol[j]);
 				branchingUpValue = ceil(refsol[j]);

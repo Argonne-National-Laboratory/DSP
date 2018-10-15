@@ -40,6 +40,7 @@ protected:
 
 	/** epsilon value for branching on continuous variables */
 	double epsilon_ = 1.0e-6;
+	double epsilonBB_ = 1.0e-6;
 
 	TssModel* tss_;
 	DwMaster* master_;
