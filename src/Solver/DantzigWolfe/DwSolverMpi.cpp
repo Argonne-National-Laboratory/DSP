@@ -81,23 +81,7 @@ DSP_RTN_CODE DwSolverMpi::solve() {
 	BGN_TRY_CATCH
 	if (comm_rank_ == 0) {
 
-		/** solve */
-		AlpsKnowledgeBrokerSerial alpsBroker(0, NULL, *alps_);
-		alpsBroker.search(alps_);
-		// alpsBroker.printBestSolution();
-
-		DspNodeSolution* solution = NULL;
-		if (alpsBroker.hasKnowledge(AlpsKnowledgeTypeSolution)) {
-			solution = dynamic_cast<DspNodeSolution*>(alpsBroker.getBestKnowledge(AlpsKnowledgeTypeSolution).first);
-			bestprimsol_ = solution->solution_;
-			if (model_->isStochastic()) {
-				TssModel* tss = dynamic_cast<TssModel*>(model_);
-				if (bestprimsol_.size() > 0)
-					bestprimsol_.erase(bestprimsol_.begin(), bestprimsol_.begin() + tss->getNumCols(0) * (tss->getNumScenarios() - 1));
-			}
-		}
-		bestprimobj_ = alpsBroker.getBestQuality();
-		bestdualobj_ = alps_->getBestDualObjective();
+		DSP_RTN_CHECK_THROW(DwSolverSerial::solve());
 
 		/** send signal */
 		int sig = DwWorkerMpi::sig_terminate;
