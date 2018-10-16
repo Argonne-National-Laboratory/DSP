@@ -83,6 +83,35 @@ DSP_RTN_CODE DwSolverSerial::solve() {
     alpsBroker.search(alps_);
 	//alpsBroker.printBestSolution();
 
+	AlpsExitStatus alpsstatus = alpsBroker.getSolStatus();
+	switch(alpsstatus) {
+	case AlpsExitStatusOptimal:
+		status_ = DSP_STAT_OPTIMAL;
+		break;
+	case AlpsExitStatusTimeLimit:
+	case AlpsExitStatusNodeLimit:
+		status_ = DSP_STAT_LIM_ITERorTIME;
+		break;
+	case AlpsExitStatusSolLimit:
+		status_ = DSP_STAT_STOPPED_SOLUTION;
+		break;
+	case AlpsExitStatusFeasible:
+		status_ = DSP_STAT_FEASIBLE;
+		break;
+	case AlpsExitStatusInfeasible:
+		status_ = DSP_STAT_PRIM_INFEASIBLE;
+		break;
+	case AlpsExitStatusFailed:
+		status_ = DSP_STAT_ABORT;
+		break;
+	case AlpsExitStatusUnbounded:
+		status_ = DSP_STAT_DUAL_INFEASIBLE;
+		break;
+	default:
+		status_ = DSP_STAT_UNKNOWN;
+		break;
+	}
+
 	DspNodeSolution* solution = NULL;
 	if (alpsBroker.hasKnowledge(AlpsKnowledgeTypeSolution)) {
 		solution = dynamic_cast<DspNodeSolution*>(alpsBroker.getBestKnowledge(AlpsKnowledgeTypeSolution).first);
@@ -96,7 +125,7 @@ DSP_RTN_CODE DwSolverSerial::solve() {
 		}
 	}
 	bestprimobj_ = alpsBroker.getBestQuality();
-	bestdualobj_ = alps_->getBestDualObjective();
+	bestdualobj_ = CoinMin(bestprimobj_, alps_->getBestDualObjective());
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;
