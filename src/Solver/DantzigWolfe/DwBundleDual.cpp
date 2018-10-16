@@ -543,8 +543,14 @@ bool DwBundleDual::terminationTest() {
 	if (primobj_ < 1.0e+20 && v_ >= -par_->getDblParam("DW/MIN_INCREASE"))
 		return true;
 
-	if (iterlim_ <= itercnt_ || nstalls_ >= 30) {
+	if (iterlim_ <= itercnt_) {
 		message_->print(3, "Warning: Iteration limit reached.\n");
+		status_ = DSP_STAT_LIM_ITERorTIME;
+		return true;
+	}
+
+	if (nstalls_ >= 30) {
+		message_->print(3, "Warning: Maximum stalling limit reached.\n");
 		status_ = DSP_STAT_LIM_ITERorTIME;
 		return true;
 	}
