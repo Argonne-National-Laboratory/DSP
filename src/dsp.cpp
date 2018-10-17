@@ -149,6 +149,8 @@ void runDsp(char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* 
 			getPrimalSolution(env, getTotalNumCols(env), &sol[0]);
 
 			ofstream solstream(solnfile);
+			solstream << "Primal bound: " << getPrimalBound(env) << endl;
+			solstream << "Dual bound  : " << getDualBound(env) << endl;
 			for (int j = 0; j < getTotalNumCols(env); ++j) {
 				if (fabs(sol[j]) > 1.0e-10)
 					solstream << "x[" << j << "] = " << sol[j] << endl;
