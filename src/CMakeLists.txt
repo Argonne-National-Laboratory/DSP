@@ -83,9 +83,10 @@ endif()
 find_library(PIPS_LIB pipsipm-shared PATHS ${PIPS_LIB_DIR})
 if(PIPS_LIB)
 	find_library(MA57LIB ma57)
-	if(NOT MA57LIB)
-		message(FATAL_ERROR "Could not find MA57.")
-	else(NOT MA57LIB)
+	find_library(METIS_LIB metis)
+	if(NOT MA57LIB OR NOT METIS_LIB)
+		message(FATAL_ERROR "Could not find MA57 or METIS.")
+	else(NOT MA57LIB OR NOT METIS_LIB)
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DHAS_PIPS")
 		include_directories(
 			${PIPS_DIR}/Input
@@ -107,10 +108,10 @@ if(PIPS_LIB)
 		set(DSP_LIBS ${DSP_LIBS}
 			pipsipm-shared
 			${MA57LIB}
-			metis 
+			${METIS_LIB}
 			# pardiso
 		)
-	endif(NOT MA57LIB)
+	endif(NOT MA57LIB OR NOT METIS_LIB)
 endif(PIPS_LIB)
 
 ##################################################
