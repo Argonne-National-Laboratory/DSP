@@ -130,7 +130,7 @@ void DwBranchNonant::getRefSol(std::vector<double>& refsol) {
 
 void DwBranchNonant::getDevSol(std::vector<double>& refsol, std::vector<double>& devsol) {
 	devsol.resize(tss_->getNumCols(0), 0.0);
-#define USE_TWONORM
+//#define USE_TWONORM
 #ifdef USE_TWONORM
 	std::vector<double> diffsol(tss_->getNumCols(0), 0.0);
 	/** use l2-norm */
