@@ -73,6 +73,7 @@ DSP_RTN_CODE DwSolverMpi::init() {
 		alps_->AlpsPar()->setEntry(AlpsParams::timeLimit, par->getDblParam("ALPS/TIME_LIM"));
 		alps_->AlpsPar()->setEntry(AlpsParams::clockType, AlpsClockTypeWallClock);
 	}
+
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;
 }
@@ -90,6 +91,12 @@ DSP_RTN_CODE DwSolverMpi::solve() {
 	} else {
 		DSP_RTN_CHECK_THROW(dynamic_cast<DwWorkerMpi*>(worker_)->receiver());
 	}
+
+	/** braodcast final results */
+	MPI_Bcast(&status_, 1, MPI_INT, 0, comm_);
+	MPI_Bcast(&bestprimobj_, 1, MPI_DOUBLE, 0, comm_);
+	MPI_Bcast(&bestdualobj_, 1, MPI_DOUBLE, 0, comm_);
+	
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;
 }
