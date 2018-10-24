@@ -1,18 +1,18 @@
 [submodule "extra/CoinUtils"]
 	path = extra/CoinUtils
-	url = https://github.com/coin-or/CoinUtils.git
+url=git@github.com:coin-or/CoinUtils.git
 [submodule "extra/Osi"]
 	path = extra/Osi
-	url = https://github.com/kibaekkim/Osi.git
+url=git@github.com:kibaekkim/Osi.git
 [submodule "extra/Smi"]
 	path = extra/Smi
-	url = https://github.com/kibaekkim/Smi.git
+url=git@github.com:kibaekkim/Smi.git
 [submodule "extra/OOQP"]
 	path = extra/OOQP
-	url = https://github.com/emgertz/OOQP.git
+url=git@github.com:emgertz/OOQP.git
 [submodule "extra/Alps"]
 	path = extra/Alps
-	url = https://github.com/kibaekkim/CHiPPS-ALPS.git
+url=git@github.com:kibaekkim/CHiPPS-ALPS.git
 [submodule "extra/Bcps"]
 	path = extra/Bcps
-	url = https://github.com/kibaekkim/CHiPPS-BiCePS.git
+url=git@github.com:kibaekkim/CHiPPS-BiCePS.git
