@@ -1,5 +1,6 @@
 #!/bin/bash
 
+maxcore=36
 instances=( 
 	"dcap233_200" "dcap233_300" "dcap233_500" 
 	"dcap243_200" "dcap243_300" "dcap243_500" 
@@ -20,14 +21,14 @@ do
 	do
 		for i in "${instances[@]}"
 		do
-			echo "mpiexec -np 36 ./runDsp --smps ../examples/smps/$i --param params/params-$m-$w-rounding.txt --soln solns/$i.$m.$w.sol.txt"
+			echo "mpiexec -np $maxcore ../build/bin/runDsp --smps ../examples/smps/$i --param params/params-$m-$w-rounding.txt --soln solns/$i.$m.$w.sol.txt"
 		done
 
 		# Note: The number of processes should be no more than the number of scenarios
 		for i in ${!small_instances[*]}
 		do
 			intance_name=${small_instances[$i]}
-			echo "mpiexec -np ${nprocs[$i]} ./runDsp --smps ../examples/smps/$intance_name --param params/params-$m-$w-rounding.txt --soln solns/$intance_name.$m.$w.sol.txt"
+			echo "mpiexec -np ${nprocs[$i]} ../build/bin/runDsp --smps ../examples/smps/$intance_name --param params/params-$m-$w-rounding.txt --soln solns/$intance_name.$m.$w.sol.txt"
 		done
 	done
 done
