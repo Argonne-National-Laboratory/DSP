@@ -140,25 +140,26 @@ void runDsp(char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* 
 		cout << "Dual bound  : " << getDualBound(env) << endl;
 
 		if (getPrimalBound(env) < 1.0e+20) {
-		cout << "Gap (%)     : " << fabs(getPrimalBound(env)-getDualBound(env))/fabs(getPrimalBound(env)+1.0e-10)*100 << endl;
+			cout << "Gap (%)     : " << fabs(getPrimalBound(env)-getDualBound(env))/fabs(getPrimalBound(env)+1.0e-10)*100 << endl;
 		}
 
 		/** write solution to file */
-		if (solnfile != NULL && getPrimalBound(env) < 1.0e+20) {
-			vector<double> sol(getTotalNumCols(env),0.0);
-			getPrimalSolution(env, getTotalNumCols(env), &sol[0]);
-
+		if (solnfile != NULL) {
 			ofstream solstream(solnfile);
 			solstream << "Primal bound: " << getPrimalBound(env) << endl;
 			solstream << "Dual bound  : " << getDualBound(env) << endl;
-			for (int j = 0; j < getTotalNumCols(env); ++j) {
-				if (fabs(sol[j]) > 1.0e-10)
-					solstream << "x[" << j << "] = " << sol[j] << endl;
+			if (getPrimalBound(env) < 1.0e+20) {
+				vector<double> sol(getTotalNumCols(env),0.0);
+				getPrimalSolution(env, getTotalNumCols(env), &sol[0]);
+				for (int j = 0; j < getTotalNumCols(env); ++j) {
+					if (fabs(sol[j]) > 1.0e-10)
+						solstream << "x[" << j << "] = " << sol[j] << endl;
+				}
 			}
 			solstream.close();
-
 			cout << "The solutions have been written in " << solnfile << ".\n";
 		}
+
 		cout << "Deleting DSP environment" << endl;
 	}
 
