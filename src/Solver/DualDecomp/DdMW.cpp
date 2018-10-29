@@ -88,6 +88,9 @@ DSP_RTN_CODE DdMW::storeCouplingSolutions(Solutions& stored)
 	/** store solutions to distribute */
 	for (int s = 0; s < model_->getNumSubproblems(); ++s)
 	{
+		if (master_->subprimobj_[s] == COIN_DBL_MAX)
+			continue;
+		
 		int nx = model_->getNumSubproblemCouplingCols(s);
 
 		DSPdebugMessage2("ubSolutions_ %lu\n", ubSolutions_.size());

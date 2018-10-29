@@ -90,8 +90,20 @@ void SolverInterfaceCpx::setGapTol(double tol)
 
 DSP_RTN_CODE SolverInterfaceCpx::getStatus() {
 	int cpxstat = CPXgetstat(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
-	if (cpxstat == CPXMIP_TIME_LIM_FEAS) {
+	if (cpxstat == CPXMIP_NODE_LIM_FEAS ||
+		cpxstat == CPXMIP_TIME_LIM_FEAS)
 		return DSP_STAT_LIM_ITERorTIME;
-	}
+	else if (cpxstat == CPXMIP_NODE_LIM_INFEAS ||
+		cpxstat == CPXMIP_TIME_LIM_INFEAS)
+		return DSP_STAT_LIM_INFEAS;
 	return SolverInterfaceOsi::getStatus();
+}
+
+
+/** get dual bound (lower bound in minimization) */
+double SolverInterfaceCpx::getDualBound()
+{
+	double objval;
+	CPXgetbestobjval(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), &objval);
+	return objval;
 }

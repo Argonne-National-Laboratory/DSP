@@ -68,6 +68,7 @@ DSP_RTN_CODE DdWorkerLB::solve() {
 			switch (subprobs_[s]->si_->getStatus()) {
 				case DSP_STAT_STOPPED_TIME:
 				case DSP_STAT_LIM_ITERorTIME:
+				case DSP_STAT_LIM_INFEAS:
 				case DSP_STAT_STOPPED_GAP:
 				case DSP_STAT_STOPPED_NODE:
 					message_->print(3, "Warning: subproblem %d solution status is %d\n",
@@ -106,7 +107,10 @@ DSP_RTN_CODE DdWorkerLB::solve() {
 		if (status_ == DSP_STAT_MW_STOP)
 			break;
 
-		primobj += subprobs_[s]->si_->getPrimalBound();
+		if (subprobs_[s]->si_->getStatus() == DSP_STAT_LIM_INFEAS)
+			primobj = COIN_DBL_MAX;
+		else if (primobj < COIN_DBL_MAX)
+			primobj += subprobs_[s]->si_->getPrimalBound();
 		dualobj += subprobs_[s]->si_->getDualBound();
 		total_cputime += CoinCpuTime() - cputime;
 		total_walltime += CoinGetTimeOfDay() - walltime;

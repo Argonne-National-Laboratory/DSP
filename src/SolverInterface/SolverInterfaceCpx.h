@@ -37,6 +37,9 @@ public:
 	/** solution status */
 	virtual DSP_RTN_CODE getStatus();
 
+	/** get dual bound (lower bound in minimization) */
+	virtual double getDualBound();
+
 	/** set node limit */
 	virtual void setNodeLimit(int limit);
 

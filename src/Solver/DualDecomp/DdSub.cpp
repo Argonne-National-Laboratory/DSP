@@ -94,6 +94,11 @@ DSP_RTN_CODE DdSub::solve()
 			DSPdebugMessage("primal objective %+e\n", primobj_);
 			dualinfeas = false;
 			break;
+		case DSP_STAT_LIM_INFEAS:
+			primobj_ = COIN_DBL_MAX;
+			dualobj_ = si_->getDualBound();
+			dualinfeas = false;
+			break;
 		case DSP_STAT_DUAL_INFEASIBLE:
 			message_->print(0, "Subproblem %d is dual infeasible. DSP will fix any unbounded column bounds to a large number.\n", sind_);
 			for (int j = 0; j < si_->getNumCols(); ++j) {
