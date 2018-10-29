@@ -31,27 +31,32 @@ DwModel::DwModel(DecSolver* solver): DspModel(solver) {
 			heuristics_.push_back(new DwSmip("Smip", *this));
 	}
 
-	if (solver_->getModelPtr()->isStochastic()) {
-		switch (par_->getIntParam("DW/BRANCH")) {
-			case BRANCH_NONANT:
-				branch_ = new DwBranchNonant(this);
-				break;
-			case BRANCH_NONANT2:
-				branch_ = new DwBranchNonant2(this);
-				break;
-			case BRANCH_DISJUNCTION_TEST:
-				printf("\n*** WARNING: This is a testing code for branching on general disjunctions. ***\n\n");
-				branch_ = new DwBranchGenDisj(this);
-				break;
-			case BRANCH_INT:
-			default:
-				branch_ = new DwBranchInt(this);
-				break;
-		}
+	if (par_->getBoolParam("DW/SPLIT_VARS")) {
+		par_->setIntParam("DW/BRANCH", BRANCH_NONANT);
+		branch_ = new DwBranchNonant(this);
 	} else {
-		if (par_->getIntParam("DW/BRANCH") != BRANCH_INT)
-			printf("\n*** WARNING: Changed the branching method. The problem structure supports the integer branching method only. ***\n\n");
-		branch_ = new DwBranchInt(this);
+		if (solver_->getModelPtr()->isStochastic()) {
+			switch (par_->getIntParam("DW/BRANCH")) {
+				case BRANCH_NONANT:
+					branch_ = new DwBranchNonant(this);
+					break;
+				case BRANCH_NONANT2:
+					branch_ = new DwBranchNonant2(this);
+					break;
+				case BRANCH_DISJUNCTION_TEST:
+					printf("\n*** WARNING: This is a testing code for branching on general disjunctions. ***\n\n");
+					branch_ = new DwBranchGenDisj(this);
+					break;
+				case BRANCH_INT:
+				default:
+					branch_ = new DwBranchInt(this);
+					break;
+			}
+		} else {
+			if (par_->getIntParam("DW/BRANCH") != BRANCH_INT)
+				printf("\n*** WARNING: Changed the branching method. The problem structure supports the integer branching method only. ***\n\n");
+			branch_ = new DwBranchInt(this);
+		}
 	}
 }
 
@@ -93,96 +98,38 @@ DSP_RTN_CODE DwModel::solve() {
 			message->print(1, "Found new primal solution: %e\n", bestprimobj_);
 		}
 
-		if (primobj_ < 1.0e+20) {
 // #define WRITE_ALL_SOLS
 #ifdef WRITE_ALL_SOLS
-			{
-				std::cout << "Number of columns: " << master->cols_generated_.size() << std::endl;
-				std::ofstream fp_primsol("x.csv");
-				for (auto it = master->cols_generated_.begin(); it != master->cols_generated_.end(); it++) {
-					fp_primsol << (*it)->blockid_ << "," << (*it)->obj_;
-					for (int j = 0; j < (*it)->x_.getNumElements(); ++j)
-						fp_primsol << "," << (*it)->x_.getIndices()[j] << "," << (*it)->x_.getElements()[j];
-					fp_primsol << std::endl;
-				}
-				fp_primsol.close();
+		{
+			std::cout << "Number of columns: " << master->cols_generated_.size() << std::endl;
+			std::ofstream fp_primsol("x.csv");
+			for (auto it = master->cols_generated_.begin(); it != master->cols_generated_.end(); it++) {
+				fp_primsol << (*it)->blockid_ << "," << (*it)->obj_;
+				for (int j = 0; j < (*it)->x_.getNumElements(); ++j)
+					fp_primsol << "," << (*it)->x_.getIndices()[j] << "," << (*it)->x_.getElements()[j];
+				fp_primsol << std::endl;
 			}
+			fp_primsol.close();
+		}
 #endif
 
-			/** parse solution */
-			std::fill(primsol_.begin(), primsol_.begin() + master->ncols_orig_, 0.0);
+		/** parse solution */
+		DSP_RTN_CHECK_RTN_CODE(parsePrimSolution());
 
-			if (solver_->getModelPtr()->isStochastic() == true && 
-				par_->getIntParam("DW/BRANCH") == BRANCH_NONANT) {
-				infeasibility_ = COIN_DBL_MAX;
-
-				/** parse solution */
-				/** NOTE: 
-					This is purely for reporting numerical experiment to paper.
-					Using the restricted master solution makes more sense in practice. */
-				TssModel* tss = dynamic_cast<TssModel*>(solver_->getModelPtr());
-				for (unsigned s = 0; s < master->getLastSubprobSolutions().size(); ++s) {
-					const CoinPackedVector* sol = master->getLastSubprobSolutions()[s];
-					int sNumElements = sol->getNumElements();
-					const int* sIndices = sol->getIndices();
-					const double* sElements = sol->getElements();
-					for (int j = 0; j < sNumElements; ++j) {
-						if (sIndices[j] < tss->getNumCols(0) * tss->getNumScenarios()) {
-							for (unsigned ss = 0; ss < tss->getNumScenarios(); ++ss)
-								primsol_[ss * tss->getNumCols(0) + sIndices[j] % tss->getNumCols(0)] += sElements[j] * tss->getProbability()[s];
-						} else
-							primsol_[sIndices[j]] = sElements[j];
-					}
-				}
-			} else {
-
-				/** parse solution */
-				for (auto it = master->cols_generated_.begin(); it != master->cols_generated_.end(); it++) {
-					if ((*it)->active_) {
-						int master_index = (*it)->master_index_;
-						if (fabs(master->getPrimalSolution()[master_index]) > 1.0e-10) {
-							for (int i = 0; i < (*it)->x_.getNumElements(); ++i) {
-								if ((*it)->x_.getIndices()[i] < master->ncols_orig_)
-									primsol_[(*it)->x_.getIndices()[i]] += (*it)->x_.getElements()[i] * master->getPrimalSolution()[master_index];
-							}
-						}
-					}
-				}
-				/** calculate infeasibility */
-				infeasibility_ = 0.0;
-				for (int j = 0; j < master->ncols_orig_; ++j)
-					if (master->ctype_orig_[j] != 'C') {
-						infeasibility_ += fabs(primsol_[j] - floor(primsol_[j] + 0.5));
-					}
-				message->print(1, "Infeasibility: %+e\n", infeasibility_);
-
-				bool isViolated = false;
-				for (int j = 0; j < master->ncols_orig_; ++j) {
-					double viol = std::max(master->clbd_node_[j] - primsol_[j], primsol_[j] - master->cubd_node_[j]);
-					if (viol > 1.0e-6) {
-						printf("Violated variable at %d by %e (%+e <= %+e <= %+e)\n", j, viol,
-								master->clbd_node_[j], primsol_[j], master->cubd_node_[j]);
-						isViolated = true;
-					}
-				}
-				if (isViolated) throw "Invalid branching was performed.";
-			}
-
-			/** run heuristics */
-			if (par_->getBoolParam("DW/HEURISTICS") && infeasibility_ > 1.0e-6) {
-				/** FIXME */
-				std::vector<double> primsol(primsol_);
-				for (auto it = heuristics_.begin(); it != heuristics_.end(); it++) {
-					primsol_ = primsol;
-					message->print(2, "Running [%s] heuristic:\n", (*it)->name());
-					int found = (*it)->solution(bestprimobj_, bestprimsol_);
-					if (found)
-						message->print(2, "found bestprimobj %+e\n", bestprimobj_);
-					else
-						message->print(2, "Not found better primal solution\n");
-				}
+		/** run heuristics */
+		if (par_->getBoolParam("DW/HEURISTICS") && infeasibility_ > 1.0e-6) {
+			/** FIXME */
+			std::vector<double> primsol(primsol_);
+			for (auto it = heuristics_.begin(); it != heuristics_.end(); it++) {
 				primsol_ = primsol;
+				message->print(2, "Running [%s] heuristic:\n", (*it)->name());
+				int found = (*it)->solution(bestprimobj_, bestprimsol_);
+				if (found)
+					message->print(2, "found bestprimobj %+e\n", bestprimobj_);
+				else
+					message->print(2, "Not found better primal solution\n");
 			}
+			primsol_ = primsol;
 		}
 
 		break;
@@ -196,6 +143,110 @@ DSP_RTN_CODE DwModel::solve() {
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
+	return DSP_RTN_OK;
+}
+
+DSP_RTN_CODE DwModel::parsePrimSolution() {
+	BGN_TRY_CATCH
+
+	DwMaster* master = dynamic_cast<DwMaster*>(solver_);
+	DspMessage* message = master->getMessagePtr();
+
+	if (par_->getBoolParam("DW/SPLIT_VARS")) {
+		/** NOTE: 
+			This is purely for reporting numerical experiment to paper.
+			Using the restricted master solution makes more sense in practice. */
+		DSP_RTN_CHECK_RTN_CODE(parseLastIterSolution());
+
+		/** set infinite infeasibility */
+		infeasibility_ = COIN_DBL_MAX;
+	} else {
+		if (solver_->getModelPtr()->isStochastic() == true && 
+			par_->getIntParam("DW/BRANCH") == BRANCH_NONANT) {
+			/** NOTE: 
+				This is purely for reporting numerical experiment to paper.
+				Using the restricted master solution makes more sense in practice. */
+			DSP_RTN_CHECK_RTN_CODE(parseLastIterSolution());
+
+			/** set infinite infeasibility */
+			infeasibility_ = COIN_DBL_MAX;
+		} else {
+			if (primobj_ < 1.0e+20) {
+				/** getting a Dantzig-Wolfe solution */
+				DSP_RTN_CHECK_RTN_CODE(parseDantzigWolfeSolution());
+
+				/** calculate infeasibility */
+				infeasibility_ = 0.0;
+				for (int j = 0; j < master->ncols_orig_; ++j)
+					if (master->ctype_orig_[j] != 'C')
+						infeasibility_ += fabs(primsol_[j] - floor(primsol_[j] + 0.5));
+				message->print(1, "Infeasibility: %+e\n", infeasibility_);
+
+				/** extra checking for column bounds */
+				bool isViolated = false;
+				for (int j = 0; j < master->ncols_orig_; ++j) {
+					double viol = std::max(master->clbd_node_[j] - primsol_[j], primsol_[j] - master->cubd_node_[j]);
+					if (viol > 1.0e-6) {
+						printf("Violated variable at %d by %e (%+e <= %+e <= %+e)\n", j, viol,
+								master->clbd_node_[j], primsol_[j], master->cubd_node_[j]);
+						isViolated = true;
+					}
+				}
+				if (isViolated) throw "Invalid branching was performed.";
+			} else {
+				/** disable running heuristics */
+				infeasibility_ = 0.0;
+			}
+		}
+
+	}
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+	return DSP_RTN_OK;
+}
+
+DSP_RTN_CODE DwModel::parseDantzigWolfeSolution() {
+	BGN_TRY_CATCH
+
+	DwMaster* master = dynamic_cast<DwMaster*>(solver_);
+
+	std::fill(primsol_.begin(), primsol_.begin() + master->ncols_orig_, 0.0);
+
+	for (auto it = master->cols_generated_.begin(); it != master->cols_generated_.end(); it++) {
+		if ((*it)->active_) {
+			int master_index = (*it)->master_index_;
+			if (fabs(master->getPrimalSolution()[master_index]) > 1.0e-10) {
+				for (int i = 0; i < (*it)->x_.getNumElements(); ++i) {
+					if ((*it)->x_.getIndices()[i] < master->ncols_orig_)
+						primsol_[(*it)->x_.getIndices()[i]] += (*it)->x_.getElements()[i] * master->getPrimalSolution()[master_index];
+				}
+			}
+		}
+	}
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+	return DSP_RTN_OK;
+}
+
+DSP_RTN_CODE DwModel::parseLastIterSolution() {
+	BGN_TRY_CATCH
+
+	DwMaster* master = dynamic_cast<DwMaster*>(solver_);
+
+	std::fill(primsol_.begin(), primsol_.begin() + master->ncols_orig_, 0.0);
+
+	for (unsigned s = 0; s < master->getLastSubprobSolutions().size(); ++s) {
+		const CoinPackedVector* sol = master->getLastSubprobSolutions()[s];
+		int sNumElements = sol->getNumElements();
+		const int* sIndices = sol->getIndices();
+		const double* sElements = sol->getElements();
+		for (int j = 0; j < sNumElements; ++j)
+			primsol_[sIndices[j]] += sElements[j];
+	}
+
+	/** TODO: we can calculuate infeasibility here with respect to the nonanticipativity */
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;
 }
 

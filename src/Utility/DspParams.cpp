@@ -130,6 +130,7 @@ void DspParams::initBoolParams()
 	/** enable asynchronous parallelization */
 	BoolParams_.createParam("DD/ASYNC", false);
 
+	BoolParams_.createParam("DW/SPLIT_VARS", false);
 	BoolParams_.createParam("DW/MASTER/PIPS", false);
 	BoolParams_.createParam("DW/MASTER/IPM", false);
 	BoolParams_.createParam("DW/MASTER/BRANCH_ROWS", false);

@@ -501,7 +501,7 @@ DSP_RTN_CODE DwMaster::gutsOfSolve() {
 	itercnt_++;
 
 	int num_removed = 0, num_restored = 0;
-	while (status_ == DSP_STAT_OPTIMAL) {
+	while (status_ == DSP_STAT_OPTIMAL && terminationTest() == false) {
 
 		/** column management */
 		num_removed = 0;
@@ -552,10 +552,6 @@ DSP_RTN_CODE DwMaster::gutsOfSolve() {
 		/** print information and increment iteration */
 		printIterInfo();
 		itercnt_++;
-
-		/** termination test */
-		if (terminationTest())
-			break;
 
 #ifdef DSP_DEBUG_CPX
 		char fname[128];

@@ -30,6 +30,17 @@ public:
     virtual bool chooseBranchingObjects(
     			std::vector<DspBranchObj*>& branchingObjs /**< [out] branching objects */);
 
+protected:
+
+	/** parse primal solution from the master */
+	virtual DSP_RTN_CODE parsePrimSolution();
+
+	/** parse Dantzig-Wolfe solution from the master */
+	virtual DSP_RTN_CODE parseDantzigWolfeSolution();
+
+	/** parse primal solution from the last iteration */
+	virtual DSP_RTN_CODE parseLastIterSolution();
+
 private:
 
     DwBranch* branch_;

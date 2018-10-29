@@ -129,7 +129,8 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 */
 
 		/** fathom if LB is larger than UB. */
-		if (curLb >= gUb || curUb >= ALPS_OBJ_MAX) {
+		if (curLb >= gUb || 
+			(par->getBoolParam("DW/SPLIT_VARS") == false && curUb >= ALPS_OBJ_MAX)) {
 			message->print(1, "The current node is fathomed.\n");
 			setStatus(AlpsNodeStatusFathomed);
 			wirteLog("fathomed", desc);

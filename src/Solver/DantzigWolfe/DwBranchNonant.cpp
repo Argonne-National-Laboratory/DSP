@@ -116,56 +116,61 @@ bool DwBranchNonant::chooseBranchingObjects(
 }
 
 void DwBranchNonant::getRefSol(std::vector<double>& refsol) {
-	refsol.resize(tss_->getNumCols(0), 0.0);
-	for (unsigned s = 0; s < master_->getLastSubprobSolutions().size(); ++s) {
-		const CoinPackedVector* sol = master_->getLastSubprobSolutions()[s];
-		int sNumElements = sol->getNumElements();
-		const int* sIndices = sol->getIndices();
-		const double* sElements = sol->getElements();
-		for (int j = 0; j < sNumElements; ++j)
-			if (sIndices[j] < tss_->getNumCols(0) * tss_->getNumScenarios())
-				refsol[sIndices[j] % tss_->getNumCols(0)] += sElements[j] * tss_->getProbability()[s];
+	if (model_->getParPtr()->getBoolParam("DW/SPLIT_VARS") && 
+		model_->getSolver()->getModelPtr()->isStochastic() == false) {
+		/** TODO: Liu's implementation goes here. */
+	} else {
+		refsol.resize(tss_->getNumCols(0), 0.0);
+		for (int j = 0; j < tss_->getNumCols(0) * tss_->getNumScenarios(); ++j) {
+			int s = j / tss_->getNumCols(0);
+			refsol[j % tss_->getNumCols(0)] += model_->getPrimalSolution()[j] * tss_->getProbability()[s];
+		}
 	}
 }
 
 void DwBranchNonant::getDevSol(std::vector<double>& refsol, std::vector<double>& devsol) {
-	devsol.resize(tss_->getNumCols(0), 0.0);
+	if (model_->getParPtr()->getBoolParam("DW/SPLIT_VARS") && 
+		model_->getSolver()->getModelPtr()->isStochastic() == false) {
+		/** TODO: Liu's implementation goes here. */
+	} else {
+		devsol.resize(tss_->getNumCols(0), 0.0);
 //#define USE_TWONORM
 #ifdef USE_TWONORM
-	std::vector<double> diffsol(tss_->getNumCols(0), 0.0);
-	/** use l2-norm */
-	for (unsigned s = 0; s < master_->getLastSubprobSolutions().size(); ++s) {
-		const CoinPackedVector* sol = master_->getLastSubprobSolutions()[s];
-		int sNumElements = sol->getNumElements();
-		const int* sIndices = sol->getIndices();
-		const double* sElements = sol->getElements();
-		for (int j = 0; j < sNumElements; ++j)
-			if (sIndices[j] < tss_->getNumCols(0) * tss_->getNumScenarios()) {
-				int k = sIndices[j] % tss_->getNumCols(0);
-				diffsol[k] += pow(sElements[j] - refsol[k], 2.0) * tss_->getProbability()[s];
-			}
-	}
-	for (int k = 0; k < tss_->getNumCols(0); ++k)
-		devsol[k] = diffsol[k] > 1.0e-10 ? sqrt(diffsol[k]) : 0.0;
+		std::vector<double> diffsol(tss_->getNumCols(0), 0.0);
+		/** use l2-norm */
+		for (unsigned s = 0; s < master_->getLastSubprobSolutions().size(); ++s) {
+			const CoinPackedVector* sol = master_->getLastSubprobSolutions()[s];
+			int sNumElements = sol->getNumElements();
+			const int* sIndices = sol->getIndices();
+			const double* sElements = sol->getElements();
+			for (int j = 0; j < sNumElements; ++j)
+				if (sIndices[j] < tss_->getNumCols(0) * tss_->getNumScenarios()) {
+					int k = sIndices[j] % tss_->getNumCols(0);
+					diffsol[k] += pow(sElements[j] - refsol[k], 2.0) * tss_->getProbability()[s];
+				}
+		}
+		for (int k = 0; k < tss_->getNumCols(0); ++k)
+			devsol[k] = diffsol[k] > 1.0e-10 ? sqrt(diffsol[k]) : 0.0;
 #else
-	std::vector<double> maxsol(tss_->getNumCols(0), -COIN_DBL_MAX);
-	std::vector<double> minsol(tss_->getNumCols(0), +COIN_DBL_MAX);
-	/** calculate max value first */
-	for (unsigned s = 0; s < master_->getLastSubprobSolutions().size(); ++s) {
-		const CoinPackedVector* sol = master_->getLastSubprobSolutions()[s];
-		int sNumElements = sol->getNumElements();
-		const int* sIndices = sol->getIndices();
-		const double* sElements = sol->getElements();
-		for (int j = 0; j < sNumElements; ++j)
-			if (sIndices[j] < tss_->getNumCols(0) * tss_->getNumScenarios()) {
-				int k = sIndices[j] % tss_->getNumCols(0);
-				maxsol[k] = CoinMax(maxsol[k], sElements[j]);
-				minsol[k] = CoinMin(minsol[k], sElements[j]);
-			}
+		std::vector<double> maxsol(tss_->getNumCols(0), -COIN_DBL_MAX);
+		std::vector<double> minsol(tss_->getNumCols(0), +COIN_DBL_MAX);
+		/** calculate max value first */
+		for (unsigned s = 0; s < master_->getLastSubprobSolutions().size(); ++s) {
+			const CoinPackedVector* sol = master_->getLastSubprobSolutions()[s];
+			int sNumElements = sol->getNumElements();
+			const int* sIndices = sol->getIndices();
+			const double* sElements = sol->getElements();
+			for (int j = 0; j < sNumElements; ++j)
+				if (sIndices[j] < tss_->getNumCols(0) * tss_->getNumScenarios()) {
+					int k = sIndices[j] % tss_->getNumCols(0);
+					maxsol[k] = CoinMax(maxsol[k], sElements[j]);
+					minsol[k] = CoinMin(minsol[k], sElements[j]);
+				}
+		}
+		for (int k = 0; k < tss_->getNumCols(0); ++k)
+			devsol[k] = CoinMax(maxsol[k] - minsol[k], 0.0);
+#endif	
 	}
-	for (int k = 0; k < tss_->getNumCols(0); ++k)
-		devsol[k] = CoinMax(maxsol[k] - minsol[k], 0.0);
-#endif
 }
 
 #undef USE_TWONORM
