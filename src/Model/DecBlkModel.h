@@ -28,6 +28,8 @@ public:
 
 public:
 
+	std::vector<int> getCoupledSubproblemIndices(int j) {return blk_->getCoupledSubproblemIndices(j);}
+
 	int getNumSubproblems() {return blk_->getNumBlocks() - 1;}
 
 	int getNumCouplingRows() {return blk_->block(0)->getNumRows();}

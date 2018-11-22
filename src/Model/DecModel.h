@@ -59,6 +59,11 @@ public:
 public:
 
 	/**
+	 * Returns the set of subproblem indices for a given coupling column j.
+	 */
+	virtual std::vector<int> getCoupledSubproblemIndices(int j) = 0;
+
+	/**
 	 * Returns the number of subproblems this model decouples to.
 	 */
 	virtual int getNumSubproblems() = 0;

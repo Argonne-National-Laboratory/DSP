@@ -8,6 +8,7 @@
 #ifndef DECTSSMODEL_H_
 #define DECTSSMODEL_H_
 
+#include <numeric>
 #include "Model/TssModel.h"
 #include "Model/DecModel.h"
 
@@ -41,6 +42,15 @@ public:
 	virtual ~DecTssModel();
 
 public:
+
+	/**
+	 * Returns the set of subproblem indices for a given coupling column j.
+	 */
+	std::vector<int> getCoupledSubproblemIndices(int j) {
+		std::vector<int> cols(getNumSubproblems());
+		std::iota(cols.begin(), cols.begin() + getNumSubproblems(), 0);
+		return cols;
+	}
 
 	/**
 	 * Returns the number of scenarios.
