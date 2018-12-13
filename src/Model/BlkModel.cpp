@@ -143,6 +143,73 @@ DSP_RTN_CODE BlkModel::updateBlocks() {
 				ncols_coupled[sub_coupling_cols[j]]++;
 		}
 
+		//Liu's implementation: collect equalities
+		/** collect coupling columns with nonzero coefficient with duplicates*/
+		std::vector<int> coupling_cols_dup(master_mat->getNumElements(), 0);
+
+		//get all column indices from the master matrix
+		for (int i = 0; i < master_mat->getNumElements(); ++i) {
+			coupling_cols_dup[i] = master_mat->getIndices()[i];
+			//printf("coupling column %d\n",coupling_cols_dup[i]);
+		}
+
+
+		// collect the equalities
+		std::vector<std::vector <int>> coupling_equal;
+		std::vector <int>	coupling_one_equal;
+		coupling_one_equal.push_back(coupling_cols_dup[0]);
+		coupling_one_equal.push_back(coupling_cols_dup[1]);
+		coupling_equal.push_back(coupling_one_equal);
+		int count_num_equal = 0;
+		coupling_cols_dup.erase(coupling_cols_dup.begin(),coupling_cols_dup.begin()+2);
+
+		while (coupling_cols_dup.size()>0) {
+		//double check if to refer the last element of vector is vec.end
+			auto pos = std::find(coupling_cols_dup.begin(), coupling_cols_dup.end(), coupling_equal[count_num_equal].back());
+			//printf("check coupling column %d\n",coupling_equal[count_num_equal].back());
+			if (pos != coupling_cols_dup.end()) {
+				//printf("find other same equality");
+				int if_even_col = int((pos-coupling_cols_dup.begin())%2);
+				int index_col = int(std::distance(coupling_cols_dup.begin(),pos));
+				if ( if_even_col == 0)	{
+					coupling_equal[count_num_equal].push_back(coupling_cols_dup[index_col+1]);
+					//printf("add new coupling column %d\n",coupling_cols_dup[index_col+1]);
+					coupling_cols_dup.erase(pos,pos+2);
+				}
+				else	{
+					coupling_equal[count_num_equal].push_back(coupling_cols_dup[index_col-1]);
+					coupling_cols_dup.erase(pos-1,pos+1);
+				}
+			} else {
+					//printf("build new equality");
+					++count_num_equal;
+					std::vector <int>	coupling_one_equal;
+					coupling_one_equal.push_back(coupling_cols_dup[0]);
+					coupling_one_equal.push_back(coupling_cols_dup[1]);
+					coupling_equal.push_back(coupling_one_equal);
+					coupling_cols_dup.erase(coupling_cols_dup.begin(),coupling_cols_dup.begin()+2);
+			}
+
+		}
+
+
+		//collect number of variables in each equality
+		std::vector<int> coupling_var(coupling_equal.size(), 0);
+		for (int i = 0; i < coupling_equal.size(); ++i) {
+			coupling_var[i] = coupling_equal[i].size();
+		}
+		//printf("the number of equalities is: %d:\n",count_num_equal);
+		//print collected equalities to check the correctness
+		/*
+		for (int i = 0; i < coupling_equal.size(); ++i) {
+			printf("equality %d has %d variables:\n", i, coupling_var[i]);
+			for (int j = 0; j < coupling_var[i]; ++j)	{
+				printf("variable %d\n",coupling_equal[i][j]);
+			}
+		}
+		*/
+
+
 		/** erase duplicates */
 		std::sort(master_coupling_cols.begin(), master_coupling_cols.end());
 		master_coupling_cols.erase(
@@ -169,6 +236,8 @@ DSP_RTN_CODE BlkModel::updateBlocks() {
 		if (dual_block_angular_ == true)
 			printf("The constraint matrix is of a dual block angular.\n");
 #endif
+
+
 	}
 	DSPdebugMessage("Update block time: %.4f\n", CoinGetTimeOfDay() - stime);
 
