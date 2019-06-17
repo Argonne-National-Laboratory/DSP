@@ -1,5 +1,9 @@
 # This file defines the user-specific settings.
 
+# Setting CPLEX paths is required.
+# The others (ma27 and scip) are optional. For example, OOQP will be
+# disabled if MA27LIB_DIR is not set.
+
 set(MA27LIB_DIR   "")
 set(CPLEX_LIB_DIR "")
 set(CPLEX_INC_DIR "")
