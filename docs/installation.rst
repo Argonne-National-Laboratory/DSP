@@ -8,7 +8,7 @@ Download
 
 You can clone this repository in your preferred directory by typing::
 
-   git clone https://github.com/Argonne-National-Laboratory/DSP.git
+   git clone --recursive https://github.com/Argonne-National-Laboratory/DSP.git
 
 Prerequisites
 ^^^^^^^^^^^^^
@@ -32,71 +32,55 @@ You can run the apt-get commands to install the packages required for DSP::
 Manual installation
 *******************
 
-If you have used ``./get.essentials``, then you can ignore this section and directly go to `External software packages`_. Before using apt-get, please update the package list::
+If you have used ``./get.essentials``, then you can ignore this section and directly go to `External software packages`_.
 
-   sudo apt-get update
+* CMake -- This package is **required** to build DSP and all the other external software packages. It is available from http://www.cmake.org/download/.
+* BLAS/LAPACK -- These linear algebra libraries are **required** and may already be available on your machine. If not available, the source codes are available from http://www.netlib.org/blas/blas.tgz and http://www.netlib.org/lapack/lapack-3.5.0.tgz.
+* GNU Make/Autoconf/Automake -- These are **required** and likely available on any machine.
+* bzip2/zlib/xtuils-dev -- These packages are **required** to build one of the external software packages used in DSP.
 
-* CMake -- This package is **required** to build DSP and all the other external software packages. It is available from http://www.cmake.org/download/. On Linux, you can also do::
+MPI Library
+***********
 
-    sudo apt-get install cmake
-
-* BLAS/LAPACK -- These linear algebra libraries are **required** and may already be available on your machine. If not available, the source codes are available from http://www.netlib.org/blas/blas.tgz and http://www.netlib.org/lapack/lapack-3.5.0.tgz. Or on linux you can install them by typing::
-
-    sudo apt-get install libblas-dev
-    sudo apt-get install liblapack-dev
-
-* svn -- A subversion software package is **required** to download an external package Coin-SMI used in DSP. You can install it by::
-
-    sudo apt-get install subversion
-
-* GNU Make/Autoconf/Automake -- These are **required** and likely available on any machine. If not available, you can get them as follows::
-
-    sudo apt-get install build-essential
-    sudo apt-get install autoconf
-    sudo apt-get install automake
-
-* bzip2/zlib/xtuils-dev -- These packages are **required** to build one of the external software packages used in DSP::
-
-    sudo apt-get install libbz2-dev
-    sudo apt-get install zlib1g-dev
-    sudo apt-get install xutils-dev
-
-* MPICH -- A version of MPICH is **optional** to build and run DSP. This is available from http://www.mpich.org/downloads/. On Linux, you can also do::
-
-    sudo apt-get install libmpich-dev
-
-External software packages
-##########################
-
-The following packages are also **required** to build and run DSP and need to be located on ./extra directory before DSP may be built. **DSP will automatically configure and build the external packages once they are located in the right place.**
-
-* MA27 -- This is a library for solving sparse symmetric indefinite linear systems. To build OOQP solver, you must have this installed. This is part of HSL (formerly the Harwell Subroutine Library), a collection of ISO Fortran codes for large scale scientific computation.
-
-  1. Download: http://www.hsl.rl.ac.uk/download/MA27/1.0.0/a/
-  2. Unpack the downloaded file.
-  3. Move and rename the downloaded directory to ``./extras/ma27-1.0.0/``
-
-* SCIP Optimization Suite -- This contains non-commercial solvers for mixed integer programming (MIP) and mixed-integer nonlinear programming (MINLP).
-
-  1. Download: http://scip.zib.de/download.php?fname=scipoptsuite-3.1.1.tgz
-  2. Unpack the downloaded file.
-  3. Move and rename the downloaded directory to ``./extras/scipoptsuite-3.1.1``
+MPI library is optional to build and run DSP, but required to run DSP in parallel. To run in parallel, you need to install one of the following libraries.
 
 Build and Setting
 ^^^^^^^^^^^^^^^^^
 
+Please set UserConfig.cmake as follows.
+
+* MA27LIB_DIR is optional to use OOQP (interior point solver). If you are not using CPLEX, it is recommended to use OOQP for better performance. You can request the library here: http://www.hsl.rl.ac.uk/download/MA27/1.0.0/a/
+* It is required to set paths for either CPLEX or SCIP.
+  * CPLEX_LIB_DIR is the path to the directory that contains libcplex.a. CPLEX_INC_DIR is the path to the directory that contains cplex.h.
+  * If you use SCIP, you need to compile it as a shared library. SCIP_DIR is the path to the SCIP directory. SCIP_LIB_DIR is the path to the shared library (usually ${SCIP_DIR}/lib). SPX_DIR is the path to the SOPLEX directory.
+* Once you are set the variables above, please set USER_SETTINGS to ON.
+
 If you have all the prerequisite packages installed on your system, then you need to go to the root directory of DSP and type::
 
-   cmake .
+   mkdir build
+   cd build
+   cmake ..
 
 to configure OOQP. If you wish to install the package in a more permanent location, you may then type::
 
    make install
 
-External packages (MA27, OOQP, SCIP Optimization Suite, Smi) used in DSP are built automatically. A shared object is installed in ./lib directory. Once the installation has been successfully done, you need to set environment variable ``LD_LIBRARY_PATH``.
-Please add the following line by replacing \<DSP_SRC_PATH\> with your DSP source directory in ``~/.bash_profile`` (or ``~/.bash_aliases``)::
+Binary file
+^^^^^^^^^^^
+
+A binary file ``runDsp`` is installed in ``./bin`` directory.
+
+Shared object
+^^^^^^^^^^^^^
+
+A shared object is installed in ``./lib`` directory. Once the installation has been successfully done, you need to set environment variable ``(DY)LD_LIBRARY_PATH``.
+For Linux::
 
    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<DSP_SRC_PATH>/lib
+
+For Mac::
+
+   export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:<DSP_SRC_PATH>/lib
 
 Julia Interface
 ^^^^^^^^^^^^^^^
