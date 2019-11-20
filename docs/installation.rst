@@ -8,7 +8,7 @@ Download
 
 You can clone this repository in your preferred directory by typing::
 
-   git clone --recursive https://github.com/Argonne-National-Laboratory/DSP.git
+   git clone -b dsp-bb --recursive https://github.com/Argonne-National-Laboratory/DSP.git
 
 Prerequisites
 ^^^^^^^^^^^^^
