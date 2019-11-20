@@ -10,11 +10,11 @@ DSP is an open-source and parallel package that implements decomposition methods
 
 .. math::
 
-    \min \quad & c^T x + \sum_{s=1}^S q_s^T y_s
-    \text{s.t.} \quad
-    & A x = b
-    & T_s x + W_s y_s = h_s for s = 1, .., S
-    & \text{mixed-integer} x, y_s
+   \min \quad & c^T x + \sum_{s=1}^S q_s^T y_s \\
+   \text{s.t.} \quad
+   & A x = b \\
+   & T_s x + W_s y_s = h_s for s = 1, .., S \\
+   & \text{mixed-integer} x, y_s
 
 The current branch ``dsp-bb`` provides **parallel dual decomposition** methods with **branch-and-bound** procedure.
 
