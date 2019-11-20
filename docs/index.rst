@@ -27,7 +27,9 @@ DSP has been developed and is maintained by:
 
 **Publication**
 
-* Kibaek Kim and Victor M. Zavala. `Algorithmic innovations and software for the dual decomposition method applied to stochastic mixed-integer programs <http://www.optimization-online.org/DB_FILE/2015/06/4960.pdf>`_ Optimization Online, 2015
+* Kibaek Kim and Victor M. Zavala. `Algorithmic innovations and software for the dual decomposition method applied to stochastic mixed-integer programs`_ Mathematical Programming Computation 10(2), 225-266, 2018
+* Kibaek Kim, Fan Yang, Victor M. Zavala, and Andrew A. Chien. `Data Centers as Dispatchable Loads to Harness Stranded Power'_ IEEE Transactions on Sustainable Energy 8(1), 208-218, 2017
+* Kibaek Kim and Victor M. Zavala. `Large-Scale Stochastic Mixed-Integer Programming Algorithms for Power Generation Scheduling'_ In Alternative Energy Sources and Technologies, 493-512, 2016
 
 **Acknowledgements**
 
@@ -38,9 +40,6 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   overview.rst
    installation.rst
    quickstart.rst
-   juliafunctions.rst
-   cinterface.rst
 
