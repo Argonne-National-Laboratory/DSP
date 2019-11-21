@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+// #define DSP_DEBUG
 
 #include "omp.h"
 #include "cplex.h"
@@ -294,8 +294,11 @@ DSP_RTN_CODE DwWorker::generateCols(
 				const double* x = si_[s]->getColSolution();
 
 				/** subproblem objective value */
-				//objval = si_[s]->getObjValue();
-				CPXgetbestobjval(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), &objval);
+				if (si_[s]->getNumIntegers() > 0)
+					CPXgetbestobjval(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), &objval);
+				else
+					objval = si_[s]->getObjValue();
+					
 				cx = 0.0;
 				for (int j = 0; j < si_[s]->getNumCols(); ++j)
 					cx += sub_objs_[s][j] * x[j];
@@ -425,8 +428,10 @@ DSP_RTN_CODE DwWorker::generateColsByFix(
 				const double* x = si_[s]->getColSolution();
 
 				/** subproblem objective value */
-				//objval = si_[s]->getObjValue();
-				CPXgetbestobjval(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), &objval);
+				if (si_[s]->getNumIntegers())
+					CPXgetbestobjval(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), &objval);
+				else
+					objval = si_[s]->getObjValue();
 				DSPdebugMessage("Subprob %d: objval %e\n", sind, objval);
 
 				/** subproblem coupling solution */
