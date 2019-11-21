@@ -18,7 +18,7 @@ We recommend to install and run DSP on a **Linux** machine with an appropriate *
 *NOTE: We have also tested installing and running DSP on MacOSX (10.9 or later). We will prepare the documentation for that soon. For now, please email and consult us for how to install and run DSP on MacOSX.*
 
 Build Essentials
-################
+****************
 
 You can install the build essential packages by using the shell script ``./get.essentials`` in the DSP project repository or by manually installing the packages.
 
@@ -65,13 +65,16 @@ to configure OOQP. If you wish to install the package in a more permanent locati
 
    make install
 
+Outputs
+^^^^^^^
+
 Binary file
-^^^^^^^^^^^
+***********
 
 A binary file ``runDsp`` is installed in ``./bin`` directory.
 
 Shared object
-^^^^^^^^^^^^^
+*************
 
 A shared object is installed in ``./lib`` directory. Once the installation has been successfully done, you need to set environment variable ``(DY)LD_LIBRARY_PATH``.
 For Linux::
@@ -81,30 +84,3 @@ For Linux::
 For Mac::
 
    export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:<DSP_SRC_PATH>/lib
-
-Julia Interface
-^^^^^^^^^^^^^^^
-
-DSP uses Julia as a modeling interface for the computational experiments. Julia is a high level dynamic programming language for technical computing, with syntax that is familiar to users of other technical computing environments such as MATLAB and Python. Julia can be downloaded from http://julialang.org/downloads/ If Julia is successfully installed on your machine, then you can start the Julia command-line tool by typing::
-
-   julia
-
-Now we need to install four Julia packages required to run DSP in the Julia environment. The packages should be installed in the Julia command-line tool. Please update the package list of Julia by typing::
-
-   julia> Pkg.update();
-
-The following packages should be installed.
-
-* `JuMP.jl <https://github.com/JuliaOpt/JuMP.jl>`_ is an algebraic modeling package in Julia for mathematical programming, which can be installed by the following Julia command::
-
-   julia> Pkg.add("JuMP");
-
-* The `Dsp.jl <https://github.com/kibaekkim/Dsp.jl.git>`_ package provides an interface to JuMP. Dsp.jl can be installed by the Julia command::
-
-   julia> Pkg.clone("https://github.com/kibaekkim/Dsp.jl.git");
-
-This package is optional.
-* `MPI.jl <https://github.com/JuliaParallel/MPI.jl>`_ is an MPI interface package, which can be installed by the following Julia command. MPICH is required for this package::
-
-   julia> Pkg.add("MPI");
-

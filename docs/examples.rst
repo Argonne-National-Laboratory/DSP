@@ -1,5 +1,5 @@
-Quick Start Guide
------------------
+Examples
+--------
 
 This guide illustrates how to use DSP for solving the following farmer problem taken from :cite:`birge2011introduction`.
 
@@ -68,15 +68,15 @@ The following file ``farmer_run_mpi.jl`` reads the farmer model and runs the dua
 
 .. code-block:: julia
    :linenos:
-       :caption: Run file: farmer_run_mpi.jl
+   :caption: Run file: farmer_run_mpi.jl
 
-       using MPI, Dsp
-       MPI.Init()
-       include("farmer_model.jl")
-       status = solve(m, solve_type = :Dual, comm = MPI.COMM_WORLD)
-       MPI.Finalize()
+   using MPI, Dsp
+   MPI.Init()
+   include("farmer_model.jl")
+   status = solve(m, solve_type = :Dual, comm = MPI.COMM_WORLD)
+   MPI.Finalize()
 
-    Line 1 includes the required packages. The MPI library is initialized and finalized in lines 2 and 5, respectively. The JuMP model is given and solved in lines 3 and 4. The following command is an example of running ``farmer_run_mpi.jl`` with MPI library::
+Line 1 includes the required packages. The MPI library is initialized and finalized in lines 2 and 5, respectively. The JuMP model is given and solved in lines 3 and 4. The following command is an example of running ``farmer_run_mpi.jl`` with MPI library::
 
    mpiexec -np 3 julia farmer_run_mpi.jl
 
@@ -87,13 +87,13 @@ The following file ``farmer_run.jl`` reads the farmer model and runs the dual de
 
 .. code-block:: julia
    :linenos:
-       :caption: Run file: farmer_run.jl
+   :caption: farmer_run.jl
 
-       using Dsp
-       include("farmer_model.jl")
-       status = solve(m, solve_type = :Dual)
+   using Dsp
+   include("farmer_model.jl")
+   status = solve(m, solve_type = :Dual)
 
-    Line 1 includes the required packages. The MPI library is initialized and finalized in lines 2 and 7, respectively. The StochJuMP model is given in lines 3 and 4. Note that only two lines of code (5 and 6) are required to invoke the parallel decomposition method. The following command is an example of running ``farmer_run.jl`` with MPI library::
+Line 1 includes the required packages. The MPI library is initialized and finalized in lines 2 and 7, respectively. The StochJuMP model is given in lines 3 and 4. Note that only two lines of code (5 and 6) are required to invoke the parallel decomposition method. The following command is an example of running ``farmer_run.jl`` with MPI library::
 
    mpiexec -np 3 julia farmer_run.jl
 
@@ -115,12 +115,22 @@ Users can also solve the extensive form of the problem by replacing line 6 of ``
 
   status = solve(m, solve_type = :Extensive)
 
-Reading model in SMPS format
-****************************
 
-DSP can also read a model provided in SMPS files :cite:`birge1987standard`. In this format, a model is defined by three files: core, time, and stochastic with file extensions of ``.cor``, ``.tim``, and ``.sto``, respectively. The core file defines the deterministic version of the model with a single reference scenario, the time file indicates a row and a column that split the deterministic data and stochastic data in the constraint matrix, and the stochastic file defines random data. DSP can read model in SMPS format (e.g., ``farmer.cor``, ``farmer.tim`` and ``farmer.sto``) as follows::
+Reading model in SMPS format
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+DSP can also read a model provided in SMPS files :cite:`birge1987standard`. 
+In this format, a model is defined by three files: core, time, and stochastic with file extensions of ``.cor``, ``.tim``, and ``.sto``, respectively. 
+The core file defines the deterministic version of the model with a single reference scenario, 
+the time file indicates a row and a column that split the deterministic data and stochastic data in the constraint matrix, 
+and the stochastic file defines random data. DSP can read model in SMPS format (e.g., ``farmer.cor``, ``farmer.tim`` and ``farmer.sto``) as follows::
 
    readSmps("farmer");
+
+You can also use binary file to read SMPS files and solve::
+
+   ./runDsp --smps farmer
+
 
 Modeling General Decomposition
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -167,6 +177,5 @@ DSP expects a general decomposition model (rather than a SMIP) whenever either `
 Loading and solving the problems works as in the SMIP case: the ``loadProblem`` and ``solve`` functions must be called after modeling the problem.
 
 .. note:: If the supplied model is a stochastic model (modeled using StochJuMP), then the model will automatically be converted to its extensive form before decomposition. This may be useful to test other ways to decompose a stochastic problem without rewriting it explicitly in extensive form. DSP does not currently support general decomposition to scenario subproblems, but this is a feature that might be implemented in the future.
-
 
 .. bibliography:: dsp-manual.bib
