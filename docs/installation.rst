@@ -49,7 +49,7 @@ Build and Setting
 
 Please set UserConfig.cmake as follows.
 
-* MA27LIB_DIR is optional to use OOQP (interior point solver). If you are not using CPLEX, it is recommended to use OOQP for better performance. You can request the library here: http://www.hsl.rl.ac.uk/download/MA27/1.0.0/a/
+* MA27LIB_DIR is *required* to use OOQP (interior point solver). If you are not using CPLEX, it is recommended to use OOQP for better performance. You can request the library here: http://www.hsl.rl.ac.uk/download/MA27/1.0.0/a/
 * It is required to set paths for either CPLEX or SCIP.
   * CPLEX_LIB_DIR is the path to the directory that contains libcplex.a. CPLEX_INC_DIR is the path to the directory that contains cplex.h.
   * If you use SCIP, you need to compile it as a shared library. SCIP_DIR is the path to the SCIP directory. SCIP_LIB_DIR is the path to the shared library (usually ${SCIP_DIR}/lib). SPX_DIR is the path to the SOPLEX directory.
