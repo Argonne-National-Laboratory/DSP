@@ -10,24 +10,34 @@
 
 #include "Solver/Benders/BdDriver.h"
 
+/** A driver class for serial Benders decomposition */
 class BdDriverSerial: public BdDriver {
 public:
 
-	/** constructor */
+	/** A default constructor. */
 	BdDriverSerial(
-			DspParams * par, /**< parameter pointer */
-			DecModel * model /**< model pointer */);
+			DecModel *   model,  /**< model pointer */
+			DspParams *  par,    /**< parameters */
+			DspMessage * message /**< message pointer */);
 
-	/** destructor */
+	/** A copy constructor. */
+	BdDriverSerial(const BdDriverSerial& rhs);
+
+	/** A default destructor. */
 	virtual ~BdDriverSerial();
 
-	/** initialize */
+	/** A clone function. */
+	virtual BdDriverSerial* clone() const {
+		return new BdDriverSerial(*this);
+	}
+
+	/** A virtual member for initializing the driver. */
 	virtual DSP_RTN_CODE init();
 
-	/** run */
+	/** A virtual member for running the driver. */
 	virtual DSP_RTN_CODE run();
 
-	/** finalize */
+	/** A virtual member for finalizing the driver. */
 	virtual DSP_RTN_CODE finalize();
 
 protected:

@@ -22,6 +22,9 @@ DdMWAsync(comm, model, par, message) {
 	/** nothignt to do */
 }
 
+DdMWAsyncDyn::DdMWAsyncDyn(const DdMWAsyncDyn& rhs) :
+DdMWAsync(rhs) {}
+
 DdMWAsyncDyn::~DdMWAsyncDyn() {
 	/** nothignt to do */
 }

@@ -8,26 +8,35 @@
 #ifndef SRC_SOLVER_DUALDECOMP_DDMWSYNC_H_
 #define SRC_SOLVER_DUALDECOMP_DDMWSYNC_H_
 
-#include <Solver/DualDecomp/DdMWPara.h>
+#include "DdMWPara.h"
 
+/** A master-worker class for synchronous dual decomposition */
 class DdMWSync: public DdMWPara {
 
 public:
 
-	/** constructor */
+	/** A default constructor. */
 	DdMWSync(
 			MPI_Comm     comm,   /**< MPI communicator */
 			DecModel *   model,  /**< model pointer */
 			DspParams *  par,    /**< parameters */
 			DspMessage * message /**< message pointer */);
 
-	/** destructor */
+	/** A copy constructor. */
+	DdMWSync(const DdMWSync& rhs);
+
+	/** A default destructor. */
 	virtual ~DdMWSync();
 
-	/** initialize */
+	/** A clone function */
+	virtual DdMWSync* clone() const {
+		return new DdMWSync(*this);
+	}
+
+	/** A virtual member for initializing the framework. */
 	virtual DSP_RTN_CODE init();
 
-	/** finalize */
+	/** A virtual memeber for finalizing the framework. */
 	virtual DSP_RTN_CODE finalize();
 
 protected:

@@ -10,7 +10,9 @@
 
 #include "Solver/DualDecomp/DdWorkerCG.h"
 #include "Solver/Benders/BdSub.h"
+#include "OsiCuts.hpp"
 
+/** A Benders-cut generation class */
 class DdWorkerCGBd: public DdWorkerCG {
 
 public:
@@ -21,13 +23,24 @@ public:
 		None
 	};
 
-	/** constructor */
-	DdWorkerCGBd(DspParams * par, DecModel * model, DspMessage * message);
+	/** A default constructor. */
+	DdWorkerCGBd(
+			DecModel *   model,  /**< model pointer */
+			DspParams *  par,    /**< parameter pointer */
+			DspMessage * message /**< message pointer */);
 
-	/** destructor */
+	/** A copy constructor. */
+	DdWorkerCGBd(const DdWorkerCGBd& rhs);
+
+	/** A default destructor. */
 	virtual ~DdWorkerCGBd();
 
-	/** initialize */
+	/** A clone function */
+	virtual DdWorkerCGBd* clone() const {
+		return new DdWorkerCGBd(*this);
+	}
+
+	/** A virtual member to initialize the class. */
 	virtual DSP_RTN_CODE init();
 
 	/** generate cuts */

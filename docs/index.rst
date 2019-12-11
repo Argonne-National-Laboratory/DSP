@@ -6,40 +6,24 @@
 DSP --- Decompositions for Structured Programming
 =================================================
 
-DSP is an object-oriented open-source software package written in C++ for solving structured programming problems such as stochastic mixed-integer programming (SMIP). The current version of DSP has implemented decomposition methods for solving SMIP problems:
+DSP is an open-source and parallel package that implements decomposition methods for **structured mixed-integer programming problems**. 
+These are structured optimization problems in the following form:
 
-* Dual decomposition -- DSP has implemented new dual decomposition methods
+.. math::
 
-  * **Interior-point cutting-plane method with early termination criteria**
-  * **Eliminating infeasible first-stage solutions**
-  * Cutting-plane method
-  * Subgradient method
-
-* Benders decomposition
-* Extensive form solution
-
-**Credits**
-
-DSP has been developed and is maintained by:
-
-* `Kibaek Kim <http://mcs.anl.gov/~kibaekkim/>`_, Mathematics and Computer Science Division, Argonne National Laboratory.
-* `Victor M. Zavala <http://zavalab.engr.wisc.edu/>`_, Department of Chemical and Biological Engineering, University of Wisconsin-Madison.
-
-**Publication**
-
-* Kibaek Kim and Victor M. Zavala. `Algorithmic innovations and software for the dual decomposition method applied to stochastic mixed-integer programs`_ Mathematical Programming Computation 10(2), 225-266, 2018
-* Kibaek Kim, Fan Yang, Victor M. Zavala, and Andrew A. Chien. `Data Centers as Dispatchable Loads to Harness Stranded Power'_ IEEE Transactions on Sustainable Energy 8(1), 208-218, 2017
-* Kibaek Kim and Victor M. Zavala. `Large-Scale Stochastic Mixed-Integer Programming Algorithms for Power Generation Scheduling'_ In Alternative Energy Sources and Technologies, 493-512, 2016
-
-**Acknowledgements**
-
-This material is based upon work supported by the U.S. Department of Energy, Office of Science, under contract number DE-AC02-06CH11357. We gratefully acknowledge the computing resources provided on *Blues*, a high-performance computing cluster operated by the Laboratory Computing Resource Center at Argonne National Laboratory. We thank E. Michael Gertz and Stephen Wright for providing the `OOQP <http://pages.cs.wisc.edu/~swright/ooqp/>`_ software package.
+   \min \quad & c^T x + \sum_{s=1}^S q_s^T y_s \\
+   \text{s.t.} \quad
+   & A x = b \\
+   & T_s x + W_s y_s = h_s \quad \forall s = 1, .., S \\
+   & \text{mixed-integer } x, y_s
 
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :caption: Table of Contents
+   :maxdepth: 1
 
    installation.rst
-   quickstart.rst
-
+   interface.rst
+   examples.rst
+   acknowledgement.rst

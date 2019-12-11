@@ -8,28 +8,39 @@
 #ifndef SRC_SOLVER_BENDERS_BDDRIVER_H_
 #define SRC_SOLVER_BENDERS_BDDRIVER_H_
 
-#include "Solver/DspDriver.h"
+#include "Solver/DecSolver.h"
 #include "Solver/Benders/BdMW.h"
 
-class BdDriver: public DspDriver {
+/** A base driver class for Benders decomposition */
+class BdDriver: public DecSolver {
 
 public:
 
-	/** constructor */
+	/** A default constructor. */
 	BdDriver(
-			DspParams * par, /**< parameter pointer */
-			DecModel * model /**< model pointer */);
+			DecModel *   model,  /**< model pointer */
+			DspParams *  par,    /**< parameters */
+			DspMessage * message /**< message pointer */);
 
-	/** destructor */
+	/** A copy constructor. */
+	BdDriver(const BdDriver&rhs);
+
+	/** A default destructor. */
 	virtual ~BdDriver();
 
-	/** initialize */
+	/** A clone function */
+	virtual BdDriver* clone() const {
+		return new BdDriver(*this);
+	}
+
+	/** A virtual member for initializing the driver. */
 	virtual DSP_RTN_CODE init() {return DSP_RTN_OK;}
 
-	/** run */
-	virtual DSP_RTN_CODE run() {return DSP_RTN_OK;}
+	/** A virtual member for running the driver. */
+	virtual DSP_RTN_CODE run() {return solve();}
+	virtual DSP_RTN_CODE solve() {return DSP_RTN_ERR;}
 
-	/** finalize */
+	/** A virtual memeber for finalizing the driver. */
 	virtual DSP_RTN_CODE finalize() {return DSP_RTN_OK;}
 
 protected:

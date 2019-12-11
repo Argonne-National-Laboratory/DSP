@@ -9,7 +9,7 @@
 #include "Model/TssModel.h"
 #include "Solver/DualDecomp/DdMWSync.h"
 #include "Solver/DualDecomp/DdMasterTr.h"
-#ifndef NO_OOQP
+#ifdef DSP_HAS_OOQP
 #include "Solver/DualDecomp/DdMasterDsb.h"
 #endif
 #include "Solver/DualDecomp/DdMasterSubgrad.h"
@@ -20,6 +20,9 @@ DdMWSync::DdMWSync(
 		DspParams *  par,    /**< parameters */
 		DspMessage * message /**< message pointer */):
 DdMWPara(comm,model,par,message) {}
+
+DdMWSync::DdMWSync(const DdMWSync& rhs) :
+DdMWPara(rhs) {}
 
 DdMWSync::~DdMWSync() {}
 
@@ -41,15 +44,15 @@ DSP_RTN_CODE DdMWSync::init()
 		case Simplex:
 		case IPM:
 		case IPM_Feasible:
-			master_ = new DdMasterTr(par_, model_, message_);
+			master_ = new DdMasterTr(model_, par_, message_);
 			break;
-#ifndef NO_OOQP
-		case DSBM:
-			master_ = new DdMasterDsb(par_, model_, message_);
-			break;
-#endif
+// #ifdef DSP_HAS_OOQP
+// 		case DSBM:
+// 			master_ = new DdMasterDsb(model_, par_, message_);
+// 			break;
+// #endif
 		case Subgradient:
-			master_ = new DdMasterSubgrad(par_, model_, message_);
+			master_ = new DdMasterSubgrad(model_, par_, message_);
 			break;
 		}
 		/** initialize master */
@@ -65,20 +68,20 @@ DSP_RTN_CODE DdMWSync::init()
 		{
 			/** create LB worker */
 			DSPdebugMessage("Rank %d creates a worker for lower bounds.\n", comm_rank_);
-			worker_.push_back(new DdWorkerLB(par_, model_, message_));
+			worker_.push_back(new DdWorkerLB(model_, par_, message_));
 			/** create CG worker */
 			if (parFeasCuts_ >= 0 || parOptCuts_ >= 0)
 			{
-#ifndef NO_SCIP
+#ifdef DSP_HAS_SCIP
 				DSPdebugMessage("Rank %d creates a worker for Benders cut generation.\n", comm_rank_);
-				worker_.push_back(new DdWorkerCGBd(par_, model_, message_));
+				worker_.push_back(new DdWorkerCGBd(model_, par_, message_));
 #endif
 			}
 			/** create UB worker */
 			if (parEvalUb_ >= 0)
 			{
 				DSPdebugMessage("Rank %d creates a worker for upper bounds.\n", comm_rank_);
-				worker_.push_back(new DdWorkerUB(par_, model_, message_));
+				worker_.push_back(new DdWorkerUB(model_, par_, message_));
 			}
 		}
 		/** initialize workers */
@@ -364,7 +367,7 @@ DSP_RTN_CODE DdMWSync::runMaster()
 		{
 			itercode_ = itercode_ == 'P' ? 'B' : 'D';
 			if (master_->getLambda())
-				CoinCopyN(master_->getLambda(), model_->getNumCouplingRows(), master_->bestdualsol_);
+				CoinCopyN(master_->getLambda(), model_->getNumCouplingRows(), &master_->bestdualsol_[0]);
 		}
 
 		/** STOP with iteration limit */
@@ -454,7 +457,7 @@ DSP_RTN_CODE DdMWSync::runMaster()
 		double *bestcouplingsol = NULL;
 
 		/** broadcast best primal coupling solution */
-		MPI_Bcast(master_->bestprimsol_, model_->getNumCouplingCols(), MPI_DOUBLE, 0, comm_);
+		MPI_Bcast(&master_->bestprimsol_[0], model_->getNumCouplingCols(), MPI_DOUBLE, 0, comm_);
 
 		/** gather primal solution for each scenario */
 		bestcouplingsol = new double [tss->getNumCols(1) * tss->getNumScenarios()];
@@ -471,14 +474,14 @@ DSP_RTN_CODE DdMWSync::runMaster()
 		for (int i = 0, j = 0; i < subcomm_size_; ++i)
 			for (int s = 0; s < nsubprobs_[i]; ++s) {
 				CoinCopyN(bestcouplingsol + j * tss->getNumCols(1), tss->getNumCols(1), 
-					master_->bestprimsol_ + tss->getNumCols(0) + subprob_indices_[j] * tss->getNumCols(1));
+					&master_->bestprimsol_[tss->getNumCols(0) + subprob_indices_[j] * tss->getNumCols(1)]);
 				j++;
 			}
 
 		FREE_ARRAY_PTR(bestcouplingsol);
 
 		DSPdebugMessage2("primsol_:\n");
-		DSPdebug2(DspMessage::printArray(model_->getFullModelNumCols(), master_->bestprimsol_));
+		DSPdebug2(DspMessage::printArray(model_->getFullModelNumCols(), &master_->bestprimsol_[0]));
 	}
 
 	/** release shallow-copy of pointers */
@@ -587,7 +590,7 @@ DSP_RTN_CODE DdMWSync::runWorker()
 				sendbuf[pos++] = static_cast<double>(workerlb->subprobs_[s]->sind_);
 				sendbuf[pos++] = workerlb->subprobs_[s]->getPrimalObjective();
 				sendbuf[pos++] = workerlb->subprobs_[s]->getDualObjective();
-				CoinCopyN(workerlb->subprobs_[s]->si_->getSolution(), workerlb->subprobs_[s]->ncols_coupling_, sendbuf + pos);
+				CoinCopyN(workerlb->subprobs_[s]->getSiPtr()->getColSolution(), workerlb->subprobs_[s]->ncols_coupling_, sendbuf + pos);
 				pos += model_->getNumSubproblemCouplingCols(workerlb->subprobs_[s]->sind_);
 				DSPdebugMessage("MW -> worker %d, subprob %d primobj %+e dualobj %+e\n",
 						comm_rank_, workerlb->subprobs_[s]->sind_,
@@ -705,13 +708,13 @@ DSP_RTN_CODE DdMWSync::runWorker()
 		int scount = tss->getNumCols(1) * par_->getIntPtrParamSize("ARR_PROC_IDX");
 		sendbuf = new double [scount];
 		for (int s = 0; s < par_->getIntPtrParamSize("ARR_PROC_IDX"); ++s)
-			CoinCopyN(workerub->primsols_[s], tss->getNumCols(1), sendbuf + s * tss->getNumCols(1));
+			CoinCopyN(&workerub->primsols_[s][0], tss->getNumCols(1), sendbuf + s * tss->getNumCols(1));
 		MPI_Gatherv(sendbuf, scount, MPI_DOUBLE, NULL, NULL, NULL, MPI_DOUBLE, 0, comm_);
 
 		FREE_ARRAY_PTR(bestcouplingsol);
 
 		DSPdebugMessage2("primsol_:\n");
-		DSPdebug2(DspMessage::printArray(model_->getFullModelNumCols(), master_->bestprimsol_));
+		DSPdebug2(DspMessage::printArray(model_->getFullModelNumCols(), &master_->bestprimsol_[0]));
 	}
 
 	/** release pointers */
@@ -983,7 +986,7 @@ DSP_RTN_CODE DdMWSync::syncUpperbound(
 		MPI_Bcast(&bestprimsol, 1, MPI_INT, 0, comm_);
 
 		if (bestprimsol > -1) {
-			MPI_Recv(master_->bestprimsol_, model_->getNumCouplingCols(), MPI_DOUBLE, 
+			MPI_Recv(&master_->bestprimsol_[0], model_->getNumCouplingCols(), MPI_DOUBLE, 
 				lb_comm_root_, DSP_MPI_TAG_UB, comm_, &status);
 			//DspMessage::printArray(model_->getNumCouplingCols(), master_->bestprimsol_);
 		}

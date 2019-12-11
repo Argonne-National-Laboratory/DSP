@@ -9,24 +9,34 @@
 #define SRC_SOLVER_DUALDECOMP_DDMWPARA_H_
 
 #include "Utility/DspMpi.h"
-#include <Solver/DualDecomp/DdMW.h>
+#include "DdMW.h"
 
+/** A master-worker class for parallel dual decomposition */
 class DdMWPara: public DdMW {
 public:
 
-	/** constructor */
+	/** A default constructor. */
 	DdMWPara(
 			MPI_Comm     comm,   /**< MPI communicator */
 			DecModel *   model,  /**< model pointer */
 			DspParams *  par,    /**< parameters */
 			DspMessage * message /**< message pointer */);
 
+	/** A copy constructor. */
+	DdMWPara(const DdMWPara& rhs);
+
+	/** A default destructor. */
 	virtual ~DdMWPara();
 
-	/** initialize */
+	/** A clone function */
+	virtual DdMWPara* clone() const {
+		return new DdMWPara(*this);
+	}
+
+	/** A virtual member for initializing the framework. */
 	virtual DSP_RTN_CODE init();
 
-	/** finalize */
+	/** A virtual memeber for finalizing the framework. */
 	virtual DSP_RTN_CODE finalize();
 
 protected:

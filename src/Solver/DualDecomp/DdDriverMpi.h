@@ -10,28 +10,38 @@
 
 #include "DdDriver.h"
 
+/** A driver class for parallel dual decomposition */
 class DdDriverMpi: public DdDriver {
 public:
 
-	/** constructor */
+	/** A default constructor. */
 	DdDriverMpi(
-			DspParams * par,
-			DecModel * model,
-			MPI_Comm comm);
+			DecModel*   model,   /**< model pointer */
+			DspParams*  par,     /**< parameters */
+			DspMessage* message, /**< message pointer */
+			MPI_Comm    comm     /**< MPI communicator */);
 
-	/** destructor */
-	virtual ~DdDriverMpi() {}
+	/** A copy constructor. */
+	DdDriverMpi(const DdDriverMpi& rhs);
 
-	/** initialize */
+	/** A default destructor. */
+	virtual ~DdDriverMpi();
+
+	/** A clone function. */
+	virtual DdDriverMpi* clone() const {
+		return new DdDriverMpi(*this);
+	}
+
+	/** A virtual member for initializing the driver. */
 	virtual DSP_RTN_CODE init();
 
-	/** run */
+	/** A virtual member for running the driver. */
 	virtual DSP_RTN_CODE run();
 
-	/** finalize */
+	/** A virtual member for finalizing the driver. */
 	virtual DSP_RTN_CODE finalize();
 
-private:
+protected:
 
 	MPI_Comm comm_;
 	int comm_rank_;

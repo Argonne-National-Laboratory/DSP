@@ -8,10 +8,10 @@
 #ifndef SRC_SOLVER_DUALDECOMP_DDMASTER_H_
 #define SRC_SOLVER_DUALDECOMP_DDMASTER_H_
 
-#include "Solver/DualDecomp/DdSolver.h"
-#include "SolverInterface/SolverInterface.h"
+#include "Solver/DecSolver.h"
 
-class DdMaster: public DdSolver {
+/** Base class for the decomposition master solver */
+class DdMaster: public DecSolver {
 
 	friend class DdMW;
 	friend class DdMWSerial;
@@ -20,58 +20,49 @@ class DdMaster: public DdSolver {
 
 public:
 
-	/** constructor */
+	/** A default constructor. */
 	DdMaster(
-			DspParams *  par,    /**< parameter pointer */
 			DecModel *   model,  /**< model pointer */
+			DspParams *  par,    /**< parameter pointer */
 			DspMessage * message /**< message pointer */);
-			//int nworkers          /**< number of workers */);
 
-	/** destructor */
+	/** A copy constructor */
+	DdMaster(const DdMaster& rhs);
+
+	/** A default destructor. */
 	virtual ~DdMaster();
 
-	/** initialize */
+	/** A clone function */
+	virtual DdMaster* clone() const {
+		return new DdMaster(*this);
+	}
+
+	/** A virtual member for initializing solver. */
 	virtual DSP_RTN_CODE init();
 
-	/** update problem */
-	virtual DSP_RTN_CODE updateProblem() = 0;
+	/** A virtual member for solving problem. */
+	virtual DSP_RTN_CODE solve() {return DSP_RTN_OK;}
 
-	/** set init solution */
+	/** A virtual memeber for finalizing solver. */
+	virtual DSP_RTN_CODE finalize() {return DSP_RTN_OK;}
+
+	/** A virtual member for updating problem */
+	virtual DSP_RTN_CODE updateProblem() {return DSP_RTN_OK;}
+
+	/** A virtual member for setting initial solution */
 	virtual DSP_RTN_CODE setInitSolution(const double * sol);
 
-	/** termination test */
+	/** A virtual member for termination test */
 	virtual DSP_RTN_CODE terminationTest() {return status_;}
 
-public:
-
+	/** A const member to return lambda */
 	const double * getLambda() {return lambda_;}
-
-	SolverInterface * getSiPtr() {return si_;}
-
-	double   getBestPrimalObjective() {return bestprimobj_;}
-	double   getBestDualObjective()   {return bestdualobj_;}
-	double * getBestPrimalSolution()  {return bestprimsol_;}
-	double * getBestDualSolution()    {return bestdualsol_;}
-	double getAbsDualityGap() {return fabs(bestprimobj_-bestdualobj_);}
-	double getRelDualityGap() {return fabs(bestprimobj_-bestdualobj_) / (1.0e-10 + fabs(bestprimobj_));}
-	double getAbsApproxGap() {return fabs(primobj_-bestdualobj_);}
-	double getRelApproxGap() {return fabs(primobj_-bestdualobj_) / (1.0e-10 + fabs(primobj_));}
 
 protected:
 
-	SolverInterface * si_; /**< solver interface */
-
-	double bestprimobj_;   /**< best primal objective value */
-	double bestdualobj_;   /**< best dual objective value */
-	double * bestprimsol_; /** best primal solution */
-	double * bestdualsol_; /** best dual solution */
-	double * lambda_; /**< lambda part of the solution */
-//	int nworkers_;       /**< number of workers */
-
-	//int nsubprobs_;         /**< number of subproblems for the current worker */
-	//int * subindex_;        /**< array of subproblem indices */
-	double * subprimobj_;   /**< subproblem primal objective values */
-	double * subdualobj_;   /**< subproblem dual objective values */
+	const double* lambda_; /**< pointer to the lambda part (Lagrangian multiplier with respect to the relaxed constraints) of the solution */
+	std::vector<double> subprimobj_;   /**< subproblem primal objective values */
+	std::vector<double> subdualobj_;   /**< subproblem dual objective values */
 	double ** subsolution_; /**< subproblem solution */
 };
 

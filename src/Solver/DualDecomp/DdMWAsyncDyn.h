@@ -10,19 +10,28 @@
 
 #include <Solver/DualDecomp/DdMWAsync.h>
 
+/** A master-worker class for asynchronous dual decomposition with dynamic allocation */
 class DdMWAsyncDyn: public DdMWAsync {
 
 public:
 
-	/** constructor */
+	/** A default constructor. */
 	DdMWAsyncDyn(
 			MPI_Comm     comm,   /**< MPI communicator */
 			DecModel *   model,  /**< model pointer */
 			DspParams *  par,    /**< parameters */
 			DspMessage * message /**< message pointer */);
 
-	/** destructor */
+	/** A copy constructor. */
+	DdMWAsyncDyn(const DdMWAsyncDyn& rhs);
+
+	/** A default destructor. */
 	virtual ~DdMWAsyncDyn();
+
+	/** A clone function */
+	virtual DdMWAsyncDyn* clone() const {
+		return new DdMWAsyncDyn(*this);
+	}
 
 protected:
 

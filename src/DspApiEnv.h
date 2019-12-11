@@ -8,23 +8,27 @@
 #ifndef DSPAPIENV_H_
 #define DSPAPIENV_H_
 
-#include <Utility/DspMacros.h>
-#include "Model/TssModel.h"
-#include "Utility/DspParams.h"
-#include "Solver/DspDriver.h"
 #include "Solver/DecSolver.h"
+#include "Model/DecModel.h"
+#include "Utility/DspParams.h"
+#include "Utility/DspMessage.h"
 
+/**
+ * A class for DSP API environment.
+ */
 class DspApiEnv
 {
 public:
+	/** A default constructore */
 	DspApiEnv();
+
+	/** A default destructore */
 	virtual ~DspApiEnv();
 
-public:
-	DspDriver * solver_;
-	DecModel * model_;
-	DspParams * par_;
-
+	DecSolver * solver_;   /**< A decomposition solver object */
+	DecModel * model_;     /**< A decomposition model object */
+	DspParams * par_;      /**< A parameters object */
+	DspMessage * message_; /**< A message object */
 };
 
 #endif /* DSPAPIENV_H_ */

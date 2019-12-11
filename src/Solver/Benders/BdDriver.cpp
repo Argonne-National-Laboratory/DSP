@@ -8,28 +8,41 @@
 #include "Solver/Benders/BdDriver.h"
 
 BdDriver::BdDriver(
-		DspParams * par, /**< parameter pointer */
-		DecModel * model /**< model pointer */):
-DspDriver(par, model),
+		DecModel *   model,  /**< model pointer */
+		DspParams *  par,    /**< parameters */
+		DspMessage * message /**< message pointer */):
+DecSolver(model, par, message),
 mw_(NULL),
 aux_size_(0),
 aux_obj_(NULL),
 aux_clbd_(NULL),
 aux_cubd_(NULL),
 numPriorities_(0),
-priorities_(NULL)
-{
+priorities_(NULL) {
 	par_->setDblParam("DD/WALL_LIM", par_->getDblParam("BD/WALL_LIM"));
 }
 
-BdDriver::~BdDriver()
-{
+BdDriver::BdDriver(const BdDriver&rhs) :
+DecSolver(rhs),
+aux_size_(rhs.aux_size_),
+numPriorities_(rhs.numPriorities_) {
+	// copy master-worker framework
+	mw_ = rhs.mw_->clone();
+
+	// copy auxiliary variable
+	setAuxVarData(rhs.aux_size_, rhs.aux_obj_, rhs.aux_clbd_, rhs.aux_cubd_);
+
+	// copy priority
+	priorities_ = NULL;
+	setPriorities(rhs.numPriorities_, rhs.priorities_);
+}
+
+BdDriver::~BdDriver() {
 	FREE_PTR(mw_);
 	FREE_ARRAY_PTR(aux_obj_);
 	FREE_ARRAY_PTR(aux_clbd_);
 	FREE_ARRAY_PTR(aux_cubd_);
 	FREE_ARRAY_PTR(priorities_);
-	FREE_ARRAY_PTR(primsol_);
 }
 
 DSP_RTN_CODE BdDriver::setAuxVarData(

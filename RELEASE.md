@@ -9,7 +9,9 @@ April 10, 2018
 April 2, 2018
 -------------
 
-* Fixed the linking issue with CPLEX 12.8
+* Fixed the early termination issue (before finding a feasible primal master solution)
+* Fixed the compile issue with CPLEX 12.8
+* Implemented a stand-alone binary file that can read SMPS, MPS+DEC files
 
 February 22, 2018
 -----------------

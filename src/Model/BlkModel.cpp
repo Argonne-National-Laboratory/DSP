@@ -26,6 +26,7 @@ BlkModel::BlkModel(const BlkModel& rhs) {
 	Blocks blocks = const_cast<BlkModel&>(rhs).blocks();
 	for (Blocks::iterator it = blocks.begin(); it != blocks.end(); ++it)
 		addBlock(it->first, it->second);
+	coupled_subproblems_indices_ = rhs.coupled_subproblems_indices_;
 }
 
 DSP_RTN_CODE BlkModel::addBlock(int id, DetBlock* block) {
@@ -67,6 +68,11 @@ DSP_RTN_CODE BlkModel::updateBlocks() {
 		ncols_full_ = master->getNumCols();
 		nrows_full_ = master->getNumRows();
 		nints_full_ = master->getNumIntegers();
+
+		/** initialize vector */
+		coupled_subproblems_indices_.resize(ncols_full_);
+		for (int j = 0; j < ncols_full_; ++j)
+			coupled_subproblems_indices_[j].reserve(ncols_full_ / blockids.size());
 
 		/** to count how many subproblems are coupled with each column of the master. */
 		ncols_coupled = new int [master->getNumCols()];
@@ -138,9 +144,12 @@ DSP_RTN_CODE BlkModel::updateBlocks() {
 			DSPdebugMessage("Coupling rows of block %d:\n", id);
 			DSPdebug(DspMessage::printArray(sub->getNumCouplingRows(), sub->getCouplingRows()));
 
-			/** count the master columns coupled */
-			for (unsigned j = 0; j < sub_coupling_cols.size(); ++j)
+			for (unsigned j = 0; j < sub_coupling_cols.size(); ++j) {
+				/** count the master columns coupled */
 				ncols_coupled[sub_coupling_cols[j]]++;
+				/** add subproblem index for each coupling column */
+				coupled_subproblems_indices_[sub_coupling_cols[j]].push_back(id);
+			}
 		}
 
 		/** erase duplicates */
@@ -168,6 +177,11 @@ DSP_RTN_CODE BlkModel::updateBlocks() {
 			printf("The constraint matrix is of a primal block angular.\n");
 		if (dual_block_angular_ == true)
 			printf("The constraint matrix is of a dual block angular.\n");
+		for (int j = 0; j < ncols_full_; ++j) {
+			printf("Coupling column %d has subproblems:\n", j);
+			for (unsigned s = 0; s < coupled_subproblems_indices_[j].size(); ++s)
+				printf("  %d\n", coupled_subproblems_indices_[j][s]);
+		}
 #endif
 	}
 	DSPdebugMessage("Update block time: %.4f\n", CoinGetTimeOfDay() - stime);

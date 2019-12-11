@@ -9,15 +9,26 @@
 #include "Solver/DualDecomp/DdMasterSubgrad.h"
 
 DdMasterSubgrad::DdMasterSubgrad(
-		DspParams *  par,    /**< parameter pointer */
 		DecModel *   model,  /**< model pointer */
+		DspParams *  par,    /**< parameter pointer */
 		DspMessage * message /**< message pointer */):
-DdMaster(par, model, message),
+DdMaster(model, par, message),
 nstalls_(0),
 stepscal_(2.0),
 stepsize_(0.0),
 gradient_(NULL),
 multipliers_(NULL) {}
+
+DdMasterSubgrad::DdMasterSubgrad(const DdMasterSubgrad& rhs) :
+DdMaster(rhs),
+nstalls_(rhs.nstalls_),
+stepscal_(rhs.stepscal_),
+stepsize_(rhs.stepsize_) {
+	gradient_    = new double [model_->getNumCouplingRows()];
+	multipliers_ = new double [model_->getNumCouplingRows()];
+	CoinCopyN(rhs.gradient_, model_->getNumCouplingRows(), gradient_);
+	CoinCopyN(rhs.multipliers_, model_->getNumCouplingRows(), multipliers_);
+}
 
 DdMasterSubgrad::~DdMasterSubgrad()
 {
@@ -63,21 +74,21 @@ DSP_RTN_CODE DdMasterSubgrad::solve()
 	if (model_->nonanticipativity() && decTssModel != NULL)
 	{
 		/** nonanticipativity constraints must be converted back from a different representation */
-		decTssModel->convertLagrangianFromAlternative(multipliers_, primsol_);
+		double* primsol = primsol_.data();
+		decTssModel->convertLagrangianFromAlternative(multipliers_, primsol);
 	}
 	else
 	{
 		/** copy Lagrangian multipliers */
-		for (int j = 0; j < model_->getNumCouplingRows(); ++j)
-			primsol_[j] = multipliers_[j];
+		CoinCopyN(multipliers_, model_->getNumCouplingRows(), &primsol_[0]);
 	}
 
 	/** retrieve lambda */
-	lambda_ = primsol_;
+	lambda_ = primsol_.data();
 
 	/** update statistics */
 	double * s_primsol = new double [model_->getNumCouplingRows()];
-	CoinCopyN(primsol_, model_->getNumCouplingRows(), s_primsol);
+	CoinCopyN(&primsol_[0], model_->getNumCouplingRows(), s_primsol);
 	s_primsols_.push_back(s_primsol);
 	s_primsol = NULL;
 	s_cputimes_.push_back(CoinCpuTime() - cputime);
@@ -93,12 +104,11 @@ DSP_RTN_CODE DdMasterSubgrad::createProblem()
 	BGN_TRY_CATCH
 
 	/** allocate memory */
-	primsol_     = new double [model_->getNumCouplingRows()];
 	gradient_    = new double [model_->getNumCouplingRows()];
 	multipliers_ = new double [model_->getNumCouplingRows()];
 
 	/** initialize values */
-	CoinZeroN(primsol_, model_->getNumCouplingRows());
+	primsol_.resize(model_->getNumCouplingRows());
 	CoinZeroN(gradient_, model_->getNumCouplingRows());
 	CoinZeroN(multipliers_, model_->getNumCouplingRows());
 

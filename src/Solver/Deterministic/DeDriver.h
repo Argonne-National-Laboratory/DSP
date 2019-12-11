@@ -8,36 +8,43 @@
 #ifndef SRC_SOLVER_DETERMINISTIC_DEDRIVER_H_
 #define SRC_SOLVER_DETERMINISTIC_DEDRIVER_H_
 
-#include "Solver/DspDriver.h"
-#include "SolverInterface/SolverInterface.h"
+#include "Solver/DecSolver.h"
 
 /**
  * This class defines a driver for solving a deterministic equivalent problem.
  */
-class DeDriver: public DspDriver {
+class DeDriver: public DecSolver {
 public:
 
-	/** constructor */
-	DeDriver(DspParams * par, DecModel * model);
+	/** A default constructor. */
+	DeDriver(
+			DecModel *   model,  /**< model pointer */
+			DspParams *  par,    /**< parameters */
+			DspMessage * message /**< message pointer */);
 
-	/** destructor */
+	/** A copy constructor. */
+	DeDriver(const DeDriver& rhs);
+
+	/** A default destructor. */
 	virtual ~DeDriver();
 
-	/** initilize */
+	/** A clone function. */
+	virtual DeDriver* clone() const {
+		return new DeDriver(*this);
+	}
+
+	/** A virtual member for initilizing the driver. */
 	virtual DSP_RTN_CODE init();
 
-	/** run */
+	/** A virtual member for running the driver. */
 	virtual DSP_RTN_CODE run();
+	virtual DSP_RTN_CODE solve();
 
-	/** finalize */
+	/** A virtual memeber for finalizing the driver. */
 	virtual DSP_RTN_CODE finalize();
 
 	/** write extensive form in MPS */
 	virtual void writeExtMps(const char * name);
-
-private:
-
-	SolverInterface * si_; /**< my solver interface */
 };
 
 #endif /* SRC_SOLVER_DETERMINISTIC_DEDRIVER_H_ */

@@ -7,30 +7,35 @@
 
 #include "Model/TssModel.h"
 #include "Solver/Deterministic/DeDriver.h"
-#include "SolverInterface/SolverInterfaceClp.h"
+#include "OsiClpSolverInterface.hpp"
 
-#ifndef NO_CPX
-#include "SolverInterface/SolverInterfaceCpx.h"
+#ifdef DSP_HAS_CPX
+#include "cplex.h"
+#include "OsiCpxSolverInterface.hpp"
 #endif
 
-#ifndef NO_SCIP
-#include "SolverInterface/SolverInterfaceScip.h"
+#ifdef DSP_HAS_SCIP
+#include "SolverInterface/OsiScipSolverInterface.hpp"
 #endif
 
-DeDriver::DeDriver(DspParams * par, DecModel * model):
-	DspDriver(par,model), si_(NULL) {}
+DeDriver::DeDriver(
+		DecModel *   model,  /**< model pointer */
+		DspParams *  par,    /**< parameters */
+		DspMessage * message /**< message pointer */):
+DecSolver(model,par,message) {}
+
+DeDriver::DeDriver(const DeDriver& rhs) :
+DecSolver(rhs) {}
 
 DeDriver::~DeDriver()
-{
-	FREE_PTR(si_);
-}
+{}
 
 /** initilize */
 DSP_RTN_CODE DeDriver::init()
 {
 	BGN_TRY_CATCH
 
-	primsol_ = new double [model_->getFullModelNumCols()];
+	primsol_.resize(model_->getFullModelNumCols());
 
 	END_TRY_CATCH(;)
 
@@ -67,8 +72,6 @@ DSP_RTN_CODE DeDriver::run()
 	/** get DE model */
 	DSP_RTN_CHECK_THROW(model_->getFullModel(mat, clbd, cubd, ctype, obj, rlbd, rubd));
 
-	int nIntegers = model_->getNumIntegers();
-
 	if (model_->isStochastic())
 	{
 		TssModel * tssModel;
@@ -87,18 +90,11 @@ DSP_RTN_CODE DeDriver::run()
 		{
 			for (int j = 0; j < tssModel->getNumCols(0); ++j)
 			{
-				if (ctype[j] != 'C')
-					nIntegers--;
 				ctype[j] = 'C';
 			}
 		}
 		if (par_->getBoolPtrParam("RELAX_INTEGRALITY")[1])
 		{
-			for (int j = 0; j < tssModel->getNumCols(1); ++j)
-			{
-				if (ctype[tssModel->getNumCols(0) + j] != 'C')
-					nIntegers--;
-			}
 			CoinFillN(ctype + tssModel->getNumCols(0), tssModel->getNumScenarios() * tssModel->getNumCols(1), 'C');
 		}
 	}
@@ -109,46 +105,47 @@ DSP_RTN_CODE DeDriver::run()
 		{
 			for (int j = 0; j < mat->getNumCols(); j++)
 			{
-				if (ctype[j] != 'C')
-					nIntegers--;
-				ctype[j] = 'C';
+				if (ctype[j] != 'C') {
+					ctype[j] = 'C';
+				}
 			}
 		}
 	}
 
-	if (nIntegers > 0)
-	{
-		switch(par_->getIntParam("SOLVER/MIP")) {
-		case CPLEX: {
-#ifndef NO_CPX
-			si_ = new SolverInterfaceCpx(par_);
-			si_->setPrintLevel(par_->getIntParam("LOG_LEVEL"));
-			SolverInterfaceCpx* osicpx = dynamic_cast<SolverInterfaceCpx*>(si_);
-			OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(osicpx->getOSI());
-			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("NUM_CORES"));
-			break;
+	switch(par_->getIntParam("SOLVER/MIP")) {
+	case OsiCpx: {
+#ifdef DSP_HAS_CPX
+		si_ = new OsiCpxSolverInterface();
+		si_->messageHandler()->setLogLevel(par_->getIntParam("LOG_LEVEL"));
+		OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
+		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("NUM_CORES"));
+#else
+		throw CoinError("OsiCpx is not available.", "run", "DeDriver");
 #endif
-		}
-		case EXT_SCIP: {
-#ifndef NO_SCIP
-			si_ = new SolverInterfaceScip(par_);
-			si_->setPrintLevel(CoinMin(par_->getIntParam("LOG_LEVEL") + 2, 5));
-			break;
-#endif
-		}
-		default:
-			break;
-		}
+		break;
 	}
-	else
-	{
-		si_ = new SolverInterfaceClp(par_);
-		/** print level */
-		si_->setPrintLevel(par_->getIntParam("LOG_LEVEL"));
+	case OsiScip: {
+#ifdef DSP_HAS_SCIP
+		si_ = new OsiScipSolverInterface();
+		si_->messageHandler()->setLogLevel(CoinMin(par_->getIntParam("LOG_LEVEL") + 2, 5));
+#else
+		throw CoinError("OsiScip is not available.", "run", "DeDriver");
+#endif
+		break;
+	}
+	default:
+		si_ = new OsiClpSolverInterface();
+		si_->messageHandler()->setLogLevel(par_->getIntParam("LOG_LEVEL"));
+		break;
 	}
 
 	/** load problem */
-	si_->loadProblem(mat, clbd, cubd, obj, ctype, rlbd, rubd, "DeDriver");
+	si_->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
+	for (int j = 0; j < mat->getNumCols(); j++)
+	{
+		if (ctype[j] != 'C')
+			si_->setInteger(j);
+	}
 
 	/** time limit */
 	double time_limit = CoinMin(
@@ -164,16 +161,14 @@ DSP_RTN_CODE DeDriver::run()
 	walltime_ = CoinGetTimeOfDay();
 
 	/** solve */
-	si_->solve();
+	solve();
 
 	/** toc */
 	cputime_  = CoinCpuTime() - cputime_;
 	walltime_ = CoinGetTimeOfDay() - walltime_;
 
-	/** solution status */
-	status_ = si_->getStatus();
-
 	/** get solutions */
+	status_ = getStatus();
 	if (status_ == DSP_STAT_OPTIMAL ||
 		status_ == DSP_STAT_STOPPED_TIME ||
 		status_ == DSP_STAT_STOPPED_NODE ||
@@ -181,12 +176,12 @@ DSP_RTN_CODE DeDriver::run()
 	   	status_ == DSP_STAT_LIM_ITERorTIME)
 	{
 		/** objective bounds */
-		primobj_ = si_->getPrimalBound();
-		dualobj_ = si_->getDualBound();
+		bestprimobj_ = si_->getObjValue();
+		bestdualobj_ = si_->getObjValue();
 
 		/** solution */
-		if (si_->getSolution())
-			CoinCopyN(si_->getSolution(), si_->getNumCols(), primsol_);
+		if (si_->getColSolution())
+			CoinCopyN(si_->getColSolution(), si_->getNumCols(), &primsol_[0]);
 
 		/** statistics */
 		numIterations_ = si_->getIterationCount();
@@ -201,6 +196,20 @@ DSP_RTN_CODE DeDriver::run()
 	return DSP_RTN_OK;
 
 #undef FREE_MEMORY
+}
+
+DSP_RTN_CODE DeDriver::solve() {
+	if (par_->getIntParam("SOLVER/MIP") == OsiCpx) {
+#ifdef DSP_HAS_CPX
+		OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
+		if (cpx) {
+			cpx->branchAndBound();
+		}
+#endif
+	} else {
+		si_->initialSolve();
+	}
+	return DSP_RTN_OK;
 }
 
 DSP_RTN_CODE DeDriver::finalize() {
@@ -222,7 +231,7 @@ void DeDriver::writeExtMps(const char * name)
 	assert(model_);
 
 	/** model info */
-	SolverInterface * si = NULL;
+	OsiSolverInterface * si = NULL;
 	CoinPackedMatrix * mat = NULL;
 	double * clbd   = NULL;
 	double * cubd   = NULL;
@@ -233,31 +242,31 @@ void DeDriver::writeExtMps(const char * name)
 
 	BGN_TRY_CATCH
 
-	double stime;
-
 	/** get DE model */
 	DSP_RTN_CHECK_THROW(model_->getFullModel(mat, clbd, cubd, ctype, obj, rlbd, rubd));
 
-	int nIntegers = model_->getNumIntegers();
-
 	switch(par_->getIntParam("SOLVER/MIP")) {
-	case CPLEX:
-#ifndef NO_CPX
-		si = new SolverInterfaceCpx(par_);
-		break;
+	case OsiCpx:
+#ifdef DSP_HAS_CPX
+		si = new OsiCpxSolverInterface();
+#else
+		throw CoinError("OsiCpx is not available.", "writeExtMps", "DeDriver");
 #endif
-	case EXT_SCIP:
-#ifndef NO_SCIP
-		si = new SolverInterfaceScip(par_);
 		break;
+	case OsiScip:
+#ifdef DSP_HAS_SCIP
+		si = new OsiScipSolverInterface();
+#else
+		throw CoinError("OsiScip is not available.", "writeExtMps", "DeDriver");
 #endif
+		break;
 	default:
-		si = new SolverInterfaceClp(par_);
+		si = new OsiClpSolverInterface();
 		break;
 	}
 
 	/** load problem */
-	si->loadProblem(mat, clbd, cubd, obj, ctype, rlbd, rubd, "writeMps");
+	si->loadProblem(*mat, clbd, cubd, obj, ctype, rlbd, rubd);
 
 	/** write mps */
 	si->writeMps(name);

@@ -5,29 +5,28 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+// #define DSP_DEBUG
 
-/** COIN */
 #include "CoinWarmStartBasis.hpp"
+#include "OsiClpSolverInterface.hpp"
 
-/** DSP */
 #include "Solver/DualDecomp/DdMasterTr.h"
-#include "SolverInterface/SolverInterfaceClp.h"
 
-#ifndef NO_CPX
-	#include "SolverInterface/SolverInterfaceCpx.h"
+#ifdef DSP_HAS_CPX
+#include "cplex.h"
+#include "OsiCpxSolverInterface.hpp"
 #endif
 
-#ifndef NO_OOQP
-	#include "SolverInterface/SolverInterfaceOoqp.h"
-	#include "SolverInterface/OoqpEps.h"
+#ifdef DSP_HAS_OOQP
+#include "SolverInterface/OsiOoqpSolverInterface.hpp"
+#include "SolverInterface/OoqpEps.h"
 #endif
 
 DdMasterTr::DdMasterTr(
-		DspParams *  par,     /**< parameter pointer */
 		DecModel *   model,   /**< model pointer */
+		DspParams *  par,     /**< parameter pointer */
 		DspMessage * message /**< message pointer */):
-DdMaster(par, model, message),
+DdMaster(model, par, message),
 nthetas_(0),
 nlambdas_(0),
 stability_param_(0.0),
@@ -48,6 +47,35 @@ parNumCutsPerIter_(1),
 parMasterAlgo_(IPM_Feasible),
 parLogLevel_(0) {
     DSPdebug(message_->logLevel_ = 9999;);
+}
+
+DdMasterTr::DdMasterTr(const DdMasterTr& rhs) :
+DdMaster(rhs),
+nthetas_(rhs.nthetas_),
+nlambdas_(rhs.nlambdas_),
+stability_param_(rhs.stability_param_),
+trcnt_(rhs.trcnt_),
+numIters_(rhs.numIters_),
+cputime_elapsed_(rhs.cputime_elapsed_),
+walltime_elapsed_(rhs.walltime_elapsed_),
+isSolved_(rhs.isSolved_),
+cuts_age_(rhs.cuts_age_),
+possiblyDelete_(rhs.possiblyDelete_),
+masterobjsAtCutAdd_(rhs.masterobjsAtCutAdd_),
+ncuts_minor_(rhs.ncuts_minor_),
+cutdel_param_(rhs.cutdel_param_),
+linerr_(rhs.linerr_),
+parTr_(rhs.parTr_),
+parTrSize_(rhs.parTrSize_),
+parTrDecrease_(rhs.parTrDecrease_),
+parNumCutsPerIter_(rhs.parNumCutsPerIter_),
+parMasterAlgo_(rhs.parMasterAlgo_),
+parLogLevel_(rhs.parLogLevel_) {
+	if (rhs.stability_center_) {
+		stability_center_ = new double [nlambdas_];
+		CoinCopyN(rhs.stability_center_, nlambdas_, stability_center_);
+	}
+	cuts_ = new OsiCuts(*(rhs.cuts_));
 }
 
 DdMasterTr::~DdMasterTr()
@@ -96,13 +124,13 @@ DSP_RTN_CODE DdMasterTr::solve()
 
 	while (resolve) {
 		/** solve */
-		si_->solve();
+		si_->resolve();
 	
 		/** mark as solved */
 		isSolved_ = true;
 	
 		/** solver status */
-		switch(si_->getStatus())
+		switch(getStatus())
 		{
 		case DSP_STAT_PRIM_INFEASIBLE:
 			// increase the trust-region size
@@ -116,22 +144,21 @@ DSP_RTN_CODE DdMasterTr::solve()
 		case DSP_STAT_STOPPED_TIME:
 		{
 			/** objective value */
-			primobj_ = si_->getPrimalBound();
+			primobj_ = si_->getObjValue();
 			/** get solution */
-			CoinCopyN(si_->getSolution(), si_->getNumCols(), primsol_);
-			/** retrieve lambda */
-			lambda_ = primsol_ + nthetas_;
+			CoinCopyN(si_->getColSolution(), si_->getNumCols(), &primsol_[0]);
+			lambda_ = primsol_.data() + nthetas_;
 #ifdef DSP_DEBUG
 			printf("Master solution (obj %+e):\n", primobj_);
-			DspMessage::printArray(si_->getNumCols(), primsol_);
+			DspMessage::printArray(si_->getNumCols(), &primsol_[0]);
 #endif
 	
 			/** update statistics */
-			s_statuses_.push_back(si_->getStatus());
-			s_primobjs_.push_back(si_->getPrimalBound());
-			s_dualobjs_.push_back(si_->getDualBound());
+			s_statuses_.push_back(getStatus());
+			s_primobjs_.push_back(si_->getObjValue());
+			s_dualobjs_.push_back(si_->getBestDualBound());
 			double * s_primsol = new double [si_->getNumCols()];
-			CoinCopyN(si_->getSolution(), si_->getNumCols(), s_primsol);
+			CoinCopyN(si_->getColSolution(), si_->getNumCols(), s_primsol);
 			s_primsols_.push_back(s_primsol);
 			s_primsol = NULL;
 			s_cputimes_.push_back(CoinCpuTime() - cputime);
@@ -145,7 +172,7 @@ DSP_RTN_CODE DdMasterTr::solve()
 		default:
 			status_ = DSP_STAT_MW_STOP;
 			resolve = false;
-			message_->print(0, "Warning: master solution status is %d\n", si_->getStatus());
+			message_->print(0, "Warning: master solution status is %d\n", getStatus());
 			DSPdebug(si_->writeMps("master"));
 			break;
 		}
@@ -279,30 +306,27 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 
 	/** create solver interface */
 	DSPdebugMessage("parMasterAlgo_ %d\n", parMasterAlgo_);
-	switch (parMasterAlgo_)
-	{
+	switch (parMasterAlgo_) {
 	case Simplex:
-#ifndef NO_CPX
-		si_ = new SolverInterfaceCpx(par_);
+#ifdef DSP_HAS_CPX
+		si_ = new OsiCpxSolverInterface();
 #else
-		si_ = new SolverInterfaceClp(par_);
+		si_ = new OsiClpSolverInterface();
 #endif
 		break;
 	case IPM: {
 		switch (par_->getIntParam("SOLVER/QP")) {
-		case OOQP:
-#if !defined(NO_OOQP)
-			si_ = new SolverInterfaceOoqp(par_);
+		case OsiOoqp:
+#ifdef DSP_HAS_OOQP
+			si_ = new OsiOoqpSolverInterface();
 			break;
 #else
 			printf("OOQP is not available for QP solve.\n");
 #endif
-		case CPLEX: {
-#ifndef NO_CPX
-			si_ = new SolverInterfaceCpx(par_);
-			SolverInterfaceCpx* osi = dynamic_cast<SolverInterfaceCpx*>(si_);
-			osi->useBarrier_ = true;
-			OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(osi->getOSI());
+		case OsiCpx: {
+#ifdef DSP_HAS_CPX
+			si_ = new OsiCpxSolverInterface();
+			OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
 			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_LPMETHOD,          CPX_ALG_BARRIER);
 			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARCROSSALG,       -1);
 			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS,           par_->getIntParam("NUM_CORES"));
@@ -314,18 +338,20 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 #endif
 		}
 		default:
-			si_ = new SolverInterfaceClp(par_);
+			si_ = new OsiClpSolverInterface();
 			break;
 		}
 		break;
 	}
 	case IPM_Feasible:
-#ifndef NO_OOQP
-		si_ = new OoqpEps(par_);
+#ifdef DSP_HAS_OOQP
+		si_ = new OoqpEps();
 		break;
+#else
+		printf("OOQP is not available for QP solve.\n");
 #endif
 	default:
-		si_ = new SolverInterfaceClp(par_);
+		si_ = new OsiClpSolverInterface();
 		break;
 	}
 	DSPdebugMessage("Created master algorithm\n");
@@ -334,19 +360,19 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 	si_->setObjSense(-1);
 
 	/** copy problem data */
-	si_->loadProblem(mat, clbd, cubd, obj, ctype, rlbd, rubd);
+	si_->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
 	DSPdebugMessage("Loaded problem data\n");
 
 	/** allocate memory for solution */
-	primsol_ = new double [ncols];
-	CoinFillN(primsol_, nthetas_, COIN_DBL_MAX);
-	CoinZeroN(primsol_ + nthetas_, nlambdas_);
+	primsol_.resize(ncols);
+	CoinFillN(&primsol_[0], nthetas_, COIN_DBL_MAX);
+	CoinZeroN(&primsol_[nthetas_], nlambdas_);
 
 	/** initialize cut pool */
 	cuts_ = new OsiCuts;
 
 	/** set print level */
-	si_->setPrintLevel(CoinMax(0, parLogLevel_ - 5));
+	si_->messageHandler()->setLogLevel(parLogLevel_);
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
@@ -364,7 +390,7 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 	/** current primal objective value */
 	double curprimobj = 0.0;
 	if (isSolved_)
-		curprimobj = si_->getPrimalBound();
+		curprimobj = si_->getObjValue();
 
 	/** calculate primal/dual objectives */
 	double newprimal = 0.0;
@@ -392,7 +418,7 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 			if (isSolved_)
 			{
 				/** update proximal point */
-				CoinCopyN(primsol_ + nthetas_, nlambdas_, stability_center_);
+				CoinCopyN(&primsol_[nthetas_], nlambdas_, stability_center_);
 				message_->print(3, ", updated proximal point");
 
 				/** possibly delete cuts */
@@ -458,14 +484,14 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 			bestdualobj_ = newdual;
 	}
 
-#ifndef NO_OOQP
+#ifdef DSP_HAS_OOQP
 	OoqpEps * ooqp = dynamic_cast<OoqpEps*>(si_);
 	if (ooqp)
 	{
 		if (ooqp->hasOoqpStatus_ && isSolved_)
 		{
 			DSPdebugMessage("bestprimobj %+e bestdualobj %+e\n", bestprimobj_, bestdualobj_);
-			double epsilon = (si_->getPrimalBound() - newprimal + ooqp->getDualityGap()) / (1. + fabs(si_->getPrimalBound()));
+			double epsilon = (si_->getObjValue() - newprimal + ooqp->getDualityGap()) / (1. + fabs(si_->getObjValue()));
 			if (epsilon > 1.) epsilon = 1.;
 			ooqp->setOoqpStatus(epsilon, -bestprimobj_, -bestdualobj_);
 		}
@@ -485,14 +511,13 @@ bool DdMasterTr::isSolutionBoundary(double eps)
 
 	BGN_TRY_CATCH
 
-	const double * sol = primsol_;
 	const double * clbd = si_->getColLower();
 	const double * cubd = si_->getColUpper();
 	int ncols = si_->getNumCols();
 
 	for (int j = nthetas_; j < ncols; ++j)
 	{
-		double diff = CoinMin(cubd[j] - sol[j], sol[j] - clbd[j]);
+		double diff = CoinMin(cubd[j] - primsol_[j], primsol_[j] - clbd[j]);
 		if (diff > maxdiff)
 			maxdiff = diff;
 		if (diff < mindiff)
@@ -579,7 +604,7 @@ int DdMasterTr::addCuts(
 		rc->setRow(cutvec);
 		rc->setLb(-COIN_DBL_MAX);
 		rc->setUb(cutrhs);
-		rc->setEffectiveness(rc->violated(primsol_));
+		rc->setEffectiveness(rc->violated(&primsol_[0]));
 		DSPdebug(rc->print());
 		DSPdebugMessage("cut effectiveness: %e\n", rc->effectiveness());
 
@@ -596,7 +621,7 @@ int DdMasterTr::addCuts(
 				/** insertIfNotDuplicate does not set effectiveness */
 				cuts_age_.push_back(0);
 				possiblyDelete_.push_back(possiblyDel);
-				masterobjsAtCutAdd_.push_back(si_->getPrimalBound());
+				masterobjsAtCutAdd_.push_back(si_->getObjValue());
 				cuts.insert(rc);
 			}
 		}
@@ -608,7 +633,7 @@ int DdMasterTr::addCuts(
 	DSPdebug(cuts.printCuts());
 	if (nCutsAdded > 0)
 		/** apply cuts */
-		si_->addCuts(cuts);
+		si_->applyCuts(cuts);
 //	else
 //		/** recruit back some cuts if no cut is generated */
 //		recruiteCuts();
@@ -627,16 +652,7 @@ DSP_RTN_CODE DdMasterTr::possiblyDeleteCuts(
 {
 	BGN_TRY_CATCH
 
-	SolverInterfaceOsi * osi = dynamic_cast<SolverInterfaceOsi*>(si_);
-	if (osi) {
-		DSP_RTN_CHECK_THROW(possiblyDeleteCutsOsi(subobjval));
-	} else {
-#ifndef NO_OOQP
-		SolverInterfaceOoqp * ooqp = dynamic_cast<SolverInterfaceOoqp*>(si_);
-		if (ooqp)
-			DSP_RTN_CHECK_THROW(possiblyDeleteCutsOoqp(subobjval));
-#endif
-	}
+	DSP_RTN_CHECK_THROW(possiblyDeleteCutsOsi(subobjval));
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -655,8 +671,7 @@ DSP_RTN_CODE DdMasterTr::possiblyDeleteCutsOsi(
 
 	BGN_TRY_CATCH
 
-	SolverInterfaceOsi * osi = dynamic_cast<SolverInterfaceOsi*>(si_);
-	const double * pi = osi->getOSI()->getRowPrice() + nrows;
+	const double * pi = si_->getRowPrice() + nrows;
 
 	/** mark cuts that should not be deleted */
 	for (int i = 0, i2 = 0; i < cuts_->sizeCuts(); ++i)
@@ -674,15 +689,15 @@ DSP_RTN_CODE DdMasterTr::possiblyDeleteCutsOsi(
 			possiblyDelete_[i] = false;
 		/** do not delete cuts generated at minor iterations such that the following condition holds. */
 		else if (i >= cuts_->sizeCuts() - ncuts_minor_ &&
-				(si_->getPrimalBound() - subobjval) > cutdel_param_ * (masterobjsAtCutAdd_[i] - subobjval))
+				(si_->getObjValue() - subobjval) > cutdel_param_ * (masterobjsAtCutAdd_[i] - subobjval))
 			possiblyDelete_[i] = false;
 		i2++;
 	}
 
 	/** get basis information */
 	CoinWarmStartBasis * ws = NULL;
-	if (osi->getWarmStart())
-		ws = dynamic_cast<CoinWarmStartBasis*>(osi->getWarmStart()->clone());
+	if (si_->getWarmStart())
+		ws = dynamic_cast<CoinWarmStartBasis*>(si_->getWarmStart()->clone());
 
 	vector<char> aStat; /**< status of artificial variables */
 
@@ -720,7 +735,7 @@ DSP_RTN_CODE DdMasterTr::possiblyDeleteCutsOsi(
 	removeAllCuts();
 
 	/** apply cuts */
-	si_->addCuts(cuts);
+	si_->applyCuts(cuts);
 
 	if (ws)
 	{
@@ -729,7 +744,7 @@ DSP_RTN_CODE DdMasterTr::possiblyDeleteCutsOsi(
 				ws->getNumStructural(), ws->getNumArtificial(),
 				ws->getStructuralStatus(), &aStat[0]);
 
-		osi->setWarmStart(basis);
+		si_->setWarmStart(basis);
 	}
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
@@ -741,7 +756,7 @@ DSP_RTN_CODE DdMasterTr::possiblyDeleteCutsOsi(
 DSP_RTN_CODE DdMasterTr::possiblyDeleteCutsOoqp(
 		double subobjval /**< sum of subproblem objective values */)
 {
-#ifndef NO_OOQP
+#ifdef DSP_HAS_OOQP
 	OsiCuts cuts;
 	int nrows = model_->nonanticipativity() ? model_->getNumSubproblemCouplingCols(0) : 0;
 	int ncuts = si_->getNumRows() - nrows;
@@ -750,13 +765,8 @@ DSP_RTN_CODE DdMasterTr::possiblyDeleteCutsOoqp(
 
 	BGN_TRY_CATCH
 
-	SolverInterfaceOoqp * ooqp = dynamic_cast<SolverInterfaceOoqp*>(si_);
-	const double * lambda = ooqp->lambda();
-	const double * pi = ooqp->pi();
-
-	/** mark cuts that should not be deleted */
-	int numPis = ooqp->getNumPis();
-	int numLambdas = ooqp->getNumLambdas();
+	const double * price = si_->getRowPrice();
+	int pos = si_->getNumRows() - 1;
 	for (int i = cuts_->sizeCuts() - 1; i >= 0; --i)
 	{
 		/** do not consider inactive cuts */
@@ -769,28 +779,12 @@ DSP_RTN_CODE DdMasterTr::possiblyDeleteCutsOoqp(
 			continue;
 		}
 
-		OsiRowCut * rc = cuts_->rowCutPtr(i);
-		assert(rc);
-		if (rc->sense() == 'G')
-		{
-			numLambdas--;
-			if (fabs(lambda[numLambdas]) < 1.0e-10)
-				possiblyDelete_[i] = false;
-			/** do not delete cuts generated at minor iterations such that the following condition holds. */
-			else if (i >= cuts_->sizeCuts() - ncuts_minor_ &&
-					(si_->getPrimalBound() - subobjval) > cutdel_param_ * (masterobjsAtCutAdd_[i] - subobjval))
-				possiblyDelete_[i] = false;
-		}
-		else if (rc->sense() == 'L')
-		{
-			numPis--;
-			if (fabs(pi[numPis]) < 1.0e-10)
-				possiblyDelete_[i] = false;
-			/** do not delete cuts generated at minor iterations such that the following condition holds. */
-			else if (i >= cuts_->sizeCuts() - ncuts_minor_ &&
-					(si_->getPrimalBound() - subobjval) > cutdel_param_ * (masterobjsAtCutAdd_[i] - subobjval))
-				possiblyDelete_[i] = false;
-		}
+		if (fabs(price[pos--]) < 1.0e-10)
+			possiblyDelete_[i] = false;
+		/** do not delete cuts generated at minor iterations such that the following condition holds. */
+		else if (i >= cuts_->sizeCuts() - ncuts_minor_ &&
+				(si_->getObjValue() - subobjval) > cutdel_param_ * (masterobjsAtCutAdd_[i] - subobjval))
+			possiblyDelete_[i] = false;
 	}
 
 	vector<char> aStat; /**< status of artificial variables */
@@ -827,7 +821,7 @@ DSP_RTN_CODE DdMasterTr::possiblyDeleteCutsOoqp(
 	removeAllCuts();
 
 	/** apply cuts */
-	si_->addCuts(cuts);
+	si_->applyCuts(cuts);
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 #endif
@@ -841,20 +835,14 @@ int DdMasterTr::recruiteCuts()
 	OsiCuts cuts;
 
 	CoinWarmStartBasis * ws = NULL;
-	SolverInterfaceOsi * osi = NULL;
 
 	vector<char> aStat; /**< status of artificial variables */
 
 	BGN_TRY_CATCH
 
-	osi = dynamic_cast<SolverInterfaceOsi*>(si_);
-
-	if (osi)
-	{
-		/** get basis information */
-		osi->setWarmStart(osi->getOSI()->getWarmStart());
-		ws = dynamic_cast<CoinWarmStartBasis*>(osi->getWarmStart());
-	}
+	/** get basis information */
+	si_->setWarmStart(si_->getWarmStart());
+	ws = dynamic_cast<CoinWarmStartBasis*>(si_->getWarmStart());
 
 	int irow = model_->nonanticipativity() ? model_->getNumSubproblemCouplingCols(0) : 0;
 	for (int i = 0; i < cuts_->sizeCuts(); ++i)
@@ -867,26 +855,22 @@ int DdMasterTr::recruiteCuts()
 		{
 			/** add cut */
 			cuts.insert(*rc);
-			if (osi)
-			{
-				/** set status of artificial variable */
-				aStat.push_back(ws->getArtifStatus(irow++));
-			}
+
+			/** set status of artificial variable */
+			aStat.push_back(ws->getArtifStatus(irow++));
 		}
 		else
 		{
 			/** set effectiveness */
-			rc->setEffectiveness(rc->violated(primsol_));
+			rc->setEffectiveness(rc->violated(&primsol_[0]));
 			if (rc->effectiveness() > 1.0e-6)
 			{
 				nRecruited++;
 				/** add cut */
 				cuts.insert(*rc);
-				if (osi)
-				{
-					/** set status of artificial variable */
-					aStat.push_back(CoinWarmStartBasis::basic);
-				}
+
+				/** set status of artificial variable */
+				aStat.push_back(CoinWarmStartBasis::basic);
 
 				/** other cut info */
 				cuts_age_[i] = 0;
@@ -899,18 +883,14 @@ int DdMasterTr::recruiteCuts()
 	{
 		/** remove all cuts from solver interface */
 		removeAllCuts();
-
 		/** apply cuts */
-		si_->addCuts(cuts);
+		si_->applyCuts(cuts);
 
-		if (osi)
-		{
-			/** create new basis */
-			CoinWarmStartBasis * basis = new CoinWarmStartBasis(
-					ws->getNumStructural(), ws->getNumArtificial(),
-					ws->getStructuralStatus(), &aStat[0]);
-			osi->setWarmStart(basis);
-		}
+		/** create new basis */
+		CoinWarmStartBasis * basis = new CoinWarmStartBasis(
+				ws->getNumStructural(), ws->getNumArtificial(),
+				ws->getStructuralStatus(), &aStat[0]);
+		si_->setWarmStart(basis);
 	}
 
 	END_TRY_CATCH(;)
@@ -923,30 +903,18 @@ DSP_RTN_CODE DdMasterTr::removeAllCuts()
 {
 	BGN_TRY_CATCH
 
-	SolverInterfaceOsi * osi = dynamic_cast<SolverInterfaceOsi*>(si_);
-	if (osi) {
-		int nrows = model_->nonanticipativity() ? model_->getNumSubproblemCouplingCols(0) : 0;
-		int ncuts = si_->getNumRows() - nrows;
+	int nrows = model_->nonanticipativity() ? model_->getNumSubproblemCouplingCols(0) : 0;
+	int ncuts = si_->getNumRows() - nrows;
 
-		/** row indices to delete */
-		int * rowIndices = new int [ncuts];
-		CoinIotaN(rowIndices, ncuts, nrows);
+	/** row indices to delete */
+	int * rowIndices = new int [ncuts];
+	CoinIotaN(rowIndices, ncuts, nrows);
 
-		/** delete */
-		osi->getOSI()->deleteRows(ncuts, rowIndices);
+	/** delete */
+	si_->deleteRows(ncuts, rowIndices);
 
-		/** free memory */
-		FREE_ARRAY_PTR(rowIndices);
-	} else {
-#ifndef NO_OOQP
-		SolverInterfaceOoqp * ooqp = dynamic_cast<SolverInterfaceOoqp*>(si_);
-		if (ooqp) {
-			for (int i = 0; i < ooqp->cuts_.sizeCuts(); ++i)
-				delete ooqp->cuts_.rowCutPtr(i);
-			ooqp->cuts_.dumpCuts();
-		}
-#endif
-	}
+	/** free memory */
+	FREE_ARRAY_PTR(rowIndices);
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -982,7 +950,7 @@ DSP_RTN_CODE DdMasterTr::terminationTest()
 
 	BGN_TRY_CATCH
 
-#ifndef NO_OOQP
+#ifdef DSP_HAS_OOQP
 	OoqpEps * ooqp = dynamic_cast<OoqpEps*>(si_);
 	/** is the solution suboptimal? */
 	if (ooqp != NULL && ooqp->isSuboptimal())

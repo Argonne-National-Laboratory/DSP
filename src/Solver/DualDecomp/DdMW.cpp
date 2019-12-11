@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+// #define DSP_DEBUG
 #include "Utility/DspUtility.h"
 #include "Solver/DualDecomp/DdMW.h"
 
@@ -14,26 +14,72 @@ DdMW::DdMW(
 		DspParams *  par,    /**< parameters */
 		DspMessage * message /**< message pointer */):
 BaseMasterWorker(),
-master_(NULL), model_(model), par_(par), message_(message),
-parFeasCuts_(-1), parOptCuts_(-1), parEvalUb_(-1), parTimeLimit_(0),
-itercode_(' '), itercnt_(0), iterstime_(0.0)
-{
+master_(NULL), 
+model_(model), 
+par_(par), 
+message_(message),
+parFeasCuts_(-1), 
+parOptCuts_(-1), 
+parEvalUb_(-1), 
+parTimeLimit_(0),
+itercode_(' '), 
+itercnt_(0), 
+iterstime_(0.0) {
 	cutsToAdd_ = new OsiCuts;
 }
 
+DdMW::DdMW(const DdMW& rhs) :
+BaseMasterWorker(rhs),
+model_(rhs.model_), 
+par_(rhs.par_), 
+message_(rhs.message_),
+parFeasCuts_(rhs.parFeasCuts_), 
+parOptCuts_(rhs.parOptCuts_), 
+parEvalUb_(rhs.parEvalUb_), 
+parTimeLimit_(rhs.parTimeLimit_),
+itercode_(rhs.itercode_), 
+itercnt_(rhs.itercnt_), 
+iterstime_(rhs.iterstime_),
+s_itertime_(rhs.s_itertime_),
+s_masterobj_(rhs.s_masterobj_),
+s_bestprimobj_(rhs.s_bestprimobj_),
+s_bestdualobj_(rhs.s_bestdualobj_) {
+	master_ = rhs.master_->clone();
+
+	// copy workers
+	for (unsigned i = 0; i < rhs.worker_.size(); ++i)
+		worker_.push_back(rhs.worker_[i]->clone());
+
+	// copy solutions
+	for (unsigned i = 0; i < rhs.ubSolutions_.size(); ++i)
+		ubSolutions_.push_back(new CoinPackedVector(*(rhs.ubSolutions_[i])));
+
+	// copy cuts
+	cutsToAdd_ = new OsiCuts(*(rhs.cutsToAdd_));
+}
+
+
 DdMW::~DdMW() {
-	FREE_PTR(cutsToAdd_);
+	// free master
+	FREE_PTR(master_);
+
+	// free workers
+	for (unsigned i = 0; i < worker_.size(); ++i)
+		FREE_PTR(worker_[i]);
+	worker_.clear();
+
+	// null external objects
 	model_   = NULL;
 	par_     = NULL;
 	message_ = NULL;
 
-	/** free master */
-	FREE_PTR(master_);
+	// free solution
+	for (unsigned i = 0; i < ubSolutions_.size(); ++i)
+		FREE_PTR(ubSolutions_[i]);
+	ubSolutions_.clear();
 
-	/** free workers */
-	for (unsigned i = 0; i < worker_.size(); ++i)
-		FREE_PTR(worker_[i]);
-	worker_.clear();
+	// free cuts
+	FREE_PTR(cutsToAdd_);
 }
 
 DSP_RTN_CODE DdMW::run()

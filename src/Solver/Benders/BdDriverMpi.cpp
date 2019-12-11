@@ -7,30 +7,33 @@
 
 //#define DSP_DEBUG
 #include "Solver/Benders/BdDriverMpi.h"
-#include "Solver/Benders/BdMWMpi.h"
 #include "Solver/DualDecomp/DdDriverMpi.h"
 
 BdDriverMpi::BdDriverMpi(
-		DspParams* par,
-		DecModel* model,
-		MPI_Comm comm):
-BdDriver(par, model),
-comm_(comm)
-{
+		DecModel *   model,   /**< model pointer */
+		DspParams *  par,     /**< parameters */
+		DspMessage * message, /**< message pointer */
+		MPI_Comm comm)        /**< communicator */:
+BdDriver(model, par, message),
+comm_(comm) {
 	MPI_Comm_rank(comm, &comm_rank_);
 	MPI_Comm_size(comm, &comm_size_);
 }
 
-BdDriverMpi::~BdDriverMpi() {
-	// TODO Auto-generated destructor stub
-}
+BdDriverMpi::BdDriverMpi(const BdDriverMpi& rhs) :
+BdDriver(rhs),
+comm_(rhs.comm_),
+comm_size_(rhs.comm_size_),
+comm_rank_(rhs.comm_rank_) {}
+
+BdDriverMpi::~BdDriverMpi() {}
 
 DSP_RTN_CODE BdDriverMpi::init()
 {
 	BGN_TRY_CATCH
 
 	/** allocate memory for primal solution */
-	primsol_ = new double [model_->getFullModelNumCols()];
+	primsol_.resize(model_->getFullModelNumCols());
 
 	/** create and initialize master-worker */
 	mw_ = new BdMWMpi(comm_, model_, par_, message_);
@@ -121,14 +124,14 @@ DSP_RTN_CODE BdDriverMpi::findLowerBound() {
         message_->print(1, "Finding a good lower bound using Dual Decomposition...\n");
 
         /** use dual decomposition */
-        dd = new DdDriverMpi(par_, model_, comm_);
+        dd = new DdDriverMpi(model_, par_, message_, comm_);
         DSP_RTN_CHECK_THROW(dd->init());
         DSP_RTN_CHECK_THROW(dd->run());
         DSP_RTN_CHECK_THROW(dd->finalize());
 
         /** set objective bounds */
-        primobj_ = dd->getPrimalObjectiveValue();
-        dualobj_ = dd->getDualObjectiveValue();
+        primobj_ = dd->getPrimalObjective();
+        dualobj_ = dd->getDualObjective();
         message_->print(1, "Best lower bound %e, time elapsed: %.2f sec.\n", dualobj_, dd->getWallTime());
         DSPdebugMessage("Rank %d: primobj %+e, dualobj %+e\n", comm_rank_, primobj_, dualobj_);
 
@@ -177,7 +180,7 @@ DSP_RTN_CODE BdDriverMpi::collectSolution()
         status_ = mw_->getMasterPtr()->getStatus();
         primobj_ = mw_->getMasterPtr()->getPrimalObjective();
         dualobj_ = mw_->getMasterPtr()->getDualObjective();
-        numNodes_ = mw_->getMasterPtr()->getSiPtr()->getNumNodes();
+        numNodes_ = mw_->getMasterPtr()->getNumNodes();
         numIterations_ = mw_->getMasterPtr()->getSiPtr()->getIterationCount();
 		DSPdebugMessage("status %d, primobj %+e, dualobj %+e, numNodes %d, numIterations %d\n",
 				status_, primobj_, dualobj_, numNodes_, numIterations_);
@@ -223,7 +226,7 @@ DSP_RTN_CODE BdDriverMpi::collectSolution()
 		MPI_Gatherv(NULL, 0, MPI_DOUBLE, subsols, sizesolsp, displs, MPI_DOUBLE, 0, comm_);
 
 		/** copy master solution */
-		CoinCopyN(mw_->getMasterPtr()->getPrimalSolution(), model_->getNumSubproblemCouplingCols(0), primsol_);
+		CoinCopyN(mw_->getMasterPtr()->getPrimalSolution(), model_->getNumSubproblemCouplingCols(0), &primsol_[0]);
 
 		vector<double*> vsubsols(model_->getNumSubproblems());
 		vector<int> vsubsollens(model_->getNumSubproblems());
@@ -238,17 +241,17 @@ DSP_RTN_CODE BdDriverMpi::collectSolution()
 		int pos = model_->getNumSubproblemCouplingCols(0);
 		for (int i = 0; i < model_->getNumSubproblems(); ++i)
 		{
-			CoinCopyN(vsubsols[subindices[i]], vsubsollens[subindices[i]], primsol_ + pos);
+			CoinCopyN(vsubsols[subindices[i]], vsubsollens[subindices[i]], &primsol_[pos]);
 			pos += vsubsollens[subindices[i]];
 		}
         DSPdebugMessage("primsol_(%d):\n", model_->getFullModelNumCols());
-        DSPdebug(DspMessage::printArray(model_->getFullModelNumCols(), primsol_));
+        DSPdebug(DspMessage::printArray(model_->getFullModelNumCols(), &primsol_[0]));
 
         /** broadcast solutions */
         MPI_Bcast(&status_, 1, MPI_INT, 0, comm_);
         MPI_Bcast(&primobj_, 1, MPI_DOUBLE, 0, comm_);
         MPI_Bcast(&dualobj_, 1, MPI_DOUBLE, 0, comm_);
-        MPI_Bcast(primsol_, model_->getFullModelNumCols(), MPI_DOUBLE, 0, comm_);
+        MPI_Bcast(&primsol_[0], model_->getFullModelNumCols(), MPI_DOUBLE, 0, comm_);
 	}
 	else
 	{
@@ -293,7 +296,7 @@ DSP_RTN_CODE BdDriverMpi::collectSolution()
         MPI_Bcast(&status_, 1, MPI_INT, 0, comm_);
         MPI_Bcast(&primobj_, 1, MPI_DOUBLE, 0, comm_);
         MPI_Bcast(&dualobj_, 1, MPI_DOUBLE, 0, comm_);
-        MPI_Bcast(primsol_, model_->getFullModelNumCols(), MPI_DOUBLE, 0, comm_);
+        MPI_Bcast(&primsol_[0], model_->getFullModelNumCols(), MPI_DOUBLE, 0, comm_);
 	}
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)

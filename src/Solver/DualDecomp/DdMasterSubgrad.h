@@ -10,22 +10,31 @@
 
 #include "Solver/DualDecomp/DdMaster.h"
 
+/** A class for implementing a subgradient master solver. */
 class DdMasterSubgrad: public DdMaster {
 public:
 
-	/** constructor */
+	/** A default constructor. */
 	DdMasterSubgrad(
-			DspParams *  par,    /**< parameter pointer */
 			DecModel *   model,  /**< model pointer */
+			DspParams *  par,    /**< parameter pointer */
 			DspMessage * message /**< message pointer */);
 
-	/** destructor */
+	/** A copy constructor. */
+	DdMasterSubgrad(const DdMasterSubgrad& rhs);
+
+	/** A default destructor. */
 	virtual ~DdMasterSubgrad();
 
-	/** initialize */
+	/** A clone function */
+	virtual DdMasterSubgrad* clone() const {
+		return new DdMasterSubgrad(*this);
+	}
+
+	/** A virtual member for initializing solver. */
 	virtual DSP_RTN_CODE init();
 
-	/** solve */
+	/** A virtual member for solving problem. */
 	virtual DSP_RTN_CODE solve();
 
 	/** update problem */

@@ -8,12 +8,10 @@
 #ifndef SRC_SOLVERINTERFACE_SCIPCONSHDLRBENDERSWORKER_H_
 #define SRC_SOLVERINTERFACE_SCIPCONSHDLRBENDERSWORKER_H_
 
-/** MPI */
-#include "mpi.h"
-
-/** DSP */
+#include "Utility/DspMpi.h"
 #include "Solver/Benders/SCIPconshdlrBenders.h"
 
+/** A class for implementing parallel Benders constraint handler */
 class SCIPconshdlrBendersWorker: public SCIPconshdlrBenders {
 public:
 

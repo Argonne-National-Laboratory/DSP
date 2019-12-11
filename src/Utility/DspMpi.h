@@ -9,13 +9,13 @@
 #ifndef DSPUTILITY_H_
 #define DSPUTILITY_H_
 
-#include "mpi.h"
 
 #include "Utility/DspRtnCodes.h"
-
-/** COIN */
 #include "CoinHelperFunctions.hpp"
 #include "OsiCuts.hpp"
+
+#ifdef DSP_HAS_MPI
+#include "mpi.h"
 
 using namespace std;
 
@@ -111,5 +111,7 @@ DSP_RTN_CODE MPIscatterOsiCuts(
 DSP_RTN_CODE MPIbcastOsiCuts(
 		MPI::Intracomm comm,
 		OsiCuts * cuts);
+
+#endif /* DSP_HAS_MPI */
 
 #endif /* DSPUTILITY_H_ */

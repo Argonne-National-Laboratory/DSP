@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+// #define DSP_DEBUG
 
 #include "OsiCuts.hpp"
 
@@ -433,6 +433,10 @@ void SCIPconshdlrBenders::generateCuts(
 	/** aggregate cuts */
 	aggregateCuts(cutval, cutrhs, cuts);
 
+#ifdef DSP_DEBUG
+	printf("Generating cut at x:\n");
+	DspMessage::printArray(size, x);
+#endif
 	DSPdebug(cuts->printCuts());
 
 	END_TRY_CATCH(FREE_MEMORY)

@@ -138,6 +138,18 @@ void DspParams::initBoolParams()
 
 	/** static FIFO scheduling in the asynchronous DD; otherwise LIFO */
 	BoolParams_.createParam("DD/ASYNC/FIFO", true);
+
+	/** options for Dantzig-Wolfe decomposition */
+	BoolParams_.createParam("DW/SPLIT_VARS", false);
+	BoolParams_.createParam("DW/MASTER/PIPS", false);
+	BoolParams_.createParam("DW/MASTER/IPM", false);
+	BoolParams_.createParam("DW/MASTER/BRANCH_ROWS", false);
+	BoolParams_.createParam("DW/MASTER/REUSE_COLS", false);
+	BoolParams_.createParam("DW/TRUST_REGION", false);
+	BoolParams_.createParam("DW/HEURISTICS", true);
+	BoolParams_.createParam("DW/HEURISTICS/ROUNDING", false);
+	BoolParams_.createParam("DW/HEURISTICS/SMIP", true);
+	BoolParams_.createParam("DW/STRONG_BRANCH", false);
 }
 
 void DspParams::initIntParams()
@@ -145,6 +157,7 @@ void DspParams::initIntParams()
 	/** print level */
 	IntParams_.createParam("LOG_LEVEL", 1);
 	IntParams_.createParam("DD/SUB/LOG_LEVEL", 0);
+	IntParams_.createParam("DW/SUB/LOG_LEVEL", 0);
 
 	/** branch-and-cut node limit */
 	IntParams_.createParam("NODE_LIM", MAX_INT_NUM);
@@ -152,7 +165,7 @@ void DspParams::initIntParams()
 	/** number of cuts to the master per iteration */
 	IntParams_.createParam("BD/NUM_CUTS_PER_ITER", 1);
 
-	/** number of cores used in OpenMP library */
+	/** number of cores used in OpenMP library (Benders only) */
 	IntParams_.createParam("NUM_CORES", 1);
 
 	/** Benders cut priority (refer CONSHDLR_SEPAPRIORITY of SCIP constraint handler */
@@ -183,9 +196,11 @@ void DspParams::initIntParams()
 
 	/** evaluate upper bound */
 	IntParams_.createParam("DD/EVAL_UB", 1);
+	IntParams_.createParam("DW/EVAL_UB", 0);
 
 	/** maximum number of solutions to evaluate */
-	IntParams_.createParam("DD/MAX_EVAL_UB", 100);
+	IntParams_.createParam("DD/MAX_EVAL_UB", 1);
+	IntParams_.createParam("DW/MAX_EVAL_UB", 1);
 
 	/** maximum queue size for asynchronous one */
 	IntParams_.createParam("DD/MAX_QSIZE", 5);
@@ -194,13 +209,25 @@ void DspParams::initIntParams()
 	IntParams_.createParam("DD/MIN_PROCS", 1);
 
 	/** minimum number of processes to wait at the master */
-	IntParams_.createParam("SOLVER/MIP", CPLEX);
+	IntParams_.createParam("SOLVER/MIP", OsiCpx);
 
 	/** minimum number of processes to wait at the master */
-	IntParams_.createParam("SOLVER/QP", CPLEX);
+	IntParams_.createParam("SOLVER/QP", OsiCpx);
 
 	/** display frequency */
 	IntParams_.createParam("SCIP/DISPLAY_FREQ", 100);
+
+	IntParams_.createParam("ALPS/SEARCH_STRATEGY", 0);
+	IntParams_.createParam("ALPS/NODE_LIM", 1000000);
+	IntParams_.createParam("ALPS/NODE_LOG_INTERVAL", 1);
+
+	IntParams_.createParam("DW/MASTER/COL_AGE_LIM", 10);
+    IntParams_.createParam("DW/ITER_LIM", MAX_INT_NUM);
+    IntParams_.createParam("DW/HEURISTICS/TRIVIAL/ITER_LIM", MAX_INT_NUM);
+    IntParams_.createParam("DW/HEURISTICS/DIVE/ITER_LIM", MAX_INT_NUM);
+    IntParams_.createParam("DW/SUB/THREADS", 1);
+	IntParams_.createParam("DW/SUB/ADVIND", 0);
+	IntParams_.createParam("DW/BRANCH", 2);
 }
 
 void DspParams::initDblParams()
@@ -214,29 +241,49 @@ void DspParams::initDblParams()
 	/** wall clock limit */
 	DblParams_.createParam("DD/WALL_LIM", MAX_DBL_NUM);
 
-	/** initial trust region size */
+	/** TODO: is this wall clock limit? */
+	DblParams_.createParam("DW/TIME_LIM", MAX_DBL_NUM);
+
+	/** options for trust region */
 	DblParams_.createParam("DD/TR/SIZE", 0.1);
+	DblParams_.createParam("DW/TR/SIZE", 0.1);
+	DblParams_.createParam("DW/MIN_INCREASE", 1.0e-6);
+	DblParams_.createParam("DW/INIT_CENTER", 0.1);
 
 	/** stopping tolerance */
 	DblParams_.createParam("DD/STOP_TOL", 0.00001);
 
 	/** branch-and-bound gap tolerance */
 	DblParams_.createParam("MIP/GAP_TOL", 0.00001);
+	/** TODO: Is this option duplicate? */
+	DblParams_.createParam("DW/GAPTOL", 1.0e-4);
+	DblParams_.createParam("DW/SUB/GAPTOL", 0.0);
 
 	/** time limit */
 	DblParams_.createParam("MIP/TIME_LIM", 300);
+	/** TODO: Is this option duplicate? */
+	DblParams_.createParam("SCIP/TIME_LIM", 300);
+	/** TODO: Is this option duplicate? */
+	DblParams_.createParam("DW/SUB/TIME_LIM", 300);
 
 	/** LB-UB worker ratio */
 	DblParams_.createParam("DD/WORKER_RATIO", 0.8);
 
 	/** minimum wait time for the master to receive worker processes */
 	DblParams_.createParam("DD/ASYNC/MIN_WAIT_TIME", 5.0);
+
+	/** options for branch-and-bound search */
+	DblParams_.createParam("ALPS/TIME_LIM", MAX_DBL_NUM);
+	DblParams_.createParam("DW/HEURISTICS/TRIVIAL/TIME_LIM", MAX_DBL_NUM);
+	DblParams_.createParam("DW/HEURISTICS/DIVE/TIME_LIM", MAX_DBL_NUM);
 }
 
 void DspParams::initStrParams()
 {
 	/** prefix for output files */
 	StrParams_.createParam("OUTPUT/PREFIX", "dsp");
+	StrParams_.createParam("DW/LOGFILE/OBJS", "objtrack.csv");
+	StrParams_.createParam("VBC/FILE", "");
 }
 
 void DspParams::initBoolPtrParams()

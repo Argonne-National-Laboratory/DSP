@@ -13,6 +13,7 @@
 #include "Solver/Benders/BdWorker.h"
 #include "Solver/Benders/SCIPconshdlrBenders.h"
 
+/** A base class for the Benders master-worker framework */
 class BdMW: public BaseMasterWorker {
 
 public:
@@ -23,14 +24,22 @@ public:
 		MASTER_STOPPED
 	};
 
-	/** constructor */
+	/** A default constructor. */
 	BdMW(
 			DecModel *   model,  /**< model pointer */
 			DspParams *  par,    /**< parameters */
 			DspMessage * message /**< message pointer */);
 
-	/** destructor */
+	/** A copy constructor. */
+	BdMW(const BdMW& rhs);
+
+	/** A default destructor. */
 	virtual ~BdMW();
+
+	/** A clone function */
+	virtual BdMW* clone() const {
+		return new BdMW(*this);
+	}
 
 	/** initialize */
 	virtual DSP_RTN_CODE init() {return DSP_RTN_OK;}

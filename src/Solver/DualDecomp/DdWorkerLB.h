@@ -8,8 +8,10 @@
 #ifndef SRC_SOLVER_DUALDECOMP_DDWORKERLB_H_
 #define SRC_SOLVER_DUALDECOMP_DDWORKERLB_H_
 
-#include <Solver/DualDecomp/DdWorker.h>
+#include "Solver/DualDecomp/DdWorker.h"
+#include "Solver/DualDecomp/DdSub.h"
 
+/** A worker class for solving lower bounding subproblems. */
 class DdWorkerLB: public DdWorker {
 
 	friend class DdMWSerial;
@@ -19,26 +21,44 @@ class DdWorkerLB: public DdWorker {
 
 public:
 
-	/** constructor */
-	DdWorkerLB(DspParams * par, DecModel * model, DspMessage * message);
+	/** A default constructor. */
+	DdWorkerLB(
+			DecModel *   model,  /**< model pointer */
+			DspParams *  par,    /**< parameter pointer */
+			DspMessage * message /**< message pointer */);
 
-	/** destructor */
+	/** A copy constructor. */
+	DdWorkerLB(const DdWorkerLB& rhs);
+
+	/** A default destructor. */
 	virtual ~DdWorkerLB();
 
-	/** initialize */
+	/** A clone function */
+	virtual DdWorkerLB* clone() const {
+		return new DdWorkerLB(*this);
+	}
+
+	/** A virtual member for initializing worker */
 	virtual DSP_RTN_CODE init();
 
-	/** solve */
+	/** A virtual member for solving LB problem */
 	virtual DSP_RTN_CODE solve();
 
-	/** create problem */
-	virtual DSP_RTN_CODE createProblem(int nsubprobs, int* subindex);
+	/**@name Get functions */
+	//@{
 
 	/** get worker type */
 	virtual int getType() {return LB;}
 
 	/** get number of subproblems */
 	virtual int getNumSubprobs() {return subprobs_.size();}
+
+	//@}
+
+private:
+
+	/** A virtual member for creating LB problem */
+	virtual DSP_RTN_CODE createProblem(int nsubprobs, int* subindex);
 
 protected:
 

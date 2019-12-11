@@ -11,7 +11,6 @@
 DspDriver::DspDriver(DspParams * par, DecModel * model):
 	par_(par), model_(model),
 	status_(DSP_STAT_UNKNOWN),
-	primsol_(NULL), dualsol_(NULL),
 	primobj_(COIN_DBL_MAX), dualobj_(-COIN_DBL_MAX),
 	cputime_(0.0), walltime_(0.0), numIterations_(0), numNodes_(0)
 {

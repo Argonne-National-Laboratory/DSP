@@ -10,21 +10,21 @@
 #include "Solver/DualDecomp/DdMasterAtr.h"
 #include "SolverInterface/SolverInterfaceClp.h"
 
-#ifndef NO_CPX
-	#include "SolverInterface/SolverInterfaceCpx.h"
+#ifdef DSP_HAS_CPX
+#include "SolverInterface/SolverInterfaceCpx.h"
 #endif
 
-#ifndef NO_OOQP
-	#include "SolverInterface/SolverInterfaceOoqp.h"
-	#include "SolverInterface/OoqpEps.h"
+#ifdef DSP_HAS_OOQP
+#include "SolverInterface/OsiOoqpSolverInterface.hpp"
+#include "SolverInterface/OoqpEps.h"
 #endif
 
 DdMasterAtr::DdMasterAtr(
-		DspParams *  par,     /**< parameter pointer */
 		DecModel *   model,   /**< model pointer */
+		DspParams *  par,     /**< parameter pointer */
 		DspMessage * message, /**< message pointer */
 		int nworkers          /**< number of workers */):
-DdMasterTr(par, model, message),
+DdMasterTr(model, par, message),
 nworkers_(nworkers),
 is_updated_(false)
 {
@@ -36,6 +36,33 @@ is_updated_(false)
 	primsol_to_worker_ = new double * [nworkers_];
 
 	proved_optimality_ = new bool [nworkers_];
+}
+
+DdMasterAtr::DdMasterAtr(const DdMasterAtr& rhs) :
+DdMasterTr(rhs),
+nworkers_(rhs.nworkers_),
+worker_(rhs.worker_),
+solution_key_(rhs.solution_key_),
+nsubprobs_(rhs.nsubprobs_),
+subindex_(rhs.subindex_),
+subprimobj_(rhs.subprimobj_),
+subdualobj_(rhs.subdualobj_),
+subsolution_(rhs.subsolution_),
+is_updated_(rhs.is_updated_) {
+	/** number of cuts generated at the last iteration for each worker */
+	nlastcuts_ = new int [nworkers_];
+	CoinCopyN(rhs.nlastcuts_, nworkers_, nlastcuts_);
+
+	/** solution for each worker process */
+	primsol_to_worker_ = new double * [nworkers_];
+	for (int i = 0; i < nworkers_; ++i) {
+		primsol_to_worker_[i] = new double [nthetas_ + nlambdas_];
+		CoinCopyN(rhs.primsol_to_worker_[i], nthetas_+nlambdas_, primsol_to_worker_[i]);
+	}
+
+	/** indication of the proof of optimality */
+	proved_optimality_ = new bool [nworkers_];
+	CoinCopyN(rhs.proved_optimality_, nworkers_, proved_optimality_);
 }
 
 DdMasterAtr::~DdMasterAtr()
@@ -248,14 +275,14 @@ DSP_RTN_CODE DdMasterAtr::updateProblem(
 		message_->print(3, "\n");
 	}
 
-#ifndef NO_OOQP
+#ifdef DSP_HAS_OOQP
 	OoqpEps * ooqp = dynamic_cast<OoqpEps*>(si_);
 	if (ooqp)
 	{
 		if (ooqp->hasOoqpStatus_ && isSolved_)
 		{
 			DSPdebugMessage("bestprimobj %+e bestdualobj %+e\n", bestprimobj_, bestdualobj_);
-			double epsilon = (si_->getPrimalBound() - newdual + ooqp->getDualityGap()) / (1. + fabs(si_->getPrimalBound()));
+			double epsilon = (si_->getObjValue() - newdual + ooqp->getDualityGap()) / (1. + fabs(si_->getObjValue()));
 			if (epsilon > 1.) epsilon = 1.;
 			ooqp->setOoqpStatus(epsilon, -bestprimobj_, -bestdualobj_);
 		}
@@ -430,7 +457,7 @@ int DdMasterAtr::addCuts(bool possiblyDel)
 	if (nCutsAdded > 0)
 	{
 		//cuts.printCuts();
-		si_->addCuts(cuts);
+		si_->applyCuts(cuts);
 		is_updated_ = true;
 		CoinFillN(proved_optimality_, nworkers_, false);
 	}

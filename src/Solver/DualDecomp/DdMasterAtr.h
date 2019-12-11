@@ -8,28 +8,37 @@
 #ifndef SRC_SOLVER_DUALDECOMP_DDMASTERATR_H_
 #define SRC_SOLVER_DUALDECOMP_DDMASTERATR_H_
 
-#include <Solver/DualDecomp/DdMasterTr.h>
+#include "Solver/DualDecomp/DdMasterTr.h"
 
+/** A class for implementing the asynchronous trust-region master solver. */
 class DdMasterAtr: public DdMasterTr {
 
 	friend class DdMWAsync;
 
 public:
 
-	/** constructor */
+	/** A default constructor. */
 	DdMasterAtr(
-			DspParams *  par,     /**< parameter pointer */
 			DecModel *   model,   /**< model pointer */
+			DspParams *  par,     /**< parameter pointer */
 			DspMessage * message, /**< message pointer */
 			int nworkers          /**< number of workers */);
 
-	/** desctructor */
+	/** A copy constructor. */
+	DdMasterAtr(const DdMasterAtr& rhs);
+
+	/** A default desctructor. */
 	virtual ~DdMasterAtr();
 
-	/** initialize */
+	/** A clone function */
+	virtual DdMasterAtr* clone() const {
+		return new DdMasterAtr(*this);
+	}
+
+	/** A virtual member for initializing solver. */
 	virtual DSP_RTN_CODE init();
 
-	/** solve */
+	/** A virtual member for solving problem. */
 	virtual DSP_RTN_CODE solve();
 
 	/** update problem */

@@ -10,6 +10,8 @@
 /** Dsp */
 #include "Model/DetBlock.h"
 
+using namespace std;
+
 /**
  * A block model is a deterministic model that consists of a block of the original deterministic model. A purpose
  * of this is to represent general decomposable structure, including Benders decomposition and Dantzig-Wolfe
@@ -59,7 +61,7 @@
  *                  X X
  */
 
-typedef std::map<int,DetBlock*> Blocks;
+typedef map<int,DetBlock*> Blocks;
 
 class BlkModel {
 
@@ -98,6 +100,8 @@ public:
     /** get number of integers */
     int getNumIntegers() {return nints_full_;}
 
+    vector<int> getCoupledSubproblemIndices(int j) {return coupled_subproblems_indices_[j];}
+
 protected:
 
     Blocks blocks_; /**< model blocks */
@@ -108,6 +112,8 @@ protected:
 
     bool primal_block_angular_; /**< Is the full matrix a primal block angular matrix? */
     bool dual_block_angular_;   /**< Is the full matrix a dual block angular matrix? */
+
+    vector<vector<int>> coupled_subproblems_indices_;
 
 };
 

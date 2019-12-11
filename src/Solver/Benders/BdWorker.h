@@ -8,35 +8,51 @@
 #ifndef SRC_SOLVER_BENDERS_BDWORKER_H_
 #define SRC_SOLVER_BENDERS_BDWORKER_H_
 
-#include "Solver/DecSolver.h"
+#include "OsiCuts.hpp"
 #include "Solver/Benders/BdSub.h"
+#include "Model/DecModel.h"
+#include "Utility/DspMessage.h"
 
-class BdWorker: public DecSolver {
+/** A base class for Benders worker. This solves subproblem. */
+class BdWorker {
 public:
 
-	/** constructor */
-	BdWorker(DspParams * par, DecModel * model, DspMessage * message);
+	/** A default constructor. */
+	BdWorker(
+		DecModel *   model,  /**< model pointer */
+		DspParams *  par,    /**< parameters */
+		DspMessage * message /**< message pointer */);
 
-	/** destructor */
+	/** A copy constructor. */
+	BdWorker(const BdWorker& rhs);
+
+	/** A default destructor. */
 	virtual ~BdWorker();
 
-	/** initialize */
-	virtual DSP_RTN_CODE init();
+	/** A clone function. */
+	virtual BdWorker* clone() const {
+		return new BdWorker(*this);
+	}
 
-	/** solve */
-	virtual DSP_RTN_CODE solve();
-
-public:
+	/** generate cuts */
+	DSP_RTN_CODE generateCuts(int nx, int naux, const double* x, OsiCuts& cs);
 
 	/** get BdSub pointer */
 	virtual BdSub * getBdSubPtr() {return bdsub_;}
 
 protected:
+	/** aggregate cuts, if necessary, based on the number of auxiliary variables
+	 * introduced to the master.
+	 *
+	 * This may be derived to communicate cuts in MPI parallel implementation.
+	 */
+	virtual DSP_RTN_CODE collectCuts(int nx, int naux, double** cut, double* rhs, OsiCuts& cs);
 
-	/** create problem */
-	virtual DSP_RTN_CODE createProblem();
+protected:
 
-private:
+	DecModel * model_;     /**< DecModel object */
+	DspParams * par_;      /**< parameters */
+	DspMessage * message_; /**< message */
 
 	BdSub * bdsub_; /**< benders subproblem */
 

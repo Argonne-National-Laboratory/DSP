@@ -6,7 +6,7 @@
  */
 
 #include "Solver/DualDecomp/DdMasterDsb.h"
-#include "SolverInterface/SolverInterfaceOoqp.h"
+#include "SolverInterface/OsiOoqpSolverInterface.h"
 
 DdMasterDsb::DdMasterDsb(
 		DspParams *  par,     /**< parameter pointer */
@@ -63,32 +63,29 @@ DSP_RTN_CODE DdMasterDsb::solve()
 
 	bool resolve = false;
 	int tmpcnt = 0;
-	SolverInterfaceOoqp * ooqp = dynamic_cast<SolverInterfaceOoqp*>(si_);
 	double cputime  = CoinCpuTime();
 	double walltime = CoinGetTimeOfDay();
+	int status = 0;
+	double objval = 0.0;
 
 	while (1)
 	{
 		resolve = false;
 
 		/** solve */
-		si_->solve();
+		si_->resolve();
 
 		/** mark as solved */
 		isSolved_ = true;
 
-		switch(si_->getStatus())
-		{
-		case DSP_STAT_OPTIMAL:
-		{
-			int ncols = si_->getNumCols() + ooqp->dynCols_->size();
-
+		if (si_->isProvenOptimal()) {
+			status = DSP_STAT_OPTIMAL;
 			/** TODO realloc */
 			FREE_ARRAY_PTR(primsol_);
-			primsol_ = new double [ncols];
+			primsol_ = new double [si_->getNumCols()];
 
 			/** copy solution */
-			CoinCopyN(si_->getSolution(), ncols, primsol_);
+			CoinCopyN(si_->getColSolution(), si_->getNumCols(), primsol_);
 #ifdef DSP_DEBUG
 			DSPdebugMessage("Master solution:");
 			for (int j = 0; j < ncols; ++j)
@@ -142,10 +139,10 @@ DSP_RTN_CODE DdMasterDsb::solve()
 			printf("\n");
 #endif
 
-			double objval = si_->getPrimalBound();
+			objval = si_->getObjValue();
 			for (int i = 0; i < model_->getNumCouplingRows(); ++i)
 				objval += pow(lambda_[i] - prox_[i], 2.0) / (2.0 * tau_);
-			DSPdebugMessage("Original objective of the bundle problem: %e\n", si_->getPrimalBound());
+			DSPdebugMessage("Original objective of the bundle problem: %e\n", objval);
 			DSPdebugMessage("Manually calculated objective value without proximal term: %e\n", objval);
 			primobj_ = objval;
 
@@ -153,17 +150,23 @@ DSP_RTN_CODE DdMasterDsb::solve()
 			phi_t_ = primobj_ - valueAtProx_;
 
 			/** 2-norm of subgradient */
-			gg_ = (primobj_ - si_->getPrimalBound()) * 2 * tau_;
+			gg_ = (primobj_ - objval) * 2 * tau_;
+		} else {
+			/** get status */
+			if (si_->isIterationLimitReached())
+				status = DSP_STAT_LIM_ITERorTIME;
+			else if (si_->isProvenPrimalInfeasible())
+				status = DSP_STAT_PRIM_INFEASIBLE;
+			else if (si_->isProvenDualInfeasible())
+				status = DSP_STAT_DUAL_INFEASIBLE;
+			/** zero solution */
+			CoinZeroN(primsol_, si_->getNumCols());
 
-			break;
-		}
-		default:
-		{
 			upperbound_ = min(level_, upperbound_);
 			phi_l_ = max(eps_opt_, (1 - alpha_l_) * (upperbound_ - valueAtProx_));
 			level_ = valueAtProx_ + phi_l_;
 			message_->print(3, "Updates upperbound %e phi_l %e level %e\n", upperbound_, phi_l_, level_);
-			message_->print(2, "  Warning: solution status %d\n", si_->getStatus());
+			message_->print(2, "  Warning: solution status %d\n", status);
 			message_->print(2, "           UB %e phi_l %e level %e\n", upperbound_, phi_l_, level_);
 
 			/** update linear objective coefficient */
@@ -172,9 +175,6 @@ DSP_RTN_CODE DdMasterDsb::solve()
 			/** mark as resolve */
 			if (upperbound_ - valueAtProx_ >= eps_opt_)
 				resolve = true;
-
-			break;
-		}
 		}
 
 		if (!resolve || tmpcnt > 5)
@@ -182,11 +182,11 @@ DSP_RTN_CODE DdMasterDsb::solve()
 	}
 
 	/** update statistics */
-	s_statuses_.push_back(si_->getStatus());
-	s_primobjs_.push_back(si_->getPrimalBound());
-	s_dualobjs_.push_back(si_->getDualBound());
+	s_statuses_.push_back(status);
+	s_primobjs_.push_back(objval);
+	s_dualobjs_.push_back(objval);
 	double * s_primsol = new double [si_->getNumCols()];
-	CoinCopyN(si_->getSolution(), si_->getNumCols(), s_primsol);
+	CoinCopyN(primsol_, si_->getNumCols(), s_primsol);
 	s_primsols_.push_back(s_primsol);
 	s_primsol = NULL;
 	s_cputimes_.push_back(CoinCpuTime() - cputime);
@@ -376,15 +376,15 @@ DSP_RTN_CODE DdMasterDsb::createProblem()
 	switch (par_->getIntParam("DD/MASTER_ALGO"))
 	{
 	case DSBM:
-		si_ = new SolverInterfaceOoqp(par_);
-		si_->setPrintLevel(par_->getIntParam("LOG_LEVEL"));
+		si_ = new OsiOoqpSolverInterface();
+		si_->messageHandler()->setLogLevel(par_->getIntParam("LOG_LEVEL"));
 		break;
 	default:
 		break;
 	}
 
 	/** copy problem data */
-	si_->loadProblem(mat, clbd, cubd, obj, ctype, rlbd, rubd);
+	si_->loadProblem(*mat, clbd, cubd, obj, ctype, rlbd, rubd);
 
 	if (model_->nonanticipativity())
 	{
@@ -679,7 +679,7 @@ DSP_RTN_CODE DdMasterDsb::applyLevelChange()
 	CoinZeroN(obj, si_->getNumCols());
 	obj[1] = -level_;
 
-	si_->setObjCoef(obj);
+	si_->setObjective(obj);
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 

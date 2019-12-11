@@ -7,8 +7,8 @@
 
 //#define DSP_DEBUG
 
-#include <Solver/DualDecomp/DdMWPara.h>
 #include "Model/TssModel.h"
+#include "DdMWPara.h"
 
 DdMWPara::DdMWPara(
 		MPI_Comm     comm,   /**< MPI communicator */
@@ -35,14 +35,49 @@ cgub_comm_rank_(-1),
 cgub_comm_root_(-1),
 nsubprobs_(NULL),
 subprob_indices_(NULL),
-subprob_displs_(NULL)
-{
+subprob_displs_(NULL) {
 	MPI_Comm_rank(comm, &comm_rank_);
 	MPI_Comm_size(comm, &comm_size_);
 }
 
-DdMWPara::~DdMWPara()
-{
+DdMWPara::DdMWPara(const DdMWPara& rhs) :
+DdMW(rhs),
+comm_(rhs.comm_),
+comm_rank_(rhs.comm_rank_),
+comm_size_(rhs.comm_size_),
+sync_(rhs.sync_),
+subcomm_(rhs.subcomm_),
+subcomm_group_(rhs.subcomm_group_),
+subcomm_size_(rhs.subcomm_size_),
+subcomm_rank_(rhs.subcomm_rank_),
+lb_comm_(rhs.lb_comm_),
+lb_group_(rhs.lb_group_),
+lb_comm_size_(rhs.lb_comm_size_),
+lb_comm_rank_(rhs.lb_comm_rank_),
+lb_comm_root_(rhs.lb_comm_root_),
+has_cgub_comm_(rhs.has_cgub_comm_),
+cgub_comm_(rhs.cgub_comm_),
+cgub_group_(rhs.cgub_group_),
+cgub_comm_size_(rhs.cgub_comm_size_),
+cgub_comm_rank_(rhs.cgub_comm_rank_),
+cgub_comm_root_(rhs.cgub_comm_root_) {
+	// copy number of subproblems for each proc
+	nsubprobs_ = new int [comm_size_];
+	CoinCopyN(rhs.nsubprobs_, comm_size_, nsubprobs_);
+
+	// copy subproblem indices for each proc
+	int sum_of_nsubprobs = 0;
+	for (int i = 0; i < comm_size_; ++i)
+		sum_of_nsubprobs += nsubprobs_[i];
+	subprob_indices_ = new int [sum_of_nsubprobs];
+	CoinCopyN(rhs.subprob_indices_, sum_of_nsubprobs, subprob_indices_);
+
+	// copy subproblem index locations for each proc
+	subprob_displs_ = new int [comm_size_];
+	CoinCopyN(rhs.subprob_displs_, comm_size_, subprob_displs_);
+}
+
+DdMWPara::~DdMWPara() {
 	FREE_ARRAY_PTR(nsubprobs_);
 	FREE_ARRAY_PTR(subprob_indices_);
 	FREE_ARRAY_PTR(subprob_displs_);
@@ -251,7 +286,7 @@ DSP_RTN_CODE DdMWPara::generateBendersCuts(
 
 	int ret = DSP_STAT_MW_CONTINUE;
 
-#ifndef NO_SCIP
+#ifdef DSP_HAS_SCIP
 	if (solutions.size() == 0) return ret;
 	if (parFeasCuts_ < 0 && parOptCuts_ < 0) return ret;
 	if (model_->isStochastic() == false)

@@ -17,12 +17,18 @@ model_(model),
 par_(par),
 message_(message),
 master_(NULL),
-worker_(NULL)
-{
+worker_(NULL) {}
+
+BdMW::BdMW(const BdMW& rhs) :
+BaseMasterWorker(rhs),
+model_(rhs.model_),
+par_(rhs.par_),
+message_(rhs.message_) {
+	master_ = rhs.master_->clone();
+	worker_ = rhs.worker_->clone();
 }
 
-BdMW::~BdMW()
-{
+BdMW::~BdMW() {
 	model_   = NULL;
 	par_     = NULL;
 	message_ = NULL;

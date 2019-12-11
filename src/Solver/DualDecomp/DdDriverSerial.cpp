@@ -5,18 +5,23 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+// #define DSP_DEBUG
 
 #include "DdDriverSerial.h"
-#include "Solver/DualDecomp/DdMWSerial.h"
+#include "DdMWSerial.h"
 
-DdDriverSerial::DdDriverSerial(DspParams* par, DecModel* model):
-DdDriver(par,model)
-{
-}
+DdDriverSerial::DdDriverSerial(
+		DecModel *   model,  /**< model pointer */
+		DspParams *  par,    /**< parameters */
+		DspMessage * message /**< message pointer */):
+DdDriver(model, par, message) {}
 
-DSP_RTN_CODE DdDriverSerial::init()
-{
+DdDriverSerial::DdDriverSerial(const DdDriverSerial& rhs) :
+DdDriver(rhs) {}
+
+DdDriverSerial::~DdDriverSerial() {}
+
+DSP_RTN_CODE DdDriverSerial::init() {
 	BGN_TRY_CATCH
 
 	/** create Master-Worker framework */
@@ -54,10 +59,12 @@ DSP_RTN_CODE DdDriverSerial::run()
 		status_ = master->getStatus();
 		primobj_ = master->getBestPrimalObjective();
 		dualobj_ = master->getBestDualObjective();
-		primsol_ = new double [model_->getFullModelNumCols()];
-		dualsol_ = new double [model_->getNumCouplingRows()];
-		CoinCopyN(master->getBestPrimalSolution(), model_->getFullModelNumCols(), primsol_);
-		CoinCopyN(master->getBestDualSolution(), model_->getNumCouplingRows(), dualsol_);
+		bestprimobj_ = primobj_;
+		bestdualobj_ = dualobj_;
+		primsol_.resize(model_->getFullModelNumCols());
+		dualsol_.resize(model_->getNumCouplingRows());
+		CoinCopyN(master->getBestPrimalSolution(), model_->getFullModelNumCols(), &primsol_[0]);
+		CoinCopyN(master->getBestDualSolution(), model_->getNumCouplingRows(), &dualsol_[0]);
 		numNodes_ = master->getSiPtr()->getNumNodes();
 		numIterations_ = master->getSiPtr()->getIterationCount();
 	}

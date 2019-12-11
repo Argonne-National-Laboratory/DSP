@@ -12,17 +12,20 @@
 //#define DSP_DEBUG2
 
 #include <vector>
-#include "CoinHelperFunctions.hpp"
+/** Coin */
+#include "OsiSolverInterface.hpp"
+/** Dsp */
+#include "Utility/DspRtnCodes.h"
 #include "Utility/DspMessage.h"
 
 using namespace std;
 
-bool myduplicatetolerance(double i, double j) {
+inline bool myduplicatetolerance(double i, double j) {
 	return (fabs(i-j) < 1.0e-8);
 }
 
 /** check whether solution is duplicate or not */
-bool duplicateVector(
+inline bool duplicateVector(
 		CoinPackedVector * vec,
 		vector<CoinPackedVector*> vecs)
 {
@@ -34,7 +37,8 @@ bool duplicateVector(
 #endif
 	/** number of saved solutions */
 	int num = vecs.size();
-	DSPdebugMessage2("number of vectors %d\n", num);
+	// printf("number of vectors %d\n", num);
+	
 	for (int i = num - 1; i >= 0; --i)
 	{
 #ifdef DSP_DEBUG2
@@ -52,6 +56,26 @@ bool duplicateVector(
 	}
 
 	return dup;
+}
+
+/** convert coin-status to dsp-status */
+inline void convertCoinToDspStatus(const OsiSolverInterface* si, int& status) {
+	if (si->isProvenOptimal())
+		status = DSP_STAT_OPTIMAL;
+	else if (si->isProvenPrimalInfeasible())
+		status = DSP_STAT_PRIM_INFEASIBLE;
+	else if (si->isProvenDualInfeasible())
+		status = DSP_STAT_DUAL_INFEASIBLE;
+	else if (si->isPrimalObjectiveLimitReached())
+		status = DSP_STAT_LIM_PRIM_OBJ;
+	else if (si->isDualObjectiveLimitReached())
+		status = DSP_STAT_LIM_DUAL_OBJ;
+	else if (si->isIterationLimitReached())
+		status = DSP_STAT_LIM_ITERorTIME;
+	else if (si->isAbandoned())
+		status = DSP_STAT_ABORT;
+	else
+		status = DSP_STAT_UNKNOWN;
 }
 
 

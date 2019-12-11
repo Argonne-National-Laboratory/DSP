@@ -41,6 +41,12 @@ public:
 			double      mu,
 			int         level);
 
+	void setStatus(double epsilon, double lowerBound, double upperBound) {
+		epsilon_ = epsilon;
+		lowerBound_ = lowerBound;
+		upperBound_ = upperBound;
+	}
+
 private:
 
 	double epsilon_;

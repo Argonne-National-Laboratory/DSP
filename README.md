@@ -1,10 +1,9 @@
 # DSP
-
 [![DOI](https://zenodo.org/badge/26612881.svg)](https://zenodo.org/badge/latestdoi/26612881)
 
-DSP is an open-source and parallel package that implements decomposition methods for **stochastic mixed-integer programming (SMIP)** problems. These are structured optimization problems considering uncertain scenario realizations s with probabilities p_s in the following form:
+DSP is an open-source and parallel package that implements decomposition methods for **structured mixed-integer programming** problems. These are structured optimization problems in the following form:
 
-        minimize   c^T x + \sum_{s=1}^S p_s q_s^T y_s
+        minimize   c^T x + \sum_{s=1}^S q_s^T y_s
         subject to   A x                              = b
                    T_s x +                    W_s y_s = h_s for s = 1, .., S
                    some x, y_s are integers
@@ -12,7 +11,7 @@ DSP is an open-source and parallel package that implements decomposition methods
 where x and y_s are decision variable vectors with dimensions n_1 and n_2, respectively, A, T_s and W_s are matrices of dimensions m_1 by n_1, m_2 by n_1 and m_2 by n_2, respectively, and c, q_s, b, and h_s are vectors of appropriate dimensions.
 
 DSP provides **parallel** implementations for the following decomposition methods:
-* Dual decomposition (with subgradient method and several bundle methods)
+* Dual decomposition (with subgradient method and several bundle methods) with **branch-and-bound** procedure
 * Benders decomposition
 
 The methods can be run on computing clusters and multi-core processors.
@@ -39,7 +38,7 @@ git submodule update --init --recursive
 
 ### Stand-alone binary
 
-DSP will be compiled as a binary file ``runDsp`` that can read ``SMPS`` files and solve the problems.
+DSP will be compiled as a binary file ``runDsp`` that can read ``SMPS``, ``MPS`` with ``DEC`` files and solve the problems. See more about ``MPS`` with ``DEC`` file format in http://www.or.rwth-aachen.de/gcg/doc/reader__dec_8h.html and also example in https://github.com/Argonne-National-Laboratory/DSP/tree/dev-coin/examples/mps-dec
 
 ### Julia Interface
 
@@ -55,7 +54,7 @@ Pkg.update();
 ```julia
     Pkg.add("JuMP");
 ```
-* The [Dsp.jl](https://github.com/kibaekkim/Dsp.jl) package provides an interface to ``JuMP.jl``. DSPsolver.jl can be installed by the Julia command
+* The [Dsp.jl](https://github.com/kibaekkim/Dsp.jl) package provides an interface to ``JuMP.jl``. Dsp.jl can be installed by the Julia command
 ```julia
     Pkg.clone("https://github.com/kibaekkim/Dsp.jl.git");
 ```
@@ -76,7 +75,12 @@ DSP has been developed and is maintained by:
 * [Victor M. Zavala](http://zavalab.engr.wisc.edu/), Department of Chemical and Biological Engineering, University of Wisconsin-Madison.
 
 ## Publications
+<<<<<<< HEAD
 * Kibaek Kim and Victor M. Zavala. "[Algorithmic innovations and software for the dual decomposition method applied to stochastic mixed-integer programs](http://www.optimization-online.org/DB_FILE/2015/06/4960.pdf)" Mathematical Programming Computation (accepted), 2017
+=======
+* Kibaek Kim, Audun Botterud, and Feng Qiu. "[Temporal Decomposition for Improved Unit Commitment in Power System Production Cost Modeling](http://ieeexplore.ieee.org/document/8316946/)" IEEE Transactions on Power Systems, 2018
+* Kibaek Kim and Victor M. Zavala. "[Algorithmic innovations and software for the dual decomposition method applied to stochastic mixed-integer programs](https://link.springer.com/article/10.1007/s12532-017-0128-z)" Mathematical Programming Computation, 2017
+>>>>>>> origin/dsp-bb
 * Kibaek Kim and Victor M. Zavala. "[Large-Scale Stochastic Mixed-Integer Programming Algorithms for Power Generation Scheduling](http://dx.doi.org/10.1007/978-3-319-28752-2_18)" Alternative Energy Sources and Technologies, 2016
 * Kibaek Kim, Fan Yang, Victor M. Zavala, and Andrew A. Chien. "[Data Centers as Dispatchable Loads to Harness Stranded Power](http://dx.doi.org/10.1109/TSTE.2016.2593607)" IEEE Transactions on Sustainable Energy, 2016
 

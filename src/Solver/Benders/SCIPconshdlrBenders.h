@@ -8,14 +8,13 @@
 #ifndef SCIPCONSHDLRBENDERS_H_
 #define SCIPCONSHDLRBENDERS_H_
 
-/** SCIP */
 #include "scip/def.h"
 #include "objscip/objconshdlr.h"
-
-/** DSP */
 #include "Model/DecModel.h"
 #include "Solver/Benders/BdSub.h"
+#include "OsiCuts.hpp"
 
+/** A base class for implementing Benders constraint handler */
 class SCIPconshdlrBenders : public scip::ObjConshdlr
 {
 public:

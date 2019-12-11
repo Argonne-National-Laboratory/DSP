@@ -5,11 +5,11 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+// #define DSP_DEBUG
 
 #include "Solver/Benders/BdMWSerial.h"
 #include "Solver/Benders/SCIPconshdlrBenders.h"
-#include "SolverInterface/SolverInterfaceScip.h"
+#include "SolverInterface/OsiScipSolverInterface.hpp"
 
 BdMWSerial::BdMWSerial(
 		DecModel *   model,  /**< model pointer */
@@ -33,14 +33,13 @@ DSP_RTN_CODE BdMWSerial::init()
 		par_->setIntPtrParam("ARR_PROC_IDX", s, s);
 
 	/** create master */
-	master_ = new BdMaster(par_, model_, message_);
+	master_ = new BdMaster(model_, par_, message_);
+
 	/** initialize master */
 	master_->init();
 
-	/** create LB worker */
-	worker_ = new BdWorker(par_, model_, message_);
-	/** initialize master */
-	worker_->init();
+	/** create Benders worker */
+	worker_ = new BdWorker(model_, par_, message_);
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -72,8 +71,7 @@ DSP_RTN_CODE BdMWSerial::finalize()
 	master_->finalize();
 	FREE_PTR(master_);
 
-	/** finalize and free worker */
-	worker_->finalize();
+	/** free worker */
 	FREE_PTR(worker_);
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
@@ -88,14 +86,14 @@ SCIPconshdlrBenders* BdMWSerial::constraintHandler()
 	BGN_TRY_CATCH
 
 	/** get solver interface */
-	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(master_->getSiPtr());
+	OsiScipSolverInterface * si = dynamic_cast<OsiScipSolverInterface*>(master_->getSiPtr());
 
 	/** Benders constraint handler */
-	conshdlr = new SCIPconshdlrBenders(si->getSCIP(), "Benders", par_->getIntParam("BD/CUT_PRIORITY"));
+	conshdlr = new SCIPconshdlrBenders(si->getScip(), "Benders", par_->getIntParam("BD/CUT_PRIORITY"));
 	conshdlr->setDecModel(model_);
 	conshdlr->setBdSub(worker_->getBdSubPtr());
 	conshdlr->setOriginalVariables(si->getNumCols(),
-			si->getSCIPvars(), par_->getIntParam("BD/NUM_CUTS_PER_ITER"));
+			si->getScipVars(), par_->getIntParam("BD/NUM_CUTS_PER_ITER"));
 
 	END_TRY_CATCH_RTN(;,NULL)
 
