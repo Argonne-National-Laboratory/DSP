@@ -1,6 +1,7 @@
 [submodule "extra/CoinUtils"]
 	path = extra/CoinUtils
 url=https://github.com/coin-or/CoinUtils.git
+branch = stable/2.11
 [submodule "extra/Osi"]
 	path = extra/Osi
 url=https://github.com/kibaekkim/Osi.new.git
