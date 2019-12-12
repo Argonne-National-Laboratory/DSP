@@ -14,7 +14,7 @@ find_library(SCIPLIB  scip  PATHS ${SCIP_LIB_DIR})
 
 set(EXTRA_DIR      "${CMAKE_SOURCE_DIR}/extra")
 set(COINUTILS_DIR  "${EXTRA_DIR}/CoinUtils")
-set(OSI_DIR        "${EXTRA_DIR}/Osi.new")
+set(OSI_DIR        "${EXTRA_DIR}/Osi")
 set(CLP_DIR        "${EXTRA_DIR}/Clp")
 set(SMI_DIR        "${EXTRA_DIR}/Smi")
 set(COIN_INC_DIR   "${DEPEND_DIR}/include/coin")
