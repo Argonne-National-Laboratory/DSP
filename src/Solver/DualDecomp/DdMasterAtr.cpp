@@ -8,10 +8,10 @@
 //#define DSP_DEBUG
 
 #include "Solver/DualDecomp/DdMasterAtr.h"
-#include "SolverInterface/SolverInterfaceClp.h"
+#include "OsiClpSolverInterface.hpp"
 
 #ifdef DSP_HAS_CPX
-#include "SolverInterface/SolverInterfaceCpx.h"
+#include "OsiCpxSolverInterface.hpp"
 #endif
 
 #ifdef DSP_HAS_OOQP

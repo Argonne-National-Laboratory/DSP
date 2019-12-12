@@ -10,11 +10,12 @@
 #include "Solver/DualDecomp/DdWorkerUB.h"
 
 #ifdef DSP_HAS_CPX
-#include "SolverInterface/SolverInterfaceCpx.h"
+#include "cplex.h"
+#include "OsiCpxSolverInterface.hpp"
 #endif
 
 #ifdef DSP_HAS_SCIP
-#include "SolverInterface/SolverInterfaceScip.h"
+#include "SolverInterface/OsiScipSolverInterface.hpp"
 #include "Solver/DualDecomp/SCIPconshdlrBendersDd.h"
 #include "SolverInterface/SCIPbranchruleLB.h"
 #endif
