@@ -17,3 +17,7 @@ url=https://github.com/kibaekkim/CHiPPS-ALPS.git
 [submodule "extra/Bcps"]
 	path = extra/Bcps
 url=https://github.com/kibaekkim/CHiPPS-BiCePS.git
+[submodule "extra/Clp"]
+	path = extra/Clp
+	url = https://github.com/coin-or/Clp.git
+	branch = stable/1.17
