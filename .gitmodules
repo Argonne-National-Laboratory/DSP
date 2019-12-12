@@ -3,7 +3,8 @@
 url=https://github.com/coin-or/CoinUtils.git
 [submodule "extra/Osi"]
 	path = extra/Osi
-url=https://github.com/kibaekkim/Osi.git
+url=https://github.com/kibaekkim/Osi.new.git
+branch = stable/dsp
 [submodule "extra/Smi"]
 	path = extra/Smi
 url=https://github.com/kibaekkim/Smi.git
