@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.5)
 
 # Should use GNU compilers for unix-type OS, including Mac and CygWin
 if(UNIX)
@@ -39,13 +39,15 @@ if(APPLE)
 	set(CMAKE_MACOSX_RPATH OFF)
 endif()
 
+if (MPI_CXX_FOUND)
+	include_directories(${MPI_CXX_INCLUDE_PATH})
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MPI_CXX_COMPILE_FLAGS} -DDSP_HAS_MPI -DOMPI_IGNORE_CXX_SEEK")
+endif()
+
 ##################################################
 # Add include directories
 ##################################################
 include_directories(src)
-if (MPI_CXX_FOUND)
-	include_directories(${MPI_CXX_INCLUDE_PATH})
-endif()
 
 ##################################################
 # Add subdirectory for external packages
@@ -54,15 +56,11 @@ add_subdirectory(extra)
 include_directories("${DEPEND_DIR}/include/coin")
 set(DSP_LIBS
 	${DEPEND_DIR}/lib/libSmi.a 
-	${DEPEND_DIR}/lib/libClp.a 
-	${DEPEND_DIR}/lib/libOsiClp.a 
 	${DEPEND_DIR}/lib/libOsi.a 
-	${DEPEND_DIR}/lib/libCoinUtils.a 
+	${DEPEND_DIR}/lib/libOsiClp.a 
+	${DEPEND_DIR}/lib/libClp.a 
 	${DEPEND_DIR}/lib/libAlps.a
-	gfortran
-	${ZLIB_LIBRARIES}
-	${BZIP2_LIBRARIES}
-	-ldl
+	${DEPEND_DIR}/lib/libCoinUtils.a 
 )
 
 ##################################################
@@ -70,7 +68,6 @@ set(DSP_LIBS
 ##################################################
 
 if(MPI_CXX_FOUND)
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MPI_CXX_COMPILE_FLAGS} -DDSP_HAS_MPI -DOMPI_IGNORE_CXX_SEEK")
 	set(DSP_LIBS ${DSP_LIBS} ${MPI_CXX_LIBRARIES})
 endif()
 
@@ -94,7 +91,7 @@ if(CPLEXLIB)
     set(DSP_LIBS ${DSP_LIBS}
         ${DEPEND_DIR}/lib/libOsiCpx.a
         ${CPLEX_LIB_DIR}/libcplex.a
-        -ldl)
+        -lm -lpthread -ldl)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDSP_HAS_CPX")
 endif(CPLEXLIB)
 
@@ -112,6 +109,13 @@ else(SCIPLIB)
 	message(${Blue} "SCIP is required for Benders decomposition.")
 	message(${Blue} "Benders decomposition is disabled with SCIP library.")
 endif(SCIPLIB)
+
+set(DSP_LIBS ${DSP_LIBS}
+	${ZLIB_LIBRARIES}
+	${BZIP2_LIBRARIES}
+	-ldl
+	gfortran
+)
 
 ##################################################
 # Add subdirectory for the main source code
@@ -179,8 +183,6 @@ add_test(NAME dw_sslp_15_45_5 COMMAND test_dw ${CMAKE_SOURCE_DIR}/examples/smps/
 # add_executable(runDsp dsp.cpp src/DspCInterface.cpp)
 
 if (MPI_CXX_FOUND)
-	set(DSP_LIBS ${DSP_LIBS} ${MPI_CXX_LIBRARIES})
-
 	add_executable(test_dd_mpi
 		test/test_dd_mpi.cpp
 		${BASE_OBJS}
