@@ -8,3 +8,5 @@ Build
 ma27-1.0.0.tar.gz
 scipoptsuite-3.1.1.tgz
 build_master
+build/*
+build_merge/*
