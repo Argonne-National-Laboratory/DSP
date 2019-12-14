@@ -7,16 +7,7 @@
 
 #include "Model/TssModel.h"
 #include "Solver/Deterministic/DeDriver.h"
-#include "OsiClpSolverInterface.hpp"
-
-#ifdef DSP_HAS_CPX
-#include "cplex.h"
-#include "OsiCpxSolverInterface.hpp"
-#endif
-
-#ifdef DSP_HAS_SCIP
-#include "SolverInterface/OsiScipSolverInterface.hpp"
-#endif
+#include "SolverInterface/DspOsi.h"
 
 DeDriver::DeDriver(
 		DecModel *   model,  /**< model pointer */
@@ -168,7 +159,6 @@ DSP_RTN_CODE DeDriver::run()
 	walltime_ = CoinGetTimeOfDay() - walltime_;
 
 	/** get solutions */
-	status_ = getStatus();
 	if (status_ == DSP_STAT_OPTIMAL ||
 		status_ == DSP_STAT_STOPPED_TIME ||
 		status_ == DSP_STAT_STOPPED_NODE ||

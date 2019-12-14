@@ -21,12 +21,12 @@ int main(int argc, char* argv[])
     {
         DspApiEnv * env = new DspApiEnv;
         env->model_ = new DecTssModel;
+        env->par_->setIntParam("DD/ITER_LIM", 3);
 
         TssModel * tss = dynamic_cast<TssModel*>(env->model_);
         tss->readSmps(argv[1]);
         
         env->solver_ = new DdDriverSerial(env->model_, env->par_, env->message_);
-        env->par_->setDblParam("DD/WALL_LIM", 10);
         env->solver_->init();
         dynamic_cast<DdDriverSerial*>(env->solver_)->run();
         env->solver_->finalize();

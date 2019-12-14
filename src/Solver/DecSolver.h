@@ -20,14 +20,8 @@
 #include "Model/DecModel.h"
 #include "TreeSearch/DspBranchObj.h"
 #include "Utility/DspMpi.h"
-
-#ifdef DSP_HAS_CPX
-#include "OsiCpxSolverInterface.hpp"
-#endif
-
-#ifdef DSP_HAS_SCIP
-#include "SolverInterface/OsiScipSolverInterface.hpp"
-#endif
+#include "Utility/DspUtility.h"
+#include "SolverInterface/DspOsi.h"
 
 /**
  * Abstract class for a decomposition solver implementation.
@@ -136,10 +130,7 @@ public:
 	virtual int getNumNodes() {return numNodes_;}
 
 	/** get status */
-	virtual DSP_RTN_CODE getStatus();
-
-	/** get status */
-	virtual DSP_RTN_CODE getStatus(OsiSolverInterface* si);
+	virtual DSP_RTN_CODE getStatus() {return status_;}
 
 	//@}
 

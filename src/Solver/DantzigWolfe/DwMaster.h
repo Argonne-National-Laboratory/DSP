@@ -66,8 +66,6 @@ public:
     /** switch to phase 2 */
     DSP_RTN_CODE switchToPhase2();
 
-    virtual DSP_RTN_CODE getStatus() {return status_;}
-
     /** get best primal solution (in original space) found during iteration */
     virtual const double * getBestPrimalSolutionOrig() {return &bestprimsol_orig_[0];}
 

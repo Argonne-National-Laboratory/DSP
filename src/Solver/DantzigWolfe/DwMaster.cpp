@@ -4,10 +4,7 @@
 
 // #define DSP_DEBUG
 
-#ifdef DSP_HAS_CPX
-#include "cplex.h"
-#include "OsiCpxSolverInterface.hpp"
-#endif
+#include "SolverInterface/DspOsi.h"
 #include "Model/TssModel.h"
 //#include "SolverInterface/OoqpEps.h"
 #include "Solver/DantzigWolfe/DwMaster.h"
@@ -591,7 +588,7 @@ DSP_RTN_CODE DwMaster::solveMaster() {
 	/** resolve */
 	DSPdebugMessage("solve master problem (nrows %d, ncols %d).\n", si_->getNumRows(), si_->getNumCols());
 	si_->resolve();
-	status_ = DecSolver::getStatus(si_);
+	convertOsiToDspStatus(si_, status_);
 #if 0
 	if (status_ == DSP_STAT_ABORT && useBarrier_) {
 		message_->print(1, "Barrier solver detected numerical issues. Changed to simplex solver.\n");
@@ -604,7 +601,7 @@ DSP_RTN_CODE DwMaster::solveMaster() {
 		stime = CoinGetTimeOfDay();
 		si_->resolve();
 		t_master_ += CoinGetTimeOfDay() - stime;
-		convertCoinToDspStatus(si_, status_);
+		convertOsiToDspStatus(si_, status_);
 	}
 #endif
 
@@ -1053,8 +1050,10 @@ bool DwMaster::terminationTest() {
 
 	bool term = false;
 
+	int status;
 	if (phase_ == 1) {
-		if (DecSolver::getStatus(si_) == DSP_STAT_OPTIMAL && primobj_ < feastol_) {
+		convertOsiToDspStatus(si_, status);
+		if (status == DSP_STAT_OPTIMAL && primobj_ < feastol_) {
 			status_ = DSP_STAT_FEASIBLE;
 			DSPdebugMessage("Phase 1 found a feasible solution! %e < %e\n", si_->getObjValue(), feastol_);
 			term = true;

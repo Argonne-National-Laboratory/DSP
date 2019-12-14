@@ -11,7 +11,7 @@
 #include "Solver/DualDecomp/DdDriverMpi.h"
 #include "test_utils.hpp"
 
-MPI_Comm comm = MPI_COMM_WORLD;
+const MPI_Comm comm = MPI_COMM_WORLD;
 
 void distribute_procs(int nsubprobs, std::vector<int>& proc_idx_set) {
     int comm_rank, comm_size;
@@ -45,6 +45,7 @@ int main(int argc, char* argv[])
         MPI_Init(&argc, &argv);
         MPI_Comm_rank(comm, &comm_rank);
         MPI_Comm_size(comm, &comm_size);
+        printf("comm_size %d, comm_rank %d\n", comm_size, comm_rank);
 
         std::vector<int> proc_idx_set;
 
@@ -56,7 +57,7 @@ int main(int argc, char* argv[])
 
         /** assign processes */
         distribute_procs(env->model_->getNumSubproblems(), proc_idx_set);
-        env->par_->setIntPtrParamSize("ARR_PROC_IDX", comm_size);
+        env->par_->setIntPtrParamSize("ARR_PROC_IDX", (int) proc_idx_set.size());
         for (int i = 0; i < proc_idx_set.size(); ++i)
             env->par_->setIntPtrParam("ARR_PROC_IDX", i, proc_idx_set[i]);
         

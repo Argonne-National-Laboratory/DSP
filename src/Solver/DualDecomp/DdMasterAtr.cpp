@@ -8,16 +8,7 @@
 //#define DSP_DEBUG
 
 #include "Solver/DualDecomp/DdMasterAtr.h"
-#include "OsiClpSolverInterface.hpp"
-
-#ifdef DSP_HAS_CPX
-#include "OsiCpxSolverInterface.hpp"
-#endif
-
-#ifdef DSP_HAS_OOQP
-#include "SolverInterface/OsiOoqpSolverInterface.hpp"
-#include "SolverInterface/OoqpEps.h"
-#endif
+#include "SolverInterface/DspOsi.h"
 
 DdMasterAtr::DdMasterAtr(
 		DecModel *   model,   /**< model pointer */

@@ -9,7 +9,7 @@
 
 #include "Solver/Benders/BdMWSerial.h"
 #include "Solver/Benders/SCIPconshdlrBenders.h"
-#include "SolverInterface/OsiScipSolverInterface.hpp"
+#include "SolverInterface/DspOsi.h"
 
 BdMWSerial::BdMWSerial(
 		DecModel *   model,  /**< model pointer */

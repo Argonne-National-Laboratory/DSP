@@ -7,10 +7,7 @@
 
 // #define DSP_DEBUG
 
-#ifdef DSP_HAS_CPX
-#include "cplex.h"
-#include "OsiCpxSolverInterface.hpp"
-#endif
+#include "SolverInterface/DspOsi.h"
 
 #ifdef HAS_CBC
 #include "OsiCbcSolverInterface.hpp"
@@ -236,7 +233,7 @@ DSP_RTN_CODE DwWorker::generateCols(
 		/** store solution status */
 		int status;
 		int cpxstat = CPXgetstat(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
-		convertCoinToDspStatus(si_[s], status);
+		convertOsiToDspStatus(si_[s], status);
 		/** FIXME: Osi does not know this. */
 		if (cpxstat == CPXMIP_INFEASIBLE) {
 			message_->print(2, "  Subproblem %d infeasible.\n", sind);
@@ -402,7 +399,7 @@ DSP_RTN_CODE DwWorker::generateColsByFix(
 		/** store solution status */
 		int status;
 		int cpxstat = CPXgetstat(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
-		convertCoinToDspStatus(si_[s], status);
+		convertOsiToDspStatus(si_[s], status);
 		/** FIXME: Osi does not know this. */
 		if (cpxstat == CPXMIP_INFEASIBLE) {
 			message_->print(3, "  Upper bounding subproblem %d infeasible.\n", sind);
@@ -629,7 +626,7 @@ DSP_RTN_CODE DwWorker::solveSubproblems() {
 			/** solve */
 			si_[s]->branchAndBound();
 #ifdef DSP_DEBUG
-			convertCoinToDspStatus(si_[s], status);
+			convertOsiToDspStatus(si_[s], status);
 			DSPdebugMessage("MILP subproblem %d status %d\n", parProcIdx_[s], status);
 #endif
 			if (si_[s]->isProvenDualInfeasible()) {
@@ -644,7 +641,7 @@ DSP_RTN_CODE DwWorker::solveSubproblems() {
 			/** solve LP relaxation */
 			si_[s]->resolve();
 #ifdef DSP_DEBUG
-			convertCoinToDspStatus(si_[s], status);
+			convertOsiToDspStatus(si_[s], status);
 			DSPdebugMessage("LP relaxation subproblem %d status %d\n", parProcIdx_[s], status);
 #endif
 		}

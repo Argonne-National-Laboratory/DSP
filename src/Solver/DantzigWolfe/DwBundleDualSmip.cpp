@@ -6,12 +6,7 @@
  */
 
 //#define DSP_DEBUG
-
-#ifdef DSP_HAS_CPX
-#include "cplex.h"
-#include "OsiCpxSolverInterface.hpp"
-#endif
-
+#include "SolverInterface/DspOsi.h"
 #include "Solver/DantzigWolfe/DwBundleDualSmip.h"
 #include "Utility/DspUtility.h"
 

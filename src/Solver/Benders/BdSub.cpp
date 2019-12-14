@@ -9,12 +9,11 @@
 
 #include "Utility/DspMessage.h"
 #include "Solver/Benders/BdSub.h"
+#include "SolverInterface/DspOsi.h"
 
 #ifdef DSP_HAS_CPX
-#include "OsiCpxSolverInterface.hpp"
 #define COIN_OSI OsiCpxSolverInterface
 #else
-#include "OsiClpSolverInterface.hpp"
 #define COIN_OSI OsiClpSolverInterface
 #endif
 

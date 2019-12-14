@@ -9,14 +9,7 @@
 #include <fstream>
 #include <iomanip>
 #include "Solver/DecSolver.h"
-
-#ifdef DSP_HAS_CPX
-#include "OsiCpxSolverInterface.hpp"
-#endif
-
-#ifdef DSP_HAS_SCIP
-#include "SolverInterface/OsiScipSolverInterface.hpp"
-#endif
+#include "SolverInterface/DspOsi.h"
 
 DecSolver::DecSolver(
 			DecModel *   model,   /**< model pointer */
@@ -73,33 +66,6 @@ DecSolver::~DecSolver() {
 	message_ = NULL;
 	par_ = NULL;
 	model_ = NULL;
-}
-
-/** solution status */
-DSP_RTN_CODE DecSolver::getStatus()
-{
-	return getStatus(si_);
-}
-
-/** solution status */
-DSP_RTN_CODE DecSolver::getStatus(OsiSolverInterface* si)
-{
-	int status = DSP_STAT_UNKNOWN;
-	if (si->isProvenOptimal())
-		status = DSP_STAT_OPTIMAL;
-	else if (si->isProvenDualInfeasible())
-		status = DSP_STAT_DUAL_INFEASIBLE;
-	else if (si->isProvenPrimalInfeasible())
-		status = DSP_STAT_PRIM_INFEASIBLE;
-	else if (si->isPrimalObjectiveLimitReached())
-		status = DSP_STAT_LIM_PRIM_OBJ;
-	else if (si->isDualObjectiveLimitReached())
-		status = DSP_STAT_LIM_DUAL_OBJ;
-	else if (si->isIterationLimitReached())
-		status = DSP_STAT_LIM_ITERorTIME;
-	else if (si->isAbandoned())
-		status = DSP_STAT_STOPPED_UNKNOWN;
-	return status;
 }
 
 /** write output to a file */
