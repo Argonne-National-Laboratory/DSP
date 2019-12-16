@@ -30,7 +30,9 @@ time_remains_(COIN_DBL_MAX),
 tic_(0.0),
 numIterations_(0),
 numNodes_(0),
-iterlim_(COIN_INT_MAX) {}
+iterlim_(COIN_INT_MAX) {
+	message_->logLevel_ = par_->getIntParam("LOG_LEVEL");
+}
 
 DecSolver::DecSolver(const DecSolver&rhs) :
 model_(rhs.model_),
