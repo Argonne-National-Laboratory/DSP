@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+// #define DSP_DEBUG
 
 /** Coin */
 #include "CoinHelperFunctions.hpp"
@@ -45,7 +45,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 	double parentLb = isRoot ? -ALPS_OBJ_MAX : getParent()->getQuality();
 	double gap = (gUb - parentLb) / (fabs(gUb) + 1e-10);
 	double relTol = par->getDblParam("DW/GAPTOL");
-	//printf("Solving node %d, parentObjValue %e, gUb %e, gLb %e, gap %.2f\n", index_, parentObjValue, gUb, gLb, gap);
+	DSPdebugMessage("Solving node %d, parentLb %e, gUb %e, gLb %e, gap %.2f\n", index_, parentLb, gUb, gLb, gap);
 
 	/** fathom if the relative gap is small enough */
 	if (gap < relTol) {
@@ -94,9 +94,15 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 	switch (model->getStatus()) {
 	case DSP_STAT_OPTIMAL:
 	case DSP_STAT_FEASIBLE:
+	case DSP_STAT_LIM_DUAL_OBJ:
 	case DSP_STAT_LIM_ITERorTIME: {
 		double curUb = model->getPrimalObjective();
 		double curLb = model->getDualObjective();
+
+		if (isRoot) {
+			gLb = curLb;
+			model->setBestDualObjective(gLb);
+		}
 
 //#define WRITE_PRIM_SOL
 #ifdef WRITE_PRIM_SOL
@@ -170,12 +176,6 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 		//message->print(1, "The current node is infeasible.\n");
 		setStatus(AlpsNodeStatusFathomed);
 		wirteLog("infeasible", desc);
-		break;
-	case DSP_STAT_LIM_DUAL_OBJ:
-		quality_ = model->getDualObjective();
-		//message->print(1, "The current node is fathomed.\n");
-		setStatus(AlpsNodeStatusFathomed);
-		wirteLog("fathomed", desc);
 		break;
 	default:
 		message->print(1, "Unexpected solution status: %d.\n", model->getStatus());
