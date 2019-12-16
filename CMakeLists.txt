@@ -205,6 +205,18 @@ if (MPI_CXX_FOUND)
 	add_test(NAME bd_mpi_dcap233_200 COMMAND mpiexec -np 3 ./test_bd_mpi ${CMAKE_SOURCE_DIR}/examples/smps/dcap233_200 882.6151821832)
 	add_test(NAME bd_mpi_sslp_5_25_50 COMMAND mpiexec -np 3 ./test_bd_mpi ${CMAKE_SOURCE_DIR}/examples/smps/sslp_5_25_50 -121.6)
 	add_test(NAME bd_mpi_sslp_15_45_5 COMMAND mpiexec -np 3 ./test_bd_mpi ${CMAKE_SOURCE_DIR}/examples/smps/sslp_15_45_5 -265.5686127082)
+
+	add_executable(test_dw_mpi
+		test/test_dw_mpi.cpp
+		${BASE_OBJS}
+		$<TARGET_OBJECTS:DspDw>
+		$<TARGET_OBJECTS:DspTs>)
+	add_dependencies(test_dw_mpi Alps Clp)
+	target_link_libraries(test_dw_mpi ${DSP_LIBS})
+	add_test(NAME dw_mpi_farmer COMMAND mpiexec -np 3 ./test_dw_mpi ${CMAKE_SOURCE_DIR}/examples/smps/farmer -108389.9994043)
+	add_test(NAME dw_mpi_dcap233_200 COMMAND mpiexec -np 3 ./test_dw_mpi ${CMAKE_SOURCE_DIR}/examples/smps/dcap233_200 1834.6550481)
+	add_test(NAME dw_mpi_sslp_5_25_50 COMMAND mpiexec -np 3 ./test_dw_mpi ${CMAKE_SOURCE_DIR}/examples/smps/sslp_5_25_50 -121.6)
+	add_test(NAME dw_mpi_sslp_15_45_5 COMMAND mpiexec -np 3 ./test_dw_mpi ${CMAKE_SOURCE_DIR}/examples/smps/sslp_15_45_5 -262.4)
 endif(MPI_CXX_FOUND)
 
 # if (APPLE)
