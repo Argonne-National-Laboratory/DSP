@@ -428,6 +428,8 @@ void SCIPconshdlrBenders::generateCuts(
 	cutrhs = new double [nsubprobs];
 
 	/** generate cuts */
+	// printf("x:\n");
+	// DspMessage::printArray(nvars_, x);
 	bdsub_->generateCuts(size, x, cutval, cutrhs);
 
 	/** aggregate cuts */
@@ -438,6 +440,7 @@ void SCIPconshdlrBenders::generateCuts(
 	DspMessage::printArray(size, x);
 #endif
 	DSPdebug(cuts->printCuts());
+	// cuts->printCuts();
 
 	END_TRY_CATCH(FREE_MEMORY)
 

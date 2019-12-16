@@ -61,6 +61,10 @@ DSP_RTN_CODE BdDriverMpi::run()
 
 	if (comm_rank_ == 0)
 	{
+		/** set objective bounds */
+		DSPdebugMessage("setObjectiveBounds\n");
+		mw_->getMasterPtr()->setObjectiveBounds(primobj_, dualobj_);
+
 		/** set initial solutions */
 		if (initsols_.size() > 0)
 			DSP_RTN_CHECK_THROW(mw_->getMasterPtr()->setSolutions(initsols_));
@@ -103,49 +107,38 @@ DSP_RTN_CODE BdDriverMpi::findLowerBound() {
 
     BGN_TRY_CATCH
 
-        /** set parameters */
-        int iterlim = par_->getIntParam("DD/ITER_LIM");
-        int fcut = par_->getIntParam("DD/FEAS_CUTS");
-        int ocut = par_->getIntParam("DD/OPT_CUTS");
-        int evalub = par_->getIntParam("DD/EVAL_UB");
-        int initalgo = par_->getIntParam("BD/INIT_LB_ALGO");
-        bool relax_integrality[2];
-        if (initalgo == SEPARATE_LP) {
-        	for (int i = 0; i < 2; ++i) {
-				relax_integrality[i] = par_->getBoolPtrParam("RELAX_INTEGRALITY")[i];
-				par_->setBoolPtrParam("RELAX_INTEGRALITY", i, true);
-        	}
-        }
-        par_->setIntParam("DD/ITER_LIM", par_->getIntParam("BD/DD/ITER_LIM"));
-        par_->setIntParam("DD/FEAS_CUTS", -1);
-        par_->setIntParam("DD/OPT_CUTS", -1);
-        par_->setIntParam("DD/EVAL_UB", -1);
+	/** set parameters */
+	int iterlim = par_->getIntParam("DD/ITER_LIM");
+	int fcut = par_->getIntParam("DD/FEAS_CUTS");
+	int ocut = par_->getIntParam("DD/OPT_CUTS");
+	int evalub = par_->getIntParam("DD/EVAL_UB");
+	par_->setIntParam("DD/ITER_LIM", par_->getIntParam("BD/DD/ITER_LIM"));
+	par_->setIntParam("DD/FEAS_CUTS", -1);
+	par_->setIntParam("DD/OPT_CUTS", -1);
+	par_->setIntParam("DD/EVAL_UB", -1);
+	par_->setBoolPtrParam("RELAX_INTEGRALITY", 1, true);
 
-        message_->print(1, "Finding a good lower bound using Dual Decomposition...\n");
+	message_->print(1, "Finding a good lower bound using Dual Decomposition...\n");
 
-        /** use dual decomposition */
-        dd = new DdDriverMpi(model_, par_, message_, comm_);
-        DSP_RTN_CHECK_THROW(dd->init());
-        DSP_RTN_CHECK_THROW(dd->run());
-        DSP_RTN_CHECK_THROW(dd->finalize());
+	/** use dual decomposition */
+	dd = new DdDriverMpi(model_, par_, message_, comm_);
+	DSP_RTN_CHECK_THROW(dd->init());
+	DSP_RTN_CHECK_THROW(dd->run());
+	DSP_RTN_CHECK_THROW(dd->finalize());
 
-        /** set objective bounds */
-        primobj_ = dd->getPrimalObjective();
-        dualobj_ = dd->getDualObjective();
-        message_->print(1, "Best lower bound %e, time elapsed: %.2f sec.\n", dualobj_, dd->getWallTime());
-        DSPdebugMessage("Rank %d: primobj %+e, dualobj %+e\n", comm_rank_, primobj_, dualobj_);
+	/** set objective bounds */
+	primobj_ = dd->getPrimalObjective();
+	dualobj_ = dd->getDualObjective();
+	message_->print(1, "Best lower bound %e, time elapsed: %.2f sec.\n", dualobj_, dd->getWallTime());
+	DSPdebugMessage("Rank %d: primobj %+e, dualobj %+e\n", comm_rank_, primobj_, dualobj_);
 
-        /** TODO copy primal solution */
+	/** TODO copy primal solution */
 
-        /** rollback parameters */
-        if (initalgo == SEPARATE_LP) {
-        	for (int i = 0; i < 2; ++i)
-				par_->setBoolPtrParam("RELAX_INTEGRALITY", i, relax_integrality[i]);
-        }
-        par_->setIntParam("DD/ITER_LIM", iterlim);
-        par_->setIntParam("DD/FEAS_CUTS", fcut);
-        par_->setIntParam("DD/OPT_CUTS", ocut);
-        par_->setIntParam("DD/EVAL_UB", evalub);
+	/** rollback parameters */
+	par_->setIntParam("DD/ITER_LIM", iterlim);
+	par_->setIntParam("DD/FEAS_CUTS", fcut);
+	par_->setIntParam("DD/OPT_CUTS", ocut);
+	par_->setIntParam("DD/EVAL_UB", evalub);
 
     END_TRY_CATCH_RTN(FREE_MEMORY, DSP_RTN_ERR)
 
@@ -298,6 +291,8 @@ DSP_RTN_CODE BdDriverMpi::collectSolution()
         MPI_Bcast(&dualobj_, 1, MPI_DOUBLE, 0, comm_);
         MPI_Bcast(&primsol_[0], model_->getFullModelNumCols(), MPI_DOUBLE, 0, comm_);
 	}
+	bestprimobj_ = primobj_;
+	bestdualobj_ = dualobj_;
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 

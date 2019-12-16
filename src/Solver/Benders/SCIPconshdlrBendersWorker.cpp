@@ -104,6 +104,8 @@ void SCIPconshdlrBendersWorker::generateCuts(
 
 	/** Send solutions to the workers */
 	MPI_Bcast(x, nvars_, MPI_DOUBLE, 0, comm_);
+	// printf("x:\n");
+	// DspMessage::printArray(nvars_, x);
 
 	/** Collect cut generation stutus */
 	MPI_Gatherv(NULL, 0, MPI_INT, cut_status_, recvcounts_, displs_, MPI_INT, 0, comm_);
@@ -126,6 +128,7 @@ void SCIPconshdlrBendersWorker::generateCuts(
 	/** aggregate cuts */
 	aggregateCuts(cutval, cutrhs, cuts);
 	DSPdebug(cuts->printCuts());
+	// cuts->printCuts();
 
 	END_TRY_CATCH(FREE_MEMORY)
 
@@ -143,6 +146,7 @@ void SCIPconshdlrBendersWorker::aggregateCuts(
 	FREE_2D_ARRAY_PTR(naux_, aggval)     \
 	FREE_ARRAY_PTR(aggrhs)
 
+	int nsubprobs = model_->getNumSubproblems();
 	bool isInfeasible = false; /**< indicating whether there is primal infeasibility or not */
 	double ** aggval = NULL;   /** aggregated dense cut coefficients */
 	double *  aggrhs = NULL;   /** aggregated cut rhs */
@@ -160,7 +164,7 @@ void SCIPconshdlrBendersWorker::aggregateCuts(
 	aggrhs = new double [naux_];
 	CoinZeroN(aggrhs, naux_);
 
-	for (int i = 0; i < model_->getNumSubproblems(); ++i)
+	for (int i = nsubprobs - 1; i >= 0; --i)
 	{
 		/** generate feasibility cut */
 		if (cut_status_[i] == DSP_STAT_PRIM_INFEASIBLE)
@@ -179,6 +183,10 @@ void SCIPconshdlrBendersWorker::aggregateCuts(
 			isInfeasible = true;
 			break;
 		}
+		
+		/** When some subproblems were primal infeasible, the rest are not solved. Then, just skip them. */
+		if (cut_status_[i] == DSP_STAT_NOT_SOLVED)
+			break;
 
 		if (cut_status_[i] != DSP_STAT_OPTIMAL)
 		{

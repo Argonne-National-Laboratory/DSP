@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+// #define DSP_DEBUG
 
 #include "Utility/DspMessage.h"
 #include "Solver/Benders/BdSub.h"
@@ -240,9 +240,10 @@ void BdSub::solveOneSubproblem(
 	/** loop over CGLP rows to update row bounds */
 	for (int i = nrows - 1; i >= 0; --i)
 	{
-		if (rlbd[i] > -COIN_DBL_MAX)
+		DSPdebugMessage("s %d, i %d, rlbd %e, rubd %e, Tx %e\n", s, i, rlbd[i], rubd[i], Tx[s][i]);
+		if (rlbd[i] > -1.0e+20)
 			cglp->setRowLower(i, rlbd[i] - Tx[s][i]);
-		if (rubd[i] < COIN_DBL_MAX)
+		if (rubd[i] < 1.0e+20)
 			cglp->setRowUpper(i, rubd[i] - Tx[s][i]);
 	}
 
@@ -310,13 +311,11 @@ void BdSub::solveOneSubproblem(
 	DSPdebugMessage("  objective value %E\n", cglp->getObjValue());
 
 	/** solution status */
-	if (cglp->isProvenOptimal() ||
-		cglp->isIterationLimitReached())
-	{
-		/** save solution status */
-		cgl->status_[s] = DSP_STAT_OPTIMAL;
-		DSPdebugMessage("  solution status: optimal\n");
+	convertOsiToDspStatus(cglp, cgl->status_[s]);
+	DSPdebugMessage("  solution status: %d\n", cgl->status_[s]);
 
+	if (cgl->status_[s] == DSP_STAT_OPTIMAL)
+	{
 		/** TODO: add parametric cuts */
 
 		/** get objective value */
@@ -343,30 +342,8 @@ void BdSub::solveOneSubproblem(
 		/** calculate cut elements */
 		calculateCutElements(cglp->getNumRows(), cglp->getNumCols(),
 				cgl->mat_mp_[s], rlbd, rubd, clbd, cubd, pi, rc, cutval[s], cutrhs[s]);
-	}
-	else if (cglp->isProvenPrimalInfeasible())
-	{
-		/** save solution status */
-		cgl->status_[s] = DSP_STAT_PRIM_INFEASIBLE;
-		DSPdebugMessage("  solution status: primal infeasible\n");
-	}
-	else if (cglp->isProvenDualInfeasible())
-	{
-		/** save solution status */
-		cgl->status_[s] = DSP_STAT_DUAL_INFEASIBLE;
-		DSPdebugMessage("  solution status: dual infeasible\n");
-	}
-	else if (cglp->isAbandoned() ||
-			 cglp->isPrimalObjectiveLimitReached() ||
-			 cglp->isDualObjectiveLimitReached())
-	{
-		cgl->status_[s] = DSP_STAT_STOPPED_UNKNOWN;
-		DSPdebugMessage("  solution status: stopped unknown\n");
-	}
-	else
-	{
-		cgl->status_[s] = DSP_STAT_UNKNOWN;
-		DSPdebugMessage("  solution status: unknown\n");
+	} else {
+		cglp->writeMps("subprob");
 	}
 
 	END_TRY_CATCH(FREE_MEMORY)
