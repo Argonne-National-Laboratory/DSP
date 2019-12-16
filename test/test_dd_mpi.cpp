@@ -45,9 +45,6 @@ int main(int argc, char* argv[])
         MPI_Init(&argc, &argv);
         MPI_Comm_rank(comm, &comm_rank);
         MPI_Comm_size(comm, &comm_size);
-        printf("comm_size %d, comm_rank %d\n", comm_size, comm_rank);
-
-        std::vector<int> proc_idx_set;
 
         DspApiEnv * env = new DspApiEnv;
         env->model_ = new DecTssModel;
@@ -56,6 +53,7 @@ int main(int argc, char* argv[])
         tss->readSmps(argv[1]);
 
         /** assign processes */
+        std::vector<int> proc_idx_set;
         distribute_procs(env->model_->getNumSubproblems(), proc_idx_set);
         env->par_->setIntPtrParamSize("ARR_PROC_IDX", (int) proc_idx_set.size());
         for (int i = 0; i < proc_idx_set.size(); ++i)
