@@ -143,8 +143,8 @@ DSP_RTN_CODE DwWorker::createSubproblems() {
 		si_[s]->messageHandler()->setLogLevel(par_->getIntParam("DW/SUB/LOG_LEVEL"));
 
 		/** set parameters */
-		setGapTolerance(par_->getDblParam("DW/SUB/GAPTOL"));
-		setTimeLimit(par_->getDblParam("DW/SUB/TIME_LIM"));
+		si_[s]->setMipRelGap(par_->getDblParam("DW/SUB/GAPTOL"));
+		si_[s]->setTimeLimit(par_->getDblParam("DW/SUB/TIME_LIM"));
 		OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_[s]);
 		if (cpx) {
 			if (nintegers > 0)
@@ -224,7 +224,6 @@ DSP_RTN_CODE DwWorker::generateCols(
 		tss = dynamic_cast<TssModel*>(model_);
 
 	for (int s = 0; s < parProcIdxSize_; ++s) {
-		OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_[s]);
 		int sind = parProcIdx_[s];
 
 		/** add subproblem index */
@@ -232,22 +231,12 @@ DSP_RTN_CODE DwWorker::generateCols(
 
 		/** store solution status */
 		int status;
-		int cpxstat = CPXgetstat(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
 		convertOsiToDspStatus(si_[s], status);
-		/** FIXME: Osi does not know this. */
-		if (cpxstat == CPXMIP_INFEASIBLE) {
-			message_->print(2, "  Subproblem %d infeasible.\n", sind);
-			status = DSP_STAT_PRIM_INFEASIBLE;
-		} else if (cpxstat == CPXMIP_INForUNBD) {
-			message_->print(2, "  Subproblem %d unbounded.\n", sind);
-			status = DSP_STAT_DUAL_INFEASIBLE;
-		} else if (cpxstat == CPXMIP_TIME_LIM_FEAS) {
-			message_->print(2, "  Subproblem %d terminated due to time limit.\n", sind);
-			status = DSP_STAT_LIM_ITERorTIME;
+		if (status == DSP_STAT_STOPPED_TIME)
 			num_timelim_stops_[s]++;
-		} else if (status != DSP_STAT_UNKNOWN) {
+		else  if (status != DSP_STAT_UNKNOWN) {
 			num_timelim_stops_[s] = 0;
-			setTimeLimit(par_->getDblParam("DW/SUB/TIME_LIM"));
+			si_[s]->setTimeLimit(par_->getDblParam("DW/SUB/TIME_LIM"));
 		}
 
 		DSPdebugMessage("sind %d status %d\n", sind, status);
@@ -294,7 +283,7 @@ DSP_RTN_CODE DwWorker::generateCols(
 
 				/** subproblem objective value */
 				if (si_[s]->getNumIntegers() > 0)
-					CPXgetbestobjval(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), &objval);
+					objval = si_[s]->getBestDualBound();
 				else
 					objval = si_[s]->getObjValue();
 					
@@ -390,7 +379,6 @@ DSP_RTN_CODE DwWorker::generateColsByFix(
 	sols.reserve(parProcIdxSize_);
 
 	for (int s = 0; s < parProcIdxSize_; ++s) {
-		OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_[s]);
 		int sind = parProcIdx_[s];
 
 		/** add subproblem index */
@@ -398,22 +386,12 @@ DSP_RTN_CODE DwWorker::generateColsByFix(
 
 		/** store solution status */
 		int status;
-		int cpxstat = CPXgetstat(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
 		convertOsiToDspStatus(si_[s], status);
-		/** FIXME: Osi does not know this. */
-		if (cpxstat == CPXMIP_INFEASIBLE) {
-			message_->print(3, "  Upper bounding subproblem %d infeasible.\n", sind);
-			status = DSP_STAT_PRIM_INFEASIBLE;
-		} else if (cpxstat == CPXMIP_INForUNBD) {
-			message_->print(3, "  Upper bounding subproblem %d unbounded.\n", sind);
-			status = DSP_STAT_DUAL_INFEASIBLE;
-		} else if (cpxstat == CPXMIP_TIME_LIM_FEAS) {
-			message_->print(3, "  Upper bounding subproblem %d terminated due to time limit.\n", sind);
-			status = DSP_STAT_LIM_ITERorTIME;
+		if (status == DSP_STAT_STOPPED_TIME) {
 			num_timelim_stops_[s]++;
 		} else if (status != DSP_STAT_UNKNOWN) {
 			num_timelim_stops_[s] = 0;
-			setTimeLimit(par_->getDblParam("DW/SUB/TIME_LIM"));
+			si_[s]->setTimeLimit(par_->getDblParam("DW/SUB/TIME_LIM"));
 		}
 
 		DSPdebugMessage("sind %d status %d\n", sind, status);
@@ -428,7 +406,7 @@ DSP_RTN_CODE DwWorker::generateColsByFix(
 
 				/** subproblem objective value */
 				if (si_[s]->getNumIntegers())
-					CPXgetbestobjval(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), &objval);
+					objval = si_[s]->getBestDualBound();
 				else
 					objval = si_[s]->getObjValue();
 				DSPdebugMessage("Subprob %d: objval %e\n", sind, objval);
@@ -452,7 +430,7 @@ DSP_RTN_CODE DwWorker::generateColsByFix(
 			sols.push_back(sol);
 			sol = NULL;
 		} else {
-			message_->print(0, "Unexpected subproblem status (block: %d, status: %d)\n", sind, status);
+			message_->print(1, "Unexpected subproblem status (block: %d, status: %d)\n", sind, status);
 			/** store dummies */
 			objs.push_back(0.0);
 			sols.push_back(new CoinPackedVector);
@@ -621,7 +599,7 @@ DSP_RTN_CODE DwWorker::solveSubproblems() {
 
 			/** increase time limit */
 			if (max_stops > 0)
-				setTimeLimit(timlim);
+				si_[s]->setTimeLimit(timlim);
 
 			/** solve */
 			si_[s]->branchAndBound();
