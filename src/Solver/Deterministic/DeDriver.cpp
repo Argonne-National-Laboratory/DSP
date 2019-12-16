@@ -159,6 +159,7 @@ DSP_RTN_CODE DeDriver::run()
 	walltime_ = CoinGetTimeOfDay() - walltime_;
 
 	/** get solutions */
+	convertOsiToDspStatus(si_, status_);
 	if (status_ == DSP_STAT_OPTIMAL ||
 		status_ == DSP_STAT_STOPPED_TIME ||
 		status_ == DSP_STAT_STOPPED_NODE ||
