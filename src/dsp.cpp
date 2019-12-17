@@ -6,15 +6,12 @@
  */
 
 #include <iostream>
-#ifdef DSP_HAS_MPI
-#include <mpi.h>
-#endif
-#include <DspCInterface.h>
+#include "DspCInterface.h"
 
 const char* gDspUsage = 
 	"Not enough or invalid arguments, please try again.\n\n"
-	"Usage: --algo <de,bd,dd> --smps <smps file> [--soln <solution file prefix> --param <param file>]\n\n"
-	"       --algo\tchoice of algorithms. de: deterministic equivalent form; bd: Benders decomposition; dd: dual decomposition\n"
+	"Usage: --algo <de,bd,dd,dw> --smps <smps file> [--soln <solution file prefix> --param <param file>]\n\n"
+	"       --algo\tchoice of algorithms. de: deterministic equivalent form; bd: Benders decomposition; dd: dual decomposition; dw: Dantzig-Wolfe decomposition with branch-and-bound\n"
 	"       --smps\tSMPS file name without extensions. For example, if your SMPS files are ../test/farmer.cor, ../test/farmer.sto, and ../test/farmer.tim, this value should be ../test/farmer\n"
 	"       --soln\toptional argument for solution file prefix. For exampe, if the prefix is given as MySol, then two files MySol.primal.txt and MySol.dual.txt will be written for primal and dual solutions, respectively.\n"
 	"       --param\toptional paramater for parameter file name\n";
@@ -87,6 +84,7 @@ int main(int argc, char* argv[]) {
 void runDsp(char* algotype, char* smpsfile, char* solnfile, char* paramfile) {
 
 	bool isroot = true;
+	bool issolved = true;
 #ifdef DSP_HAS_MPI
 	int comm_rank, comm_size;
 	MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
@@ -100,39 +98,40 @@ void runDsp(char* algotype, char* smpsfile, char* solnfile, char* paramfile) {
 	if (isroot) cout << "Reading SMPS files: " << smpsfile << endl;
 	int ret = readSmps(env, smpsfile);
 	if (ret != 0) return;
-	setBlockIds(env, false);
+	setBlockIds(env, true);
 
 	if (paramfile != NULL) {
 		if (isroot) cout << "Reading parameter files: " << paramfile << endl;
 		readParamFile(env, paramfile);
 	}
 
-	if (string(algotype) == "de")
+	if (string(algotype) == "de") {
 		solveDe(env);
+	} else if (string(algotype) == "bd") {
 #ifdef DSP_HAS_MPI
-	else if (string(algotype) == "bd") {
-		if (comm_size > 1)
-			solveBdMpi(env, MPI_COMM_WORLD);
-		else
-			solveBd(env);
-	} else if (string(algotype) == "dd") {
-		if (comm_size > 1)
-			solveDdMpi(env, MPI_COMM_WORLD);
-		else
-			solveDd(env);
-	}
+		solveBdMpi(env, MPI_COMM_WORLD);
 #else
-	else if (string(algotype) == "bd")
 		solveBd(env);
-	else if (string(algotype) == "dd")
+#endif
+	} else if (string(algotype) == "dd") {
+#ifdef DSP_HAS_MPI
+		solveDdMpi(env, MPI_COMM_WORLD);
+#else
 		solveDd(env);
 #endif
-	else {
+	} else if (string(algotype) == "dw") {
+#ifdef DSP_HAS_MPI
+		solveDwMpi(env, MPI_COMM_WORLD);
+#else
+		solveDw(env);
+#endif
+	} else {
 		if (isroot) cout << "Invalid algorithm type, please try again.\n";
+		issolved = false;
 	}
 
 	/** parse result */
-	if (isroot) {
+	if (isroot && issolved) {
 		int status = getStatus(env);
 		cout << "Status: " << status << endl;
 		if (status == DSP_STAT_OPTIMAL ||

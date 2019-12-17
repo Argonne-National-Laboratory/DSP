@@ -179,9 +179,6 @@ add_test(NAME dw_dcap233_200 COMMAND test_dw ${CMAKE_SOURCE_DIR}/examples/smps/d
 add_test(NAME dw_sslp_5_25_50 COMMAND test_dw ${CMAKE_SOURCE_DIR}/examples/smps/sslp_5_25_50 -121.6)
 add_test(NAME dw_sslp_15_45_5 COMMAND test_dw ${CMAKE_SOURCE_DIR}/examples/smps/sslp_15_45_5 -262.4)
 
-# add_library(Dsp SHARED src/DspCInterface.cpp)
-# add_executable(runDsp dsp.cpp src/DspCInterface.cpp)
-
 if (MPI_CXX_FOUND)
 	add_executable(test_dd_mpi
 		test/test_dd_mpi.cpp
@@ -219,34 +216,55 @@ if (MPI_CXX_FOUND)
 	add_test(NAME dw_mpi_sslp_15_45_5 COMMAND mpiexec -np 3 ./test_dw_mpi ${CMAKE_SOURCE_DIR}/examples/smps/sslp_15_45_5 -262.4)
 endif(MPI_CXX_FOUND)
 
-# if (APPLE)
-# 	target_link_libraries(Dsp ${DSP_LIBS})
-# 	# target_link_libraries(runDsp ${DSP_LIBS})
-# else()
-# 	target_link_libraries(Dsp ${DSP_LIBS} "-Wl,--no-undefined")
-# 	# target_link_libraries(runDsp ${DSP_LIBS} "-Wl,--no-undefined")
-# endif(APPLE)
+
+##################################################
+# Binary and Shared Object
+##################################################
+
+add_library(Dsp SHARED 
+	src/DspCInterface.cpp
+	${BASE_OBJS}
+	$<TARGET_OBJECTS:DspDe>
+	$<TARGET_OBJECTS:DspBd>
+	$<TARGET_OBJECTS:DspDd>
+	$<TARGET_OBJECTS:DspDw>
+	$<TARGET_OBJECTS:DspTs>)
+add_executable(runDsp 
+	src/dsp.cpp 
+	src/DspCInterface.cpp
+	${BASE_OBJS}
+	$<TARGET_OBJECTS:DspDe>
+	$<TARGET_OBJECTS:DspBd>
+	$<TARGET_OBJECTS:DspDd>
+	$<TARGET_OBJECTS:DspDw>
+	$<TARGET_OBJECTS:DspTs>)
+
+if (APPLE)
+	target_link_libraries(Dsp ${DSP_LIBS})
+	target_link_libraries(runDsp ${DSP_LIBS})
+else(APPLE)
+	target_link_libraries(Dsp ${DSP_LIBS} "-Wl,--no-undefined")
+	target_link_libraries(runDsp ${DSP_LIBS} "-Wl,--no-undefined")
+endif(APPLE)
 
 ##################################################
 # INSTALL
 ##################################################
-# install(TARGETS Dsp LIBRARY DESTINATION $ENV{PWD}/lib)
-# install(TARGETS runDsp DESTINATION $ENV{PWD}/bin)
+install(TARGETS Dsp LIBRARY DESTINATION $ENV{PWD}/lib)
+install(TARGETS runDsp DESTINATION $ENV{PWD}/bin)
 
-# ##################################################
-# # Messages
-# ##################################################
-# install(CODE "message(\"\")")
-# install(CODE "message(\"${Blue}** Standalone binary file was installed in $ENV{PWD}/bin${ColourReset}\")")
-# install(CODE "message(\"\")")
-# install(CODE "message(\"${Blue}** Please add the following line to the .bash_profile or .bashrc in your home directory:${ColourReset}\")")
-# set(LIBRARY_PATH_VAR_NAME "LD_LIBRARY_PATH")
-# if(APPLE)
-# 	set(LIBRARY_PATH_VAR_NAME "DYLD_LIBRARY_PATH")
-# else()
-# endif()
-# if(${PIPS_LIB} MATCHES "PIPS_LIB-NOTFOUND")
-# 	install(CODE "message(\"${Red}    export ${LIBRARY_PATH_VAR_NAME}=$${LIBRARY_PATH_VAR_NAME}:$ENV{PWD}/lib${ColourReset}\")")
-# else()
-# 	install(CODE "message(\"${Red}    export ${LIBRARY_PATH_VAR_NAME}=$${LIBRARY_PATH_VAR_NAME}:$ENV{PWD}/lib:${PIPS_LIB_DIR}${ColourReset}\")")
-# endif()
+install(CODE "message(\"\")")
+install(CODE "message(\"${Blue}** Standalone binary file was installed in $ENV{PWD}/bin${ColourReset}\")")
+install(CODE "message(\"\")")
+install(CODE "message(\"${Blue}** Please add the following line to the .bash_profile or .bashrc in your home directory:${ColourReset}\")")
+set(LIBRARY_PATH_VAR_NAME "LD_LIBRARY_PATH")
+
+if(APPLE)
+	set(LIBRARY_PATH_VAR_NAME "DYLD_LIBRARY_PATH")
+endif(APPLE)
+
+if(PIPS_LIB)
+	install(CODE "message(\"${Red}    export ${LIBRARY_PATH_VAR_NAME}=$${LIBRARY_PATH_VAR_NAME}:$ENV{PWD}/lib${ColourReset}\")")
+else()
+	install(CODE "message(\"${Red}    export ${LIBRARY_PATH_VAR_NAME}=$${LIBRARY_PATH_VAR_NAME}:$ENV{PWD}/lib:${PIPS_LIB_DIR}${ColourReset}\")")
+endif()
