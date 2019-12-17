@@ -6,7 +6,7 @@
  */
 
 #include "Solver/DualDecomp/DdMasterDsb.h"
-#include "SolverInterface/OsiOoqpSolverInterface.h"
+#include "SolverInterface/DspOsi.h"
 
 DdMasterDsb::DdMasterDsb(
 		DspParams *  par,     /**< parameter pointer */

@@ -22,12 +22,13 @@ int main(int argc, char* argv[])
         DspApiEnv * env = new DspApiEnv;
         env->model_ = new DecTssModel;
 
+        env->par_->setIntParam("LOG_LEVEL", 1);
+        env->par_->setIntParam("ALPS/NODE_LIM", 2);
+
         TssModel * tss = dynamic_cast<TssModel*>(env->model_);
         tss->readSmps(argv[1]);
         
         env->solver_ = new DwSolverSerial(env->model_, env->par_, env->message_);
-        env->par_->setIntParam("LOG_LEVEL", 1);
-        env->par_->setIntParam("ALPS/NODE_LIM", 2);
         env->solver_->init();
         dynamic_cast<DwSolverSerial*>(env->solver_)->run();
         env->solver_->finalize();

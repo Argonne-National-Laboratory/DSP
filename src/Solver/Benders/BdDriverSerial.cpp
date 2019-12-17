@@ -132,13 +132,13 @@ DSP_RTN_CODE BdDriverSerial::findLowerBound()
 	DSPdebugMessage("primobj %+e, dualobj %+e\n", primobj_, dualobj_);
 	message_->print(1, "Best lower bound %e, time elapsed: %.2f sec.\n", dualobj_, dd->getWallTime());
 
-        /** TODO copy primal solution */
+	/** TODO copy primal solution */
 
-		/** rollback parameters */
-		par_->setIntParam("DD/ITER_LIM", iterlim);
-        par_->setIntParam("DD/FEAS_CUTS", fcut);
-        par_->setIntParam("DD/OPT_CUTS", ocut);
-        par_->setIntParam("DD/EVAL_UB", evalub);
+	/** rollback parameters */
+	par_->setIntParam("DD/ITER_LIM", iterlim);
+	par_->setIntParam("DD/FEAS_CUTS", fcut);
+	par_->setIntParam("DD/OPT_CUTS", ocut);
+	par_->setIntParam("DD/EVAL_UB", evalub);
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 

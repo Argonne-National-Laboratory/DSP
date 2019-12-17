@@ -13,6 +13,7 @@
 
 int DwRounding::solution(double &objective, std::vector<double> &solution) {
 
+
 	/** create branching objects */
 	std::shared_ptr<DspBranchObj> branch(new DspBranchObj);
 
@@ -20,6 +21,7 @@ int DwRounding::solution(double &objective, std::vector<double> &solution) {
 	double stime = CoinGetTimeOfDay();
 	std::shared_ptr<DwMaster> master(dynamic_cast<DwMaster*>(model_->getSolver()->clone()));
 	//printf("Time to copy DwMaster: %.10f seconds\n", CoinGetTimeOfDay() - stime);
+	DspMessage* message = master->getMessagePtr();
 
 	/** round and fix */
 	double rounded;
@@ -38,11 +40,17 @@ int DwRounding::solution(double &objective, std::vector<double> &solution) {
 
 	master->setBranchingObjects(branch.get());
 
+	int loglevel = master->getParPtr()->getIntParam("LOG_LEVEL");
+	int dwevalub = master->getParPtr()->getIntParam("DW/EVAL_UB");
 	double gaptol = master->getParPtr()->getDblParam("DW/GAPTOL");
+	message->logLevel_ = 0;
+	master->getParPtr()->setIntParam("DW/EVAL_UB", -1);
 	master->getParPtr()->setDblParam("DW/GAPTOL", 0.0);
 
 	DSP_RTN_CHECK_THROW(master->solve());
 
+	message->logLevel_ = loglevel;
+	master->getParPtr()->setIntParam("DW/EVAL_UB", dwevalub);
 	master->getParPtr()->setDblParam("DW/GAPTOL", gaptol);
 
 	switch (master->getStatus()) {

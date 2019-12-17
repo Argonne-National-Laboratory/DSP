@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+// #define DSP_DEBUG
 
 #include "Model/TssModel.h"
 #include "DdMWPara.h"
@@ -168,7 +168,7 @@ DSP_RTN_CODE DdMWPara::createGroups() {
 
 	MPI_Group world_group;
 	int nranks;
-	int * ranks = NULL;
+	std::vector<int> ranks;
 
 	BGN_TRY_CATCH
 
@@ -179,10 +179,10 @@ DSP_RTN_CODE DdMWPara::createGroups() {
 	{
 		/** Master-LB group */
 		nranks = model_->getNumSubproblems() + 1;
-		ranks = new int [nranks];
+		ranks.resize(nranks);
 		for (int i = 0; i < nranks; ++i)
 			ranks[i] = i;
-		MPI_Group_incl(world_group, nranks, ranks, &subcomm_group_);
+		MPI_Group_incl(world_group, nranks, ranks.data(), &subcomm_group_);
 		MPI_Comm_create_group(comm_, subcomm_group_, DSP_MPI_TAG_GROUP_SUB, &subcomm_);
 		if (subcomm_ != MPI_COMM_NULL)
 		{
@@ -190,29 +190,27 @@ DSP_RTN_CODE DdMWPara::createGroups() {
 			MPI_Comm_rank(subcomm_, &subcomm_rank_);
 		}
 		/** LB group */
-		MPI_Group_incl(world_group, nranks-1, ranks+1, &lb_group_);
+		MPI_Group_incl(world_group, nranks-1, ranks.data()+1, &lb_group_);
 		MPI_Comm_create_group(comm_, lb_group_, DSP_MPI_TAG_GROUP_LB, &lb_comm_);
 		if (lb_comm_ != MPI_COMM_NULL)
 		{
 			MPI_Comm_rank(lb_comm_, &lb_comm_rank_);
 			MPI_Comm_size(lb_comm_, &lb_comm_size_);
 		}
-		FREE_ARRAY_PTR(ranks);
 		/** CG-UB group */
 		if (has_cgub_comm_)
 		{
 			nranks = model_->getNumSubproblems();
-			ranks = new int [nranks];
+			ranks.resize(nranks);
 			for (int i = 0; i < nranks; ++i)
 				ranks[i] = i+model_->getNumSubproblems()+1;
-			MPI_Group_incl(world_group, nranks, ranks, &cgub_group_);
+			MPI_Group_incl(world_group, nranks, ranks.data(), &cgub_group_);
 			MPI_Comm_create_group(comm_, cgub_group_, DSP_MPI_TAG_GROUP_CGUB, &cgub_comm_);
 			if (cgub_comm_ != MPI_COMM_NULL)
 			{
 				MPI_Comm_rank(cgub_comm_, &cgub_comm_rank_);
 				MPI_Comm_size(cgub_comm_, &cgub_comm_size_);
 			}
-			FREE_ARRAY_PTR(ranks);
 		}
 	}
 	else
@@ -223,10 +221,10 @@ DSP_RTN_CODE DdMWPara::createGroups() {
 			nranks = comm_size_ * par_->getDblParam("DD/WORKER_RATIO");
 		} else
 			nranks = min(comm_size_,model_->getNumSubproblems() + 1);
-		ranks = new int [nranks];
+		ranks.resize(nranks);
 		for (int i = 0; i < nranks; ++i)
 			ranks[i] = i;
-		int ierr = MPI_Group_incl(world_group, nranks, ranks, &subcomm_group_);
+		int ierr = MPI_Group_incl(world_group, nranks, ranks.data(), &subcomm_group_);
 		ierr = MPI_Comm_create_group(comm_, subcomm_group_, DSP_MPI_TAG_GROUP_SUB, &subcomm_);
 		if (subcomm_ != MPI_COMM_NULL)
 		{
@@ -236,8 +234,8 @@ DSP_RTN_CODE DdMWPara::createGroups() {
 					comm_rank_, subcomm_size_, subcomm_rank_);
 		}
 		/** LB group */
-		DSPdebug(DspMessage::printArray(nranks-1, ranks+1));
-		MPI_Group_incl(world_group, nranks-1, ranks+1, &lb_group_);
+		DSPdebug(DspMessage::printArray(nranks-1, ranks.data()+1));
+		MPI_Group_incl(world_group, nranks-1, ranks.data()+1, &lb_group_);
 		MPI_Comm_create_group(comm_, lb_group_, DSP_MPI_TAG_LB, &lb_comm_);
 		if (lb_comm_ != MPI_COMM_NULL)
 		{
@@ -247,7 +245,7 @@ DSP_RTN_CODE DdMWPara::createGroups() {
 		/** CG-UB group */
 		if (has_cgub_comm_)
 		{
-			MPI_Group_excl(world_group, nranks, ranks, &cgub_group_);
+			MPI_Group_excl(world_group, nranks, ranks.data(), &cgub_group_);
 			MPI_Comm_create_group(comm_, cgub_group_, DSP_MPI_TAG_CGUB, &cgub_comm_);
 			if (cgub_comm_ != MPI_COMM_NULL)
 			{
@@ -255,7 +253,6 @@ DSP_RTN_CODE DdMWPara::createGroups() {
 				MPI_Comm_size(cgub_comm_, &cgub_comm_size_);
 			}
 		}
-		FREE_ARRAY_PTR(ranks);
 	}
 #ifdef DSP_DEBUG
 	for (int i = 0; i < comm_size_; ++i)

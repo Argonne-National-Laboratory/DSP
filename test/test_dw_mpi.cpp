@@ -1,14 +1,14 @@
 /**
- * test_de_mpi.cpp
+ * test_dw_mpi.cpp
  * 
- * 12/05/2019
+ * 12/16/2019
  * Kibaek Kim
  */
 
 #include "DspApiEnv.h"
 #include "Utility/DspMpi.h"
 #include "Model/DecTssModel.h"
-#include "Solver/DualDecomp/DdDriverMpi.h"
+#include "Solver/DantzigWolfe/DwSolverMpi.h"
 #include "test_utils.hpp"
 
 const MPI_Comm comm = MPI_COMM_WORLD;
@@ -49,6 +49,9 @@ int main(int argc, char* argv[])
         DspApiEnv * env = new DspApiEnv;
         env->model_ = new DecTssModel;
 
+        env->par_->setIntParam("LOG_LEVEL", 1);
+        env->par_->setIntParam("ALPS/NODE_LIM", 2);
+
         TssModel * tss = dynamic_cast<TssModel*>(env->model_);
         tss->readSmps(argv[1]);
 
@@ -59,10 +62,9 @@ int main(int argc, char* argv[])
         for (int i = 0; i < proc_idx_set.size(); ++i)
             env->par_->setIntPtrParam("ARR_PROC_IDX", i, proc_idx_set[i]);
         
-        env->solver_ = new DdDriverMpi(env->model_, env->par_, env->message_, comm);
-        env->par_->setDblParam("DD/WALL_LIM", 60);
+        env->solver_ = new DwSolverMpi(env->model_, env->par_, env->message_, comm);
         env->solver_->init();
-        dynamic_cast<DdDriverMpi*>(env->solver_)->run();
+        dynamic_cast<DwSolverMpi*>(env->solver_)->run();
         env->solver_->finalize();
 
         if (comm_rank == 0) {

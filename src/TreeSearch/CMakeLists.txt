@@ -11,4 +11,4 @@ set(DSP_TREESEARCH_FILES
 )
 
 add_library(DspTs OBJECT ${DSP_TREESEARCH_FILES})
-add_dependencies(DspTs Alps)
+add_dependencies(DspTs Alps Osi)

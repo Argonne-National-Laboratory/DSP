@@ -371,7 +371,7 @@ DSP_RTN_CODE DdMWSync::runMaster()
 		}
 
 		/** STOP with iteration limit */
-		if (itercnt_ > master_->getParPtr()->getIntParam("DD/ITER_LIM"))
+		if (itercnt_ >= master_->getParPtr()->getIntParam("DD/ITER_LIM"))
 		{
 			signal = DSP_STAT_MW_STOP;
 			message_->print(1, "The iteration limit is reached.\n");
@@ -407,11 +407,12 @@ DSP_RTN_CODE DdMWSync::runMaster()
 				master_->status_ = DSP_STAT_STOPPED_GAP;
 			}
 		}
-		printIterInfo();
 
 		/** broadcast signal */
 		MPI_Bcast(&signal, 1, MPI_INT, 0, comm_);
 		if (signal == DSP_STAT_MW_STOP) break;
+		
+		printIterInfo();
 
 		/** increment iteration count */
 		itercnt_++;

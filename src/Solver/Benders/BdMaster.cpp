@@ -9,7 +9,7 @@
 
 #include "Model/TssModel.h"
 #include "Solver/Benders/BdMaster.h"
-#include "SolverInterface/OsiScipSolverInterface.hpp"
+#include "SolverInterface/DspOsi.h"
 #include "Solver/Benders/SCIPconshdlrBendersWorker.h"
 
 BdMaster::BdMaster(
@@ -81,7 +81,7 @@ DSP_RTN_CODE BdMaster::solve() {
 	si_->initialSolve();
 
 	/** solver status */
-	status_ = getStatus();
+	convertOsiToDspStatus(si_, status_);
 	DSPdebugMessage("Benders status %d\n", status_);
 	switch(status_)
 	{

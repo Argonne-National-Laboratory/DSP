@@ -14,7 +14,7 @@ find_library(SCIPLIB  scip  PATHS ${SCIP_LIB_DIR})
 
 set(EXTRA_DIR      "${CMAKE_SOURCE_DIR}/extra")
 set(COINUTILS_DIR  "${EXTRA_DIR}/CoinUtils")
-set(OSI_DIR        "${EXTRA_DIR}/Osi.new")
+set(OSI_DIR        "${EXTRA_DIR}/Osi")
 set(CLP_DIR        "${EXTRA_DIR}/Clp")
 set(SMI_DIR        "${EXTRA_DIR}/Smi")
 set(COIN_INC_DIR   "${DEPEND_DIR}/include/coin")
@@ -33,10 +33,6 @@ string(REPLACE ";" "\ " OOQP_BLAS "${OOQP_BLAS}")
 ##################################################
 
 if(MA27LIB)
-	set(OOQP_DIR     "${EXTRA_DIR}/OOQP")
-	set(OOQP_HSL_LIB "MA27LIB=${MA27LIB}")
-	set(OOQP_BLAS    "BLAS=${BLAS_LIBRARIES}")
-
 	ExternalProject_Add(OOQP
 		SOURCE_DIR ${OOQP_DIR}
 		CONFIGURE_COMMAND ${OOQP_DIR}/configure
@@ -108,6 +104,7 @@ if(APPLE)
 	set(CLP_BLAS "LDFLAGS=-framework Accelerate")
 else(APPLE)
 	set(CLP_BLAS "--with-blas-lib=${BLAS_LIBRARIES}")
+    string(REPLACE ";" "\ " CLP_BLAS "${CLP_BLAS}")
 endif(APPLE)
 
 ExternalProject_Add(Clp

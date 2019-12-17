@@ -8,15 +8,10 @@
 // #define DSP_DEBUG
 #include "Model/TssModel.h"
 #include "Solver/DualDecomp/DdWorkerUB.h"
-
-#ifdef DSP_HAS_CPX
-#include "SolverInterface/SolverInterfaceCpx.h"
-#endif
+#include "SolverInterface/DspOsi.h"
 
 #ifdef DSP_HAS_SCIP
-#include "SolverInterface/SolverInterfaceScip.h"
 #include "Solver/DualDecomp/SCIPconshdlrBendersDd.h"
-#include "SolverInterface/SCIPbranchruleLB.h"
 #endif
 
 DdWorkerUB::DdWorkerUB(
@@ -268,7 +263,8 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 			si_[s]->initialSolve();
 
 		/** check status. there might be unexpected results. */
-		int status = getStatus(si_[s]);
+		int status;
+		convertOsiToDspStatus(si_[s], status);
 		DSPdebugMessage("status = %d\n", status);
 		switch (status) {
 		case DSP_STAT_OPTIMAL:

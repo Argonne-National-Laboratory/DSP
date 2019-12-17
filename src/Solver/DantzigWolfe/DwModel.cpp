@@ -80,10 +80,12 @@ DSP_RTN_CODE DwModel::solve() {
 	master->solve();
 
 	status_ = master->getStatus();
+	message->print(5, "master solution status: %d\n", status_);
 
 	switch (status_) {
 	case DSP_STAT_OPTIMAL:
 	case DSP_STAT_FEASIBLE:
+	case DSP_STAT_LIM_DUAL_OBJ:
 	case DSP_STAT_LIM_ITERorTIME: {
 
 		primobj_ = master->getPrimalObjective();
@@ -134,9 +136,6 @@ DSP_RTN_CODE DwModel::solve() {
 
 		break;
 	}
-	case DSP_STAT_LIM_DUAL_OBJ:
-		dualobj_ = master->getBestDualObjective();
-		break;
 	default:
 		break;
 	}

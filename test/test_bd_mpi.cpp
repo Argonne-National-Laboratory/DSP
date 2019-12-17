@@ -1,5 +1,5 @@
 /**
- * test_de_mpi.cpp
+ * test_de.cpp
  * 
  * 12/05/2019
  * Kibaek Kim
@@ -8,7 +8,7 @@
 #include "DspApiEnv.h"
 #include "Utility/DspMpi.h"
 #include "Model/DecTssModel.h"
-#include "Solver/DualDecomp/DdDriverMpi.h"
+#include "Solver/Benders/BdDriverMpi.h"
 #include "test_utils.hpp"
 
 const MPI_Comm comm = MPI_COMM_WORLD;
@@ -51,7 +51,7 @@ int main(int argc, char* argv[])
 
         TssModel * tss = dynamic_cast<TssModel*>(env->model_);
         tss->readSmps(argv[1]);
-
+        
         /** assign processes */
         std::vector<int> proc_idx_set;
         distribute_procs(env->model_->getNumSubproblems(), proc_idx_set);
@@ -59,10 +59,11 @@ int main(int argc, char* argv[])
         for (int i = 0; i < proc_idx_set.size(); ++i)
             env->par_->setIntPtrParam("ARR_PROC_IDX", i, proc_idx_set[i]);
         
-        env->solver_ = new DdDriverMpi(env->model_, env->par_, env->message_, comm);
-        env->par_->setDblParam("DD/WALL_LIM", 60);
+        env->solver_ = new BdDriverMpi(env->model_, env->par_, env->message_, comm);
+        env->par_->setIntParam("BD/DD/ITER_LIM", 1);
+        env->solver_->setTimeLimit(10.0);
         env->solver_->init();
-        dynamic_cast<DdDriverMpi*>(env->solver_)->run();
+        dynamic_cast<BdDriverMpi*>(env->solver_)->run();
         env->solver_->finalize();
 
         if (comm_rank == 0) {

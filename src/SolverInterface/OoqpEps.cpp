@@ -7,12 +7,11 @@
 
 // #define DSP_DEBUG
 
-/** DSP */
 #include "Utility/DspMacros.h"
 #include "Utility/DspMessage.h"
 #include "SolverInterface/OoqpEps.h"
 #include "SolverInterface/OoqpStatus.h"
-/** Ooqp */
+
 #include "GondzioSolver.h"
 #include "MehrotraSolver.h"
 

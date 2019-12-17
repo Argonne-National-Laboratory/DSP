@@ -5,24 +5,16 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+// #define DSP_DEBUG
 
 #include "Utility/DspMacros.h"
 #include "Utility/DspMessage.h"
 #include "Model/TssModel.h"
 #include "Solver/DualDecomp/DdSub.h"
-
-#include "OsiClpSolverInterface.hpp"
-
-#ifdef DSP_HAS_CPX
-#include "cplex.h"
-#include "OsiCpxSolverInterface.hpp"
-#endif
+#include "SolverInterface/DspOsi.h"
 
 #ifdef DSP_HAS_SCIP
-#include "SolverInterface/OsiScipSolverInterface.hpp"
 #include "Solver/DualDecomp/SCIPconshdlrBendersDd.h"
-#include "SolverInterface/SCIPbranchruleLB.h"
 #endif
 
 /** default constructor */
@@ -109,7 +101,7 @@ DSP_RTN_CODE DdSub::solve()
 			si_->resolve();
 	
 		/** check status. there might be unexpected results. */
-		status_ = getStatus();
+		convertOsiToDspStatus(si_, status_);
 		switch (status_) {
 		case DSP_STAT_OPTIMAL:
 		case DSP_STAT_LIM_ITERorTIME:
@@ -260,8 +252,12 @@ DSP_RTN_CODE DdSub::createProblem() {
     	switch (par_->getIntParam("SOLVER/MIP")) {
     	case OsiCpx:
 #ifdef DSP_HAS_CPX
+		{
     		si_ = new OsiCpxSolverInterface();
+			OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
+			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, 1);
     		break;
+		}
 #endif
     	case OsiScip:
 #ifdef DSP_HAS_SCIP
@@ -275,7 +271,11 @@ DSP_RTN_CODE DdSub::createProblem() {
         si_ = new OsiClpSolverInterface();
 
     /** no display */
+#ifdef DSP_DEBUG
+    si_->messageHandler()->setLogLevel(5);
+#else
     si_->messageHandler()->setLogLevel(par_->getIntParam("DD/SUB/LOG_LEVEL"));
+#endif
 
     /** load problem */
     si_->loadProblem(*mat, clbd, cubd, obj_, rlbd, rubd);

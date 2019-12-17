@@ -150,6 +150,9 @@ DSP_RTN_CODE DwWorkerMpi::generateCols(
 		_objs = new double [nsubprobs_];
 	}
 
+	/** synchronize log level parameter */
+	MPI_Bcast(&(message_->logLevel_), 1, MPI_INT, 0, comm_);
+
 	/** synchronize phase and piA_ */
 	MPI_Bcast(&phase, 1, MPI_INT, 0, comm_);
 	MPI_Bcast(piA_, npiA_, MPI_DOUBLE, 0, comm_);

@@ -8,19 +8,8 @@
 // #define DSP_DEBUG
 
 #include "CoinWarmStartBasis.hpp"
-#include "OsiClpSolverInterface.hpp"
-
+#include "SolverInterface/DspOsi.h"
 #include "Solver/DualDecomp/DdMasterTr.h"
-
-#ifdef DSP_HAS_CPX
-#include "cplex.h"
-#include "OsiCpxSolverInterface.hpp"
-#endif
-
-#ifdef DSP_HAS_OOQP
-#include "SolverInterface/OsiOoqpSolverInterface.hpp"
-#include "SolverInterface/OoqpEps.h"
-#endif
 
 DdMasterTr::DdMasterTr(
 		DecModel *   model,   /**< model pointer */
@@ -130,7 +119,8 @@ DSP_RTN_CODE DdMasterTr::solve()
 		isSolved_ = true;
 	
 		/** solver status */
-		switch(getStatus())
+		convertOsiToDspStatus(si_, status_);
+		switch(status_)
 		{
 		case DSP_STAT_PRIM_INFEASIBLE:
 			// increase the trust-region size
@@ -154,7 +144,7 @@ DSP_RTN_CODE DdMasterTr::solve()
 #endif
 	
 			/** update statistics */
-			s_statuses_.push_back(getStatus());
+			s_statuses_.push_back(status_);
 			s_primobjs_.push_back(si_->getObjValue());
 			s_dualobjs_.push_back(si_->getBestDualBound());
 			double * s_primsol = new double [si_->getNumCols()];
@@ -170,9 +160,9 @@ DSP_RTN_CODE DdMasterTr::solve()
 			break;
 		}
 		default:
+			message_->print(0, "Warning: master solution status is %d\n", status_);
 			status_ = DSP_STAT_MW_STOP;
 			resolve = false;
-			message_->print(0, "Warning: master solution status is %d\n", getStatus());
 			DSPdebug(si_->writeMps("master"));
 			break;
 		}
