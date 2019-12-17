@@ -12,3 +12,4 @@ set(DSP_TREESEARCH_FILES
 
 add_library(DspTs OBJECT ${DSP_TREESEARCH_FILES})
 add_dependencies(DspTs Alps Osi)
+set_property(TARGET DspTs PROPERTY POSITION_INDEPENDENT_CODE ON)

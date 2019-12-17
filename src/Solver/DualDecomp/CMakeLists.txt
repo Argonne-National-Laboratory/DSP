@@ -32,3 +32,4 @@ endif(MPI_CXX_FOUND)
 
 add_library(DspDd OBJECT ${DSP_DD_FILES})
 add_dependencies(DspDd DspModel DspSi DspUtil)
+set_property(TARGET DspDd PROPERTY POSITION_INDEPENDENT_CODE ON)

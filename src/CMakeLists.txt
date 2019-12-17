@@ -35,3 +35,4 @@ add_subdirectory(Utility)
 
 add_library(DspApi OBJECT DspApiEnv.cpp)
 add_dependencies(DspApi DspModel DspBaseSolver DspUtil)
+set_property(TARGET DspApi PROPERTY POSITION_INDEPENDENT_CODE ON)

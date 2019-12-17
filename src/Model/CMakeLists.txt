@@ -16,5 +16,5 @@ set(DSP_MODEL_FILES
 )
 
 add_library(DspModel OBJECT ${DSP_MODEL_FILES})
-# set_property(TARGET DspModel PROPERTY POSITION_INDEPENDENT_CODE ON)
 add_dependencies(DspModel Smi)
+set_property(TARGET DspModel PROPERTY POSITION_INDEPENDENT_CODE ON)

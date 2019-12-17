@@ -15,3 +15,4 @@ add_subdirectory(DantzigWolfe)
 # # Compile Dsp base solver
 add_library(DspBaseSolver OBJECT DecSolver.cpp)
 add_dependencies(DspBaseSolver DspSi Osi Clp)
+set_property(TARGET DspBaseSolver PROPERTY POSITION_INDEPENDENT_CODE ON)

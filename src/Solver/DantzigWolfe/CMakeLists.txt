@@ -23,3 +23,4 @@ include_directories(.)
 
 add_library(DspDw OBJECT ${DSP_DW_FILES})
 add_dependencies(DspDw DspModel DspSi DspUtil Alps)
+set_property(TARGET DspDw PROPERTY POSITION_INDEPENDENT_CODE ON)

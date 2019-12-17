@@ -33,4 +33,4 @@ endif()
 
 add_library(DspSi OBJECT ${DSP_SI_FILES})
 add_dependencies(DspSi ${DSP_SI_DEPS})
-# set_property(TARGET DspSi PROPERTY POSITION_INDEPENDENT_CODE ON)
+set_property(TARGET DspSi PROPERTY POSITION_INDEPENDENT_CODE ON)
