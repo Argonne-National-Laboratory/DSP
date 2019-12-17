@@ -130,7 +130,10 @@ DSP_RTN_CODE DwSolverSerial::solve() {
 		}
 	}
 	bestprimobj_ = alpsBroker.getBestQuality();
-	bestdualobj_ = CoinMin(bestprimobj_, alps_->getBestDualObjective());
+	if (alpsstatus == AlpsExitStatusOptimal)
+		bestdualobj_ = bestprimobj_;
+	else
+		bestdualobj_ = CoinMin(bestprimobj_, alps_->getBestDualObjective());
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;
