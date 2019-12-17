@@ -133,6 +133,8 @@ DSP_RTN_CODE DdDriverMpi::run()
 		MPI_Bcast(&numNodes_, 1, MPI_INT, 0, comm_);
 		MPI_Bcast(&numIterations_, 1, MPI_INT, 0, comm_);
 	}
+	bestprimsol_ = primsol_;
+	bestdualsol_ = dualsol_;
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 

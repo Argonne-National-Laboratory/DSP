@@ -171,8 +171,10 @@ DSP_RTN_CODE DeDriver::run()
 		bestdualobj_ = si_->getObjValue();
 
 		/** solution */
-		if (si_->getColSolution())
+		if (si_->getColSolution()) {
 			CoinCopyN(si_->getColSolution(), si_->getNumCols(), &primsol_[0]);
+			bestprimsol_ = primsol_;
+		}
 
 		/** statistics */
 		numIterations_ = si_->getIterationCount();

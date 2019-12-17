@@ -65,6 +65,8 @@ DSP_RTN_CODE DdDriverSerial::run()
 		dualsol_.resize(model_->getNumCouplingRows());
 		CoinCopyN(master->getBestPrimalSolution(), model_->getFullModelNumCols(), &primsol_[0]);
 		CoinCopyN(master->getBestDualSolution(), model_->getNumCouplingRows(), &dualsol_[0]);
+		bestprimsol_ = primsol_;
+		bestdualsol_ = dualsol_;
 		numNodes_ = master->getSiPtr()->getNumNodes();
 		numIterations_ = master->getSiPtr()->getIterationCount();
 	}

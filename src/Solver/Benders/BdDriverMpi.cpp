@@ -293,6 +293,7 @@ DSP_RTN_CODE BdDriverMpi::collectSolution()
 	}
 	bestprimobj_ = primobj_;
 	bestdualobj_ = dualobj_;
+	bestprimsol_ = primsol_;
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 

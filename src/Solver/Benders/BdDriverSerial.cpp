@@ -164,6 +164,7 @@ DSP_RTN_CODE BdDriverSerial::collectSolution()
 		bestdualobj_ = dualobj_;
 		DSPdebugMessage("status %d, primobj %+e, dualobj %+e\n", status_, primobj_, dualobj_);
 		CoinCopyN(master->getPrimalSolution(), model_->getNumSubproblemCouplingCols(0), &primsol_[0]);
+		bestprimsol_ = primsol_;
 		numNodes_ = master->getNumNodes();
 		numIterations_ = master->getSiPtr()->getIterationCount();
 		DSPdebugMessage("nodes %d, iterations %d\n", numNodes_, numIterations_);
