@@ -6,18 +6,26 @@
  */
 
 #include <iostream>
+#include "CoinMpsIO.hpp"
 #include "DspCInterface.h"
 
 const char* gDspUsage = 
 	"Not enough or invalid arguments, please try again.\n\n"
-	"Usage: --algo <de,bd,dd,dw> --smps <smps file> [--soln <solution file prefix> --param <param file>]\n\n"
+	"Usage: --algo <de,bd,dd,dw> --smps <smps file> --mps <mps file> --dec <dec file> [--soln <solution file prefix> --param <param file>]\n\n"
 	"       --algo\tchoice of algorithms. de: deterministic equivalent form; bd: Benders decomposition; dd: dual decomposition; dw: Dantzig-Wolfe decomposition with branch-and-bound\n"
 	"       --smps\tSMPS file name without extensions. For example, if your SMPS files are ../test/farmer.cor, ../test/farmer.sto, and ../test/farmer.tim, this value should be ../test/farmer\n"
+	"       --mps\tMPS file name\n"
+	"       --dec\tDEC file name\n"
 	"       --soln\toptional argument for solution file prefix. For exampe, if the prefix is given as MySol, then two files MySol.primal.txt and MySol.dual.txt will be written for primal and dual solutions, respectively.\n"
 	"       --param\toptional paramater for parameter file name\n";
 
-void setBlockIds(DspApiEnv* env, bool master_has_subblocks = false);
-void runDsp(char* algotype, char* smpsfile, char* solnfile, char* paramfile);
+void setBlockIds(DspApiEnv* env, int nsubprobs, bool master_has_subblocks);
+void runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* paramfile);
+void readMpsDec(DspApiEnv* env, char* mpsfile, char* decfile);
+void parseDecFile(char* decfile, vector<vector<string> >& rows_in_blocks);
+void createBlockModel(DspApiEnv* env, CoinMpsIO& p, const CoinPackedMatrix* mat, 
+	int blockid, vector<string>& rows_in_block, map<string,int>& rowname2index, 
+	const char* ctype, const double* obj);
 
 /*
  This will compile a stand-alone binary file that reads problem instances.
@@ -46,6 +54,8 @@ int main(int argc, char* argv[]) {
 	} else {
 		char* algotype = NULL;
 		char* smpsfile = NULL;
+		char* mpsfile = NULL;
+		char* decfile = NULL;
 		char* solnfile = NULL;
 		char* paramfile = NULL;
 		for (int i = 1; i < argc; ++i) {
@@ -54,6 +64,10 @@ int main(int argc, char* argv[]) {
 					algotype = argv[i+1];
 				} else if (string(argv[i]) == "--smps") {
 					smpsfile = argv[i+1];
+				} else if (string(argv[i]) == "--mps") {
+					mpsfile = argv[i+1];
+				} else if (string(argv[i]) == "--dec") {
+					decfile = argv[i+1];
 				} else if (string(argv[i]) == "--soln") {
 					solnfile = argv[i+1];
 				} else if (string(argv[i]) == "--param") {
@@ -65,12 +79,18 @@ int main(int argc, char* argv[]) {
 			i++;
 		}
 
-		if (algotype == NULL || smpsfile == NULL) {
+		// algotype is required.
+		if (algotype == NULL) {
 			EXIT_WITH_MSG
 		}
 
-		/** run dsp */
-		runDsp(algotype, smpsfile, solnfile, paramfile);
+		// Either smps or mps/dec files are required.
+		if (smpsfile == NULL && (mpsfile == NULL || decfile == NULL)) {
+			EXIT_WITH_MSG
+		}
+
+		// run dsp
+		runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile);
 
 #ifdef DSP_HAS_MPI
 		MPI_Finalize();
@@ -81,10 +101,11 @@ int main(int argc, char* argv[]) {
 #undef EXIT_WITH_MSG
 }
 
-void runDsp(char* algotype, char* smpsfile, char* solnfile, char* paramfile) {
+void runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* paramfile) {
 
 	bool isroot = true;
 	bool issolved = true;
+	bool isstochastic = true;
 #ifdef DSP_HAS_MPI
 	int comm_rank, comm_size;
 	MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
@@ -95,10 +116,20 @@ void runDsp(char* algotype, char* smpsfile, char* solnfile, char* paramfile) {
 	if (isroot) cout << "Creating DSP environment\n";
 	DspApiEnv* env = createEnv();
 
-	if (isroot) cout << "Reading SMPS files: " << smpsfile << endl;
-	int ret = readSmps(env, smpsfile);
-	if (ret != 0) return;
-	setBlockIds(env, true);
+	// Read problem instance from file(s)
+	if (smpsfile != NULL) {
+		if (isroot) cout << "Reading SMPS files: " << smpsfile << endl;
+		int ret = readSmps(env, smpsfile);
+		if (ret != 0) return;
+		setBlockIds(env, getNumSubproblems(env), true);
+	} else if (mpsfile != NULL && decfile != NULL) {
+		if (isroot) {
+			cout << "Reading MPS file: " << mpsfile << endl;
+			cout << "Reading DEC file: " << decfile << endl;
+		}
+		readMpsDec(env, mpsfile, decfile);
+		isstochastic = false;
+	}
 
 	if (paramfile != NULL) {
 		if (isroot) cout << "Reading parameter files: " << paramfile << endl;
@@ -108,17 +139,27 @@ void runDsp(char* algotype, char* smpsfile, char* solnfile, char* paramfile) {
 	if (string(algotype) == "de") {
 		solveDe(env);
 	} else if (string(algotype) == "bd") {
+		if (isstochastic) {
 #ifdef DSP_HAS_MPI
-		solveBdMpi(env, MPI_COMM_WORLD);
+			solveBdMpi(env, MPI_COMM_WORLD);
 #else
-		solveBd(env);
+			solveBd(env);
 #endif
+		} else {
+			cout << "Benders decomposition is not available for mps/dec files." << endl;
+			issolved = false;
+		}
 	} else if (string(algotype) == "dd") {
+		if (isstochastic) {
 #ifdef DSP_HAS_MPI
-		solveDdMpi(env, MPI_COMM_WORLD);
+			solveDdMpi(env, MPI_COMM_WORLD);
 #else
-		solveDd(env);
+			solveDd(env);
 #endif
+		} else {
+			cout << "Dual decomposition is not available for mps/dec files." << endl;
+			issolved = false;
+		}
 	} else if (string(algotype) == "dw") {
 #ifdef DSP_HAS_MPI
 		solveDwMpi(env, MPI_COMM_WORLD);
@@ -186,31 +227,189 @@ void runDsp(char* algotype, char* smpsfile, char* solnfile, char* paramfile) {
 	freeEnv(env);
 }
 
-void setBlockIds(DspApiEnv* env, bool master_has_subblocks) {
+void setBlockIds(DspApiEnv* env, int nsubprobs, bool master_has_subblocks) {
+	int comm_rank = 0, comm_size = 1;
 #ifdef DSP_HAS_MPI
-	int nsubprobs = getNumSubproblems(env);
-	int comm_rank, comm_size;
 	MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
+#endif
 
 	// empty block IDs
 	vector<int> proc_idx_set;
 
 	// DSP is further parallelized with comm_size > nsubprobs.
 	int modrank = comm_rank % nsubprobs;
-	// If we have more than one processor, do not assign a sub-block to the master.
-	if (master_has_subblocks == false && comm_rank > 0) {
-		// exclude master
-		comm_size--;
-		modrank = (comm_rank-1) % nsubprobs;
+	if (master_has_subblocks == false) {
+		if (comm_size == 1) {
+			// assign sub-blocks in round-robin fashion
+			for (int s = modrank; s < nsubprobs; s += comm_size)
+				proc_idx_set.push_back(s);
+		} else {
+			if (comm_rank > 0) {
+				// exclude master
+				comm_size--;
+				modrank = (comm_rank-1) % nsubprobs;
+	
+				// assign sub-blocks in round-robin fashion
+				for (int s = modrank; s < nsubprobs; s += comm_size) {
+					proc_idx_set.push_back(s);
+				}
+			}
+		}
+	} else {
+		// assign sub-blocks in round-robin fashion
+		for (int s = modrank; s < nsubprobs; s += comm_size) {
+			proc_idx_set.push_back(s);
+		}
+#if 0
+		for (int i = 0; i < comm_size; ++i) {
+			if (i == comm_rank) {
+				printf("comm_rank %d:\n", i);
+				for (int j = 0; j < proc_idx_set.size(); ++j)
+					printf("  %d\n", proc_idx_set[j]);
+			}
+			MPI_Barrier(MPI_COMM_WORLD);
+		}
+#endif
 	}
-
-	// assign sub-blocks in round-robin fashion
-	for (int s = modrank; s < nsubprobs; s += comm_size)
-		proc_idx_set.push_back(s);
 
 	// set the block ids to Dsp
 	setIntPtrParam(env, "ARR_PROC_IDX", (int) proc_idx_set.size(), &proc_idx_set[0]);
+}
+
+void readMpsDec(DspApiEnv* env, char* mpsfile, char* decfile) {
+	// Read .mps file
+	CoinMpsIO p;
+	p.readMps(mpsfile);
+	const CoinPackedMatrix* mps_matrix = p.getMatrixByRow();
+	int ncols = p.getNumCols();
+	const double* clbd = p.getColLower();
+	const double* cubd = p.getColUpper();
+	const double* obj = p.getObjCoefficients();
+	vector<double> zeros(ncols, 0.0);
+	string ctype;
+	for (int j = 0; j < ncols; ++j)
+		if (p.isContinuous(j))
+			ctype.push_back('C');
+		else
+			ctype.push_back('I');
+
+	//cout << "Creating hash table for matrix rows ... ";
+	map<string, int> rowname2index;
+	for (int i = 0; i < p.getNumRows(); ++i)
+		rowname2index[string(p.rowName(i))] = i;
+	//cout << "done!" << endl;
+
+	// Read .dec file
+	// For each block, the following vector stores the corresponding rows.
+	//cout << "Parsing .dec file ... ";
+	vector<vector<string> > rows_in_blocks;
+	parseDecFile(decfile, rows_in_blocks);
+	//cout << "done!" << endl;
+
+	// Assign block(s) to each process
+	setBlockIds(env, rows_in_blocks.size() - 1, true);
+
+	vector<int> proc_idx_set;
+	for (int s = 0; s < env->par_->getIntPtrParamSize("ARR_PROC_IDX"); ++s) {
+		proc_idx_set.push_back(env->par_->getIntPtrParam("ARR_PROC_IDX")[s]);
+	}
+
+	// For master block
+	int blockid = 0;
+	createBlockModel(env, p, mps_matrix, 0, rows_in_blocks[0], rowname2index, ctype.c_str(), obj);
+
+	// For each sub-block
+	for (unsigned i = 0; i < proc_idx_set.size(); ++i) {
+		blockid = proc_idx_set[i] + 1; // blockid = subproblem index + 1, because master = 0
+		createBlockModel(env, p, mps_matrix, blockid, rows_in_blocks[blockid], rowname2index, ctype.c_str(), obj);
+	}
+
+	updateBlocks(env);
+}
+
+void parseDecFile(char* decfile, vector<vector<string> >& rows_in_blocks) {
+	// Cards defined in .dec file
+	enum DecCard {
+		PRESOLVED = 0,
+		NBLOCKS,
+		BLOCK,
+		MASTERCONSS
+	} card;
+
+	int nblocks, current_block = -1;
+	rows_in_blocks.clear();
+	string line;
+	ifstream myfile(decfile);
+	if (myfile.is_open()) {
+		string card_prefix;
+		size_t found;
+		while(getline(myfile, line)) {
+			found = line.find_first_of(" ");
+			card_prefix = line.substr(0, found);
+			if (card_prefix.compare("PRESOLVED") == 0)
+				card = PRESOLVED;
+			else if (card_prefix.compare("NBLOCKS") == 0)
+				card = NBLOCKS;
+			else if (card_prefix.compare("BLOCK") == 0) {
+				card = BLOCK;
+				current_block++;
+			} else if (card_prefix.compare("MASTERCONSS") == 0)
+				card = MASTERCONSS;
+			else {
+				if (card == NBLOCKS) {
+					nblocks = atoi(line.c_str());
+					rows_in_blocks.resize(nblocks+1);
+				} else if (card == BLOCK)
+					rows_in_blocks[current_block+1].push_back(line);
+				else if (card == MASTERCONSS)
+					rows_in_blocks[0].push_back(line);
+			}
+		}
+	}
+#if 0
+	cout << "Number of blocks: " << rows_in_blocks.size() << endl;
+	for (int i = 0; i < rows_in_blocks.size(); ++i) {
+		cout << "Block " << i << endl;
+		for (int j = 0; j < rows_in_blocks[i].size(); ++j)
+			cout << rows_in_blocks[i][j] << endl;
+	}
 #endif
+}
+
+void createBlockModel(DspApiEnv* env, CoinMpsIO& p, const CoinPackedMatrix* mat, 
+		int blockid, vector<string>& rows_in_block, map<string,int>& rowname2index, 
+		const char* ctype, const double* obj) {
+	vector<int> rowids(rows_in_block.size(),-1);
+	vector<double> rlbd(rows_in_block.size(),0.0);
+	vector<double> rubd(rows_in_block.size(),0.0);
+	CoinPackedMatrix submat(false,0,0);
+
+	//cout << "Creating block " << blockid << " ... ";
+	for (unsigned j = 0; j < rows_in_block.size(); ++j) {
+		int k = rowname2index[rows_in_block[j]];
+		rowids[j] = k;
+		rlbd[j] = p.getRowLower()[k];
+		rubd[j] = p.getRowUpper()[k];
+	}
+	//cout << " with " << rowids.size() << " rows ... ";
+	submat.submatrixOf(*mat, rowids.size(), &rowids[0]);
+	//cout << "done!" << endl;
+#if 0
+	CoinMpsIO pout;
+	vector<string> cnames;
+	for (int j = 0; j < p.getNumCols(); ++j)
+		cnames.push_back(string(p.columnName(j)));
+	pout.setMpsData(submat, 1.0e+20, p.getColLower(), p.getColUpper(), obj, ctype, &rlbd[0], &rubd[0], cnames, rows_in_block);
+	char pout_name[128];
+	sprintf(pout_name, "block%d.mps", blockid);
+	pout.writeMps(pout_name);
+#endif
+
+	//cout << "Loading the block ... ";
+	loadBlockProblem(env, blockid, p.getNumCols(), rowids.size(), 
+		submat.getNumElements(), submat.getVectorStarts(), submat.getIndices(), submat.getElements(), 
+		p.getColLower(), p.getColUpper(), ctype, obj, &rlbd[0], &rubd[0]);
+	//cout << "done!" << endl;
 }
 
