@@ -200,19 +200,20 @@ DSP_RTN_CODE DwWorkerMpi::generateCols(
 
 	/** construct output arguments */
 	if (comm_rank_ == 0) {
-		indices.clear();
-		statuses.clear();
-		cxs.clear();
-		objs.clear();
-		sols.clear();
+		indices.resize(nsubprobs_);
+		statuses.resize(nsubprobs_);
+		cxs.resize(nsubprobs_);
+		objs.resize(nsubprobs_);
+		sols.resize(nsubprobs_);
 		for (int i = 0; i < nsubprobs_; ++i) {
-			indices.push_back(_indices[i]);
-			statuses.push_back(_statuses[i]);
-			cxs.push_back(_cxs[i]);
-			objs.push_back(_objs[i]);
+			indices[_indices[i]] = _indices[i];
+			statuses[_indices[i]] = _statuses[i];
+			cxs[_indices[i]] = _cxs[i];
+			objs[_indices[i]] = _objs[i];
 			DSPdebugMessage("_objs[%d] = %e\n", i, _objs[i]);
-			sols.push_back(_sols[i]);
+			sols[_indices[i]] = _sols[i];
 			_sols[i] = NULL;
+			// printf("i %d: indices %d, cxs %e, objs %e\n", i, _indices[i], _cxs[i], _objs[i]);
 		}
 		_sols.clear();
 	}
