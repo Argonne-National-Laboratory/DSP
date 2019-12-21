@@ -22,19 +22,6 @@ where x and y_s are decision variable vectors with dimensions n_1 and n_2, respe
 * MPS and DEC files for generic block-structured optimization problems
 * Julia modeling package [Dsp.jl](https://github.com/kibaekkim/Dsp.jl)
 
-## Download
-
-You can clone this repository in your preferred directory by typing:
-```bash
-git clone --recursive https://github.com/Argonne-National-Laboratory/DSP.git
-```
-or
-```bash
-git clone https://github.com/Argonne-National-Laboratory/DSP.git
-cd DSP
-git submodule update --init --recursive
-```
-
 ## Documentation
 
 The package documentation is available in [Readthedocs](https://dsp.readthedocs.io/?badge=master).
