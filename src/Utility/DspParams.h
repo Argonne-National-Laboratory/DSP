@@ -9,13 +9,12 @@
 #define SRC_UTILITY_DSPPARAMS_H_
 
 #include <limits>
-#include <tr1/unordered_map>
+#include <unordered_map>
 #include <string>
 #include <iostream>
 #include <fstream>
 
 using namespace std;
-using namespace tr1;
 
 enum DSP_DD_MASTER_ALGO
 {
