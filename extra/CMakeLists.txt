@@ -1,16 +1,7 @@
 ##################################################
-# REQUIRED PACKAGES
-##################################################
-find_package(BLAS REQUIRED)
-
-##################################################
 # Build and install external packages
 ##################################################
 include(ExternalProject)
-
-find_library(MA27LIB  ma27  PATHS ${MA27LIB_DIR})
-find_library(CPLEXLIB cplex PATHS ${CPLEX_LIB_DIR})
-find_library(SCIPLIB  scip  PATHS ${SCIP_LIB_DIR})
 
 set(EXTRA_DIR      "${CMAKE_SOURCE_DIR}/extra")
 set(COINUTILS_DIR  "${EXTRA_DIR}/CoinUtils")
@@ -41,7 +32,7 @@ if(MA27LIB)
 			FFLAGS=-fPIC
 			${OOQP_HSL_LIB}
 			${OOQP_BLAS}
-			CXX=${CMAKE_CXX_COMPILER}
+			# CXX=${CMAKE_CXX_COMPILER}
 		BINARY_DIR ${OOQP_DIR}
 		INSTALL_DIR ${OOQP_DIR} 
 		BUILD_COMMAND make all_libs
@@ -62,7 +53,7 @@ ExternalProject_Add(CoinUtils
 		--enable-static 
 		--disable-shared
 		ADD_CXXFLAGS=-fPIC
-		CXX=${CMAKE_CXX_COMPILER}
+		# CXX=${CMAKE_CXX_COMPILER}
 	BUILD_COMMAND make
 	INSTALL_COMMAND make install)
 
@@ -92,7 +83,7 @@ ExternalProject_Add(Osi
 		${WITH_CPLEX_INCDIR}
 		--disable-cplex-libcheck
 		ADD_CXXFLAGS=-fPIC
-		CXX=${CMAKE_CXX_COMPILER}
+		# CXX=${CMAKE_CXX_COMPILER}
 	BUILD_COMMAND make
 	INSTALL_COMMAND make install)
 
@@ -120,7 +111,7 @@ CONFIGURE_COMMAND ${CLP_DIR}/configure
 	--with-osi-lib=${OSI_LIB}
 	--with-osi-incdir=${COIN_INC_DIR}
 	ADD_CXXFLAGS=-fPIC
-	CXX=${CMAKE_CXX_COMPILER}
+	# CXX=${CMAKE_CXX_COMPILER}
 BUILD_COMMAND make
 INSTALL_COMMAND make install)
 
@@ -140,7 +131,7 @@ ExternalProject_Add(Smi
 		--with-osi-lib=${OSI_LIB}
 		--with-osi-incdir=${COIN_INC_DIR}
 		ADD_CXXFLAGS=-fPIC
-		CXX=${CMAKE_CXX_COMPILER}
+		# CXX=${CMAKE_CXX_COMPILER}
 	BUILD_COMMAND make
 	INSTALL_COMMAND make install)
 
@@ -160,6 +151,6 @@ CONFIGURE_COMMAND ${ALPS_DIR}/configure
 	--with-osi-lib=${OSI_LIB}
 	--with-osi-incdir=${COIN_INC_DIR}
 	ADD_CXXFLAGS=-fPIC
-	CXX=${CMAKE_CXX_COMPILER}
+	# CXX=${CMAKE_CXX_COMPILER}
 BUILD_COMMAND make
 INSTALL_COMMAND make install)
