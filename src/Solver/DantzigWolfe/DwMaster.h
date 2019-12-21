@@ -7,13 +7,13 @@
 
 //#define USE_ROW_TO_COL
 
-/** Coin */
 #include "CoinWarmStartBasis.hpp"
-/** Dsp */
 #include "Solver/DecSolver.h"
 #include "Solver/DantzigWolfe/DwCol.h"
 #include "Solver/DantzigWolfe/DwWorker.h"
+#ifdef DSP_HAS_MPI
 #include "Solver/DantzigWolfe/DwWorkerMpi.h"
+#endif /* DSP_HAS_MPI */
 
 /**
  * This creates the master problem data and solves the master problem.

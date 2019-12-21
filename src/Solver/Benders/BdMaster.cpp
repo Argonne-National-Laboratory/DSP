@@ -10,7 +10,9 @@
 #include "Model/TssModel.h"
 #include "Solver/Benders/BdMaster.h"
 #include "SolverInterface/DspOsi.h"
+#ifdef DSP_HAS_MPI
 #include "Solver/Benders/SCIPconshdlrBendersWorker.h"
+#endif /* DSP_HAS_MPI */
 
 BdMaster::BdMaster(
 			DecModel *   model,   /**< model pointer */
