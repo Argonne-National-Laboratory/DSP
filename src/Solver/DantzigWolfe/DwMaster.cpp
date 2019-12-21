@@ -773,7 +773,7 @@ DSP_RTN_CODE DwMaster::generateCols() {
 	/** generate columns */
 	DSP_RTN_CHECK_RTN_CODE(
 			worker_->generateCols(phase_, &piA[0], subinds, status_subs_, subcxs, subobjs, subsols));
-	DSPdebugMessage("status_subs_.size() %u\n", status_subs_.size());
+	DSPdebugMessage("status_subs_.size() %lu\n", status_subs_.size());
 
 	/** any subproblem primal/dual infeasible? */
 	bool isInfeasible = false;
@@ -1008,7 +1008,7 @@ DSP_RTN_CODE DwMaster::addCols(
 			DSPdebugMessage("added inactive column\n");
 		}
 	}
-	DSPdebugMessage("Number of columns in the pool: %u\n", cols_generated_.size());
+	DSPdebugMessage("Number of columns in the pool: %lu\n", cols_generated_.size());
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 

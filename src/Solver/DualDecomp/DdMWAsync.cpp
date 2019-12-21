@@ -1724,7 +1724,7 @@ DSP_RTN_CODE DdMWAsync::sendMasterSolution(
 	lambdas = master_primsol + model_->getNumSubproblems();
 	local_scount = 0;
 	int lambda_offset = 0;
-	for (unsigned s = 0, k = 0; s < num_subprobs; s)
+	for (unsigned s = 0, k = 0; s < num_subprobs;)
 	{
 		if (k < subprobs[s])
 		{

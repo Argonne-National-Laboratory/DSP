@@ -174,7 +174,7 @@ DSP_RTN_CODE DwWorkerMpi::generateCols(
 
 	DSP_RTN_CHECK_RTN_CODE(
 			DwWorker::generateCols(phase, piA_, indices, statuses, cxs, objs, sols));
-	DSPdebugMessage("Rank %d generated %u indices, %u statuses, %u cxs, %u objs, and %u sols.\n",
+	DSPdebugMessage("Rank %d generated %lu indices, %lu statuses, %lu cxs, %lu objs, and %lu sols.\n",
 			comm_rank_, indices.size(), statuses.size(), cxs.size(), objs.size(), sols.size());
 
 	/** The root rank gathers the number of subproblems for each process. */
@@ -284,7 +284,7 @@ DSP_RTN_CODE DwWorkerMpi::generateColsByFix(
 	/** actual function to generate columns */
 	DSP_RTN_CHECK_RTN_CODE(
 			DwWorker::generateColsByFix(_x, indices, statuses, objs, sols));
-	DSPdebugMessage("Rank %d generated %u indices, %u statuses, %u objs, and %u sols.\n",
+	DSPdebugMessage("Rank %d generated %lu indices, %lu statuses, %lu objs, and %lu sols.\n",
 			comm_rank_, indices.size(), statuses.size(), objs.size(), sols.size());
 
 	/** The root rank gathers the number of subproblems for each process. */

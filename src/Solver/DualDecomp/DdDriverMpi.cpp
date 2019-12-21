@@ -21,7 +21,6 @@ comm_(comm)
 {
 	BGN_TRY_CATCH
 
-	DSPdebugMessage("comm %d\n", comm_);
 	MPI_Comm_rank(comm_, &comm_rank_); /**< get process ID */
 	MPI_Comm_size(comm_, &comm_size_); /**< get number of processes */
 	DSPdebugMessage("comm_rank_ %d, comm_size_ %d\n", comm_rank_, comm_size_);

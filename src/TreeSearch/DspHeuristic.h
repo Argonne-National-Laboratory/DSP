@@ -9,6 +9,7 @@
 #define SRC_TREESEARCH_DSPHEURISTIC_H_
 
 #include <vector>
+#include <string>
 
 class DspModel;
 
