@@ -11,13 +11,13 @@ DSP is an open-source and parallel package that implements decomposition methods
 
 where x and y_s are decision variable vectors with dimensions n_1 and n_2, respectively, A, T_s and W_s are matrices of dimensions m_1 by n_1, m_2 by n_1 and m_2 by n_2, respectively, and c, q_s, b, and h_s are vectors of appropriate dimensions.
 
-DSP provides **parallel** implementations for the following algorithms:
-* Extensive form solver
-* Dual decomposition
-* Dantzig-Wolfe decomposition
-* Benders decomposition
+**DSP Solution Methods:**
+* Extensive form solver (global solver)
+* Serial/parallel dual decomposition (dual bounding solver)
+* Serial/parallel Dantzig-Wolfe decomposition (global solver)
+* Serial/parallel Benders decomposition
 
-DSP can take the optimization problem instances from
+**Problem Input Formats:**
 * SMPS file format for stochastic programs
 * MPS and DEC files for generic block-structured optimization problems
 * Julia modeling package [Dsp.jl](https://github.com/kibaekkim/Dsp.jl)
@@ -35,9 +35,9 @@ cd DSP
 git submodule update --init --recursive
 ```
 
-## Installation
+## Documentation
 
-* See our manual in ``readthedocs``.
+The package documentation is available in [Readthedocs](https://dsp.readthedocs.io/?badge=master).
 
 ## Credits
 
