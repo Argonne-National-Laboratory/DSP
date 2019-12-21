@@ -318,7 +318,7 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 				{
 					/** add cut */
 					SCIP_Bool infeasible;
-					SCIP_CALL(SCIPaddCut(scip, sol, row,
+					SCIP_CALL(SCIPaddRow(scip, row,
 							FALSE, /**< force cut */
 							&infeasible));
 

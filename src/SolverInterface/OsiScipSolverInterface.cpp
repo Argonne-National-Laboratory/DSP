@@ -286,7 +286,11 @@ void OsiScipSolverInterface::setColSolution(const double* colsol) {
 	SCIP_CALL_ABORT(SCIPsetSolVals(scip_, sol, SCIPgetNOrigVars(scip_), &vars_[0], &solution_[0]));
 
 	/** check solution and free if infeasible */
+#if SCIP_VERSION_MAJOR >= 6
+	SCIP_CALL_ABORT(SCIPtrySolFree(scip_, &sol, true, true, true, true, true, &stored));
+#else
 	SCIP_CALL_ABORT(SCIPtrySolFree(scip_, &sol, true, true, true, true, &stored));
+#endif
 }
 
 void OsiScipSolverInterface::setRowPrice(const double* rowprice) {
