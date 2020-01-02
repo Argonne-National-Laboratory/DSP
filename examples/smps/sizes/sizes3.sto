@@ -1,0 +1,36 @@
+STOCH         SIZES
+SCENARIOS     DISCRETE
+ SC SCEN01    ROOT          0.333333   STAGE-2
+    RHS1      D01JJ02           1.750
+    RHS1      D02JJ02           5.250
+    RHS1      D03JJ02           8.750
+    RHS1      D04JJ02           7.000
+    RHS1      D05JJ02          24.500
+    RHS1      D06JJ02          17.500
+    RHS1      D07JJ02          10.500
+    RHS1      D08JJ02           8.750
+    RHS1      D09JJ02           8.750
+    RHS1      D10JJ02           3.500
+ SC SCEN02    ROOT          0.333333   STAGE-2
+    RHS1      D01JJ02           2.500
+    RHS1      D02JJ02           7.500
+    RHS1      D03JJ02          12.500
+    RHS1      D04JJ02          10.000
+    RHS1      D05JJ02          35.000
+    RHS1      D06JJ02          27.500
+    RHS1      D07JJ02          16.500
+    RHS1      D08JJ02          13.750
+    RHS1      D09JJ02          13.750
+    RHS1      D10JJ02           5.000
+ SC SCEN03    ROOT          0.333333   STAGE-2
+    RHS1      D01JJ02           3.250
+    RHS1      D02JJ02           9.750
+    RHS1      D03JJ02          16.250
+    RHS1      D04JJ02          13.000
+    RHS1      D05JJ02          45.500
+    RHS1      D06JJ02          32.500
+    RHS1      D07JJ02          19.500
+    RHS1      D08JJ02          16.250
+    RHS1      D09JJ02          16.250
+    RHS1      D10JJ02           6.500
+ENDATA
