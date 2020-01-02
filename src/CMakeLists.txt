@@ -1,8 +1,5 @@
 # Source codes are stored in variables:
 # DSP_SRC
-# DSP_CPX_SRC
-# DSP_OOQP_SRC
-# DSP_SCIP_SRC
 
 # Include directories are stored in
 # DSP_INC_DIR
@@ -174,6 +171,7 @@ endif(MPI_CXX_FOUND)
 
 include_directories(${DSP_INC_DIR})
 add_library(DspObj OBJECT ${DSP_SRC})
+set_property(TARGET DspObj PROPERTY POSITION_INDEPENDENT_CODE ON)
 add_library(Dsp SHARED $<TARGET_OBJECTS:DspObj>)
 add_executable(runDsp dsp.cpp $<TARGET_OBJECTS:DspObj>)
 
