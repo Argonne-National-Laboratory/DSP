@@ -186,12 +186,16 @@ DSP_RTN_CODE DwModel::parsePrimSolution() {
 				for (int j = 0; j < master->ncols_orig_; ++j) {
 					double viol = std::max(master->clbd_node_[j] - primsol_[j], primsol_[j] - master->cubd_node_[j]);
 					if (viol > 1.0e-6) {
-						printf("Violated variable at %d by %e (%+e <= %+e <= %+e)\n", j, viol,
+						message->print(2, "Violated variable at %d by %e (%+e <= %+e <= %+e)\n", j, viol,
 								master->clbd_node_[j], primsol_[j], master->cubd_node_[j]);
 						isViolated = true;
 					}
 				}
-				if (isViolated) throw "Invalid branching was performed.";
+				/** TODO: This part needs handled in a more robust way. */
+				if (isViolated) {
+					message->print(0, "Primal solution may experience numerical issue.\n");
+					// throw "Invalid branching was performed.";
+				}
 			} else {
 				/** disable running heuristics */
 				infeasibility_ = 0.0;
