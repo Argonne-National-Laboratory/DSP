@@ -1,0 +1,5 @@
+TIME
+PERIODS       LP
+    p_00      c1                       STAGE-1
+    q_00      c51                      STAGE-2
+ENDATA
