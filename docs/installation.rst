@@ -1,7 +1,11 @@
 Installation
 ------------
 
-This guide describes the prerequisites for installation and how to install DSP and Julia interface.
+This describes the following:
+
+* how to correctly clone the repository with submodules
+* the prerequisites for installation
+* how to install DSP and Julia interface
 
 Download
 ^^^^^^^^
@@ -10,39 +14,12 @@ You can clone this repository in your preferred directory by typing::
 
    git clone --recursive https://github.com/Argonne-National-Laboratory/DSP.git
 
-Prerequisites
-^^^^^^^^^^^^^
+or::
 
-We recommend to install and run DSP on a **Linux** machine with an appropriate **MPI** library. The software packages necessary to build the source code of DSP are listed below.
+   git clone https://github.com/Argonne-National-Laboratory/DSP.git
+   cd DSP
+   git submodule update --init --recursive
 
-*NOTE: We have also tested installing and running DSP on MacOSX (10.9 or later). We will prepare the documentation for that soon. For now, please email and consult us for how to install and run DSP on MacOSX.*
-
-Build Essentials
-****************
-
-You can install the build essential packages by using the shell script ``./get.essentials.xxx`` in the DSP project repository or by manually installing the packages.
-
-Using ./get.essentials.xxx script
-*********************************
-
-You can install the packages required for DSP with the following scripts::
-
-   sudo ./get.essentials.xxx
-
-Manual installation
-*******************
-
-If you have used ``./get.essentials.xxx``, then you can ignore this section and directly go to `External software packages`_.
-
-* CMake -- This package is **required** to build DSP and all the other external software packages. It is available from http://www.cmake.org/download/.
-* BLAS/LAPACK -- These linear algebra libraries are **required** and may already be available on your machine. If not available, the source codes are available from http://www.netlib.org/blas/blas.tgz and http://www.netlib.org/lapack/lapack-3.5.0.tgz.
-* GNU Make/Autoconf/Automake -- These are **required** and likely available on any machine.
-* bzip2/zlib/xtuils-dev -- These packages are **required** to build one of the external software packages used in DSP.
-
-MPI Library
-***********
-
-MPI library is optional to build and run DSP, but required to run DSP in parallel. To run in parallel, you need to install one of the following libraries.
 
 Build and Setting
 ^^^^^^^^^^^^^^^^^
@@ -52,7 +29,7 @@ Please set UserConfig.cmake as follows.
 * MA27LIB_DIR is *required* to use OOQP (interior point solver). If you are not using CPLEX, it is recommended to use OOQP for better performance. You can request the library here: http://www.hsl.rl.ac.uk/download/MA27/1.0.0/a/
 * It is required to set paths for either CPLEX or SCIP.
   * CPLEX_LIB_DIR is the path to the directory that contains libcplex.a. CPLEX_INC_DIR is the path to the directory that contains cplex.h.
-  * If you use SCIP, you need to compile it as a shared library. SCIP_DIR is the path to the SCIP directory. SCIP_LIB_DIR is the path to the shared library (usually ${SCIP_DIR}/lib). SPX_DIR is the path to the SOPLEX directory.
+  * If you use SCIP, you need to compile it as a shared library. SCIPOPT_INC_DIR is the path to the SCIP directory. SCIPOPT_LIB_DIR is the path to the shared library (usually ${SCIPOPT_INC_DIR}/lib). SPX_DIR is the path to the SOPLEX directory.
 * Once you are set the variables above, please set USER_SETTINGS to ON.
 
 If you have all the prerequisite packages installed on your system, then you need to go to the root directory of DSP and type::
