@@ -10,10 +10,9 @@
 
 #include <cstdlib>
 #include <cstdio>
-#ifdef DSP_HAS_MPI
-#include "mpi.h"
-#endif
+
 #include "CoinTypes.hpp"
+#include "Utility/DspMpi.h"
 
 /** DSP */
 #include "DspApiEnv.h"
@@ -120,12 +119,20 @@ void solveDe(DspApiEnv * env /**< pointer to API object */);
 /** solve dual decomposition */
 void solveDd(DspApiEnv * env /**< pointer to API object */);
 
+/** solve Dantzig-Wolfe decomposition with branch-and-bound */
+void solveDw(DspApiEnv * env /**< pointer to API object */);
+
 /** solve serial Benders decomposition */
 void solveBd(DspApiEnv * env /**< pointer to API object */);
 
 #ifdef DSP_HAS_MPI
 /** solve parallel dual decomposition */
 void solveDdMpi(
+		DspApiEnv * env, /**< pointer to API object */
+		MPI_Comm    comm /**< MPI communicator */);
+
+/** solve parallel Dantzig-Wolfe decomposition with branch-and-bound */
+void solveDwMpi(
 		DspApiEnv * env, /**< pointer to API object */
 		MPI_Comm    comm /**< MPI communicator */);
 

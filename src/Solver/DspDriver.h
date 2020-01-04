@@ -65,11 +65,11 @@ protected:
 	DecModel * model_;
 	DspMessage * message_; /**< message handler */
 
-	DSP_RTN_CODE status_; /**< solution status */
-	double * primsol_;    /**< primal solution in extensive form */
-	double * dualsol_;    /**< dual solution in extensive form */
-	double   primobj_;    /**< primal objective bound */
-	double   dualobj_;    /**< dual objective bound */
+	DSP_RTN_CODE status_;         /**< solution status */
+	std::vector<double> primsol_; /**< primal solution in extensive form */
+	std::vector<double> dualsol_; /**< dual solution in extensive form */
+	double   primobj_;            /**< primal objective bound */
+	double   dualobj_;            /**< dual objective bound */
 
 	double cputime_;    /**< cpu time */
 	double walltime_;   /**< wall time */

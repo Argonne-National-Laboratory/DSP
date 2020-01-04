@@ -37,12 +37,10 @@ DSP_RTN_CODE distIndices(
 }
 
 DSP_RTN_CODE MPIgatherCoinPackedVectors(
-		MPI::Intracomm comm,
+		MPI_Comm comm,
 		vector<CoinPackedVector*> vecs_in,
 		vector<CoinPackedVector*> & vecs_out)
 {
-	int comm_size = comm.Get_size();
-	int comm_rank = comm.Get_rank();
 	int   number_of_vectors  = vecs_in.size(); /**< number of vectors in process */
 	int * numbers_of_vectors = NULL;           /**< number of vectors per process */
 	int   total_number_of_vectors = 0;         /**< number of vectors in comm world */
@@ -56,6 +54,10 @@ DSP_RTN_CODE MPIgatherCoinPackedVectors(
 	int * rcounts = NULL; /**< number of elements that are to be received from each process */
 	int * displs  = NULL; /**< Entry i specifies the displacement at which to place the incoming data from peocess i */
 
+	int comm_size, comm_rank;
+	MPI_Comm_size(comm, &comm_size);
+	MPI_Comm_rank(comm, &comm_rank);
+
 	if (comm_rank == 0)
 	{
 		rcounts = new int [comm_size];
@@ -67,7 +69,7 @@ DSP_RTN_CODE MPIgatherCoinPackedVectors(
 		int sendbuf[1] = {number_of_vectors};
 		numbers_of_vectors = new int [comm_size];
 		/** communicate */
-		comm.Gather(sendbuf, 1, MPI::INT, numbers_of_vectors, 1, MPI::INT, 0);
+		MPI_Gather(sendbuf, 1, MPI_INT, numbers_of_vectors, 1, MPI_INT, 0, comm);
 	}
 
 	/** all gather numbers of elements */
@@ -76,7 +78,7 @@ DSP_RTN_CODE MPIgatherCoinPackedVectors(
 		for (int i = 0; i < number_of_vectors; ++i)
 		{
 			DSPdebugMessage("-> Process %d: vecs_in[%d]->getNumElements() %d\n",
-					comm.Get_rank(), i, vecs_in[i]->getNumElements());
+					comm_rank, i, vecs_in[i]->getNumElements());
 			sendbuf[i] = vecs_in[i]->getNumElements();
 		}
 		if (comm_rank == 0)
@@ -91,8 +93,8 @@ DSP_RTN_CODE MPIgatherCoinPackedVectors(
 			numbers_of_elements = new int [total_number_of_vectors];
 		}
 		/** communicate */
-		comm.Gatherv(sendbuf, number_of_vectors, MPI::INT,
-				numbers_of_elements, rcounts, displs, MPI::INT, 0);
+		MPI_Gatherv(sendbuf, number_of_vectors, MPI_INT,
+				numbers_of_elements, rcounts, displs, MPI_INT, 0, comm);
 		/** free send buffer */
 		FREE_ARRAY_PTR(sendbuf);
 	}
@@ -125,8 +127,8 @@ DSP_RTN_CODE MPIgatherCoinPackedVectors(
 			indices = new int [length_of_vectors];
 		}
 		/** communicate */
-		comm.Gatherv(sendbuf, number_of_elements, MPI::INT,
-				indices, rcounts, displs, MPI::INT, 0);
+		MPI_Gatherv(sendbuf, number_of_elements, MPI_INT,
+				indices, rcounts, displs, MPI_INT, 0, comm);
 		/** free send buffer */
 		FREE_ARRAY_PTR(sendbuf);
 	}
@@ -143,8 +145,8 @@ DSP_RTN_CODE MPIgatherCoinPackedVectors(
 		if (comm_rank == 0)
 			values = new double [length_of_vectors];
 		/** communicate */
-		comm.Gatherv(sendbuf, number_of_elements, MPI::DOUBLE,
-				values, rcounts, displs, MPI::DOUBLE, 0);
+		MPI_Gatherv(sendbuf, number_of_elements, MPI_DOUBLE,
+				values, rcounts, displs, MPI_DOUBLE, 0, comm);
 		/** free send buffer */
 		FREE_ARRAY_PTR(sendbuf);
 	}
@@ -153,7 +155,7 @@ DSP_RTN_CODE MPIgatherCoinPackedVectors(
 	if (comm_rank == 0)
 	{
 		DSPdebugMessage("Rank %d: total_number_of_vectors %d\n",
-				comm.Get_rank(), total_number_of_vectors);
+				comm_rank, total_number_of_vectors);
 		for (int i = 0; i < total_number_of_vectors; ++i)
 		{
 			CoinPackedVector * vec = new CoinPackedVector(
@@ -178,11 +180,10 @@ DSP_RTN_CODE MPIgatherCoinPackedVectors(
 }
 
 DSP_RTN_CODE MPIAllgatherCoinPackedVectors(
-		MPI::Intracomm comm,
+		MPI_Comm comm,
 		vector<CoinPackedVector*> vecs_in,
 		vector<CoinPackedVector*> & vecs_out)
 {
-	int comm_size = comm.Get_size();
 	int   number_of_vectors  = vecs_in.size(); /**< number of vectors in process */
 	int * numbers_of_vectors = NULL;           /**< number of vectors per process */
 	int   total_number_of_vectors = 0;         /**< number of vectors in comm world */
@@ -191,6 +192,10 @@ DSP_RTN_CODE MPIAllgatherCoinPackedVectors(
 	int   length_of_vectors = 0;      /**< number of elements in comm world */
 	int * indices = NULL;
 	double * values = NULL;
+
+	int comm_rank, comm_size;
+	MPI_Comm_size(comm, &comm_size);
+	MPI_Comm_rank(comm, &comm_rank);
 
 	/** receive buffer specific */
 	int * rcounts = new int [comm_size]; /**< number of elements that are to be received from each process */
@@ -201,7 +206,7 @@ DSP_RTN_CODE MPIAllgatherCoinPackedVectors(
 		int sendbuf[1] = {number_of_vectors};
 		numbers_of_vectors = new int [comm_size];
 		/** communicate */
-		comm.Allgather(sendbuf, 1, MPI::INT, numbers_of_vectors, 1, MPI::INT);
+		MPI_Allgather(sendbuf, 1, MPI_INT, numbers_of_vectors, 1, MPI_INT, comm);
 	}
 
 	/** all gather numbers of elements */
@@ -210,7 +215,7 @@ DSP_RTN_CODE MPIAllgatherCoinPackedVectors(
 		for (int i = 0; i < number_of_vectors; ++i)
 		{
 			DSPdebugMessage("-> Process %d: vecs_in[%d]->getNumElements() %d\n",
-					comm.Get_rank(), i, vecs_in[i]->getNumElements());
+					comm_rank, i, vecs_in[i]->getNumElements());
 			sendbuf[i] = vecs_in[i]->getNumElements();
 		}
 		for (int i = 0; i < comm_size; ++i)
@@ -222,8 +227,8 @@ DSP_RTN_CODE MPIAllgatherCoinPackedVectors(
 		}
 		numbers_of_elements = new int [total_number_of_vectors];
 		/** communicate */
-		comm.Allgatherv(sendbuf, number_of_vectors, MPI::INT,
-				numbers_of_elements, rcounts, displs, MPI::INT);
+		MPI_Allgatherv(sendbuf, number_of_vectors, MPI_INT,
+				numbers_of_elements, rcounts, displs, MPI_INT, comm);
 		/** free send buffer */
 		FREE_ARRAY_PTR(sendbuf);
 	}
@@ -253,8 +258,8 @@ DSP_RTN_CODE MPIAllgatherCoinPackedVectors(
 		}
 		indices = new int [length_of_vectors];
 		/** communicate */
-		comm.Allgatherv(sendbuf, number_of_elements, MPI::INT,
-				indices, rcounts, displs, MPI::INT);
+		MPI_Allgatherv(sendbuf, number_of_elements, MPI_INT,
+				indices, rcounts, displs, MPI_INT, comm);
 		/** free send buffer */
 		FREE_ARRAY_PTR(sendbuf);
 	}
@@ -270,8 +275,8 @@ DSP_RTN_CODE MPIAllgatherCoinPackedVectors(
 		sendbuf -= number_of_elements;
 		values = new double [length_of_vectors];
 		/** communicate */
-		comm.Allgatherv(sendbuf, number_of_elements, MPI::DOUBLE,
-				values, rcounts, displs, MPI::DOUBLE);
+		MPI_Allgatherv(sendbuf, number_of_elements, MPI_DOUBLE,
+				values, rcounts, displs, MPI_DOUBLE, comm);
 		/** free send buffer */
 		FREE_ARRAY_PTR(sendbuf);
 	}
@@ -279,7 +284,7 @@ DSP_RTN_CODE MPIAllgatherCoinPackedVectors(
 	/** re-construct output vectors */
 	{
 		DSPdebugMessage("Rank %d: total_number_of_vectors %d\n",
-				comm.Get_rank(), total_number_of_vectors);
+				comm_rank, total_number_of_vectors);
 		for (int i = 0; i < total_number_of_vectors; ++i)
 		{
 			CoinPackedVector * vec = new CoinPackedVector(
@@ -305,7 +310,7 @@ DSP_RTN_CODE MPIAllgatherCoinPackedVectors(
 
 /** MPI gather function for OsiCuts type. */
 DSP_RTN_CODE MPIgatherOsiCuts(
-		MPI::Intracomm comm,
+		MPI_Comm comm,
 		OsiCuts cuts_in,
 		OsiCuts & cuts_out)
 {
@@ -322,10 +327,13 @@ DSP_RTN_CODE MPIgatherOsiCuts(
 	double * rhs_out = NULL;
 
 	/** MPI data */
-	int comm_size = comm.Get_size(); /**< number of processors */
-	int comm_rank = comm.Get_rank(); /**< rank of process */
-	int * ncutss = NULL;             /**< number of cuts for each processor */
+	int comm_size;       /**< number of processors */
+	int comm_rank;       /**< rank of process */
+	int * ncutss = NULL; /**< number of cuts for each processor */
 	int * displs = NULL;
+
+	MPI_Comm_size(comm, &comm_size);
+	MPI_Comm_rank(comm, &comm_rank);
 
 	/** allocate memory */
 	lhs_in = new double [ncuts];
@@ -353,7 +361,7 @@ DSP_RTN_CODE MPIgatherOsiCuts(
 		if (comm_rank == 0)
 			ncutss = new int [comm_size];
 		/** communicate */
-		comm.Gather(&ncuts, 1, MPI::INT, ncutss, 1, MPI::INT, 0);
+		MPI_Gather(&ncuts, 1, MPI_INT, ncutss, 1, MPI_INT, 0, comm);
 	}
 
 	{
@@ -370,11 +378,11 @@ DSP_RTN_CODE MPIgatherOsiCuts(
 			rhs_out = new double [ncuts_out];
 		}
 		/** synchronize lhs */
-		comm.Gatherv(lhs_in, ncuts, MPI::DOUBLE,
-				lhs_out, ncutss, displs, MPI::DOUBLE, 0);
+		MPI_Gatherv(lhs_in, ncuts, MPI_DOUBLE,
+				lhs_out, ncutss, displs, MPI_DOUBLE, 0, comm);
 		/** synchronize rhs */
-		comm.Gatherv(rhs_in, ncuts, MPI::DOUBLE,
-				rhs_out, ncutss, displs, MPI::DOUBLE, 0);
+		MPI_Gatherv(rhs_in, ncuts, MPI_DOUBLE,
+				rhs_out, ncutss, displs, MPI_DOUBLE, 0, comm);
 	}
 
 	/** recover cuts */
@@ -407,7 +415,7 @@ DSP_RTN_CODE MPIgatherOsiCuts(
 
 /** MPI Allgather function for OsiCuts type. */
 DSP_RTN_CODE MPIAllgatherOsiCuts(
-		MPI::Intracomm comm,
+		MPI_Comm comm,
 		OsiCuts cuts_in,
 		OsiCuts & cuts_out)
 {
@@ -424,9 +432,10 @@ DSP_RTN_CODE MPIAllgatherOsiCuts(
 	double * rhs_out = NULL;
 
 	/** MPI data */
-	int comm_size = comm.Get_size(); /**< number of processors */
-	int * ncutss = NULL;             /**< number of cuts for each processor */
+	int comm_size;       /**< number of processors */
+	int * ncutss = NULL; /**< number of cuts for each processor */
 	int * displs = NULL;
+	MPI_Comm_size(comm, &comm_size);
 
 	/** allocate memory */
 	lhs_in = new double [ncuts];
@@ -453,7 +462,7 @@ DSP_RTN_CODE MPIAllgatherOsiCuts(
 	{
 		ncutss = new int [comm_size];
 		/** communicate */
-		comm.Allgather(&ncuts, 1, MPI::INT, ncutss, 1, MPI::INT);
+		MPI_Allgather(&ncuts, 1, MPI_INT, ncutss, 1, MPI_INT, comm);
 	}
 
 	{
@@ -467,11 +476,11 @@ DSP_RTN_CODE MPIAllgatherOsiCuts(
 		lhs_out = new double [ncuts_out];
 		rhs_out = new double [ncuts_out];
 		/** synchronize lhs */
-		comm.Allgatherv(lhs_in, ncuts, MPI::DOUBLE,
-				lhs_out, ncutss, displs, MPI::DOUBLE);
+		MPI_Allgatherv(lhs_in, ncuts, MPI_DOUBLE,
+				lhs_out, ncutss, displs, MPI_DOUBLE, comm);
 		/** synchronize rhs */
-		comm.Allgatherv(rhs_in, ncuts, MPI::DOUBLE,
-				rhs_out, ncutss, displs, MPI::DOUBLE);
+		MPI_Allgatherv(rhs_in, ncuts, MPI_DOUBLE,
+				rhs_out, ncutss, displs, MPI_DOUBLE, comm);
 	}
 
 	/** recover cuts */
@@ -501,7 +510,7 @@ DSP_RTN_CODE MPIAllgatherOsiCuts(
 
 /** MPI_Send for vector<CoinPackedVectors*> */
 DSP_RTN_CODE MPIsendCoinPackedVectors(
-		MPI::Intracomm comm,
+		MPI_Comm comm,
 		int to_rank,
 		vector<CoinPackedVector*> vecs,
 		int tag)
@@ -519,6 +528,9 @@ DSP_RTN_CODE MPIsendCoinPackedVectors(
 	int number_of_vectors  = vecs.size(); /**< number of vectors */
 	int number_of_elements = 0;           /**< number of elements */
 
+	int comm_rank;
+	MPI_Comm_rank(comm, &comm_rank);
+
 	/** send the number of vectors */
 	MPI_Send(&number_of_vectors, 1, MPI_INT, to_rank, tag, comm);
 
@@ -527,7 +539,7 @@ DSP_RTN_CODE MPIsendCoinPackedVectors(
 	for (int i = 0; i < number_of_vectors; ++i)
 	{
 		DSPdebugMessage("-> Process %d: vecs_in[%d]->getNumElements() %d\n",
-				comm.Get_rank(), i, vecs[i]->getNumElements());
+				comm_rank, i, vecs[i]->getNumElements());
 		sendibuf[i] = vecs[i]->getNumElements();
 	}
 	MPI_Send(sendibuf, number_of_vectors, MPI_INT, to_rank, tag, comm);
@@ -567,7 +579,7 @@ DSP_RTN_CODE MPIsendCoinPackedVectors(
 
 /** MPI_Recv for vector<CoinPackedVectors*> */
 DSP_RTN_CODE MPIrecvCoinPackedVectors(
-		MPI::Intracomm comm,
+		MPI_Comm comm,
 		int from_rank,
 		vector<CoinPackedVector*> & vecs,
 		int tag)
@@ -628,7 +640,7 @@ DSP_RTN_CODE MPIrecvCoinPackedVectors(
 
 /** MPI_Send for OsiCuts */
 DSP_RTN_CODE MPIsendOsiCuts(
-		MPI::Intracomm comm,
+		MPI_Comm comm,
 		int to_rank,
 		OsiCuts cuts,
 		int tag)
@@ -686,7 +698,7 @@ DSP_RTN_CODE MPIsendOsiCuts(
 
 /** MPI_Recv for OsiCuts */
 DSP_RTN_CODE MPIrecvOsiCuts(
-		MPI::Intracomm comm,
+		MPI_Comm comm,
 		int from_rank,
 		OsiCuts & cuts,
 		int tag)
@@ -740,7 +752,7 @@ DSP_RTN_CODE MPIrecvOsiCuts(
 
 /** MPI_Scatter function for vector<CoinPackedVectors*> */
 DSP_RTN_CODE MPIscatterCoinPackedVectors(
-		MPI::Intracomm comm,
+		MPI_Comm comm,
 		vector<CoinPackedVector*> vecs_in,
 		vector<CoinPackedVector*> & vecs_out)
 {
@@ -750,7 +762,6 @@ DSP_RTN_CODE MPIscatterCoinPackedVectors(
 	FREE_ARRAY_PTR(indices)             \
 	FREE_ARRAY_PTR(values)
 
-	int comm_rank = comm.Get_rank();
 	int   number_of_vectors;          /**< number of vectors in process */
 	int * numbers_of_vectors = NULL;  /**< number of vectors per process */
 	int   number_of_elements;         /**< number of elements in process */
@@ -759,6 +770,9 @@ DSP_RTN_CODE MPIscatterCoinPackedVectors(
 	double * values = NULL;
 
 	BGN_TRY_CATCH
+
+	int comm_rank;
+	MPI_Comm_rank(comm, &comm_rank);
 
 	/** scatter the number of vectors */
 	if (comm_rank == 0)
@@ -776,7 +790,7 @@ DSP_RTN_CODE MPIscatterCoinPackedVectors(
 		for (int i = 0; i < number_of_vectors; ++i)
 		{
 			DSPdebugMessage("-> Process %d: vecs_in[%d]->getNumElements() %d\n",
-					comm.Get_rank(), i, vecs_in[i]->getNumElements());
+					comm_rank, i, vecs_in[i]->getNumElements());
 			numbers_of_elements[i] = vecs_in[i]->getNumElements();
 		}
 		MPI_Scatter(numbers_of_elements, number_of_vectors, MPI_INT, NULL, 0, MPI_INT, 0, comm);
@@ -854,7 +868,7 @@ DSP_RTN_CODE MPIscatterCoinPackedVectors(
 
 /** MPI_Bcast function for vector<CoinPackedVectors*> */
 DSP_RTN_CODE MPIbcastCoinPackedVectors(
-		MPI::Intracomm comm,
+		MPI_Comm comm,
 		vector<CoinPackedVector*> & vecs)
 {
 #define FREE_MEMORY \
@@ -863,7 +877,6 @@ DSP_RTN_CODE MPIbcastCoinPackedVectors(
 	FREE_ARRAY_PTR(indices)             \
 	FREE_ARRAY_PTR(values)
 
-	int comm_rank = comm.Get_rank();
 	int   number_of_vectors;          /**< number of vectors in process */
 	int * numbers_of_vectors = NULL;  /**< number of vectors per process */
 	int   number_of_elements;         /**< number of elements in process */
@@ -872,6 +885,9 @@ DSP_RTN_CODE MPIbcastCoinPackedVectors(
 	double * values = NULL;
 
 	BGN_TRY_CATCH
+
+	int comm_rank;
+	MPI_Comm_rank(comm, &comm_rank);
 
 	/** broadcast the number of vectors */
 	if (comm_rank == 0)
@@ -885,7 +901,7 @@ DSP_RTN_CODE MPIbcastCoinPackedVectors(
 		for (int i = 0; i < number_of_vectors; ++i)
 		{
 			DSPdebugMessage("-> Process %d: vecs_in[%d]->getNumElements() %d\n",
-					comm.Get_rank(), i, vecs[i]->getNumElements());
+					comm_rank, i, vecs[i]->getNumElements());
 			numbers_of_elements[i] = vecs[i]->getNumElements();
 		}
 	}
@@ -955,7 +971,7 @@ DSP_RTN_CODE MPIbcastCoinPackedVectors(
 
 /** MPI_Scatter function for OsiCuts */
 DSP_RTN_CODE MPIscatterOsiCuts(
-		MPI::Intracomm comm,
+		MPI_Comm comm,
 		OsiCuts cuts_in,
 		OsiCuts * cuts_out)
 {
@@ -1044,7 +1060,7 @@ DSP_RTN_CODE MPIscatterOsiCuts(
 
 /** MPI_Bcast function for OsiCuts */
 DSP_RTN_CODE MPIbcastOsiCuts(
-		MPI::Intracomm comm,
+		MPI_Comm comm,
 		OsiCuts * cuts)
 {
 #define FREE_MEMORY     \

@@ -8,7 +8,7 @@
 //#define DSP_DEBUG
 #include "Solver/Benders/BdMWMpi.h"
 #include "Solver/Benders/SCIPconshdlrBendersWorker.h"
-#include "SolverInterface/SolverInterfaceScip.h"
+#include "SolverInterface/DspOsi.h"
 
 BdMWMpi::BdMWMpi(
 		MPI_Comm comm,
@@ -33,7 +33,7 @@ DSP_RTN_CODE BdMWMpi::init()
 	if (comm_rank_ == 0)
 	{
 		/** create and initialize master */
-		master_ = new BdMaster(par_, model_, message_);
+		master_ = new BdMaster(model_, par_, message_);
 		DSP_RTN_CHECK_THROW(master_->init());
 	}
 	else
@@ -46,8 +46,7 @@ DSP_RTN_CODE BdMWMpi::init()
 			par_->setIntPtrParam("ARR_PROC_IDX", s, subprob_indices[s]);
 
 		/** create and initialize worker */
-		worker_ = new BdWorker(par_, model_, message_);
-		DSP_RTN_CHECK_THROW(worker_->init());
+		worker_ = new BdWorker(model_, par_, message_);
 	}
 #ifdef DSP_DEBUG
 	for (int i = 1; i < comm_size_; ++i)
@@ -78,7 +77,6 @@ DSP_RTN_CODE BdMWMpi::finalize()
 	}
 	else
 	{
-		worker_->finalize();
 		FREE_PTR(worker_);
 	}
 
@@ -138,12 +136,12 @@ SCIPconshdlrBenders* BdMWMpi::constraintHandler()
 	BGN_TRY_CATCH
 
 	/** get solver interface */
-	SolverInterfaceScip * si = dynamic_cast<SolverInterfaceScip*>(master_->getSiPtr());
+	OsiScipSolverInterface * si = dynamic_cast<OsiScipSolverInterface*>(master_->getSiPtr());
 
 	/** MPI Benders */
-	conshdlr = new SCIPconshdlrBendersWorker(si->getSCIP(), par_->getIntParam("BD/CUT_PRIORITY"), comm_);
+	conshdlr = new SCIPconshdlrBendersWorker(si->getScip(), par_->getIntParam("BD/CUT_PRIORITY"), comm_);
 	conshdlr->setDecModel(model_);
-	conshdlr->setOriginalVariables(si->getNumCols(), si->getSCIPvars(), par_->getIntParam("BD/NUM_CUTS_PER_ITER"));
+	conshdlr->setOriginalVariables(si->getNumCols(), si->getScipVars(), par_->getIntParam("BD/NUM_CUTS_PER_ITER"));
 
 	END_TRY_CATCH_RTN(;,NULL)
 

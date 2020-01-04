@@ -10,11 +10,19 @@
 #include "Solver/DualDecomp/DdWorkerLB.h"
 
 DdWorkerLB::DdWorkerLB(
-        DspParams *par,
-        DecModel *model,
-        DspMessage *message) :
-        DdWorker(par, model, message),
-        solution_key_(-1), isInit_(true) {
+		DecModel *   model,  /**< model pointer */
+		DspParams *  par,    /**< parameter pointer */
+		DspMessage * message /**< message pointer */) :
+DdWorker(model, par, message), 
+solution_key_(-1), 
+isInit_(true) {}
+
+DdWorkerLB::DdWorkerLB(const DdWorkerLB& rhs) :
+DdWorker(rhs), 
+solution_key_(rhs.solution_key_), 
+isInit_(rhs.isInit_) {
+	for (unsigned s = 0; s < rhs.subprobs_.size(); ++s)
+		subprobs_[s] = rhs.subprobs_[s]->clone();
 }
 
 DdWorkerLB::~DdWorkerLB() {
@@ -51,7 +59,7 @@ DSP_RTN_CODE DdWorkerLB::solve() {
 		walltime = CoinGetTimeOfDay();
 
 		/** reset gap tolerance */
-		if (subprobs_[s]->si_->getNumIntegers() > 0)
+		if (subprobs_[s]->getSiPtr()->getNumIntegers() > 0)
 			subprobs_[s]->setGapTol(par_->getDblParam("MIP/GAP_TOL"));
 
 		bool resolve = true;
@@ -65,14 +73,14 @@ DSP_RTN_CODE DdWorkerLB::solve() {
 			subprobs_[s]->solve();
 
 			/** check status. there might be unexpected results. */
-			switch (subprobs_[s]->si_->getStatus()) {
+			switch (subprobs_[s]->getStatus()) {
 				case DSP_STAT_STOPPED_TIME:
 				case DSP_STAT_LIM_ITERorTIME:
 				case DSP_STAT_LIM_INFEAS:
 				case DSP_STAT_STOPPED_GAP:
 				case DSP_STAT_STOPPED_NODE:
 					message_->print(3, "Warning: subproblem %d solution status is %d\n",
-									subprobs_[s]->sind_, subprobs_[s]->si_->getStatus());
+									subprobs_[s]->sind_, subprobs_[s]->getStatus());
 					break;
 				case DSP_STAT_OPTIMAL:
 					break;
@@ -80,14 +88,14 @@ DSP_RTN_CODE DdWorkerLB::solve() {
 					status_ = DSP_STAT_MW_STOP;
 					rtncode = DSP_RTN_ERR;
 					message_->print(0, "Warning: subproblem %d solution status is %d\n",
-									subprobs_[s]->sind_, subprobs_[s]->si_->getStatus());
+									subprobs_[s]->sind_, subprobs_[s]->getStatus());
 					break;
 			}
 			if (status_ == DSP_STAT_MW_STOP)
 				break;
 
 			/** set solution gap tolerance */
-			if (subprobs_[s]->si_->getNumIntegers() > 0) {
+			if (subprobs_[s]->getSiPtr()->getNumIntegers() > 0) {
 				if (isInit_ == false &&
 						subprobs_[s]->getPrimalObjective() >= subprobs_[s]->theta_ &&
 						subprobs_[s]->gapTol_ > pargaptol) {
@@ -107,11 +115,11 @@ DSP_RTN_CODE DdWorkerLB::solve() {
 		if (status_ == DSP_STAT_MW_STOP)
 			break;
 
-		if (subprobs_[s]->si_->getStatus() == DSP_STAT_LIM_INFEAS)
+		if (subprobs_[s]->getStatus() == DSP_STAT_LIM_INFEAS)
 			primobj = COIN_DBL_MAX;
 		else if (primobj < COIN_DBL_MAX)
-			primobj += subprobs_[s]->si_->getPrimalBound();
-		dualobj += subprobs_[s]->si_->getDualBound();
+			primobj += subprobs_[s]->getSiPtr()->getObjValue();
+		dualobj += subprobs_[s]->getSiPtr()->getBestDualBound();
 		total_cputime += CoinCpuTime() - cputime;
 		total_walltime += CoinGetTimeOfDay() - walltime;
 
@@ -146,7 +154,7 @@ DSP_RTN_CODE DdWorkerLB::createProblem(int nsubprobs, int* subindex) {
         DdSub *subprob = new DdSub(subindex[s], par_, model_, message_);
         /** initialize */
         DSP_RTN_CHECK_THROW(subprob->init());
-        assert(subprob->si_);
+        assert(subprob->getSiPtr());
         /** store */
         subprobs_.push_back(subprob);
     }

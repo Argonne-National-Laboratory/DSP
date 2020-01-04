@@ -5,30 +5,29 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+// #define DSP_DEBUG
 
 #include "Solver/Benders/BdDriverSerial.h"
 #include "Solver/Benders/BdMWSerial.h"
 #include "Solver/DualDecomp/DdDriverSerial.h"
 
 BdDriverSerial::BdDriverSerial(
-		DspParams * par, /**< parameter pointer */
-		DecModel * model /**< model pointer */):
-BdDriver(par,model)
-{
-}
+			DecModel *   model,  /**< model pointer */
+			DspParams *  par,    /**< parameters */
+			DspMessage * message /**< message pointer */):
+BdDriver(model,par,message) {}
 
-BdDriverSerial::~BdDriverSerial()
-{
-	// TODO Auto-generated destructor stub
-}
+BdDriverSerial::BdDriverSerial(const BdDriverSerial& rhs) :
+BdDriver(rhs) {}
+
+BdDriverSerial::~BdDriverSerial() {}
 
 DSP_RTN_CODE BdDriverSerial::init()
 {
 	BGN_TRY_CATCH
 
 	/** primal soltuion */
-	primsol_  = new double [model_->getFullModelNumCols()];
+	primsol_.resize(model_->getFullModelNumCols());
 
 	/** create Master-Worker framework */
 	mw_ = new BdMWSerial(model_, par_, message_);
@@ -108,37 +107,38 @@ DSP_RTN_CODE BdDriverSerial::findLowerBound()
 
 	BGN_TRY_CATCH
 
-		/** set parameters */
-		int iterlim = par_->getIntParam("DD/ITER_LIM");
-        int fcut = par_->getIntParam("DD/FEAS_CUTS");
-        int ocut = par_->getIntParam("DD/OPT_CUTS");
-        int evalub = par_->getIntParam("DD/EVAL_UB");
-        par_->setIntParam("DD/ITER_LIM", par_->getIntParam("BD/DD/ITER_LIM"));
-        par_->setIntParam("DD/FEAS_CUTS", -1);
-        par_->setIntParam("DD/OPT_CUTS", -1);
-        par_->setIntParam("DD/EVAL_UB", -1);
+	/** set parameters */
+	int iterlim = par_->getIntParam("DD/ITER_LIM");
+	int fcut = par_->getIntParam("DD/FEAS_CUTS");
+	int ocut = par_->getIntParam("DD/OPT_CUTS");
+	int evalub = par_->getIntParam("DD/EVAL_UB");
+	par_->setIntParam("DD/ITER_LIM", par_->getIntParam("BD/DD/ITER_LIM"));
+	par_->setIntParam("DD/FEAS_CUTS", -1);
+	par_->setIntParam("DD/OPT_CUTS", -1);
+	par_->setIntParam("DD/EVAL_UB", -1);
+	par_->setBoolPtrParam("RELAX_INTEGRALITY", 1, true);
 
 	message_->print(1, "Finding a good lower bound using Dual Decomposition...\n");
 
 	/** use dual decomposition */
-	dd = new DdDriverSerial(par_, model_);
+	dd = new DdDriverSerial(model_, par_, message_);
 	dd->init();
 	dd->run();
 	dd->finalize();
 
 	/** set objective bounds */
-	primobj_ = dd->getPrimalObjectiveValue();
-	dualobj_ = dd->getDualObjectiveValue();
+	primobj_ = dd->getPrimalObjective();
+	dualobj_ = dd->getDualObjective();
 	DSPdebugMessage("primobj %+e, dualobj %+e\n", primobj_, dualobj_);
 	message_->print(1, "Best lower bound %e, time elapsed: %.2f sec.\n", dualobj_, dd->getWallTime());
 
-        /** TODO copy primal solution */
+	/** TODO copy primal solution */
 
-		/** rollback parameters */
-		par_->setIntParam("DD/ITER_LIM", iterlim);
-        par_->setIntParam("DD/FEAS_CUTS", fcut);
-        par_->setIntParam("DD/OPT_CUTS", ocut);
-        par_->setIntParam("DD/EVAL_UB", evalub);
+	/** rollback parameters */
+	par_->setIntParam("DD/ITER_LIM", iterlim);
+	par_->setIntParam("DD/FEAS_CUTS", fcut);
+	par_->setIntParam("DD/OPT_CUTS", ocut);
+	par_->setIntParam("DD/EVAL_UB", evalub);
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
@@ -159,10 +159,13 @@ DSP_RTN_CODE BdDriverSerial::collectSolution()
 	{
 		status_ = master->getStatus();
 		primobj_ = master->getPrimalObjective();
+		bestprimobj_ = primobj_;
 		dualobj_ = master->getDualObjective();
+		bestdualobj_ = dualobj_;
 		DSPdebugMessage("status %d, primobj %+e, dualobj %+e\n", status_, primobj_, dualobj_);
-		CoinCopyN(master->getPrimalSolution(), model_->getNumSubproblemCouplingCols(0), primsol_);
-		numNodes_ = master->getSiPtr()->getNumNodes();
+		CoinCopyN(master->getPrimalSolution(), model_->getNumSubproblemCouplingCols(0), &primsol_[0]);
+		bestprimsol_ = primsol_;
+		numNodes_ = master->getNumNodes();
 		numIterations_ = master->getSiPtr()->getIterationCount();
 		DSPdebugMessage("nodes %d, iterations %d\n", numNodes_, numIterations_);
 	}
@@ -176,7 +179,7 @@ DSP_RTN_CODE BdDriverSerial::collectSolution()
 	for (int i = 0; i < model_->getNumSubproblems(); ++i)
 	{
 		//DSPdebugMessage("Subprob %d numcols %d\n", i, bdsub->getNumCols(i));
-		CoinCopyN(bdsub->getSolution(i), bdsub->getNumCols(i), primsol_ + pos);
+		CoinCopyN(bdsub->getSolution(i), bdsub->getNumCols(i), &primsol_[pos]);
 		pos += bdsub->getNumCols(i);
 	}
 

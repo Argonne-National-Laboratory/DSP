@@ -9,13 +9,12 @@
 #define SRC_UTILITY_DSPPARAMS_H_
 
 #include <limits>
-#include <tr1/unordered_map>
+#include <unordered_map>
 #include <string>
 #include <iostream>
 #include <fstream>
 
 using namespace std;
-using namespace tr1;
 
 enum DSP_DD_MASTER_ALGO
 {
@@ -33,9 +32,17 @@ enum DSP_BD_INIT_LB_ALGO
 };
 
 enum DSP_EXTERNAL_SOLVER {
-	CPLEX = 0,
-	EXT_SCIP = 1,
-	OOQP = 1
+	OsiCpx = 0,
+	OsiScip,
+	OsiOoqp,
+	OsiClp // TODO: This needs to be replaced by OsiCbc.
+};
+
+enum DSP_DW_BRANCH {
+	BRANCH_INT = 0,
+	BRANCH_NONANT,
+	BRANCH_NONANT2,
+	BRANCH_DISJUNCTION_TEST,
 };
 
 /**
@@ -122,7 +129,7 @@ void DspParam<T>::deleteParam(string name)
 	if (params_.find(name) != params_.end())
 		params_.erase(name);
 	else
-		printf("WARNING: There is no parameter <%s>\n.", name.c_str());
+		printf("WARNING: There is no parameter <%s>.\n", name.c_str());
 }
 
 /** set parameter */
@@ -132,7 +139,7 @@ void DspParam<T>::setParam(string name, T const & value)
 	if (params_.find(name) != params_.end())
 		params_[name] = value;
 	else
-		printf("WARNING: There is no parameter <%s>\n.", name.c_str());
+		printf("WARNING: There is no parameter <%s>.\n", name.c_str());
 }
 
 /** get parameter */
@@ -144,7 +151,7 @@ T DspParam<T>::getParam(string name) const
 		return found->second;
 	else
 	{
-		printf("WARNING: There is no parameter <%s>\n.", name.c_str());
+		printf("WARNING: There is no parameter <%s>.\n", name.c_str());
 		return T();
 	}
 }

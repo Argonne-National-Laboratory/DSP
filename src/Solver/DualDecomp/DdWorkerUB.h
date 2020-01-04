@@ -8,8 +8,10 @@
 #ifndef SRC_SOLVER_DUALDECOMP_DDWORKERUB_H_
 #define SRC_SOLVER_DUALDECOMP_DDWORKERUB_H_
 
-#include <Solver/DualDecomp/DdWorker.h>
+#include "Solver/DualDecomp/DdWorker.h"
+#include "OsiSolverInterface.hpp"
 
+/** A worker class for solving upper bounding subproblems. */
 class DdWorkerUB: public DdWorker {
 
 	friend class DdMWSerial;
@@ -18,17 +20,31 @@ class DdWorkerUB: public DdWorker {
 
 public:
 
-	/** constructor */
-	DdWorkerUB(DspParams * par, DecModel * model, DspMessage * message);
+	/** A default constructor. */
+	DdWorkerUB(
+			DecModel *   model,  /**< model pointer */
+			DspParams *  par,    /**< parameter pointer */
+			DspMessage * message /**< message pointer */);
 
-	/** destructor */
+	/** A copy constructor. */
+	DdWorkerUB(const DdWorkerUB& rhs);
+
+	/** A default destructor. */
 	virtual ~DdWorkerUB();
 
-	/** initialize */
+	/** A clone function */
+	virtual DdWorkerUB* clone() const {
+		return new DdWorkerUB(*this);
+	}
+
+	/** A virtual member for initializing solver. */
 	virtual DSP_RTN_CODE init();
 
-	/** solve */
+	/** A virtual member for solving problem. */
 	virtual DSP_RTN_CODE solve();
+
+	/** A virtual memeber for finalizing solver. */
+	virtual DSP_RTN_CODE finalize() {return DSP_RTN_OK;}
 
 public:
 
@@ -45,17 +61,15 @@ protected:
 
 public:
 	double bestub_; /**< best upper bound */
-	double** primsols_; /**< primal solution for each scenario */
+	std::vector<std::vector<double> > primsols_; /**< primal solution for each subproblem */
 
 private:
 
 	CoinPackedMatrix ** mat_mp_;
-	double** rlbd_org_;
-	double** rubd_org_;
+	double** rlbd_org_; /**< original row lower bounds for each subproblem */
+	double** rubd_org_; /**< original row upper bounds for each subproblem */
 
-	SolverInterface ** si_;
-	double * objvals_;
-	int * statuses_;
+	OsiSolverInterface ** si_; /**< solver interface for each subproblem */
 	double ub_; /**< upper bound */
 };
 

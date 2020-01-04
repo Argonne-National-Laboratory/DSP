@@ -10,24 +10,34 @@
 
 #include "DdDriver.h"
 
+/** A driver class for serial dual decomposition */
 class DdDriverSerial: public DdDriver {
 public:
 
-	/** constructor */
+	/** A default constructor. */
 	DdDriverSerial(
-			DspParams * par,
-			DecModel * model);
+			DecModel *   model,  /**< model pointer */
+			DspParams *  par,    /**< parameters */
+			DspMessage * message /**< message pointer */);
+	
+	/** A copy constructor. */
+	DdDriverSerial(const DdDriverSerial& rhs);
 
-	/** destructor */
-	virtual ~DdDriverSerial() {}
+	/** A default destructor. */
+	virtual ~DdDriverSerial();
 
-	/** initialize */
+	/** A clone function */
+	virtual DdDriverSerial* clone() const {
+		return new DdDriverSerial(*this);
+	}
+
+	/** A virtual member for initializing the driver. */
 	virtual DSP_RTN_CODE init();
 
-	/** run */
+	/** A virtual member for running the driver. */
 	virtual DSP_RTN_CODE run();
 
-	/** finalize */
+	/** A virtual memeber for finalizing the driver. */
 	virtual DSP_RTN_CODE finalize();
 
 };

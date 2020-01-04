@@ -13,29 +13,34 @@
 /** DSP */
 #include "Model/DecModel.h"
 #include "Solver/DecSolver.h"
-#include "SolverInterface/SolverInterface.h"
 
-/**
- * This defines a class for solving a dual decomposition subproblem.
- */
+/** A class for the implmentation of the DD subproblem solver. */
 class DdSub : public DecSolver
 {
 public:
 
-	/** default constructor */
+	/** A default constructor. */
 	DdSub(int s, DspParams * par, DecModel * model, DspMessage * message);
 
-	/** default destructor */
+	/** A copy constructor. */
+	DdSub(const DdSub& rhs);
+
+	/** A default destructor. */
 	virtual ~DdSub();
 
-	/** initialize */
+	/** A clone function */
+	virtual DdSub* clone() const {
+		return new DdSub(*this);
+	}
+
+	/** A virtual member for initializing solver. */
 	virtual DSP_RTN_CODE init();
 
-	/** finalize */
-	virtual DSP_RTN_CODE finalize() {return DSP_RTN_OK;}
-
-	/** solve */
+	/** A virtual member for solving problem. */
 	virtual DSP_RTN_CODE solve();
+
+	/** A virtual memeber for finalizing solver. */
+	virtual DSP_RTN_CODE finalize() {return DSP_RTN_OK;}
 
 private:
 
@@ -56,7 +61,7 @@ public:
 	DSP_RTN_CODE pushCuts(OsiCuts * cuts);
 
 	/** set wall clock time limit */
-	void setTimeLimit(double sec);
+	virtual void setTimeLimit(double sec);
 
 	/** set accuracy tolerance */
 	void setGapTol(double tol);
@@ -65,8 +70,6 @@ public:
 	void setPrintLevel(int level);
 
 public:
-
-	SolverInterface * si_; /**< solver interface */
 
 	int sind_;           /**< scenario index */
 	int nrows_coupling_; /**< number of coupling constraints for the subproblem (dimension of lambda) */

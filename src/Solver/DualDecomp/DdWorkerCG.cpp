@@ -7,14 +7,18 @@
 
 #include "DdWorkerCG.h"
 
-DdWorkerCG::DdWorkerCG(DspParams * par, DecModel * model, DspMessage * message):
-	DdWorker(par, model, message) {
+DdWorkerCG::DdWorkerCG(
+		DecModel *   model,  /**< model pointer */
+		DspParams *  par,    /**< parameter pointer */
+		DspMessage * message /**< message pointer */):
+DdWorker(model, par, message) {
 	/** parameters */
 	parProcIdxSize_ = par_->getIntPtrParamSize("ARR_PROC_IDX");
 	parProcIdx_     = par_->getIntPtrParam("ARR_PROC_IDX");
 	DSPdebugMessage("parProcIdxSize_ %d\n", parProcIdxSize_);
 }
 
-DdWorkerCG::~DdWorkerCG() {
-	// TODO Auto-generated destructor stub
-}
+DdWorkerCG::DdWorkerCG(const DdWorkerCG& rhs) :
+DdWorker(rhs),
+parProcIdxSize_(rhs.parProcIdxSize_),
+parProcIdx_(rhs.parProcIdx_) {}

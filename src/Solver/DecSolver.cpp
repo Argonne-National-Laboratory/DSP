@@ -9,34 +9,65 @@
 #include <fstream>
 #include <iomanip>
 #include "Solver/DecSolver.h"
+#include "SolverInterface/DspOsi.h"
 
-DecSolver::DecSolver(DspParams * par, DecModel * model, DspMessage * message):
-	model_(model), par_(par), message_(message),
-	status_(DSP_STAT_UNKNOWN), primsol_(NULL), dualsol_(NULL),
-	primobj_(COIN_DBL_MAX), dualobj_(-COIN_DBL_MAX),
-	time_remains_(COIN_DBL_MAX), tic_(0.0) {}
+DecSolver::DecSolver(
+			DecModel *   model,   /**< model pointer */
+			DspParams *  par,     /**< parameter pointer */
+			DspMessage * message /**< message pointer */) :
+model_(model),
+par_(par),
+message_(message),
+si_(NULL),
+status_(DSP_STAT_UNKNOWN),
+bestprimobj_(COIN_DBL_MAX),
+primobj_(COIN_DBL_MAX),
+bestdualobj_(-COIN_DBL_MAX),
+dualobj_(-COIN_DBL_MAX),
+cputime_(0.0),
+walltime_(0.0),
+time_remains_(COIN_DBL_MAX),
+tic_(0.0),
+numIterations_(0),
+numNodes_(0),
+iterlim_(COIN_INT_MAX) {
+	message_->logLevel_ = par_->getIntParam("LOG_LEVEL");
+}
 
-DecSolver::~DecSolver()
-{
-	FREE_ARRAY_PTR(primsol_);
-	for (unsigned i = 0; i < s_primsols_.size(); ++i)
-		FREE_ARRAY_PTR(s_primsols_[i]);
+DecSolver::DecSolver(const DecSolver&rhs) :
+model_(rhs.model_),
+par_(rhs.par_),
+message_(rhs.message_),
+status_(rhs.status_),
+bestprimobj_(rhs.bestprimobj_),
+primobj_(rhs.primobj_),
+bestdualobj_(rhs.bestdualobj_),
+dualobj_(rhs.dualobj_),
+cputime_(rhs.cputime_),
+walltime_(rhs.walltime_),
+time_remains_(rhs.time_remains_),
+tic_(rhs.tic_),
+numIterations_(rhs.numIterations_),
+numNodes_(rhs.numNodes_),
+iterlim_(rhs.iterlim_) {
+	si_ = rhs.si_->clone();
+	bestprimsol_ = rhs.bestprimsol_;
+	primsol_ = rhs.primsol_;
+	bestdualsol_ = rhs.bestdualsol_;
+	dualsol_ = rhs.dualsol_;
+	s_statuses_ = rhs.s_statuses_;
+	s_primobjs_ = rhs.s_primobjs_;
+	s_dualobjs_ = rhs.s_dualobjs_;
+	s_primsols_ = rhs.s_primsols_;
+	s_cputimes_ = rhs.s_cputimes_;
+	s_walltimes_ = rhs.s_walltimes_;
+}
+
+DecSolver::~DecSolver() {
+	FREE_PTR(si_);
 	message_ = NULL;
 	par_ = NULL;
 	model_ = NULL;
-}
-
-/** update time stamp and time remains */
-DSP_RTN_CODE DecSolver::ticToc()
-{
-	BGN_TRY_CATCH
-
-	time_remains_ -= CoinGetTimeOfDay() - tic_;
-	tic_ = CoinGetTimeOfDay();
-
-	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
-
-	return DSP_RTN_OK;
 }
 
 /** write output to a file */

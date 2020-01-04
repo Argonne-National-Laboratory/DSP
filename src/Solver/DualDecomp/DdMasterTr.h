@@ -8,24 +8,33 @@
 #ifndef SRC_SOLVER_DUALDECOMP_DDMASTERTR_H_
 #define SRC_SOLVER_DUALDECOMP_DDMASTERTR_H_
 
-#include <Solver/DualDecomp/DdMaster.h>
+#include "Solver/DualDecomp/DdMaster.h"
 
+/** A class for implementing the trust-region master solver. */
 class DdMasterTr: public DdMaster {
 public:
 
-	/** constructor */
+	/** A default constructor. */
 	DdMasterTr(
-			DspParams *  par,     /**< parameter pointer */
 			DecModel *   model,   /**< model pointer */
+			DspParams *  par,     /**< parameter pointer */
 			DspMessage * message /**< message pointer */);
 
-	/** desctructor */
+	/** A copy constructor. */
+	DdMasterTr(const DdMasterTr& rhs);
+
+	/** A default desctructor. */
 	virtual ~DdMasterTr();
 
-	/** initialize */
+	/** A clone function */
+	virtual DdMasterTr* clone() const {
+		return new DdMasterTr(*this);
+	}
+
+	/** A virtual member for initializing solver. */
 	virtual DSP_RTN_CODE init();
 
-	/** solve */
+	/** A virtual member for solving problem. */
 	virtual DSP_RTN_CODE solve();
 
 	/** update problem */

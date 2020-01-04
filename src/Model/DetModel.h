@@ -8,13 +8,10 @@
 #ifndef DETMODEL_H_
 #define DETMODEL_H_
 
-/** coin */
 #include "CoinPackedMatrix.hpp"
 #include "CoinHelperFunctions.hpp"
-/** Dsp */
-#include "DspMacros.h"
-#include "DspRtnCodes.h"
-
+#include "Utility/DspMacros.h"
+#include "Utility/DspRtnCodes.h"
 
 /**
  * Deterministic model. To be used with general decomposition models (DecModel) that are not based on stochastic

@@ -22,6 +22,29 @@ DdMWPara(comm,model,par,message),
 qid_counter_(0),
 max_queue_size_(5) {}
 
+DdMWAsync::DdMWAsync(const DdMWAsync& rhs) :
+DdMWPara(rhs),
+qid_counter_(rhs.qid_counter_),
+max_queue_size_(rhs.max_queue_size_),
+q_id_(rhs.q_id_),
+q_objval_(rhs.q_objval_) {
+	double * sol;
+	int * ind;
+	for (int i = 0; i < rhs.q_solution_.size(); ++i) {
+		// copy q solution 
+		sol = new double [master_->getSiPtr()->getNumCols()];
+		CoinCopyN(rhs.q_solution_[i], master_->getSiPtr()->getNumCols(), sol);
+		q_solution_.push_back(sol);
+		sol = NULL;
+
+		// copy q indicator
+		ind = new int [model_->getNumSubproblems()];
+		CoinCopyN(rhs.q_indicator_[i], model_->getNumSubproblems(), ind);
+		q_indicator_.push_back(ind);
+		ind = NULL;
+	}
+}
+
 DdMWAsync::~DdMWAsync()
 {
 	/** free queue */
@@ -42,7 +65,7 @@ DSP_RTN_CODE DdMWAsync::init()
 	if (comm_rank_ == 0)
 	{
 		/** create master */
-		master_ = new DdMasterAtr(par_, model_, message_, lb_comm_size_);
+		master_ = new DdMasterAtr(model_, par_, message_, lb_comm_size_);
 		/** initialize master */
 		master_->init();
 	}
@@ -52,17 +75,17 @@ DSP_RTN_CODE DdMWAsync::init()
 		if (lb_comm_rank_ >= 0)
 		{
 			DSPdebugMessage("Rank %d creates a worker for lower bounds.\n", comm_rank_);
-			worker_.push_back(new DdWorkerLB(par_, model_, message_));
+			worker_.push_back(new DdWorkerLB(model_, par_, message_));
 		}
 		/** create worker for upper bounds */
 		if (cgub_comm_rank_ >= 0)
 		{
-#ifndef NO_SCIP
+#ifdef DSP_HAS_SCIP
 			DSPdebugMessage("Rank %d creates a worker for Benders cut generation.\n", comm_rank_);
-			worker_.push_back(new DdWorkerCGBd(par_, model_, message_));
+			worker_.push_back(new DdWorkerCGBd(model_, par_, message_));
 #endif
 			DSPdebugMessage("Rank %d creates a worker for upper bounds.\n", comm_rank_);
-			worker_.push_back(new DdWorkerUB(par_, model_, message_));
+			worker_.push_back(new DdWorkerUB(model_, par_, message_));
 		}
 		/** initialize workers */
 		for (unsigned i = 0; i < worker_.size(); ++i)
@@ -1103,7 +1126,7 @@ DSP_RTN_CODE DdMWAsync::runWorkerInit()
 		sendbuf[pos++] = static_cast<double>(workerlb->subprobs_[s]->sind_);
 		sendbuf[pos++] = workerlb->subprobs_[s]->getPrimalObjective();
 		sendbuf[pos++] = workerlb->subprobs_[s]->getDualObjective();
-		CoinCopyN(workerlb->subprobs_[s]->si_->getSolution(), workerlb->subprobs_[s]->ncols_coupling_, sendbuf + pos);
+		CoinCopyN(workerlb->subprobs_[s]->getSiPtr()->getColSolution(), workerlb->subprobs_[s]->ncols_coupling_, sendbuf + pos);
 		pos += model_->getNumSubproblemCouplingCols(workerlb->subprobs_[s]->sind_);
 		message_->print(5, "MW -> worker %d, subprob %d primobj %+e dualobj %+e\n",
 				comm_rank_, workerlb->subprobs_[s]->sind_, workerlb->subprobs_[s]->getPrimalObjective(), workerlb->subprobs_[s]->getDualObjective());
@@ -1218,7 +1241,7 @@ DSP_RTN_CODE DdMWAsync::runWorkerCore()
 				sendbuf[pos++] = static_cast<double>(workerlb->subprobs_[s]->sind_);
 				sendbuf[pos++] = workerlb->subprobs_[s]->getPrimalObjective();
 				sendbuf[pos++] = workerlb->subprobs_[s]->getDualObjective();
-				CoinCopyN(workerlb->subprobs_[s]->si_->getSolution(), workerlb->subprobs_[s]->ncols_coupling_, &sendbuf[0] + pos);
+				CoinCopyN(workerlb->subprobs_[s]->getSiPtr()->getColSolution(), workerlb->subprobs_[s]->ncols_coupling_, &sendbuf[0] + pos);
 				pos += workerlb->subprobs_[s]->ncols_coupling_;
 				DSPdebugMessage("worker %d, subprob %d primobj %+e dualobj %+e\n",
 						comm_rank_, workerlb->subprobs_[s]->sind_, workerlb->subprobs_[s]->getPrimalObjective(), workerlb->subprobs_[s]->getDualObjective());
@@ -1384,7 +1407,7 @@ DSP_RTN_CODE DdMWAsync::runWorkerCg(
 	int signal = DSP_STAT_MW_CONTINUE;
 
 	BGN_TRY_CATCH
-#ifndef NO_SCIP
+#ifdef DSP_HAS_SCIP
 	if (solutions.size() > 0)
 	{
 		/** generate Benders cuts */
@@ -1701,7 +1724,7 @@ DSP_RTN_CODE DdMWAsync::sendMasterSolution(
 	lambdas = master_primsol + model_->getNumSubproblems();
 	local_scount = 0;
 	int lambda_offset = 0;
-	for (unsigned s = 0, k = 0; s < num_subprobs; s)
+	for (unsigned s = 0, k = 0; s < num_subprobs;)
 	{
 		if (k < subprobs[s])
 		{

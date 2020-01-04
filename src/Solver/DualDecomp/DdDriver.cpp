@@ -9,17 +9,18 @@
 
 #include "Solver/DualDecomp/DdDriver.h"
 
-/** constructor */
 DdDriver::DdDriver(
-		DspParams * par,
-		DecModel * model):
-DspDriver(par, model),
-mw_(NULL)
-{
-	/** Nothing */
+		DecModel *   model,  /**< model pointer */
+		DspParams *  par,    /**< parameters */
+		DspMessage * message /**< message pointer */):
+DecSolver(model, par, message),
+mw_(NULL) {}
+
+DdDriver::DdDriver(const DdDriver& rhs) :
+DecSolver(rhs) {
+	mw_ = rhs.mw_->clone();
 }
 
-DdDriver::~DdDriver()
-{
+DdDriver::~DdDriver() {
 	FREE_PTR(mw_);
 }

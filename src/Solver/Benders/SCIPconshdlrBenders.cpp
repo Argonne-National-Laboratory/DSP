@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+// #define DSP_DEBUG
 
 #include "OsiCuts.hpp"
 
@@ -318,7 +318,7 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 				{
 					/** add cut */
 					SCIP_Bool infeasible;
-					SCIP_CALL(SCIPaddCut(scip, sol, row,
+					SCIP_CALL(SCIPaddRow(scip, row,
 							FALSE, /**< force cut */
 							&infeasible));
 
@@ -428,12 +428,19 @@ void SCIPconshdlrBenders::generateCuts(
 	cutrhs = new double [nsubprobs];
 
 	/** generate cuts */
+	// printf("x:\n");
+	// DspMessage::printArray(nvars_, x);
 	bdsub_->generateCuts(size, x, cutval, cutrhs);
 
 	/** aggregate cuts */
 	aggregateCuts(cutval, cutrhs, cuts);
 
+#ifdef DSP_DEBUG
+	printf("Generating cut at x:\n");
+	DspMessage::printArray(size, x);
+#endif
 	DSPdebug(cuts->printCuts());
+	// cuts->printCuts();
 
 	END_TRY_CATCH(FREE_MEMORY)
 

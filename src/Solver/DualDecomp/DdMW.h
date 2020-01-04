@@ -14,35 +14,41 @@
 #include "Solver/DualDecomp/DdWorkerLB.h"
 #include "Solver/DualDecomp/DdWorkerUB.h"
 
-#ifndef NO_SCIP
+#ifdef DSP_HAS_SCIP
 #include "Solver/DualDecomp/DdWorkerCGBd.h"
 #endif
 
-/**
- * This defines a master-worker framework for dual decomposition.
- */
+/** A base master-worker class for dual decomposition */
 class DdMW: public BaseMasterWorker {
 
 protected:
 
 public:
 
-	/** constructor */
+	/** A default constructor. */
 	DdMW(
 			DecModel *   model,  /**< model pointer */
 			DspParams *  par,    /**< parameters */
 			DspMessage * message /**< message pointer */);
 
-	/** destructor */
+	/** A copy constructor. */
+	DdMW(const DdMW& rhs);
+
+	/** A default destructor. */
 	virtual ~DdMW();
 
-	/** initialize */
+	/** A clone function */
+	virtual DdMW* clone() const {
+		return new DdMW(*this);
+	}
+
+	/** A virtual member for initializing the framework. */
 	virtual DSP_RTN_CODE init();
 
-	/** run the framework */
+	/** A virtual member for running the framework. */
 	virtual DSP_RTN_CODE run();
 
-	/** finalize */
+	/** A virtual memeber for finalizing the framework. */
 	virtual DSP_RTN_CODE finalize();
 
 	/** get remaining time */
@@ -89,8 +95,6 @@ protected:
 
 	OsiCuts * cutsToAdd_; /**< cuts to add */
 
-protected:
-
 	/** parameters */
 	int parFeasCuts_;     /**< Benders feasibility cuts */
 	int parOptCuts_;      /**< Benders optimality cuts */
@@ -101,8 +105,6 @@ protected:
 	char   itercode_;
 	int    itercnt_;
 	double iterstime_; /** start time */
-
-protected:
 
 	vector<double> s_itertime_;    /**< per-iteration time */
 	vector<double> s_masterobj_;   /**< master objective */

@@ -9,9 +9,17 @@
 
 #include "DdWorkerCGBd.h"
 
-DdWorkerCGBd::DdWorkerCGBd(DspParams * par, DecModel * model, DspMessage * message):
-	DdWorkerCG(par, model, message), bdsub_(NULL) {
+DdWorkerCGBd::DdWorkerCGBd(
+		DecModel *   model,  /**< model pointer */
+		DspParams *  par,    /**< parameter pointer */
+		DspMessage * message /**< message pointer */):
+DdWorkerCG(model, par, message), bdsub_(NULL) {
 	// TODO Auto-generated constructor stub
+}
+
+DdWorkerCGBd::DdWorkerCGBd(const DdWorkerCGBd& rhs) :
+DdWorkerCG(rhs) {
+	init();
 }
 
 DdWorkerCGBd::~DdWorkerCGBd() {
@@ -20,20 +28,14 @@ DdWorkerCGBd::~DdWorkerCGBd() {
 
 DSP_RTN_CODE DdWorkerCGBd::init() {
 
-	/** subproblems */
-	TssModel * tssmodel = NULL;
-
 	BGN_TRY_CATCH
-
-	tssmodel = dynamic_cast<TssModel*>(model_);
-	if (!tssmodel) throw "Invalid model type cast";
 
     DSPdebugMessage("This has %d subproblem indices.\n", parProcIdxSize_);
     DSPdebug(DspMessage::printArray(parProcIdxSize_,parProcIdx_));
 
 	bdsub_ = new BdSub(par_);
 	DSP_RTN_CHECK_THROW(bdsub_->setSubIndices(parProcIdxSize_, parProcIdx_));
-	DSP_RTN_CHECK_THROW(bdsub_->loadProblem(tssmodel));
+	DSP_RTN_CHECK_THROW(bdsub_->loadProblem(model_));
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 

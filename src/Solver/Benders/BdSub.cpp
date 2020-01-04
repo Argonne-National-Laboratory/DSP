@@ -5,29 +5,51 @@
  *      Author: kibaekkim
  */
 
-#ifdef USE_OMP
-#include "omp.h"
+// #define DSP_DEBUG
+
+#include "Utility/DspMessage.h"
+#include "Solver/Benders/BdSub.h"
+#include "SolverInterface/DspOsi.h"
+
+#ifdef DSP_HAS_CPX
+#define COIN_OSI OsiCpxSolverInterface
+#else
+#define COIN_OSI OsiClpSolverInterface
 #endif
 
-//#define DSP_DEBUG
-
-#include <Utility/DspMessage.h>
-#include "Solver/Benders/BdSub.h"
-
-/** Coin */
-#include "OsiSpxSolverInterface.hpp"
-#include "OsiClpSolverInterface.hpp"
-
-#define COIN_OSI OsiSpxSolverInterface
-#define DSP_SI   SolverInterfaceSpx
-
 BdSub::BdSub(DspParams* par):
-	par_(par),
-	nsubprobs_(0), subindices_(NULL),
-	mat_mp_(NULL), cglp_(NULL),
-	objvals_(NULL), solutions_(NULL),
-	warm_start_(NULL), status_(NULL) {
+par_(par),
+nsubprobs_(0), 
+subindices_(NULL),
+mat_mp_(NULL), 
+cglp_(NULL),
+objvals_(NULL), 
+solutions_(NULL),
+warm_start_(NULL), 
+status_(NULL) {}
+
+BdSub::BdSub(const BdSub& rhs) :
+par_(rhs.par_),
+nsubprobs_(rhs.nsubprobs_) {
+	/** copy things ... */
+	setSubIndices(rhs.nsubprobs_, rhs.subindices_);
+	mat_mp_     = new CoinPackedMatrix * [nsubprobs_];
+	cglp_       = new OsiSolverInterface * [nsubprobs_];
+	warm_start_ = new CoinWarmStart * [nsubprobs_];
+	objvals_    = new double [nsubprobs_];
+	solutions_  = new double * [nsubprobs_];
+	status_     = new int [nsubprobs_];
+	for (int i = 0; i < nsubprobs_; ++i) {
+		mat_mp_[i] = new CoinPackedMatrix(*(rhs.mat_mp_[i]));
+		cglp_[i] = rhs.cglp_[i]->clone();
+		warm_start_[i] = rhs.warm_start_[i]->clone();
+		objvals_[i] = rhs.objvals_[i];
+		solutions_[i] = new double [cglp_[i]->getNumCols()];
+		CoinCopyN(rhs.solutions_[i], cglp_[i]->getNumCols(), solutions_[i]);
+		status_[i] = rhs.status_[i];
+	}
 }
+
 
 BdSub::~BdSub()
 {
@@ -40,15 +62,14 @@ BdSub::~BdSub()
 	FREE_ARRAY_PTR(status_);
 }
 
-DSP_RTN_CODE BdSub::setSubIndices(int size, int* indices)
+DSP_RTN_CODE BdSub::setSubIndices(int size, const int* indices)
 {
 	BGN_TRY_CATCH
 
 	nsubprobs_ = size;
 
 	/** allocate memory */
-	if (subindices_)
-		FREE_ARRAY_PTR(subindices_);
+	FREE_ARRAY_PTR(subindices_);
 	subindices_ = new int [size];
 
 	CoinCopyN(indices, size, subindices_);
@@ -58,7 +79,7 @@ DSP_RTN_CODE BdSub::setSubIndices(int size, int* indices)
 	return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE BdSub::loadProblem(TssModel* model)
+DSP_RTN_CODE BdSub::loadProblem(DecModel* model)
 {
 #define FREE_MEMORY            \
 	FREE_PTR(mat_reco)         \
@@ -159,11 +180,6 @@ int BdSub::generateCuts(
 
 	/** loop over subproblems */
 	bool doContinue = true;
-#ifdef USE_OMP
-	/** set number of cores to use */
-	omp_set_num_threads(par_->getIntParam("NUM_CORES"));
-#pragma omp parallel for schedule(dynamic)
-#endif
 	for (int s = nsubprobs_ - 1; s >= 0; --s)
 	{
 		if (doContinue == false)
@@ -224,9 +240,10 @@ void BdSub::solveOneSubproblem(
 	/** loop over CGLP rows to update row bounds */
 	for (int i = nrows - 1; i >= 0; --i)
 	{
-		if (rlbd[i] > -COIN_DBL_MAX)
+		DSPdebugMessage("s %d, i %d, rlbd %e, rubd %e, Tx %e\n", s, i, rlbd[i], rubd[i], Tx[s][i]);
+		if (rlbd[i] > -1.0e+20)
 			cglp->setRowLower(i, rlbd[i] - Tx[s][i]);
-		if (rubd[i] < COIN_DBL_MAX)
+		if (rubd[i] < 1.0e+20)
 			cglp->setRowUpper(i, rubd[i] - Tx[s][i]);
 	}
 
@@ -294,13 +311,11 @@ void BdSub::solveOneSubproblem(
 	DSPdebugMessage("  objective value %E\n", cglp->getObjValue());
 
 	/** solution status */
-	if (cglp->isProvenOptimal() ||
-		cglp->isIterationLimitReached())
-	{
-		/** save solution status */
-		cgl->status_[s] = DSP_STAT_OPTIMAL;
-		DSPdebugMessage("  solution status: optimal\n");
+	convertOsiToDspStatus(cglp, cgl->status_[s]);
+	DSPdebugMessage("  solution status: %d\n", cgl->status_[s]);
 
+	if (cgl->status_[s] == DSP_STAT_OPTIMAL)
+	{
 		/** TODO: add parametric cuts */
 
 		/** get objective value */
@@ -327,30 +342,8 @@ void BdSub::solveOneSubproblem(
 		/** calculate cut elements */
 		calculateCutElements(cglp->getNumRows(), cglp->getNumCols(),
 				cgl->mat_mp_[s], rlbd, rubd, clbd, cubd, pi, rc, cutval[s], cutrhs[s]);
-	}
-	else if (cglp->isProvenPrimalInfeasible())
-	{
-		/** save solution status */
-		cgl->status_[s] = DSP_STAT_PRIM_INFEASIBLE;
-		DSPdebugMessage("  solution status: primal infeasible\n");
-	}
-	else if (cglp->isProvenDualInfeasible())
-	{
-		/** save solution status */
-		cgl->status_[s] = DSP_STAT_DUAL_INFEASIBLE;
-		DSPdebugMessage("  solution status: dual infeasible\n");
-	}
-	else if (cglp->isAbandoned() ||
-			 cglp->isPrimalObjectiveLimitReached() ||
-			 cglp->isDualObjectiveLimitReached())
-	{
-		cgl->status_[s] = DSP_STAT_STOPPED_UNKNOWN;
-		DSPdebugMessage("  solution status: stopped unknown\n");
-	}
-	else
-	{
-		cgl->status_[s] = DSP_STAT_UNKNOWN;
-		DSPdebugMessage("  solution status: unknown\n");
+	} else {
+		cglp->writeMps("subprob");
 	}
 
 	END_TRY_CATCH(FREE_MEMORY)

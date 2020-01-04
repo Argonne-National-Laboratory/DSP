@@ -12,21 +12,29 @@
 #include "Solver/DualDecomp/DdMWAsyncDyn.h"
 
 DdDriverMpi::DdDriverMpi(
-		DspParams* par,
-		DecModel* model,
-		MPI_Comm comm):
-DdDriver(par, model),
+			DecModel*   model,   /**< model pointer */
+			DspParams*  par,     /**< parameters */
+			DspMessage* message, /**< message pointer */
+			MPI_Comm    comm     /**< MPI communicator */):
+DdDriver(model, par, message),
 comm_(comm)
 {
 	BGN_TRY_CATCH
 
-	DSPdebugMessage("comm %d\n", comm_);
 	MPI_Comm_rank(comm_, &comm_rank_); /**< get process ID */
 	MPI_Comm_size(comm_, &comm_size_); /**< get number of processes */
 	DSPdebugMessage("comm_rank_ %d, comm_size_ %d\n", comm_rank_, comm_size_);
 
 	END_TRY_CATCH(;)
 }
+
+DdDriverMpi::~DdDriverMpi() {}
+
+DdDriverMpi::DdDriverMpi(const DdDriverMpi& rhs) :
+DdDriver(rhs),
+comm_(rhs.comm_),
+comm_size_(rhs.comm_size_),
+comm_rank_(rhs.comm_rank_) {}
 
 DSP_RTN_CODE DdDriverMpi::init()
 {
@@ -43,6 +51,9 @@ DSP_RTN_CODE DdDriverMpi::init()
 		} else
 			mw_ = new DdMWSync(comm_, model_, par_, message_);
 		DSP_RTN_CHECK_THROW(mw_->init());
+	} else {
+		printf("Number of processes should be greater than 1.\n");
+		return DSP_RTN_ERR;
 	}
 
 	DdDriver::init();
@@ -74,16 +85,18 @@ DSP_RTN_CODE DdDriverMpi::run()
 		status_ = mw_->master_->getStatus();
 		primobj_ = mw_->master_->getBestPrimalObjective();
 		dualobj_ = mw_->master_->getBestDualObjective();
+		bestprimobj_ = primobj_;
+		bestdualobj_ = dualobj_;
 
 		/** primal solution */
 		nprimsol = model_->getFullModelNumCols();
-		primsol_ = new double [nprimsol];
-		CoinCopyN(mw_->master_->getBestPrimalSolution(), nprimsol, primsol_);
+		primsol_.resize(nprimsol);
+		CoinCopyN(mw_->master_->getBestPrimalSolution(), nprimsol, &primsol_[0]);
 
 		/** dual solution */
 		ndualsol = model_->getNumCouplingRows();
-		dualsol_ = new double [ndualsol];
-		CoinCopyN(mw_->master_->getBestDualSolution(), ndualsol, dualsol_);
+		dualsol_.resize(ndualsol);
+		CoinCopyN(mw_->master_->getBestDualSolution(), ndualsol, &dualsol_[0]);
 
 		numNodes_ = mw_->master_->getSiPtr()->getNumNodes();
 		numIterations_ = mw_->master_->getSiPtr()->getIterationCount();
@@ -94,10 +107,10 @@ DSP_RTN_CODE DdDriverMpi::run()
 		MPI_Bcast(&dualobj_, 1, MPI_DOUBLE, 0, comm_);
 
 		MPI_Bcast(&nprimsol, 1, MPI_INT, 0, comm_);
-		MPI_Bcast(primsol_, nprimsol, MPI_DOUBLE, 0, comm_);
+		MPI_Bcast(&primsol_[0], nprimsol, MPI_DOUBLE, 0, comm_);
 
 		MPI_Bcast(&ndualsol, 1, MPI_INT, 0, comm_);
-		MPI_Bcast(dualsol_, ndualsol, MPI_DOUBLE, 0, comm_);
+		MPI_Bcast(&dualsol_[0], ndualsol, MPI_DOUBLE, 0, comm_);
 
 		MPI_Bcast(&numNodes_, 1, MPI_INT, 0, comm_);
 		MPI_Bcast(&numIterations_, 1, MPI_INT, 0, comm_);
@@ -109,16 +122,18 @@ DSP_RTN_CODE DdDriverMpi::run()
 		MPI_Bcast(&dualobj_, 1, MPI_DOUBLE, 0, comm_);
 
 		MPI_Bcast(&nprimsol, 1, MPI_INT, 0, comm_);
-		primsol_ = new double [nprimsol];
-		MPI_Bcast(primsol_, nprimsol, MPI_DOUBLE, 0, comm_);
+		primsol_.resize(nprimsol);
+		MPI_Bcast(&primsol_[0], nprimsol, MPI_DOUBLE, 0, comm_);
 
 		MPI_Bcast(&ndualsol, 1, MPI_INT, 0, comm_);
-		dualsol_ = new double [ndualsol];
-		MPI_Bcast(dualsol_, ndualsol, MPI_DOUBLE, 0, comm_);
+		dualsol_.resize(ndualsol);
+		MPI_Bcast(&dualsol_[0], ndualsol, MPI_DOUBLE, 0, comm_);
 
 		MPI_Bcast(&numNodes_, 1, MPI_INT, 0, comm_);
 		MPI_Bcast(&numIterations_, 1, MPI_INT, 0, comm_);
 	}
+	bestprimsol_ = primsol_;
+	bestdualsol_ = dualsol_;
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 

@@ -10,15 +10,16 @@
 
 /** DSP */
 #include "SolverInterface/OoqpStatus.h"
-#include "SolverInterface/SolverInterfaceOoqp.h"
+#include "SolverInterface/OsiOoqpSolverInterface.hpp"
 
-class OoqpEps: public SolverInterfaceOoqp
+class OoqpEps: public OsiOoqpSolverInterface
 {
 public:
 
 	/** default constructor */
-	OoqpEps(DspParams * par) :
-		SolverInterfaceOoqp(par),
+	OoqpEps() :
+		OsiOoqpSolverInterface(),
+		mystat_(NULL),
 		hasOoqpStatus_(true),
 		epsilon_(COIN_DBL_MAX),
 		lowerBound_(-COIN_DBL_MAX),
@@ -27,16 +28,16 @@ public:
 		suboptimal_(false) {}
 
 	/** default destructor */
-	virtual ~OoqpEps() {}
+	virtual ~OoqpEps() {
+		delete mystat_;
+		mystat_ = NULL;
+	}
 
 	/** solve */
-	virtual void solve();
+	virtual void resolve();
 
 	/** set my OOQP status */
 	void setOoqpStatus(double epsilon, double lowerBound, double upperBound);
-
-	/** core part for load problem */
-//	virtual void gutsOfLoadProblem();
 
 	/** get duality gap tolerance */
 	double getDualityGapTol() {return epsilon_;}
@@ -53,6 +54,7 @@ public:
 
 protected:
 
+	OoqpStatus* mystat_; /**< my customized status for early termination */
 	double epsilon_; /**< duality gap tolerance */
 	double lowerBound_;
 	double upperBound_;

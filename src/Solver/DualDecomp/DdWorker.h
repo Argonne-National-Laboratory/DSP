@@ -8,28 +8,50 @@
 #ifndef SRC_SOLVER_DUALDECOMP_DDWORKER_H_
 #define SRC_SOLVER_DUALDECOMP_DDWORKER_H_
 
-/** DSP */
-#include "Solver/DualDecomp/DdSolver.h"
-#include "Solver/DualDecomp/DdSub.h"
+#include "Solver/DecSolver.h"
 
-class DdWorker : public DdSolver {
+/** An abstract class for decomposition worker */
+class DdWorker : public DecSolver {
 public:
 
+	/** Type of workers */
 	enum {
 		Base = 0,
 		LB,  /**< lower bounder */
 		UB,  /**< upper bounder */
+		CG,  /**< abstract cut generator */
 		CGBd /**< Benders cut generator */
 	};
 
-	/** constructor */
-	DdWorker(DspParams * par, DecModel * model, DspMessage * message);
+	/** A default constructor. */
+	DdWorker(
+			DecModel *   model,  /**< model pointer */
+			DspParams *  par,    /**< parameter pointer */
+			DspMessage * message /**< message pointer */) :
+	DecSolver(model, par, message) {}
 
-	/** destructor */
-	virtual ~DdWorker();
+	/** A copy constructor. */
+	DdWorker(const DdWorker& rhs) : DecSolver(rhs) {}
 
+	/** A default destructor. */
+	virtual ~DdWorker() {}
+
+	/** A clone function */
+	virtual DdWorker* clone() const {
+		return new DdWorker(*this);
+	}
+
+	/** A virtual member for initializing solver. */
+	virtual DSP_RTN_CODE init() {return DSP_RTN_OK;}
+
+	/** A virtual member for solving problem. */
+	virtual DSP_RTN_CODE solve() {return DSP_RTN_OK;}
+
+	/** A virtual memeber for finalizing solver. */
+	virtual DSP_RTN_CODE finalize() {return DSP_RTN_OK;}
+
+	/** A virtual member to return the worker type. */
 	virtual int getType() {return Base;}
-
 };
 
 #endif /* SRC_SOLVER_DUALDECOMP_DDWORKER_H_ */

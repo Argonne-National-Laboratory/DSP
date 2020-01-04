@@ -6,40 +6,50 @@
 DSP --- Decompositions for Structured Programming
 =================================================
 
-DSP is an object-oriented open-source software package written in C++ for solving structured programming problems such as stochastic mixed-integer programming (SMIP). The current version of DSP has implemented decomposition methods for solving SMIP problems:
+DSP is an open-source and parallel package that implements decomposition
+methods for **structured mixed-integer linear programming problems**.
+These are structured optimization problems in the following form:
 
-* Dual decomposition -- DSP has implemented new dual decomposition methods
+.. math::
 
-  * **Interior-point cutting-plane method with early termination criteria**
-  * **Eliminating infeasible first-stage solutions**
-  * Cutting-plane method
-  * Subgradient method
+   \min \quad & c^T x + \sum_{s=1}^S q_s^T y_s \\
+   \text{s.t.} \quad
+   & A x = b \\
+   & T_s x + W_s y_s = h_s \quad \forall s = 1, .., S \\
+   & \text{mixed-integer } x, y_s
 
+Note that x and y_s are decision variable vectors with dimensions n_1 and n_2,
+respectively, A, T_s and W_s are matrices of dimensions m_1 by n_1, m_2 by n_1
+and m_2 by n_2, respectively, and c, q_s, b, and h_s are vectors of appropriate
+dimensions.
+
+Algorithms in DSP
+-----------------
+
+DSP provides **serial** and **parallel** implementations for the four types of algorithms.
+
+Extensive Form Solver
+^^^^^^^^^^^^^^^^^^^^^
+
+Dual Decomposition
+^^^^^^^^^^^^^^^^^^
+
+Dantzig-Wolfe Decomposition
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Benders Decomposition
+^^^^^^^^^^^^^^^^^^^^^
+
+* Dual decomposition (with subgradient method and several bundle methods) with
+  **branch-and-bound** procedure
 * Benders decomposition
-* Extensive form solution
-
-**Credits**
-
-DSP has been developed and is maintained by:
-
-* `Kibaek Kim <http://mcs.anl.gov/~kibaekkim/>`_, Mathematics and Computer Science Division, Argonne National Laboratory.
-* `Victor M. Zavala <http://zavalab.engr.wisc.edu/>`_, Department of Chemical and Biological Engineering, University of Wisconsin-Madison.
-
-**Publication**
-
-* Kibaek Kim and Victor M. Zavala. `Algorithmic innovations and software for the dual decomposition method applied to stochastic mixed-integer programs`_ Mathematical Programming Computation 10(2), 225-266, 2018
-* Kibaek Kim, Fan Yang, Victor M. Zavala, and Andrew A. Chien. `Data Centers as Dispatchable Loads to Harness Stranded Power'_ IEEE Transactions on Sustainable Energy 8(1), 208-218, 2017
-* Kibaek Kim and Victor M. Zavala. `Large-Scale Stochastic Mixed-Integer Programming Algorithms for Power Generation Scheduling'_ In Alternative Energy Sources and Technologies, 493-512, 2016
-
-**Acknowledgements**
-
-This material is based upon work supported by the U.S. Department of Energy, Office of Science, under contract number DE-AC02-06CH11357. We gratefully acknowledge the computing resources provided on *Blues*, a high-performance computing cluster operated by the Laboratory Computing Resource Center at Argonne National Laboratory. We thank E. Michael Gertz and Stephen Wright for providing the `OOQP <http://pages.cs.wisc.edu/~swright/ooqp/>`_ software package.
-
-Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :caption: Table of Contents
+   :maxdepth: 1
 
+   prerequisites.rst
    installation.rst
-   quickstart.rst
-
+   interface.rst
+   examples.rst
+   acknowledgement.rst

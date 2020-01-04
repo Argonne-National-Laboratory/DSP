@@ -5,44 +5,55 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+// #define DSP_DEBUG
 #include "Model/TssModel.h"
-#include <Solver/DualDecomp/DdWorkerUB.h>
-#include "SolverInterface/SolverInterfaceClp.h"
+#include "Solver/DualDecomp/DdWorkerUB.h"
+#include "SolverInterface/DspOsi.h"
 
-#ifndef NO_CPX
-	#include "SolverInterface/SolverInterfaceCpx.h"
-#endif
-
-#ifndef NO_SCIP
-	#include "SolverInterface/SolverInterfaceScip.h"
-	#include "Solver/DualDecomp/SCIPconshdlrBendersDd.h"
-	#include "SolverInterface/SCIPbranchruleLB.h"
+#ifdef DSP_HAS_SCIP
+#include "Solver/DualDecomp/SCIPconshdlrBendersDd.h"
 #endif
 
 DdWorkerUB::DdWorkerUB(
-		DspParams * par,
-		DecModel * model,
-		DspMessage * message):
-DdWorker(par, model, message),
+		DecModel *   model,  /**< model pointer */
+		DspParams *  par,    /**< parameter pointer */
+		DspMessage * message /**< message pointer */):
+DdWorker(model, par, message),
 bestub_(COIN_DBL_MAX),
-primsols_(NULL),
 mat_mp_(NULL),
 rlbd_org_(NULL),
 rubd_org_(NULL),
 si_(NULL),
-objvals_(NULL),
-statuses_(NULL),
 ub_(0.0) {}
 
+DdWorkerUB::DdWorkerUB(const DdWorkerUB& rhs) : 
+DdWorker(rhs),
+bestub_(rhs.bestub_),
+primsols_(rhs.primsols_),
+ub_(rhs.ub_) {
+	// number of subproblems to take care of
+	int nsubprobs = par_->getIntPtrParamSize("ARR_PROC_IDX");
+
+	// allocate memory
+	mat_mp_    = new CoinPackedMatrix * [nsubprobs];
+	rlbd_org_  = new double * [nsubprobs];
+	rubd_org_  = new double * [nsubprobs];
+	si_        = new OsiSolverInterface * [nsubprobs];
+	for (int s = 0; s < nsubprobs; ++s) {
+		mat_mp_[s] = new CoinPackedMatrix(*(rhs.mat_mp_[s]));
+		rlbd_org_[s] = new double [si_[s]->getNumRows()];
+		rubd_org_[s] = new double [si_[s]->getNumRows()];
+		si_[s] = rhs.si_[s]->clone();
+		CoinCopyN(rhs.rlbd_org_[s], si_[s]->getNumRows(), rlbd_org_[s]);
+		CoinCopyN(rhs.rubd_org_[s], si_[s]->getNumRows(), rubd_org_[s]);
+	}
+}
+
 DdWorkerUB::~DdWorkerUB() {
-	FREE_2D_ARRAY_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), primsols_);
 	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), mat_mp_);
 	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), rlbd_org_);
 	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), rubd_org_);
 	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), si_);
-	FREE_ARRAY_PTR(objvals_);
-	FREE_ARRAY_PTR(statuses_);
 }
 
 DSP_RTN_CODE DdWorkerUB::init() {
@@ -83,10 +94,8 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 	mat_mp_    = new CoinPackedMatrix * [nsubprobs];
 	rlbd_org_  = new double * [nsubprobs];
 	rubd_org_  = new double * [nsubprobs];
-	si_        = new SolverInterface * [nsubprobs];
-	objvals_   = new double [nsubprobs];
-	primsols_  = new double * [nsubprobs];
-	statuses_  = new int [nsubprobs];
+	si_        = new OsiSolverInterface * [nsubprobs];
+	primsols_.resize(nsubprobs);
 
 	for (int s = 0; s < nsubprobs; ++s) {
 
@@ -97,14 +106,15 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 
 		/** creating solver interface */
     	switch (par_->getIntParam("SOLVER/MIP")) {
-    	case CPLEX:
-#ifndef NO_CPX
-    		si_[s] = new SolverInterfaceCpx(par_);
+    	case OsiCpx:
+#ifdef DSP_HAS_CPX
+    		si_[s] = new OsiCpxSolverInterface();
+			CPXsetintparam(dynamic_cast<OsiCpxSolverInterface*>(si_[s])->getEnvironmentPtr(), CPX_PARAM_SCRIND, CPX_OFF);
     		break;
 #endif
-    	case EXT_SCIP:
-#ifndef NO_SCIP
-            si_[s] = new SolverInterfaceScip(par_);
+    	case OsiScip:
+#ifdef DSP_HAS_SCIP
+            si_[s] = new OsiScipSolverInterface();
             break;
 #endif
     	default:
@@ -112,14 +122,19 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
     	}
 
 	    /** no display */
-	    si_[s]->setPrintLevel(0);
+	    si_[s]->messageHandler()->setLogLevel(0);
 
 	    /** load problem */
-	    si_[s]->loadProblem(mat_reco, clbd_reco, cubd_reco, obj_reco, ctype_reco, rlbd_org_[s], rubd_org_[s]);
+	    si_[s]->loadProblem(*mat_reco, clbd_reco, cubd_reco, obj_reco, rlbd_org_[s], rubd_org_[s]);
+		for (int j = 0; j < mat_reco->getNumCols(); ++j) {
+			if (ctype_reco[j] != 'C')
+				si_[s]->setInteger(j);
+		}
 	    DSPdebug(mat_reco->verifyMtx(4));
+		DSPdebugMessage("number of integers: %d\n", si_[s]->getNumIntegers());
 
 		/** allocate array size for each scenario primal solution */
-		primsols_[s] = new double [si_[s]->getNumCols()];
+		primsols_[s].resize(si_[s]->getNumCols());
     }
 	END_TRY_CATCH_RTN(FREE_MEMORY, DSP_RTN_ERR)
 
@@ -190,6 +205,7 @@ double DdWorkerUB::evaluate(CoinPackedVector* solution) {
 
 		FREE_ARRAY_PTR(Tx)
 	}
+	DSPdebugMessage("cx_weighted %e\n", cx_weighted);
 
 	/** set initial status */
 	status_ = DSP_STAT_MW_CONTINUE;
@@ -241,10 +257,16 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 				par_->getDblParam("MIP/TIME_LIM")));
 
 		/** solve */
-		si_[s]->solve();
+		if (si_[s]->getNumIntegers() > 0)
+			si_[s]->branchAndBound();
+		else
+			si_[s]->initialSolve();
 
 		/** check status. there might be unexpected results. */
-		switch (si_[s]->getStatus()) {
+		int status;
+		convertOsiToDspStatus(si_[s], status);
+		DSPdebugMessage("status = %d\n", status);
+		switch (status) {
 		case DSP_STAT_OPTIMAL:
 		case DSP_STAT_LIM_ITERorTIME:
 		case DSP_STAT_STOPPED_GAP:
@@ -255,7 +277,7 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 			status_ = DSP_STAT_MW_STOP;
 			message_->print(10,
 					"Warning: subproblem %d solution status is %d\n", s,
-					si_[s]->getStatus());
+					status);
 			break;
 		}
 		if (status_ == DSP_STAT_MW_STOP) {
@@ -264,9 +286,9 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 			break;
 		}
 
-		primobj += si_[s]->getPrimalBound();
-		dualobj += si_[s]->getDualBound();
-		CoinCopyN(si_[s]->getSolution(), si_[s]->getNumCols(), primsols_[s]);
+		primobj += si_[s]->getObjValue();
+		dualobj += si_[s]->getBestDualBound();
+		CoinCopyN(si_[s]->getColSolution(), si_[s]->getNumCols(), &primsols_[s][0]);
 		total_cputime += CoinCpuTime() - cputime;
 		total_walltime += CoinGetTimeOfDay() - walltime;
 
@@ -276,6 +298,8 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 
 	/** get primal objective */
 	ub_ = primobj;
+	DSPdebugMessage("ub_ = %e\n", ub_);
+	DSPdebugMessage("status_ %d\n", status_);
 
 	/** update statistics */
 	s_statuses_.push_back(status_);

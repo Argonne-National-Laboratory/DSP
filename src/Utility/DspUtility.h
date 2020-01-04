@@ -12,17 +12,17 @@
 //#define DSP_DEBUG2
 
 #include <vector>
-#include "CoinHelperFunctions.hpp"
+#include "Utility/DspRtnCodes.h"
 #include "Utility/DspMessage.h"
 
 using namespace std;
 
-bool myduplicatetolerance(double i, double j) {
+inline bool myduplicatetolerance(double i, double j) {
 	return (fabs(i-j) < 1.0e-8);
 }
 
 /** check whether solution is duplicate or not */
-bool duplicateVector(
+inline bool duplicateVector(
 		CoinPackedVector * vec,
 		vector<CoinPackedVector*> vecs)
 {
@@ -34,7 +34,8 @@ bool duplicateVector(
 #endif
 	/** number of saved solutions */
 	int num = vecs.size();
-	DSPdebugMessage2("number of vectors %d\n", num);
+	// printf("number of vectors %d\n", num);
+	
 	for (int i = num - 1; i >= 0; --i)
 	{
 #ifdef DSP_DEBUG2
@@ -53,6 +54,5 @@ bool duplicateVector(
 
 	return dup;
 }
-
 
 #endif /* SRC_UTILITY_DSPUTILITY_H_ */

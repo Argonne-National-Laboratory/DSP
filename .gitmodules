@@ -1,16 +1,21 @@
 [submodule "extra/CoinUtils"]
 	path = extra/CoinUtils
-	url = https://github.com/coin-or/CoinUtils.git
+url=https://github.com/coin-or/CoinUtils.git
+branch = stable/2.11
+[submodule "extra/Osi"]
+	path = extra/Osi
+url=https://github.com/kibaekkim/Osi.new.git
+branch = stable/dsp
 [submodule "extra/Smi"]
 	path = extra/Smi
-	url = https://github.com/kibaekkim/Smi.git
+url=https://github.com/kibaekkim/Smi.git
 [submodule "extra/OOQP"]
 	path = extra/OOQP
-	url = https://github.com/emgertz/OOQP.git
+url=https://github.com/emgertz/OOQP.git
+[submodule "extra/Alps"]
+	path = extra/Alps
+url=https://github.com/kibaekkim/CHiPPS-ALPS.git
 [submodule "extra/Clp"]
 	path = extra/Clp
 	url = https://github.com/coin-or/Clp.git
-[submodule "extra/Osi"]
-	path = extra/Osi
-	url = https://github.com/coin-or/Osi.git
-	branch = master
+	branch = stable/1.17

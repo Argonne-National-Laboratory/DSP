@@ -7,27 +7,34 @@
 
 //#define DSP_DEBUG
 
-#include <Utility/DspMacros.h>
+#include <cstdlib>
+#include <cstdio>
+
+#include "DspApiEnv.h"
 #include "DspCInterface.h"
-#include "Solver/Deterministic/DeDriver.h"
-#include "Solver/DualDecomp/DdDriverSerial.h"
+#include "Utility/DspMacros.h"
 #include "Model/DecTssModel.h"
 #include "Model/DecBlkModel.h"
 
-#ifndef NO_SCIP
-	#include "Solver/Benders/BdDriverSerial.h"
-#endif
+#include "Solver/Deterministic/DeDriver.h"
+#include "Solver/DualDecomp/DdDriverSerial.h"
+#include "Solver/DantzigWolfe/DwSolverSerial.h"
+
+#ifdef DSP_HAS_SCIP
+#include "Solver/Benders/BdDriverSerial.h"
+#endif /* DSP_HAS_SCIP */
 
 
 #ifdef DSP_HAS_MPI
 
-#ifndef NO_SCIP
+#ifdef DSP_HAS_SCIP
 #include "Solver/Benders/BdDriverMpi.h"
-#endif
+#endif /* DSP_HAS_SCIP */
 
 #include "Solver/DualDecomp/DdDriverMpi.h"
+#include "Solver/DantzigWolfe/DwSolverMpi.h"
 
-#endif
+#endif /* DSP_HAS_MPI */
 
 
 
@@ -244,10 +251,10 @@ void solveDe(DspApiEnv * env)
 	DSP_API_CHECK_MODEL();
 	freeSolver(env);
 
-	env->solver_ = new DeDriver(env->par_, env->model_);
-	env->solver_->init();
-	env->solver_->run();
-	env->solver_->finalize();
+	env->solver_ = new DeDriver(env->model_, env->par_, env->message_);
+	DSP_RTN_CHECK_THROW(env->solver_->init());
+	DSP_RTN_CHECK_THROW(dynamic_cast<DeDriver*>(env->solver_)->run());
+	DSP_RTN_CHECK_THROW(env->solver_->finalize());
 
 	END_TRY_CATCH(;)
 }
@@ -260,9 +267,25 @@ void solveDd(DspApiEnv * env)
 	DSP_API_CHECK_MODEL();
 	freeSolver(env);
 
-	env->solver_ = new DdDriverSerial(env->par_, env->model_);
+	env->solver_ = new DdDriverSerial(env->model_, env->par_, env->message_);
 	DSP_RTN_CHECK_THROW(env->solver_->init());
-	DSP_RTN_CHECK_THROW(env->solver_->run());
+	DSP_RTN_CHECK_THROW(dynamic_cast<DdDriverSerial*>(env->solver_)->run());
+	DSP_RTN_CHECK_THROW(env->solver_->finalize());
+
+	END_TRY_CATCH(;)
+}
+
+/** solve Dantzig-Wolfe decomposition (with branch-and-bound) */
+void solveDw(DspApiEnv * env)
+{
+	BGN_TRY_CATCH
+
+	DSP_API_CHECK_MODEL();
+	freeSolver(env);
+
+	env->solver_ = new DwSolverSerial(env->model_, env->par_, env->message_);
+	DSP_RTN_CHECK_THROW(env->solver_->init());
+	DSP_RTN_CHECK_THROW(dynamic_cast<DwSolverSerial*>(env->solver_)->run());
 	DSP_RTN_CHECK_THROW(env->solver_->finalize());
 
 	END_TRY_CATCH(;)
@@ -271,7 +294,7 @@ void solveDd(DspApiEnv * env)
 /** solve serial Benders decomposition */
 void solveBd(DspApiEnv * env)
 {
-#ifndef NO_SCIP
+#ifdef DSP_HAS_SCIP
 	DSP_API_CHECK_MODEL();
 	freeSolver(env);
 
@@ -281,7 +304,7 @@ void solveBd(DspApiEnv * env)
 		return;
 	}
 
-	BdDriverSerial * bd = new BdDriverSerial(env->par_, new DecTssModel(*getTssModel(env)));
+	BdDriverSerial * bd = new BdDriverSerial(new DecTssModel(*getTssModel(env)), env->par_, env->message_);
 	env->solver_ = bd;
 	DSPdebugMessage("Created a serial Benders object\n");
 
@@ -310,33 +333,68 @@ void solveBd(DspApiEnv * env)
 	/** relax second-stage integrality */
 	env->par_->setBoolPtrParam("RELAX_INTEGRALITY", 1, true);
 
-	env->solver_->init();
-	DSPdebugMessage("Initialized a serial Benders object\n");
-	env->solver_->run();
-	env->solver_->finalize();
+	DSP_RTN_CHECK_THROW(env->solver_->init());
+	DSP_RTN_CHECK_THROW(dynamic_cast<BdDriverSerial*>(env->solver_)->run());
+	DSP_RTN_CHECK_THROW(env->solver_->finalize());
 #else
 	printf("Benders decomposition has been disabled because SCIP was not available.\n");
 #endif
 }
 
 #ifdef DSP_HAS_MPI
-/** solve dual decomposition */
+/** solve parallel dual decomposition */
 void solveDdMpi(DspApiEnv * env, MPI_Comm comm)
 {
+	int comm_size;
+	MPI_Comm_size(comm, &comm_size);
+
+	if (comm_size == 1) {
+		solveDd(env);
+		return;
+	}
+
 	DSP_API_CHECK_MODEL();
 	freeSolver(env);
 
-	env->solver_ = new DdDriverMpi(env->par_, env->model_, comm);
-	env->solver_->init();
-	env->solver_->run();
-	env->solver_->finalize();
+	env->solver_ = new DdDriverMpi(env->model_, env->par_, env->message_, comm);
+	DSP_RTN_CHECK_THROW(env->solver_->init());
+	DSP_RTN_CHECK_THROW(dynamic_cast<DdDriverMpi*>(env->solver_)->run());
+	DSP_RTN_CHECK_THROW(env->solver_->finalize());
+}
+
+/** solve parallel Dantzig-Wolfe decomposition with branch-and-bound */
+void solveDwMpi(DspApiEnv * env, MPI_Comm comm)
+{
+	int comm_size;
+	MPI_Comm_size(comm, &comm_size);
+
+	if (comm_size == 1) {
+		solveDw(env);
+		return;
+	}
+
+	DSP_API_CHECK_MODEL();
+	freeSolver(env);
+
+	env->solver_ = new DwSolverMpi(env->model_, env->par_, env->message_, comm);
+	DSP_RTN_CHECK_THROW(env->solver_->init());
+	DSP_RTN_CHECK_THROW(dynamic_cast<DwSolverMpi*>(env->solver_)->run());
+	DSP_RTN_CHECK_THROW(env->solver_->finalize());
 }
 
 /** solve parallel Benders decomposition */
 void solveBdMpi(
 		DspApiEnv * env, MPI_Comm comm)
 {
-#ifndef NO_SCIP
+	int comm_size;
+	MPI_Comm_size(comm, &comm_size);
+
+	if (comm_size == 1) {
+		solveBd(env);
+		return;
+	}
+
+#ifdef DSP_HAS_SCIP
 	DSP_API_CHECK_MODEL();
 	freeSolver(env);
 
@@ -347,7 +405,7 @@ void solveBdMpi(
 	}
 
 	//DSPdebugMessage("Creating a MPI Benders object (comm %d)\n", comm);
-	BdDriverMpi * bd = new BdDriverMpi(env->par_, new DecTssModel(*getTssModel(env)), comm);
+	BdDriverMpi * bd = new BdDriverMpi(new DecTssModel(*getTssModel(env)), env->par_, env->message_, comm);
 	env->solver_ = bd;
 
 	double * obj_aux  = NULL;
@@ -375,9 +433,9 @@ void solveBdMpi(
 	/** relax second-stage integrality */
 	env->par_->setBoolPtrParam("RELAX_INTEGRALITY", 1, true);
 
-	env->solver_->init();
-	env->solver_->run();
-	env->solver_->finalize();
+	DSP_RTN_CHECK_THROW(env->solver_->init());
+	DSP_RTN_CHECK_THROW(dynamic_cast<BdDriverMpi*>(env->solver_)->run());
+	DSP_RTN_CHECK_THROW(env->solver_->finalize());
 #else
 	printf("Benders decomposition has been disabled because SCIP was not available.\n");
 #endif
@@ -522,28 +580,28 @@ int getStatus(DspApiEnv * env)
 double getPrimalBound(DspApiEnv * env)
 {
 	DSP_API_CHECK_SOLVER(0.0);
-	return env->solver_->getPrimalObjectiveValue();
+	return env->solver_->getBestPrimalObjective();
 }
 
 /** get objective value */
 double getDualBound(DspApiEnv * env)
 {
 	DSP_API_CHECK_SOLVER(0.0);
-	return env->solver_->getDualObjectiveValue();
+	return env->solver_->getBestDualObjective();
 }
 
 /** get solution */
 void getPrimalSolution(DspApiEnv * env, int num, double * solution)
 {
 	DSP_API_CHECK_SOLVER();
-	CoinCopyN(env->solver_->getPrimalSolution(), num, solution);
+	CoinCopyN(env->solver_->getBestPrimalSolution(), num, solution);
 }
 
 /** get dual solution */
 void getDualSolution(DspApiEnv * env, int num, double * solution)
 {
 	DSP_API_CHECK_SOLVER();
-	CoinCopyN(env->solver_->getDualSolution(), num, solution);
+	CoinCopyN(env->solver_->getBestDualSolution(), num, solution);
 }
 
 /** get number of iterations */
@@ -569,7 +627,7 @@ void writeMps(DspApiEnv * env, const char * name)
 	DSP_API_CHECK_MODEL();
 	freeSolver(env);
 
-	env->solver_ = new DeDriver(env->par_, env->model_);
+	env->solver_ = new DeDriver(env->model_, env->par_, env->message_);
 	env->solver_->init();
 	dynamic_cast<DeDriver*>(env->solver_)->writeExtMps(name);
 	env->solver_->finalize();

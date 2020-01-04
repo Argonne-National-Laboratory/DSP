@@ -1,75 +1,56 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.5)
 
-# Should use GNU compilers for unix-type OS, including Mac and CygWin
-if(UNIX)
-	set(CMAKE_C_COMPILER "gcc")
-	set(CMAKE_CXX_COMPILER "g++")
-	set(CMAKE_Fortran_COMPILER "gfortran")
-endif()
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-##################################################
-# Project name
-##################################################
+include(color_scheme.cmake)
+include(UserConfig.cmake)
+set(DEPEND_DIR $ENV{PWD})
+
 project(DSP)
 message(STATUS "The system information: ${CMAKE_SYSTEM}.${CMAKE_SYSTEM_PROCESSOR}")
 
-##################################################
-# REQUIRED PACKAGES
-##################################################
+enable_language(CXX)
+enable_language(Fortran)
+
+if(NOT CMAKE_BUILD_TYPE)
+	set(CMAKE_BUILD_TYPE Release)
+endif(NOT CMAKE_BUILD_TYPE)
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+
 find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(BZip2 REQUIRED)
 find_package(MPI)
-find_package(OpenMP)
 
-string(REPLACE ";" "\ " BLAS_LIBRARIES "${BLAS_LIBRARIES}")
+if (MPI_CXX_FOUND)
+	set(CMAKE_C_COMPILER "mpicc")
+	set(CMAKE_CXX_COMPILER "mpicxx")
+	set(CMAKE_Fortran_COMPILER "mpif90")
+endif()
 
-##################################################
-# My include files
-##################################################
-include(UserConfig.cmake)
-include(color_scheme.cmake)
+if(APPLE)
+	set(LIBRARY_PATH_VAR_NAME "DYLD_LIBRARY_PATH")
+else(APPLE)
+	set(LIBRARY_PATH_VAR_NAME "LD_LIBRARY_PATH")
+endif(APPLE)
 
-##################################################
-# Compiler settings
-##################################################
+find_library(GFORTRANLIB NAMES gfortran libgfortran PATHS ENV ${LIBRARY_PATH_VAR_NAME})
+if(NOT GFORTRANLIB)
+	message(FATAL_ERROR "gfortran library is required, but cannot be found. Please either locate the library to a searchable path or set a proper environment variable for the path.")
+endif(NOT GFORTRANLIB)
 
-# if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-# 	message(FATAL_ERROR "We currently do not support Clang compiler")
-# elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
-# 	message(FATAL_ERROR "We currently do not support Intel compiler")
-# elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-# 	message(FATAL_ERROR "We currently do not support MSVC compiler")
+find_library(SCIPLIB scip PATHS ${SCIPOPT_LIB_DIR})
+find_library(MA27LIB  ma27  PATHS ${MA27LIB_DIR})
+find_library(CPLEXLIB cplex PATHS ${CPLEX_LIB_DIR})
+
+# if(APPLE)
+# 	set(CMAKE_MACOSX_RPATH OFF)
 # endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -std=c++0x -DNDEBUG")
-if(MPI_CXX_FOUND)
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MPI_CXX_COMPILE_FLAGS} -DDSP_HAS_MPI")
-endif()
-if (OPENMP_FOUND)
-	set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-endif()
-if(APPLE)
-	set(CMAKE_MACOSX_RPATH OFF)
-endif()
-
-##################################################
-# add include directories
-##################################################
-include_directories(
-	src 
-	${SCIP_DIR}/src
-	${SCIP_DIR}/src/scip
-	${SPX_DIR}/src)
-if (MPI_CXX_FOUND)
-	include_directories(${MPI_CXX_INCLUDE_PATH})
-endif()
-
-##################################################
-# SUBDIRECTORY
-##################################################
 add_subdirectory(extra)
 add_subdirectory(src)
 
+enable_testing()
+add_subdirectory(test)

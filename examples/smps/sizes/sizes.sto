@@ -1,0 +1,58 @@
+STOCH         SIZES
+SCENARIOS     DISCRETE
+ SC SCEN01    ROOT          0.200000   STAGE-2
+    RHS1      D01JJ02           1.500
+    RHS1      D02JJ02           4.500
+    RHS1      D03JJ02           7.500
+    RHS1      D04JJ02           6.000
+    RHS1      D05JJ02          21.000
+    RHS1      D06JJ02          15.000
+    RHS1      D07JJ02           9.000
+    RHS1      D08JJ02           7.500
+    RHS1      D09JJ02           7.500
+    RHS1      D10JJ02           3.000
+ SC SCEN02    ROOT          0.200000   STAGE-2
+    RHS1      D01JJ02           2.000
+    RHS1      D02JJ02           6.000
+    RHS1      D03JJ02          10.000
+    RHS1      D04JJ02           8.000
+    RHS1      D05JJ02          28.000
+    RHS1      D06JJ02          20.000
+    RHS1      D07JJ02          12.000
+    RHS1      D08JJ02          10.000
+    RHS1      D09JJ02          10.000
+    RHS1      D10JJ02           4.000
+ SC SCEN03    ROOT          0.200000   STAGE-2
+    RHS1      D01JJ02           2.500
+    RHS1      D02JJ02           7.500
+    RHS1      D03JJ02          12.500
+    RHS1      D04JJ02          10.000
+    RHS1      D05JJ02          35.000
+    RHS1      D06JJ02          27.500
+    RHS1      D07JJ02          16.500
+    RHS1      D08JJ02          13.750
+    RHS1      D09JJ02          13.750
+    RHS1      D10JJ02           5.000
+ SC SCEN04    ROOT          0.200000   STAGE-2
+    RHS1      D01JJ02           3.000
+    RHS1      D02JJ02           9.000
+    RHS1      D03JJ02          15.000
+    RHS1      D04JJ02          12.000
+    RHS1      D05JJ02          42.000
+    RHS1      D06JJ02          30.000
+    RHS1      D07JJ02          18.000
+    RHS1      D08JJ02          15.000
+    RHS1      D09JJ02          15.000
+    RHS1      D10JJ02           6.000
+ SC SCEN5    ROOT          0.200000   STAGE-2
+    RHS1      D01JJ02           3.500
+    RHS1      D02JJ02          10.500
+    RHS1      D03JJ02          17.500
+    RHS1      D04JJ02          14.000
+    RHS1      D05JJ02          49.000
+    RHS1      D06JJ02          35.000
+    RHS1      D07JJ02          21.000
+    RHS1      D08JJ02          17.500
+    RHS1      D09JJ02          17.500
+    RHS1      D10JJ02           7.000
+ENDATA

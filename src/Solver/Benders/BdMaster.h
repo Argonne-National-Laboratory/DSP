@@ -11,30 +11,44 @@
 /** DSP */
 #include "Solver/DecSolver.h"
 #include "Solver/Benders/SCIPconshdlrBenders.h"
-#include "SolverInterface/SolverInterface.h"
+#include "Solver/Benders/BdWorker.h"
 
+/** A class for implementing the Benders master solver */
 class BdMaster: public DecSolver {
 
 public:
 
-	/** constructor */
-	BdMaster(DspParams * par, DecModel * model, DspMessage * message);
+	/** A default constructor. */
+	BdMaster(
+			DecModel *   model,   /**< model pointer */
+			DspParams *  par,     /**< parameter pointer */
+			DspMessage * message /**< message pointer */);
 
-	/** destructor */
+	/** A copy constructor. */
+	BdMaster(const BdMaster& rhs);
+
+	/** A default destructor. */
 	virtual ~BdMaster();
 
-	/** initialize */
+	/** A clone function */
+	virtual BdMaster* clone() const {
+		return new BdMaster(*this);
+	}
+
+	/** A virtual member for initializing solver. */
 	virtual DSP_RTN_CODE init();
 
-	/** solve */
+	/** A virtual member for solving problem. */
 	virtual DSP_RTN_CODE solve();
 
-public:
+	/** A virtual memeber for finalizing solver. */
+	virtual DSP_RTN_CODE finalize() {return DSP_RTN_OK;}
 
-	/** get solver interface pointer */
-	virtual SolverInterface * getSiPtr() {return si_;}
+	/**@name Set functions */
+	//@{
 
-public:
+	/** set worker pointer */
+	void setWorkerPtr(BdWorker* worker) {worker_ = worker;}
 
 	/** set objective bounds */
 	virtual DSP_RTN_CODE setObjectiveBounds(double upper, double lower);
@@ -48,6 +62,8 @@ public:
 	/** set initial solutions */
 	virtual DSP_RTN_CODE setSolutions(Solutions initsols);
 
+	//@}
+
 protected:
 
 	/** create problem */
@@ -55,7 +71,7 @@ protected:
 
 protected:
 
-	SolverInterface * si_; /**< my solver interface */
+	BdWorker* worker_; /**< Benders worker */
 
 	int      naux_;     /**< number of auxiliary variables */
 	double * obj_aux_;  /**< auxiliary variable objectives */

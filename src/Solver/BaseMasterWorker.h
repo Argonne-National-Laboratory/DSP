@@ -9,7 +9,6 @@
 #define SRC_SOLVER_BASEMASTERWORKER_H_
 
 #include "CoinFinite.hpp"
-/** DSP headers */
 #include "Utility/DspMacros.h"
 #include "Utility/DspRtnCodes.h"
 #include "Utility/DspTypes.h"
@@ -20,27 +19,33 @@
 class BaseMasterWorker {
 public:
 
-	/** constructor */
+	/** A default constructor. */
 	BaseMasterWorker() {}
 
-	/** destructor */
+	/** A copy constructor. */
+	BaseMasterWorker(const BaseMasterWorker& rhs) {}
+
+	/** A default destructor. */
 	virtual ~BaseMasterWorker() {}
 
-	/** initialize */
+	/** A clone function */
+	virtual BaseMasterWorker* clone() const = 0;
+
+	/** A pure virtual member for initializing the framework. */
 	virtual DSP_RTN_CODE init() = 0;
 
-	/** run the framework */
+	/** A pure virtual member for running the framework. */
 	virtual DSP_RTN_CODE run() = 0;
 
-	/** finalize */
+	/** A pure virtual memeber for finalizing the framework. */
 	virtual DSP_RTN_CODE finalize() = 0;
 
 protected:
 
-	/** run master process */
+	/** A pure virtual member to run master process */
 	virtual DSP_RTN_CODE runMaster() = 0;
 
-	/** run worker processes */
+	/** A pure virtual member to run worker processes */
 	virtual DSP_RTN_CODE runWorker() = 0;
 };
 

@@ -1,0 +1,5 @@
+TIME          MYSMPS
+PERIODS       LP
+    C0000001  R0000001                STG00001
+    C0000613  R0000003                STG00002
+ENDATA

@@ -5,7 +5,6 @@
  *      Author: kibaekkim
  */
 
-#include <Utility/DspMessage.h>
 #include "stdio.h"
 #include "math.h"
 
@@ -17,8 +16,10 @@
 #include "QpGenResiduals.h"
 #include "GondzioSolver.h"
 #include "MehrotraSolver.h"
+#include "SimpleVector.h"
 
 /** DSP */
+#include "Utility/DspMessage.h"
 #include "SolverInterface/OoqpStatus.h"
 
 OoqpStatus::~OoqpStatus()
@@ -37,33 +38,67 @@ int OoqpStatus::doIt(
 {
 	QpGenData * qpdata = dynamic_cast<QpGenData*>(data);
 	QpGenVars * qpvars = dynamic_cast<QpGenVars*>(vars);
-	if (qpdata && qpvars)
-	{
-		double objval     = qpdata->objectiveValue(qpvars);
+	if (qpdata && qpvars && epsilon_ > 0) {
+
+		/** retrieve duality gap */
 		double dualityGap = resids->dualityGap();
-		double relDualityGap = dualityGap / (1. + fabs(objval));
-		double mc = dualityGap / mu;
+
+		if (dualityGap > 0) {
+			const double gamma = 0.2;
+			bool wellcentered = true;
+
+			/** retrieve OOQP data and variables */
+			int mz = qpdata->mz;
+			double* iclow = dynamic_cast<SimpleVector*>(qpdata->iclow.ptr())->elements();
+			double* icupp = dynamic_cast<SimpleVector*>(qpdata->icupp.ptr())->elements();
+			double* t = dynamic_cast<SimpleVector*>(qpvars->t.ptr())->elements();
+			double* u = dynamic_cast<SimpleVector*>(qpvars->u.ptr())->elements();
+			double* lambda = dynamic_cast<SimpleVector*>(qpvars->lambda.ptr())->elements();
+			double* pi = dynamic_cast<SimpleVector*>(qpvars->pi.ptr())->elements();
+
+			double sz;
+			for (int i = 0; i < mz; ++i) {
+				sz = 0.0;
+				if (iclow[i] > 0)
+					sz += t[i]*lambda[i];
+				if (icupp[i] > 0)
+					sz += u[i]*pi[i];
+				if (sz < mu * gamma || sz > mu / gamma) {
+					wellcentered = false;
+					break;
+				}
+			}
+
 #ifdef DSP_DEBUG
-		printf("KK: mu %e rnorm %e dnorm %e Ar %e dualityGap %e objval %e",
-				mu, resids->residualNorm(), data->datanorm(),
-				resids->residualNorm() / data->datanorm(), dualityGap, objval);
-		if (lowerBound_ > -COIN_DBL_MAX)
-			printf(" lowerBound %e", lowerBound_);
-		printf(" upperBound %e epsilon %e\n",
-				upperBound_, epsilon_);
+			printf("OoqpStatus: mu %e, gamma %e, lowerBound %e, dualityGap %e, epsilon %e, %s\n",
+					mu, gamma, lowerBound_, dualityGap, epsilon_, wellcentered ? "centered" : "not");
 #endif
-		if (mc > 0)
-		{
-			if (objval <= lowerBound_)
+
+			if (wellcentered) {
+				double objval     = qpdata->objectiveValue(qpvars);
+				double relDualityGap = dualityGap / (1. + fabs(objval));
+//				if (objval <= lowerBound_)
+//					return 0; /**< successful termination */
+				if (relDualityGap < epsilon_) {
+					DSPdebugMessage("relative duality gap %e < epsilon %e\n", relDualityGap, epsilon_);
+					return 0; /**< successful termination */
+				}
+#if 0
+				/** What did I try to do here? */
+				if (relDualityGap < epsilon_ &&
+						upperBound_ < COIN_DBL_MAX &&
+						upperBound_ - objval > 1.e-4 * fabs(upperBound_))
+					return 0; /**< successful termination */
+#endif
+			}
+
+#if 0
+			/** What did I try to do here? */
+			if (mu <= solver->getMuTol() &&
+					resids->residualNorm() <= solver->getArTol() * data->datanorm())
 				return 0; /**< successful termination */
-			if (relDualityGap < epsilon_ &&
-					upperBound_ < COIN_DBL_MAX &&
-					upperBound_ - objval > 1.e-4 * fabs(upperBound_))
-				return 0; /**< successful termination */
+#endif
 		}
-		if (mu <= solver->getMuTol() &&
-				resids->residualNorm() <= solver->getArTol() * data->datanorm())
-			return 0; /**< successful termination */
 	}
 
 	return solver->defaultStatus(data, vars, resids, i, mu, level);

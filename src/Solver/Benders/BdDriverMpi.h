@@ -9,23 +9,37 @@
 #define SRC_SOLVER_BENDERS_BDDRIVERMPI_H_
 
 #include "BdDriver.h"
+#include "Solver/Benders/BdMWMpi.h"
 
+/** A driver class for parallel Benders decomposition */
 class BdDriverMpi: public BdDriver {
 public:
 
-	/** constructor */
-	BdDriverMpi(DspParams * par, DecModel * model, MPI_Comm comm);
+	/** A default constructor. */
+	BdDriverMpi(
+			DecModel *   model,   /**< model pointer */
+			DspParams *  par,     /**< parameters */
+			DspMessage * message, /**< message pointer */
+			MPI_Comm comm         /**< communicator */);
 
-	/** destructor */
+	/** A copy constructor. */
+	BdDriverMpi(const BdDriverMpi& rhs);
+
+	/** A default destructor. */
 	virtual ~BdDriverMpi();
 
-	/** initialize */
+	/** A clone function. */
+	virtual BdDriverMpi* clone() const {
+		return new BdDriverMpi(*this);
+	}
+
+	/** A virtual member for initializing the driver. */
 	virtual DSP_RTN_CODE init();
 
-	/** run */
+	/** A virtual member for running the driver. */
 	virtual DSP_RTN_CODE run();
 
-	/** finalize */
+	/** A virtual member for finalizing the driver. */
 	virtual DSP_RTN_CODE finalize();
 
 protected:
@@ -35,8 +49,6 @@ protected:
 
 	/** collect second-stage solutions */
 	virtual DSP_RTN_CODE collectSolution();
-
-private:
 
 	MPI_Comm comm_;
 	int comm_rank_;
