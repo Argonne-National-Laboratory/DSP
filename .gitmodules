@@ -2,10 +2,6 @@
 	path = extra/CoinUtils
 url=https://github.com/coin-or/CoinUtils.git
 branch = stable/2.11
-[submodule "extra/Osi"]
-	path = extra/Osi
-url=https://github.com/kibaekkim/Osi.new.git
-branch = stable/dsp
 [submodule "extra/Smi"]
 	path = extra/Smi
 url=https://github.com/kibaekkim/Smi.git
@@ -19,3 +15,7 @@ url=https://github.com/kibaekkim/CHiPPS-ALPS.git
 	path = extra/Clp
 	url = https://github.com/coin-or/Clp.git
 	branch = stable/1.17
+[submodule "extra/Osi"]
+	path = extra/Osi
+	url = https://github.com/kibaekkim/Osi.new.git
+	branch = stable/dsp
