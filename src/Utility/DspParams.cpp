@@ -260,11 +260,11 @@ void DspParams::initDblParams()
 	DblParams_.createParam("DW/SUB/GAPTOL", 0.0);
 
 	/** time limit */
-	DblParams_.createParam("MIP/TIME_LIM", 300);
+	DblParams_.createParam("MIP/TIME_LIM", 3600);
 	/** TODO: Is this option duplicate? */
-	DblParams_.createParam("SCIP/TIME_LIM", 300);
+	DblParams_.createParam("SCIP/TIME_LIM", 3600);
 	/** TODO: Is this option duplicate? */
-	DblParams_.createParam("DW/SUB/TIME_LIM", 300);
+	DblParams_.createParam("DW/SUB/TIME_LIM", 3600);
 
 	/** LB-UB worker ratio */
 	DblParams_.createParam("DD/WORKER_RATIO", 0.8);
