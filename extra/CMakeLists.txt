@@ -125,6 +125,7 @@ ExternalProject_Add(Smi
 	CONFIGURE_COMMAND ${SMI_DIR}/configure
 		--prefix=${DEPEND_DIR}
 		--enable-static 
+		# --enable-debug
 		--disable-shared
 		--with-coinutils-lib=${COINUTILS_LIB}
 		--with-coinutils-incdir=${COIN_INC_DIR}
