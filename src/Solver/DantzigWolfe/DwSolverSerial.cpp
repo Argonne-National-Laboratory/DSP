@@ -28,8 +28,10 @@ alps_(NULL) {
 		ofs.open(par->getStrParam("VBC/FILE").c_str());
 		ofs.close();
 	}
-	ofs.open(par->getStrParam("DW/LOGFILE/OBJS").c_str());
-	ofs.close();
+	if (par->getStrParam("DW/LOGFILE/OBJS").length() > 0) {
+		ofs.open(par->getStrParam("DW/LOGFILE/OBJS").c_str());
+		ofs.close();
+	}
 
 	/** time stamp */
 	CoinWallclockTime();

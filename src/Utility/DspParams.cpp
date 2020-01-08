@@ -282,7 +282,7 @@ void DspParams::initStrParams()
 {
 	/** prefix for output files */
 	StrParams_.createParam("OUTPUT/PREFIX", "dsp");
-	StrParams_.createParam("DW/LOGFILE/OBJS", "objtrack.csv");
+	StrParams_.createParam("DW/LOGFILE/OBJS", "");
 	StrParams_.createParam("VBC/FILE", "");
 }
 
