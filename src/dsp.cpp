@@ -121,6 +121,11 @@ void runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* 
 		if (isroot) cout << "Reading SMPS files: " << smpsfile << endl;
 		int ret = readSmps(env, smpsfile);
 		if (ret != 0) return;
+		if (isroot) {
+			cout << "First stage: " << getNumRows(env,0) << " rows, " << getNumCols(env,0) << " cols" << endl;
+			cout << "Second stage: " << getNumRows(env,1) << " rows, " << getNumCols(env,1) << " cols" << endl;
+			cout << "Number of scenarios: " << getNumSubproblems(env) << endl;
+		}
 		setBlockIds(env, getNumSubproblems(env), true);
 	} else if (mpsfile != NULL && decfile != NULL) {
 		if (isroot) {
