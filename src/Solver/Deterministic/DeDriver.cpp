@@ -180,6 +180,7 @@ DSP_RTN_CODE DeDriver::run()
 		numIterations_ = si_->getIterationCount();
 		numNodes_ = si_->getNumNodes();
 	}
+	si_->writeMps("dsp");
 
 	/** save memory */
 	FREE_MEMORY
@@ -259,7 +260,12 @@ void DeDriver::writeExtMps(const char * name)
 	}
 
 	/** load problem */
-	si->loadProblem(*mat, clbd, cubd, obj, ctype, rlbd, rubd);
+	si->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
+	for (int j = 0; j < mat->getNumCols(); j++)
+	{
+		if (ctype[j] != 'C')
+			si->setInteger(j);
+	}
 
 	/** write mps */
 	si->writeMps(name);
