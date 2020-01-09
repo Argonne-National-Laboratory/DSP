@@ -95,7 +95,6 @@ int main(int argc, char* argv[]) {
 #ifdef DSP_HAS_MPI
 		MPI_Finalize();
 #endif
-
 		return 0;
 	}
 #undef EXIT_WITH_MSG
@@ -122,8 +121,8 @@ void runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* 
 		int ret = readSmps(env, smpsfile);
 		if (ret != 0) return;
 		if (isroot) {
-			cout << "First stage: " << getNumRows(env,0) << " rows, " << getNumCols(env,0) << " cols" << endl;
-			cout << "Second stage: " << getNumRows(env,1) << " rows, " << getNumCols(env,1) << " cols" << endl;
+			cout << "First stage: " << getNumRows(env,0) << " rows, " << getNumCols(env,0) << " cols, " << getNumIntegers(env,0) << " integers" << endl;
+			cout << "Second stage: " << getNumRows(env,1) << " rows, " << getNumCols(env,1) << " cols, " << getNumIntegers(env,1) << " integers" << endl;
 			cout << "Number of scenarios: " << getNumSubproblems(env) << endl;
 		}
 		setBlockIds(env, getNumSubproblems(env), true);
