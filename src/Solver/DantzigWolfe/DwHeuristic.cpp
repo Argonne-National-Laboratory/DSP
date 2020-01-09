@@ -148,12 +148,14 @@ int DwSmip::solution(double &objective, std::vector<double> &solution) {
 	message->logLevel_ = loglevel;
 	master->getParPtr()->setIntParam("DW/EVAL_UB", dwevalub);
 	master->getParPtr()->setDblParam("DW/GAPTOL", gaptol);
+	message->print(1, "Heuristic (Smip) returns %d.\n", master->getStatus());
 
 	switch (master->getStatus()) {
 	case DSP_STAT_OPTIMAL:
 	case DSP_STAT_FEASIBLE:
 	case DSP_STAT_LIM_ITERorTIME: {
-		if (master->getDualObjective() < objective) {
+		message->print(1, "Heuristic (Smip) found %e (vs. %e).\n", master->getBestDualObjective(), objective);
+		if (master->getBestDualObjective() < objective) {
 			objective = master->getBestDualObjective();
 			message->print(1, "found a better upper bound %e.\n", objective);
 			/** parse solution */
