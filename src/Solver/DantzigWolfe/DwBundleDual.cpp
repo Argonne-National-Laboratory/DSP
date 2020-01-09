@@ -402,6 +402,8 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 	case DSP_STAT_FEASIBLE:
 	case DSP_STAT_LIM_ITERorTIME: {
 
+		status_ = DSP_STAT_OPTIMAL;
+
 		assignMasterSolution(dualsol_);
 #ifdef DSP_DEBUG
 		printf("bestdualsol_:\n");
@@ -604,7 +606,7 @@ DSP_RTN_CODE DwBundleDual::addRows(
 
 		/** retrieve subproblem solution */
 		const CoinPackedVector* x = sols[s];
-#if 1
+#if 0
 		for (int i = 0; i < x->getNumElements(); ++i) {
 			int j = x->getIndices()[i];
 			if (j >= ncols_orig_) break;
