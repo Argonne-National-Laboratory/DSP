@@ -228,6 +228,7 @@ void DspParams::initIntParams()
     IntParams_.createParam("DW/SUB/THREADS", 1);
 	IntParams_.createParam("DW/SUB/ADVIND", 0);
 	IntParams_.createParam("DW/BRANCH", 2);
+	IntParams_.createParam("DW/STRONG_BRANCH/ITER_LIM", 10);
 }
 
 void DspParams::initDblParams()
