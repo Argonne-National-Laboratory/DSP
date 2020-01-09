@@ -173,6 +173,9 @@ int getNumRows(DspApiEnv * env, int stage);
 /** get number of columns */
 int getNumCols(DspApiEnv * env, int stage);
 
+/** get number of integer variables */
+int getNumIntegers(DspApiEnv * env, int stage);
+
 /** get Total number of row */
 int getTotalNumRows(DspApiEnv * env);
 

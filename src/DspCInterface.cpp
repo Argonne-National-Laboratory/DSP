@@ -520,6 +520,13 @@ int getNumCols(DspApiEnv * env, int stage)
 	return getTssModel(env)->getNumCols(stage);
 }
 
+/** get number of integer variables */
+int getNumIntegers(DspApiEnv * env, int stage)
+{
+	DSP_API_CHECK_MODEL(-1);
+	return getTssModel(env)->getNumIntegers(stage);
+}
+
 /** get number of scenarios */
 int getNumScenarios(DspApiEnv * env)
 {
