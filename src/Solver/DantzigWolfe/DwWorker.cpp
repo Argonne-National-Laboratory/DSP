@@ -282,10 +282,7 @@ DSP_RTN_CODE DwWorker::generateCols(
 				const double* x = si_[s]->getColSolution();
 
 				/** subproblem objective value */
-				if (si_[s]->getNumIntegers() > 0)
-					objval = si_[s]->getBestDualBound();
-				else
-					objval = si_[s]->getObjValue();
+				objval = si_[s]->getObjValue();
 					
 				cx = 0.0;
 				for (int j = 0; j < si_[s]->getNumCols(); ++j)
