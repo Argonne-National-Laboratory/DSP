@@ -109,9 +109,9 @@ DSP_RTN_CODE DdSub::solve()
 		case DSP_STAT_STOPPED_NODE:
 		case DSP_STAT_STOPPED_TIME:
 			primobj_ = si_->getObjValue();
-			dualobj_ = si_->getBestDualBound();
+			dualobj_ = si_->getNumIntegers() > 0 ? si_->getBestDualBound() : primobj_;
 			CoinCopyN(si_->getColSolution(), si_->getNumCols(), &primsol_[0]);
-			DSPdebugMessage("primal objective %+e\n", primobj_);
+			DSPdebugMessage("primal objective %+e, dual objective %+e\n", primobj_, dualobj_);
 			dualinfeas = false;
 			break;
 		case DSP_STAT_LIM_INFEAS:
