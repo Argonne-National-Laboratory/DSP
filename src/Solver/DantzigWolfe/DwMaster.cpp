@@ -770,10 +770,17 @@ DSP_RTN_CODE DwMaster::generateCols() {
 	/** calculate pi^T A */
 	DSP_RTN_CHECK_RTN_CODE(calculatePiA(piA));
 
+	// set time limit
+	double sub_timlim = par_->getDblParam("DW/SUB/TIME_LIM");
+	par_->setDblParam("DW/SUB/TIME_LIM", CoinMin(sub_timlim, time_remains_ - (CoinGetTimeOfDay() - t_start_)));
+
 	/** generate columns */
 	DSP_RTN_CHECK_RTN_CODE(
 			worker_->generateCols(phase_, &piA[0], subinds, status_subs_, subcxs, subobjs, subsols));
 	DSPdebugMessage("status_subs_.size() %lu\n", status_subs_.size());
+
+	// reset time limit
+	par_->setDblParam("DW/SUB/TIME_LIM", sub_timlim);
 
 	/** any subproblem primal/dual infeasible? */
 	bool isInfeasible = false;
@@ -864,6 +871,10 @@ DSP_RTN_CODE DwMaster::generateColsByFix(
 
 	TssModel* tss = dynamic_cast<TssModel*>(model_);
 
+	// set time limit
+	double sub_timlim = par_->getDblParam("DW/SUB/TIME_LIM");
+	par_->setDblParam("DW/SUB/TIME_LIM", CoinMin(sub_timlim, time_remains_ - (CoinGetTimeOfDay() - t_start_)));
+
 	for (unsigned i = stored_solutions_.size() - 1, j = 0; i >= stored_solutions_.size() - nsols; --i)
 		solutions_to_evaluate[j++] = stored_solutions_[i];
 
@@ -911,6 +922,9 @@ DSP_RTN_CODE DwMaster::generateColsByFix(
 			FREE_PTR(subsols[i]);
 		subsols.clear();
 	}
+
+	// reset time limit
+	par_->setDblParam("DW/SUB/TIME_LIM", sub_timlim);
 
 	/** clear solution vector */
 	for (unsigned i = 0; i < solutions_to_evaluate.size(); ++i)
