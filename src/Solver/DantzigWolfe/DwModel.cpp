@@ -15,9 +15,11 @@
 #include "Solver/DantzigWolfe/DwBranchGenDisj.h"
 #include "Model/TssModel.h"
 
-DwModel::DwModel(): DspModel(), branch_(NULL) {}
+DwModel::DwModel(): DspModel(), branch_(NULL), heuristic_time_elapsed_(0.0) {}
 
-DwModel::DwModel(DecSolver* solver): DspModel(solver) {
+DwModel::DwModel(DecSolver* solver): 
+DspModel(solver),
+heuristic_time_elapsed_(0.0) {
 	DwMaster* master = dynamic_cast<DwMaster*>(solver_);
 	primsol_.resize(master->ncols_orig_);
 
@@ -120,6 +122,9 @@ DSP_RTN_CODE DwModel::solve() {
 
 		/** run heuristics */
 		if (par_->getBoolParam("DW/HEURISTICS") && infeasibility_ > 1.0e-6) {
+			// timing
+			double heuristic_stime = CoinGetTimeOfDay();
+
 			/** FIXME */
 			std::vector<double> primsol(primsol_);
 			for (auto it = heuristics_.begin(); it != heuristics_.end(); it++) {
@@ -132,6 +137,8 @@ DSP_RTN_CODE DwModel::solve() {
 					message->print(2, "Not found better primal solution\n");
 			}
 			primsol_ = primsol;
+
+			heuristic_time_elapsed_ += CoinGetTimeOfDay() - heuristic_stime;
 		}
 
 		break;

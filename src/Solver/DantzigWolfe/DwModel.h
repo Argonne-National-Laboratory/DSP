@@ -41,6 +41,10 @@ protected:
 	/** parse primal solution from the last iteration */
 	virtual DSP_RTN_CODE parseLastIterSolution();
 
+public:
+
+	double heuristic_time_elapsed_;
+
 private:
 
     DwBranch* branch_;
