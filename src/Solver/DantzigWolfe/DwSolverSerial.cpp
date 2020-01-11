@@ -137,6 +137,8 @@ DSP_RTN_CODE DwSolverSerial::solve() {
 	else
 		bestdualobj_ = CoinMin(bestprimobj_, alps_->getBestDualObjective());
 
+	message_->print(1, "Time spent in heuristics: %.2f seconds\n", alps_->heuristic_time_elapsed_);
+
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;
 }
