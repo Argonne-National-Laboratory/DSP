@@ -150,6 +150,7 @@ void DspParams::initBoolParams()
 	BoolParams_.createParam("DW/HEURISTICS/ROUNDING", false);
 	BoolParams_.createParam("DW/HEURISTICS/SMIP", true);
 	BoolParams_.createParam("DW/STRONG_BRANCH", false);
+	BoolParams_.createParam("DW/BRANCH/INTEGER_FIRST", false);
 }
 
 void DspParams::initIntParams()
@@ -258,14 +259,14 @@ void DspParams::initDblParams()
 	DblParams_.createParam("MIP/GAP_TOL", 0.00001);
 	/** TODO: Is this option duplicate? */
 	DblParams_.createParam("DW/GAPTOL", 1.0e-4);
-	DblParams_.createParam("DW/SUB/GAPTOL", 0.0);
+	DblParams_.createParam("DW/SUB/GAPTOL", 1.0e-4);
 
 	/** time limit */
-	DblParams_.createParam("MIP/TIME_LIM", 3600);
+	DblParams_.createParam("MIP/TIME_LIM", 300);
 	/** TODO: Is this option duplicate? */
-	DblParams_.createParam("SCIP/TIME_LIM", 3600);
+	DblParams_.createParam("SCIP/TIME_LIM", 300);
 	/** TODO: Is this option duplicate? */
-	DblParams_.createParam("DW/SUB/TIME_LIM", 3600);
+	DblParams_.createParam("DW/SUB/TIME_LIM", 300);
 
 	/** LB-UB worker ratio */
 	DblParams_.createParam("DD/WORKER_RATIO", 0.8);
