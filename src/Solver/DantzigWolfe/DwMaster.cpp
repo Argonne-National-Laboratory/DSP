@@ -536,6 +536,12 @@ DSP_RTN_CODE DwMaster::gutsOfSolve() {
 				if (status_ == DSP_STAT_PRIM_INFEASIBLE)
 					break;
 
+				// check time limit
+				if (time_remains_ <= (CoinGetTimeOfDay() - t_start_)) {
+					status_ = DSP_STAT_STOPPED_TIME;
+					break;
+				}
+
 				/** update master */
 				DSP_RTN_CHECK_RTN_CODE(updateModel());
 			}
@@ -772,7 +778,7 @@ DSP_RTN_CODE DwMaster::generateCols() {
 
 	// set time limit
 	double sub_timlim = par_->getDblParam("DW/SUB/TIME_LIM");
-	par_->setDblParam("DW/SUB/TIME_LIM", CoinMin(sub_timlim, time_remains_ - (CoinGetTimeOfDay() - t_start_)));
+	worker_->setTimeLimit(CoinMin(sub_timlim, time_remains_ - (CoinGetTimeOfDay() - t_start_)));
 
 	/** generate columns */
 	DSP_RTN_CHECK_RTN_CODE(
@@ -873,7 +879,6 @@ DSP_RTN_CODE DwMaster::generateColsByFix(
 
 	// set time limit
 	double sub_timlim = par_->getDblParam("DW/SUB/TIME_LIM");
-	par_->setDblParam("DW/SUB/TIME_LIM", CoinMin(sub_timlim, time_remains_ - (CoinGetTimeOfDay() - t_start_)));
 
 	for (unsigned i = stored_solutions_.size() - 1, j = 0; i >= stored_solutions_.size() - nsols; --i)
 		solutions_to_evaluate[j++] = stored_solutions_[i];
@@ -884,6 +889,8 @@ DSP_RTN_CODE DwMaster::generateColsByFix(
 		std::fill(first_stage_solution_dense.begin(), first_stage_solution_dense.end(), 0.0);
 		for (int j = 0; j < solutions_to_evaluate[i]->getNumElements(); ++j)
 			first_stage_solution_dense[solutions_to_evaluate[i]->getIndices()[j]] = solutions_to_evaluate[i]->getElements()[j];
+
+		worker_->setTimeLimit(CoinMin(sub_timlim, time_remains_ - (CoinGetTimeOfDay() - t_start_)));
 		DSP_RTN_CHECK_RTN_CODE(
 				worker_->generateColsByFix(&first_stage_solution_dense[0], subinds, substatuses, subobjs, subsols));
 
