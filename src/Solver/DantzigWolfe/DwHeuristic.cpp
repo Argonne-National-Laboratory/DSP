@@ -23,12 +23,16 @@ int DwRounding::solution(double &objective, std::vector<double> &solution) {
 	//printf("Time to copy DwMaster: %.10f seconds\n", CoinGetTimeOfDay() - stime);
 	DspMessage* message = master->getMessagePtr();
 
+	/** primal solution */
+	std::vector<double> refsol;
+	dynamic_cast<DwModel*>(model_)->getRefSol(refsol);
+
 	/** round and fix */
 	double rounded;
 	for (int j = 0; j < master->ncols_orig_; ++j) {
 		if (master->ctype_orig_[j] != 'C') {
 			/** round */
-			rounded = round(model_->getPrimalSolution()[j]);
+			rounded = round(refsol[j]);
 			rounded = std::min(rounded, master->cubd_node_[j]);
 			rounded = std::max(rounded, master->clbd_node_[j]);
 			/** fix */
@@ -113,24 +117,12 @@ int DwSmip::solution(double &objective, std::vector<double> &solution) {
 	std::shared_ptr<DspBranchObj> branch(new DspBranchObj);
 	DSPdebugMessage("Created a branch object.\n");
 
-	if (par->getIntParam("DW/BRANCH") == BRANCH_NONANT) {
-		std::vector<double> fixedsol(tss->getNumCols(0), 0.0);
-		DwCol* colgen = NULL;
-		for (int s = 0; s < tss->getNumScenarios(); ++s) {
-			const CoinPackedVector* sol = m->getLastSubprobSolutions()[s];
-			for (int j = 0; j < sol->getNumElements(); ++j) {
-				if (sol->getIndices()[j] < tss->getNumCols(0) * tss->getNumScenarios())
-					fixedsol[sol->getIndices()[j] % tss->getNumCols(0)] += sol->getElements()[j] * tss->getProbability()[s];
-			}
-		}
-		fixSolution(tss, master.get(), branch.get(), fixedsol);
-#ifdef DSP_DEBUG
-		printf("fixed and rounded solution:\n");
-		DspMessage::printArray(fixedsol.size(), &fixedsol[0]);
-#endif
-	} else {
-		fixSolution(tss, master.get(), branch.get(), model_->getPrimalSolution());
-	}
+	/** get reference point */
+	std::vector<double> refsol;
+	dynamic_cast<DwModel*>(model_)->getRefSol(refsol);
+
+	// fix the solution
+	fixSolution(tss, master.get(), branch.get(), refsol);
 
 	master->setBranchingObjects(branch.get());
 	DSPdebugMessage("Set a branch object.\n");

@@ -63,7 +63,13 @@ DSP_RTN_CODE DwSolverMpi::init() {
 		DSP_RTN_CHECK_THROW(master_->init());
 
 		/** create an Alps model */
-		alps_ = new DwModel(master_);
+		if (model_->isStochastic())
+			alps_ = new DwModelSmip(master_);
+		else
+			alps_ = new DwModel(master_);
+
+		/** initialize the model */
+		DSP_RTN_CHECK_THROW(alps_->init());
 
 		/** parameter setting */
 		DspParams* par = alps_->getSolver()->getParPtr();

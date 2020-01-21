@@ -12,6 +12,7 @@
 #include "TreeSearch/DspNodeSolution.h"
 #include "Solver/DantzigWolfe/DwMaster.h"
 #include "Solver/DantzigWolfe/DwModel.h"
+#include "Solver/DantzigWolfe/DwModelSmip.h"
 
 class DwSolverSerial: public DecSolver {
 public:

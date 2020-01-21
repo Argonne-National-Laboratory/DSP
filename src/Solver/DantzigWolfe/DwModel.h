@@ -24,13 +24,25 @@ public:
 	/** default destructor */
 	virtual ~DwModel();
 
+	/** initialize */
+	virtual DSP_RTN_CODE init();
+
 	/** solve model */
     virtual DSP_RTN_CODE solve();
 
     virtual bool chooseBranchingObjects(
     			std::vector<DspBranchObj*>& branchingObjs /**< [out] branching objects */);
+				
+    /** calculate and return reference solution */
+    virtual void getRefSol(std::vector<double>& refsol);
 
 protected:
+
+	/** initialize branching */
+	virtual DSP_RTN_CODE initBranch();
+
+	/** initialize heuristic */
+	virtual DSP_RTN_CODE initHeuristic();
 
 	/** parse primal solution from the master */
 	virtual DSP_RTN_CODE parsePrimSolution();
@@ -38,14 +50,11 @@ protected:
 	/** parse Dantzig-Wolfe solution from the master */
 	virtual DSP_RTN_CODE parseDantzigWolfeSolution();
 
-	/** parse primal solution from the last iteration */
-	virtual DSP_RTN_CODE parseLastIterSolution();
-
 public:
 
 	double heuristic_time_elapsed_;
 
-private:
+protected:
 
     DwBranch* branch_;
 };

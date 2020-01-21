@@ -22,6 +22,7 @@ set(DSP_SRC
     Solver/DantzigWolfe/DwBranchNonant2.cpp
     Solver/DantzigWolfe/DwBranchGenDisj.cpp
     Solver/DantzigWolfe/DwModel.cpp
+    Solver/DantzigWolfe/DwModelSmip.cpp
     Solver/DantzigWolfe/DwMaster.cpp
     Solver/DantzigWolfe/DwBundleDual.cpp
     Solver/DantzigWolfe/DwBundleDualSmip.cpp
