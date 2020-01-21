@@ -234,7 +234,7 @@ DSP_RTN_CODE DwWorker::generateCols(
 		convertOsiToDspStatus(si_[s], status);
 		if (status == DSP_STAT_STOPPED_TIME)
 			num_timelim_stops_[s]++;
-		else  if (status != DSP_STAT_UNKNOWN) {
+		else if (status != DSP_STAT_UNKNOWN) {
 			num_timelim_stops_[s] = 0;
 			si_[s]->setTimeLimit(par_->getDblParam("DW/SUB/TIME_LIM"));
 		}

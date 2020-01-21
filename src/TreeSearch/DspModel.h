@@ -30,6 +30,9 @@ public:
 	/** default destructor */
 	virtual ~DspModel();
 
+	/** initialize */
+    virtual DSP_RTN_CODE init() {return DSP_RTN_OK;}
+
 	/** solve model */
     virtual DSP_RTN_CODE solve();
 
@@ -53,6 +56,7 @@ public:
     std::vector<double>& getBestPrimalSolution() {return bestprimsol_;}
     std::vector<double>& getPrimalSolution() {return primsol_;}
     double infeasibility() {return infeasibility_;}
+    double feastol() {return feastol_;}
 
     virtual bool chooseBranchingObjects(
     			std::vector<DspBranchObj*>& branchingObjs /**< [out] branching objects */) {
@@ -92,6 +96,7 @@ protected:
     std::vector<double> bestprimsol_; /**< integer feasible primal solution */
     std::vector<double> primsol_; /**< primal solution (may not be integer feasible) */
     double infeasibility_;
+    double feastol_ = 1.e-6; /**< feasibility tolerance */
 };
 
 #endif /* SRC_TREESEARCH_DSPMODEL_H_ */

@@ -140,7 +140,6 @@ void DspParams::initBoolParams()
 	BoolParams_.createParam("DD/ASYNC/FIFO", true);
 
 	/** options for Dantzig-Wolfe decomposition */
-	BoolParams_.createParam("DW/SPLIT_VARS", false);
 	BoolParams_.createParam("DW/MASTER/PIPS", false);
 	BoolParams_.createParam("DW/MASTER/IPM", false);
 	BoolParams_.createParam("DW/MASTER/BRANCH_ROWS", false);
@@ -227,7 +226,7 @@ void DspParams::initIntParams()
     IntParams_.createParam("DW/HEURISTICS/TRIVIAL/ITER_LIM", MAX_INT_NUM);
     IntParams_.createParam("DW/HEURISTICS/DIVE/ITER_LIM", MAX_INT_NUM);
     IntParams_.createParam("DW/SUB/THREADS", 1);
-	IntParams_.createParam("DW/SUB/ADVIND", 0);
+	IntParams_.createParam("DW/SUB/ADVIND", 1);
 	IntParams_.createParam("DW/BRANCH", 2);
 	IntParams_.createParam("DW/STRONG_BRANCH/ITER_LIM", 10);
 }
@@ -262,11 +261,11 @@ void DspParams::initDblParams()
 	DblParams_.createParam("DW/SUB/GAPTOL", 1.0e-4);
 
 	/** time limit */
-	DblParams_.createParam("MIP/TIME_LIM", 300);
+	DblParams_.createParam("MIP/TIME_LIM", 1e+20);
 	/** TODO: Is this option duplicate? */
-	DblParams_.createParam("SCIP/TIME_LIM", 300);
+	DblParams_.createParam("SCIP/TIME_LIM", 1e+20);
 	/** TODO: Is this option duplicate? */
-	DblParams_.createParam("DW/SUB/TIME_LIM", 300);
+	DblParams_.createParam("DW/SUB/TIME_LIM", 1e+20);
 
 	/** LB-UB worker ratio */
 	DblParams_.createParam("DD/WORKER_RATIO", 0.8);

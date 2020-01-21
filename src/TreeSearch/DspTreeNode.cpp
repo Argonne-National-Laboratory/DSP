@@ -140,8 +140,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 		}
 
 		/** fathom if LB is larger than UB. */
-		if (quality_ >= gUb || 
-			(par->getBoolParam("DW/SPLIT_VARS") == false && quality_ >= ALPS_OBJ_MAX)) {
+		if (quality_ >= gUb || quality_ >= ALPS_OBJ_MAX) {
 			message->print(1, "The current node is fathomed.\n");
 			setStatus(AlpsNodeStatusFathomed);
 			wirteLog("fathomed", desc);
@@ -152,7 +151,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 
 			/** Branching otherwise */
 			message->print(3, "need to branch?");
-			bool hasObjs = model->infeasibility() > 1.0e-6 ? model->chooseBranchingObjects(branchingObjs_) : false;
+			bool hasObjs = model->infeasibility() > model->feastol() ? model->chooseBranchingObjects(branchingObjs_) : false;
 			message->print(3, " %s\n", hasObjs ? "yes" : "no");
 
 			if (hasObjs) {
