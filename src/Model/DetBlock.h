@@ -10,6 +10,8 @@
 
 #include "DetModel.h"
 
+/* Derived from Detmodel, and is used to set coupling constraints.*/
+
 class DetBlock: public DetModel {
 public:
 
@@ -89,7 +91,7 @@ public:
 		num_coupling_cols_ = n;
 	}
 
-	/** set coupling columns */
+	/** set coupling rows */
 	void setCouplingRows(int n, int* index) {
 		FREE_ARRAY_PTR(coupling_rows_);
 		coupling_rows_ = new int [n];
