@@ -27,7 +27,8 @@
  * TODO: Multi-stage stochastic optimization
  */
 class StoModel {
-
+	
+	/* Define a new type, StoScenMap*/
 	typedef std::map<int,int> StoScenMap;
 
 public:
@@ -38,7 +39,7 @@ public:
 	/** copy constructor */
 	StoModel(const StoModel & rhs);
 
-	/** default destructor */
+	/** virtual default destructor */
 	virtual ~StoModel();
 
 	/** read SMPS files */
