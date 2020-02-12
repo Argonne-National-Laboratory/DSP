@@ -47,7 +47,7 @@ public:
 			double *& rlbd,          /**< [out] row lower bounds */
 			double *& rubd           /**< [out] row upper bounds */);
 
-	/**
+	/** dont really understand these two functions in .cpp file
 	 * This constructs a deterministic equivalent form.
 	 */
 	DSP_RTN_CODE copyDeterministicEquivalent(
@@ -65,7 +65,7 @@ public:
 	DSP_RTN_CODE copyDeterministicEquivalent(
 			DetModel *& det /**< [out] deterministic equivalent model */);
 
-	/**
+	/** 
 	 * This creates recourse problem structure for a given scenario index.
 	 */
 	DSP_RTN_CODE copyRecoProb(
