@@ -7,6 +7,8 @@
 
 //#define DSP_DEBUG
 
+/* decomposition method of deterministic block model*/
+
 #include <vector>
 /** Coin */
 #include "CoinPackedVector.hpp"
