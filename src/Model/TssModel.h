@@ -105,7 +105,7 @@ public:
 			const double *       rlbd,  /**< row lower bounds */
 			const double *       rubd   /**< row upper bounds */);
 
-	/** load first-stage problem */
+	/** load second-stage problem */
 	DSP_RTN_CODE loadSecondStage(
 			const int            s,     /**< scenario index */
 			const double         prob,  /**< probability */
