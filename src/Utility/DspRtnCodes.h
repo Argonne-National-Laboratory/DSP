@@ -18,17 +18,17 @@ typedef int DSP_RTN_CODE;
 #define DSP_RTN_OK    0
 #define DSP_RTN_ERR   1
 
-#define DSP_STAT_OPTIMAL            3000
-#define DSP_STAT_PRIM_INFEASIBLE    3001
-#define DSP_STAT_DUAL_INFEASIBLE    3002
+#define DSP_STAT_OPTIMAL            3000	//Model is solved to optimal
+#define DSP_STAT_PRIM_INFEASIBLE    3001	//Model is proved to be infeasible
+#define DSP_STAT_DUAL_INFEASIBLE    3002	//Model is proved to be unbounded
 #define DSP_STAT_LIM_ITERorTIME     3004
-#define DSP_STAT_STOPPED_GAP        3005
-#define DSP_STAT_STOPPED_NODE       3006
-#define DSP_STAT_STOPPED_TIME       3007
-#define DSP_STAT_STOPPED_USER       3008
-#define DSP_STAT_STOPPED_SOLUTION   3009
-#define DSP_STAT_STOPPED_ITER       3010
-#define DSP_STAT_STOPPED_UNKNOWN    3011
+#define DSP_STAT_STOPPED_GAP        3005	
+#define DSP_STAT_STOPPED_NODE       3006	//Optimization terminates due to the number of nodes
+#define DSP_STAT_STOPPED_TIME       3007	//Optimization terminates due to the time limit
+#define DSP_STAT_STOPPED_USER       3008	//Optimization was terminated by the user
+#define DSP_STAT_STOPPED_SOLUTION   3009	//Unable to satisfy optimality tolerances; a sub-optimal solution is available
+#define DSP_STAT_STOPPED_ITER       3010	//Optimization terminates due to the iteration limit
+#define DSP_STAT_STOPPED_UNKNOWN    3011	//? 3999
 #define DSP_STAT_STOPPED_MPI        3012
 #define DSP_STAT_ABORT              3013
 #define DSP_STAT_LIM_PRIM_OBJ       3014
@@ -41,7 +41,7 @@ typedef int DSP_RTN_CODE;
 #define DSP_STAT_MW_EXACT           3102 /**< force to evaluate exactly */
 #define DSP_STAT_MW_RESOLVE         3103 /**< need to resolve */
 #define DSP_STAT_NOT_SOLVED         3998
-#define DSP_STAT_UNKNOWN            3999
+#define DSP_STAT_UNKNOWN            3999	//? 3011
 
 #define DSP_RTN_MSG_BODY "Error code %d in %s:%d"
 
