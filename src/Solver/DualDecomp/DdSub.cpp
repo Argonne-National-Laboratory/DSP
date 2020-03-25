@@ -131,7 +131,12 @@ DSP_RTN_CODE DdSub::solve()
 					si_->setColUpper(j, 1.0e+10);
 				}
 			}
-			dualinfeas = true;
+			if (dualinfeas) {
+				si_->writeMps("dual_infeas_sub");
+				dualinfeas = false;
+			} else {
+				dualinfeas = true;
+			}
 			//DSPdebugMessage("Dual infeasible subproblem!\n");
 			//DSPdebug(si_->writeMps("dual_infeas_sub"));
 			break;
