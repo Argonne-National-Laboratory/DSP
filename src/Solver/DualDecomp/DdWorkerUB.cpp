@@ -135,6 +135,8 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 
 		/** allocate array size for each scenario primal solution */
 		primsols_[s].resize(si_[s]->getNumCols());
+
+		FREE_MEMORY
     }
 	END_TRY_CATCH_RTN(FREE_MEMORY, DSP_RTN_ERR)
 

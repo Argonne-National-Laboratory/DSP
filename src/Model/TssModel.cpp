@@ -602,7 +602,6 @@ DSP_RTN_CODE TssModel::copyRecoProb(
 	clbd_reco  = new double [ncols_[1]];
 	cubd_reco  = new double [ncols_[1]];
 	ctype_reco = new char [ncols_[1]];
-	obj_reco   = new double [ncols_[1]];
 	rlbd_reco  = new double [nrows_[1]];
 	rubd_reco  = new double [nrows_[1]];
 
@@ -638,8 +637,7 @@ DSP_RTN_CODE TssModel::copyRecoProb(
 	copyCoreColType(ctype_reco, 1);
 
 	/** objective coefficients */
-	copyCoreObjective(obj_reco, 1);
-	combineRandObjective(obj_reco, 1, scen, true);
+	copyRecoObj(scen, obj_reco, true);
 
 	/** row lower bounds */
 	copyCoreRowLower(rlbd_reco, 1);
@@ -652,4 +650,23 @@ DSP_RTN_CODE TssModel::copyRecoProb(
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
+}
+
+DSP_RTN_CODE TssModel::copyRecoObj(int scen, double *& obj_reco, bool adjustProbability) {
+
+	assert(ncols_[1] >= 0);
+
+	BGN_TRY_CATCH
+
+	/** allocate memory */
+	obj_reco = new double [ncols_[1]];
+
+	/** objective coefficients */
+	copyCoreObjective(obj_reco, 1);
+	combineRandObjective(obj_reco, 1, scen, adjustProbability);
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
+
 }

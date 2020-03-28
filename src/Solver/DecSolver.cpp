@@ -68,6 +68,13 @@ DecSolver::~DecSolver() {
 	message_ = NULL;
 	par_ = NULL;
 	model_ = NULL;
+	for (unsigned i = 0; i < s_primsols_.size(); ++i) {
+		if (s_primsols_[i]) {
+			delete [] s_primsols_[i];
+			s_primsols_[i] = NULL;
+		}
+	}
+	s_primsols_.clear();
 }
 
 /** write output to a file */

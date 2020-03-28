@@ -56,6 +56,12 @@ DSP_RTN_CODE DecTssModel::decomposeCoupling(
 	start[ncols_first] = ncols_first;
 	cpl_mat = new CoinPackedMatrix(false, ncols, ncols_first, ncols_first, elem, ind, start, len);
 
+	/** free memory */
+	delete [] elem; elem = NULL;
+	delete [] ind; ind = NULL;
+	delete [] start; start = NULL;
+	delete [] len; len = NULL;
+
 	/** columns involved are the first ncols_first columns */
 	cpl_ncols = ncols_first;
 	cpl_cols = new int [cpl_ncols];

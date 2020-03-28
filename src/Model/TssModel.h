@@ -79,6 +79,14 @@ public:
 			double *& rlbd_reco,          /**< [out] row lower bounds */
 			double *& rubd_reco           /**< [out] row upper bounds */);
 
+	/**
+	 * This creates recourse objective function for a given scenario index.
+	 */
+	DSP_RTN_CODE copyRecoObj(
+			int scen,                     /**< [in] scenario index */
+			double *& obj_reco,           /**< [out] objective coefficients */
+			bool adjustProbability = true);
+
 	/** for C API functions */
 
 public:
