@@ -26,7 +26,6 @@ ncols_coupling_(0),
 theta_(-COIN_DBL_MAX),
 gapTol_(0.0001),
 obj_(NULL),
-lambda_(NULL),
 cpl_mat_(NULL),
 cpl_cols_(NULL),
 cpl_rhs_(NULL),
@@ -45,10 +44,6 @@ obj_offset_(rhs.obj_offset_) {
 	obj_ = new double [si_->getNumCols()];
 	CoinCopyN(rhs.obj_, si_->getNumCols(), obj_);
 
-	// copy lambda
-    lambda_ = new double[nrows_coupling_];
-    CoinCopyN(rhs.lambda_, nrows_coupling_, lambda_);
-
 	// copy coupling matrix
 	cpl_mat_ = new CoinPackedMatrix(*(rhs.cpl_mat_));
 
@@ -62,8 +57,7 @@ obj_offset_(rhs.obj_offset_) {
 }
 
 DdSub::~DdSub() {
-	FREE_PTR(obj_);
-	FREE_ARRAY_PTR(lambda_);
+	FREE_ARRAY_PTR(obj_);
 	FREE_PTR(cpl_mat_);
 	FREE_ARRAY_PTR(cpl_cols_);
 	FREE_ARRAY_PTR(cpl_rhs_);
@@ -113,6 +107,9 @@ DSP_RTN_CODE DdSub::solve()
 			CoinCopyN(si_->getColSolution(), si_->getNumCols(), &primsol_[0]);
 			DSPdebugMessage("primal objective %+e, dual objective %+e\n", primobj_, dualobj_);
 			dualinfeas = false;
+			// char submps[64];
+			// sprintf(submps, "sub%d", sind_);
+			// si_->writeMps(submps);
 			break;
 		case DSP_STAT_LIM_INFEAS:
 			primobj_ = COIN_DBL_MAX;
@@ -157,7 +154,8 @@ DSP_RTN_CODE DdSub::createProblem() {
     FREE_ARRAY_PTR(cubd)  \
     FREE_ARRAY_PTR(ctype) \
     FREE_ARRAY_PTR(rlbd)  \
-    FREE_ARRAY_PTR(rubd)
+    FREE_ARRAY_PTR(rubd)  \
+    FREE_ARRAY_PTR(obj)
 
     /** problem data */
     CoinPackedMatrix *mat = NULL;
@@ -166,6 +164,7 @@ DSP_RTN_CODE DdSub::createProblem() {
     char *ctype = NULL;
     double *rlbd = NULL;
     double *rubd = NULL;
+	double *obj = NULL;
     int augs[1];
     double clbd_aux[1];
     double cubd_aux[1];
@@ -189,20 +188,21 @@ DSP_RTN_CODE DdSub::createProblem() {
     /** decompose model */
     DSP_RTN_CHECK_THROW(
             model_->decompose(1, augs, 1, clbd_aux, cubd_aux, obj_aux,
-                              mat, clbd, cubd, ctype, obj_, rlbd, rubd));
+                              mat, clbd, cubd, ctype, obj, rlbd, rubd));
 
     DSP_RTN_CHECK_THROW(
             model_->decomposeCoupling(1, augs, cpl_mat_, cpl_cols_, cpl_ncols));
+
+	/** keep the original objective coefficient */
+	obj_ = new double [mat->getNumCols()];
+	CoinCopyN(obj, mat->getNumCols(), obj_);
+	DSPdebugMessage("mat->getNumCols() = %d\n", mat->getNumCols());
 
     /** number of coupling variables and constraints for this subproblem */
     ncols_coupling_ = model_->getNumSubproblemCouplingCols(sind_);
     nrows_coupling_ = model_->getNumSubproblemCouplingRows(sind_);
     assert(ncols_coupling_ == cpl_ncols);
     assert(nrows_coupling_ == cpl_mat_->getNumRows());
-
-    /** storage for lambda */
-    lambda_ = new double[nrows_coupling_];
-    CoinZeroN(lambda_, nrows_coupling_);
 
     /** copy right-hand side of coupling rows */
     cpl_rhs_ = new double[nrows_coupling_];
@@ -224,9 +224,28 @@ DSP_RTN_CODE DdSub::createProblem() {
             return DSP_RTN_ERR;
         }
 
-        double probability = tssModel->getProbability()[sind_];
-        for (int j = 0; j < tssModel->getNumCols(0); ++j)
-            obj_[j] *= probability;
+		double probability = tssModel->getProbability()[sind_];
+		if (model_->isDro()) {
+			for (int j = 0; j < tssModel->getNumCols(0); ++j)
+				obj[j] /= tssModel->getNumScenarios();
+			if (sind_ < tssModel->getNumReferences()) {
+				for (int j = tssModel->getNumCols(0); j < tssModel->getNumCols(0) + tssModel->getNumCols(1); ++j) {
+					obj[j] *= tssModel->getReferenceProbability(sind_) / probability;
+				}
+			} else {
+				CoinZeroN(obj + tssModel->getNumCols(0), tssModel->getNumCols(1));
+			}
+			for (int j = 0; j < tssModel->getNumCols(1); ++j) {
+				obj_[tssModel->getNumCols(0)+j] /= probability;
+			}
+#ifdef DSP_DEBUG
+			DSPdebugMessage("sind_ = %d, probability = %e, lambdas = \n", sind_, tssModel->getReferenceProbability(sind_));
+			DspMessage::printArray(tssModel->getNumCols(0), obj);
+#endif
+		} else {
+			for (int j = 0; j < tssModel->getNumCols(0); ++j)
+				obj[j] *= probability;
+		}
 
         /** convert column types */
         if (parRelaxIntegrality_[0]) {
@@ -283,7 +302,7 @@ DSP_RTN_CODE DdSub::createProblem() {
 #endif
 
     /** load problem */
-    si_->loadProblem(*mat, clbd, cubd, obj_, rlbd, rubd);
+    si_->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
 	for (int j = 0; j < mat->getNumCols(); ++j) {
 		if (ctype[j] != 'C')
 			si_->setInteger(j);
@@ -326,6 +345,7 @@ DSP_RTN_CODE DdSub::addCutGenerator() {
 /** update problem */
 DSP_RTN_CODE DdSub::updateProblem(
 		double * lambda,
+		double probability,
 		double primal_bound)
 {
 #define FREE_MEMORY       \
@@ -339,30 +359,52 @@ DSP_RTN_CODE DdSub::updateProblem(
 
 	if (lambda)
 	{
-		/** copy lambda */
-		CoinCopyN(lambda, nrows_coupling_, lambda_);
-
 		/** allocate memory */
 		newobj = new double [ncols];
 		obj_offset_ = 0;
 
 		/** update objective coefficients */
 		assert(obj_);
-		for (int j = 0; j < ncols; j++)
-			newobj[j] = obj_[j];
-		for (int i = 0; i < nrows_coupling_; i++)
-		{
-			/** add lambda wrt coupling row i */
-			assert(!cpl_mat_->isColOrdered()); /** matrix must be by row */
-			int size = cpl_mat_->getVector(i).getNumElements();
-			const int * inds = cpl_mat_->getVector(i).getIndices();
-			const double * elems = cpl_mat_->getVector(i).getElements();
-			for (int j = 0; j < size; j++)
-				newobj[inds[j]] += lambda[i] * elems[j];
+		if (model_->isStochastic()) {
+			// coefficients for the first-stage variables
+			assert(nrows_coupling_<ncols);
 
-			/* if rhs is not zero, then the objective has a constant offset, which is added when passing to the master */
-			obj_offset_ += lambda[i] * (-cpl_rhs_[i]);
+			// coefficients for the second-stage variables
+			if (model_->isDro()) {
+				CoinCopyN(lambda, nrows_coupling_, newobj);
+				// printf("DdSub::updateProblem lambda:\n");
+				// DspMessage::printArray(nrows_coupling_, lambda);
+				for (int j = nrows_coupling_; j < ncols-1; ++j) {
+					newobj[j] = obj_[j] * probability;
+					// printf("update subproblem %d: obj_[%d] = %e, probability = %e, newobj -> %e\n", sind_, j, obj_[j], probability, newobj[j]);
+				}
+				newobj[ncols-1] = obj_[ncols-1];
+			} else {
+				CoinZeroN(newobj, nrows_coupling_);
+				CoinCopyN(obj_ + nrows_coupling_, ncols - nrows_coupling_, newobj + nrows_coupling_);
+			}
+		} else {
+			CoinCopyN(obj_, ncols, newobj);
 		}
+
+		if (model_->isDro() == false) {
+			for (int i = 0; i < nrows_coupling_; i++)
+			{
+				/** add lambda wrt coupling row i */
+				assert(!cpl_mat_->isColOrdered()); /** matrix must be by row */
+				int size = cpl_mat_->getVector(i).getNumElements();
+				const int * inds = cpl_mat_->getVector(i).getIndices();
+				const double * elems = cpl_mat_->getVector(i).getElements();
+				for (int j = 0; j < size; j++)
+					newobj[inds[j]] += lambda[i] * elems[j];
+
+				/* if rhs is not zero, then the objective has a constant offset, which is added when passing to the master */
+				obj_offset_ += lambda[i] * (-cpl_rhs_[i]);
+			}
+		}
+
+		// printf("### newobj[%d]:\n", sind_);
+		// DspMessage::printArray(ncols, newobj);
 
 		si_->setObjective(newobj);
 	}

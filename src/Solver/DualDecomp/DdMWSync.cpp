@@ -209,6 +209,7 @@ DSP_RTN_CODE DdMWSync::runMaster()
 	FREE_ARRAY_PTR(rcounts) \
 	FREE_ARRAY_PTR(rdispls) \
 	FREE_ARRAY_PTR(lambdas) \
+	FREE_ARRAY_PTR(nsubsolution) \
 	thetas = NULL;
 
 	/** MPI_Scatterv message:
@@ -236,6 +237,8 @@ DSP_RTN_CODE DdMWSync::runMaster()
 	const double * thetas  = NULL; /**< of master problem */
 	double **      lambdas = NULL; /**< of master problem */
 
+	int * nsubsolution = NULL; /**< size of subproblem solution for each scenario */
+
 	Solutions stored; /**< coupling solutions */
 	Solutions dummy_solutions;
 	std::vector<double> dummy_double_array;
@@ -258,6 +261,16 @@ DSP_RTN_CODE DdMWSync::runMaster()
 
 	int signal = DSP_STAT_MW_CONTINUE;   /**< signal to communicate with workers */
 	DdMaster * master = dynamic_cast<DdMaster*>(master_);
+
+	/** size of subproblem solutions to receive */
+	nsubsolution = new int [model_->getNumSubproblems()];
+	if (model_->isDro()) {
+		TssModel* tss = dynamic_cast<TssModel*>(model_);
+		CoinFillN(nsubsolution, model_->getNumSubproblems(), tss->getNumCols(0)+tss->getNumCols(1));
+	} else {
+		for (int s = 0; s < model_->getNumSubproblems(); ++s)
+			nsubsolution[s] = model_->getNumSubproblemCouplingCols(s);
+	}
 
 	/** allocate memory for buffer sizes and displacements */
 	scounts = new int [subcomm_size_];
@@ -286,7 +299,7 @@ DSP_RTN_CODE DdMWSync::runMaster()
 	{
 		rcounts[i] = 0;
 		for (int j = 0; j < nsubprobs_[i]; ++j)
-			rcounts[i] += 3 + model_->getNumSubproblemCouplingCols(i);
+			rcounts[i] += 3 + nsubsolution[j];
 		rdispls[i] = rdispls[i-1] + rcounts[i-1];
 		size_of_recvbuf += rcounts[i];
 	}
@@ -333,7 +346,7 @@ DSP_RTN_CODE DdMWSync::runMaster()
 				master->subprimobj_[sindex] = recvbuf[pos++];
 				master->subdualobj_[sindex] = recvbuf[pos++];
 				CoinCopyN(recvbuf + pos,
-						model_->getNumSubproblemCouplingCols(sindex), master->subsolution_[sindex]);
+						nsubsolution[s], master->subsolution_[sindex]);
 				pos += model_->getNumSubproblemCouplingCols(sindex);
 				DSPdebugMessage("-> master, subprob %d primobj %+e\n", sindex, master->subprimobj_[sindex]);
 			}
@@ -508,7 +521,8 @@ DSP_RTN_CODE DdMWSync::runWorker()
 
 #define FREE_MEMORY         \
 	FREE_ARRAY_PTR(sendbuf) \
-	FREE_ARRAY_PTR(recvbuf)
+	FREE_ARRAY_PTR(recvbuf) \
+	FREE_ARRAY_PTR(nsubsolution)
 
 #define SIG_BREAK if (signal == DSP_STAT_MW_STOP) break;
 
@@ -530,6 +544,8 @@ DSP_RTN_CODE DdMWSync::runWorker()
 	double * recvbuf = NULL; /**< MPI_Scatterv: receive buffer */
 	int      rcount  = 0;    /**< MPI_Scatterv: receive buffer size */
 
+	int * nsubsolution = NULL; /**< size of solution to send */
+
 	OsiCuts cuts, emptycuts;
 	bool resolveSubprob = false;
 	DSP_RTN_CODE cg_status = DSP_STAT_MW_CONTINUE;
@@ -548,18 +564,6 @@ DSP_RTN_CODE DdMWSync::runWorker()
 	int narrprocidx  = par_->getIntPtrParamSize("ARR_PROC_IDX"); /**< number of subproblems */
 	int * arrprocidx = par_->getIntPtrParam("ARR_PROC_IDX");     /**< subproblem indices */
 
-	/** calculate size of send buffer */
-	for (int i = 0; i < narrprocidx; ++i)
-		scount += 3 + model_->getNumSubproblemCouplingCols(arrprocidx[i]);
-
-	/** calculate size of receive buffer */
-	for (int i = 0; i < narrprocidx; ++i)
-		rcount += 1 + model_->getNumSubproblemCouplingRows(arrprocidx[i]);
-
-	/** allocate memory for message buffers */
-	sendbuf = new double [scount];
-	recvbuf = new double [rcount];
-
 	/** retrieve DdWorkerLB */
 	DdWorkerLB * workerlb = NULL;
 	if (lb_comm_ != MPI_COMM_NULL)
@@ -568,6 +572,27 @@ DSP_RTN_CODE DdMWSync::runWorker()
 		workerlb = dynamic_cast<DdWorkerLB*>(worker_[0]);
 		DSPdebugMessage("Rank %d runs DdWorkerLB.\n", comm_rank_);
 	}
+
+	nsubsolution = new int [narrprocidx];
+	if (model_->isDro()) {
+		for (int s = 0; s < narrprocidx; ++s)
+			nsubsolution[s] = workerlb->subprobs_[s]->getNumCols();
+	} else {
+		for (int s = 0; s < narrprocidx; ++s)
+			nsubsolution[s] = workerlb->subprobs_[s]->ncols_coupling_;
+	}
+
+	/** calculate size of send buffer */
+	for (int i = 0; i < narrprocidx; ++i)
+		scount += 3 + nsubsolution[i];
+
+	/** calculate size of receive buffer */
+	for (int i = 0; i < narrprocidx; ++i)
+		rcount += 1 + model_->getNumSubproblemCouplingRows(arrprocidx[i]);
+
+	/** allocate memory for message buffers */
+	sendbuf = new double [scount];
+	recvbuf = new double [rcount];
 
 	/** solutions to derive Benders cuts and evaluate upper bounds */
 	Solutions solutions;
@@ -591,7 +616,7 @@ DSP_RTN_CODE DdMWSync::runWorker()
 				sendbuf[pos++] = static_cast<double>(workerlb->subprobs_[s]->sind_);
 				sendbuf[pos++] = workerlb->subprobs_[s]->getPrimalObjective();
 				sendbuf[pos++] = workerlb->subprobs_[s]->getDualObjective();
-				CoinCopyN(workerlb->subprobs_[s]->getSiPtr()->getColSolution(), workerlb->subprobs_[s]->ncols_coupling_, sendbuf + pos);
+				CoinCopyN(workerlb->subprobs_[s]->getSiPtr()->getColSolution(), nsubsolution[s], sendbuf + pos);
 				pos += model_->getNumSubproblemCouplingCols(workerlb->subprobs_[s]->sind_);
 				DSPdebugMessage("MW -> worker %d, subprob %d primobj %+e dualobj %+e\n",
 						comm_rank_, workerlb->subprobs_[s]->sind_,

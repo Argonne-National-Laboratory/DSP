@@ -80,6 +80,10 @@ protected:
 
 	int nthetas_;  /**< number of thetas */
 	int nlambdas_; /**< number of lambdas */
+	int nus_;      /**< DRO: number of u's */
+	int nPs_;      /**< DRO: number of Ps */
+
+	double ** obj_reco_; /**< DRO: recourse objective coefficient for each scenario */
 
 	double stability_param_;    /**< stability parameter */
 	double * stability_center_; /**< stability center */
@@ -107,6 +111,7 @@ protected:
 	int parNumCutsPerIter_; /**< number of cuts added per iteration (determines dimension of theta) */
 	int parMasterAlgo_;     /**< algorithm for solving master problem */
 	int parLogLevel_;       /**< display level */
+	int nstalls_;           /**< number of stalling iterations */
 };
 
 #endif /* SRC_SOLVER_DUALDECOMP_DDMASTERTR_H_ */

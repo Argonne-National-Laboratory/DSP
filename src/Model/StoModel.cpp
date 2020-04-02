@@ -33,7 +33,12 @@ StoModel::StoModel() :
 		obj_scen_(NULL),
 		rlbd_scen_(NULL),
 		rubd_scen_(NULL),
-		fromSMPS_(false)
+		fromSMPS_(false),
+		isdro_(false),
+		nrefs_(0),
+		wass_eps_(0.0),
+		wass_dist_(NULL),
+		refs_probability_(NULL)
 {
 	/** nothing to do */
 }
@@ -45,7 +50,12 @@ StoModel::StoModel(const StoModel & rhs) :
 		nrows_core_(rhs.nrows_core_),
 		ncols_core_(rhs.ncols_core_),
 		nints_core_(rhs.nints_core_),
-		fromSMPS_(rhs.fromSMPS_)
+		fromSMPS_(rhs.fromSMPS_),
+		isdro_(rhs.isdro_),
+		nrefs_(rhs.nrefs_),
+		wass_eps_(rhs.wass_eps_),
+		wass_dist_(rhs.wass_dist_),
+		refs_probability_(rhs.refs_probability_)
 {
 	/** allocate memory */
 	nrows_      = new int [nstgs_];
@@ -138,6 +148,7 @@ StoModel::~StoModel()
 	FREE_ARRAY_PTR(rstart_);
 	FREE_ARRAY_PTR(cstart_);
 	FREE_ARRAY_PTR(prob_);
+	FREE_ARRAY_PTR(refs_probability_);
 	FREE_2D_PTR(nrows_core_, rows_core_);
 	FREE_2D_ARRAY_PTR(nstgs_, clbd_core_);
 	FREE_2D_ARRAY_PTR(nstgs_, cubd_core_);
@@ -145,6 +156,7 @@ StoModel::~StoModel()
 	FREE_2D_ARRAY_PTR(nstgs_, rlbd_core_);
 	FREE_2D_ARRAY_PTR(nstgs_, rubd_core_);
 	FREE_2D_ARRAY_PTR(nstgs_, ctype_core_);
+	FREE_2D_ARRAY_PTR(nrefs_, wass_dist_);
 	FREE_2D_PTR(nscen_, mat_scen_);
 	FREE_2D_PTR(nscen_, clbd_scen_);
 	FREE_2D_PTR(nscen_, cubd_scen_);
@@ -323,6 +335,101 @@ DSP_RTN_CODE StoModel::readSmps(const char * filename)
 
 	/** mark */
 	fromSMPS_ = true;
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
+}
+
+DSP_RTN_CODE StoModel::readDro(const char * filename)
+{
+	if (fromSMPS_ == false) {
+		std::cerr << "SMPS should be read first." << std::endl;
+		return DSP_RTN_ERR;
+	}
+
+	BGN_TRY_CATCH
+
+	string line;
+	ifstream myfile(filename);
+
+	if (myfile.is_open()) {
+		/**
+		 * File contents:
+		 * 1. wass_size_
+		 * 2. nrefs_
+		 * 3. refs_probability_ (size of nrefs by ,)
+		 * 4. wass_dist_ (size of nrefs by nscen)
+		 */
+		int contents_num = 1;
+		size_t found, startpos;
+		string elem;
+		while(getline(myfile, line)) {
+			// std::cout << line << "," << contents_num << std::endl;
+			if (contents_num == 1) {
+				wass_eps_ = atof(line.c_str());
+				printf("[DRO] The Wasserstein ball size is %e.\n", wass_eps_);
+				contents_num++;
+			} else if (contents_num == 2) {
+				nrefs_ = atoi(line.c_str());
+				// printf("nrefs_ has %d.\n", nrefs_);
+				printf("[DRO] The first %d scenarios are treated as the reference scenarios.\n", nrefs_);
+				contents_num++;
+			} else if (contents_num == 3) {
+				refs_probability_ = new double [nrefs_];
+				
+				int i;
+				for (i = 0; i < nrefs_; ++i) {
+					found = line.find_first_of(" ,");
+					// cout << found << endl;
+					if(string::npos == found && i < nrefs_ - 1)
+						break;
+					elem = line.substr(0, found);
+					// cout << elem << endl;
+					refs_probability_[i] = atof(elem.c_str());
+					// printf("refs_probability_[%d] has %f.\n", i, refs_probability_[i]);
+					if (string::npos != found)
+						line = line.substr(found+1);
+					// cout << line << endl;
+				}
+				if (i != nrefs_) {
+					throw "invalid input for reference probability\n";
+					break;
+				}
+				contents_num++;
+			} else if (contents_num >= 4) {
+				if (contents_num == 4) {
+					wass_dist_ = new double * [nrefs_];
+					for (int i = 0; i < nrefs_; ++i) {
+						wass_dist_[i] = new double [nscen_];
+					}
+				}
+
+				int i;
+				for (i = 0; i < nrefs_; ++i) {
+					found = line.find_first_of(" ,");
+					if(string::npos == found && i < nrefs_ - 1)
+						break;
+					wass_dist_[i][contents_num-4] = atof(line.substr(0, found).c_str());
+					if (string::npos != found)
+						line = line.substr(found+1);
+				}
+				if (i != nrefs_) {
+					throw "invalid number of columns for Wasserstein distance\n";
+					break;
+				}
+				contents_num++;
+			}
+		}
+		if (contents_num-4 != nscen_) {
+			throw "invalid number of rows for Wasserstein distance\n";
+		}
+		isdro_ = true;
+	} else {
+		char msg[128];
+		sprintf(msg, "unable to open file %s\n", filename);
+		throw msg;
+	}
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -632,4 +739,27 @@ void StoModel::__printData()
 	}
 
 	printf("\n### END of printing StoModel data ###\n");
+}
+
+double StoModel::getWassersteinDist(int i, int j) {
+	if (!isdro_) return 0.0;
+	if (i >= nrefs_) {
+		printf("Reference index (%d) is out of range (%d).\n", i, nrefs_);
+		return 0.0;
+	}
+	if (j >= nscen_) {
+		printf("Scenario index (%d) is out of range (%d).\n", j, nscen_);
+		return 0.0;
+	}
+	return wass_dist_[i][j];
+}
+
+double StoModel::getReferenceProbability(int i) {
+	if (refs_probability_ == NULL) return 0.0;
+	if (!isdro_) return 0.0;
+	if (i >= nrefs_) {
+		printf("Reference index (%d) is out of range (%d).\n", i, nrefs_);
+		return 0.0;
+	}
+	return refs_probability_[i];
 }

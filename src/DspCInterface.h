@@ -57,6 +57,9 @@ void setDimensions(
 /** read smps files */
 int readSmps(DspApiEnv * env, const char * smps);
 
+/** read dro files */
+int readDro(DspApiEnv * env, const char * dro);
+
 /** load first-stage problem */
 void loadFirstStage(
 		DspApiEnv *          env,   /**< pointer to API object */
@@ -118,6 +121,9 @@ void solveDe(DspApiEnv * env /**< pointer to API object */);
 
 /** solve dual decomposition */
 void solveDd(DspApiEnv * env /**< pointer to API object */);
+
+/** solve dual decomposition for DRO */
+void solveDro(DspApiEnv * env /**< pointer to API object */);
 
 /** solve Dantzig-Wolfe decomposition with branch-and-bound */
 void solveDw(DspApiEnv * env /**< pointer to API object */);

@@ -11,8 +11,13 @@
 
 const char* gDspUsage = 
 	"Not enough or invalid arguments, please try again.\n\n"
-	"Usage: --algo <de,bd,dd,dw> --smps <smps file> --mps <mps file> --dec <dec file> [--soln <solution file prefix> --param <param file>]\n\n"
-	"       --algo\tchoice of algorithms. de: deterministic equivalent form; bd: Benders decomposition; dd: dual decomposition; dw: Dantzig-Wolfe decomposition with branch-and-bound\n"
+	"Usage: --algo <de,bd,dd,dro,dw> --smps <smps file> --mps <mps file> --dec <dec file> [--soln <solution file prefix> --param <param file>]\n\n"
+	"       --algo\tchoice of algorithms.\n"
+	"               de: deterministic equivalent form\n"
+	"               bd: Benders decomposition\n"
+	"               dd: dual decomposition\n"
+	"               dro: distributionally robust\n"
+	"               dw: Dantzig-Wolfe decomposition with branch-and-bound\n"
 	"       --smps\tSMPS file name without extensions. For example, if your SMPS files are ../test/farmer.cor, ../test/farmer.sto, and ../test/farmer.tim, this value should be ../test/farmer\n"
 	"       --mps\tMPS file name\n"
 	"       --dec\tDEC file name\n"
@@ -160,6 +165,21 @@ void runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* 
 #else
 			solveDd(env);
 #endif
+		} else {
+			cout << "Dual decomposition is not available for mps/dec files." << endl;
+			issolved = false;
+		}
+	} else if (string(algotype) == "dro") {
+		if (isstochastic) {
+			char drofile[128];
+			sprintf(drofile, "%s.dro", smpsfile);
+			if (isroot) cout << "Reading DRO file: " << drofile << endl;
+
+			int ret = readDro(env, drofile);
+			if (ret != 0) return;
+
+			if (isroot) cout << "Run dual decomposition for DRO" << endl;
+			solveDro(env);
 		} else {
 			cout << "Dual decomposition is not available for mps/dec files." << endl;
 			issolved = false;
