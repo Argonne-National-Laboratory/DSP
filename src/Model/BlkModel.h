@@ -61,6 +61,8 @@ using namespace std;
  *                  X X
  */
 
+
+/** dont understand what this is mapping for, need to check*/
 typedef map<int,DetBlock*> Blocks;
 
 class BlkModel {

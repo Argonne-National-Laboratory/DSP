@@ -53,6 +53,7 @@
  */
 class DecModel
 {
+	
 public:
 
 	virtual ~DecModel() {}
