@@ -13,6 +13,7 @@
 #include "OsiClpSolverInterface.hpp"
 #include "SolverInterface/DspOsiCpx.h"
 #include "SolverInterface/DspOsiScip.h"
+#include "SolverInterface/DspOsiGrb.h"
 
 #ifdef DSP_HAS_OOQP
 #include "SolverInterface/OsiOoqpSolverInterface.hpp"
@@ -29,6 +30,14 @@ inline void convertOsiToDspStatus(OsiSolverInterface* si, int& status) {
 		return;
 	}
 #endif /* DSP_HAS_CPX */
+
+#ifdef DSP_HAS_GRB
+	OsiGrbSolverInterface* grb = dynamic_cast<OsiGrbSolverInterface*>(si);
+	if (grb) {
+		convertOsiGrbToDspStatus(grb, status);
+		return;
+	}
+#endif /* DSP_HAS_GRB */
 
 #ifdef DSP_HAS_SCIP
 	OsiScipSolverInterface* scip = dynamic_cast<OsiScipSolverInterface*>(si);

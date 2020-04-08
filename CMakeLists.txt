@@ -1,10 +1,13 @@
 cmake_minimum_required(VERSION 3.5)
 
+#specify c++ standard
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+
 include(color_scheme.cmake)
 include(UserConfig.cmake)
+#$ENV{PWD} is the current working directory
 set(DEPEND_DIR $ENV{PWD})
 
 project(DSP)
@@ -44,6 +47,7 @@ endif(NOT GFORTRANLIB)
 find_library(SCIPLIB scip PATHS ${SCIPOPT_LIB_DIR})
 find_library(MA27LIB  ma27  PATHS ${MA27LIB_DIR})
 find_library(CPLEXLIB cplex PATHS ${CPLEX_LIB_DIR})
+find_library(GUROBILIB gurobi${GUROBI_VERSION} PATHS ${GUROBI_LIB_DIR})
 
 # if(APPLE)
 # 	set(CMAKE_MACOSX_RPATH OFF)

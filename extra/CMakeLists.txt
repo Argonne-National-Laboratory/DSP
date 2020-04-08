@@ -70,6 +70,15 @@ else()
 	set(WITH_CPLEX_INCDIR "")
 endif()
 
+if(GUROBILIB)
+	set(GUROBI_LIB "-L${GUROBI_LIB_DIR} -lgurobi90 -lm -lpthread")
+	set(WITH_GUROBI_LIB "--with-gurobi-lib=${GUROBI_LIB}")
+	set(WITH_GUROBI_INCDIR "--with-gurobi-incdir=${GUROBI_INC_DIR}")
+else()
+	set(WITH_GUROBI_LIB "")
+	set(WITH_GUROBI_INCDIR "")
+endif()
+
 ExternalProject_Add(Osi
 	DEPENDS CoinUtils
 	SOURCE_DIR ${OSI_DIR}
@@ -81,6 +90,8 @@ ExternalProject_Add(Osi
 		--with-coinutils-incdir=${COIN_INC_DIR}
 		${WITH_CPLEX_LIB}
 		${WITH_CPLEX_INCDIR}
+		${WITH_GUROBI_LIB}
+		${WITH_GUROBI_INCDIR}
 		--disable-cplex-libcheck
 		ADD_CXXFLAGS=-fPIC
 		# CXX=${CMAKE_CXX_COMPILER}

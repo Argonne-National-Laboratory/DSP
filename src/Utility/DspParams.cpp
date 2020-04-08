@@ -209,7 +209,7 @@ void DspParams::initIntParams()
 	IntParams_.createParam("DD/MIN_PROCS", 1);
 
 	/** minimum number of processes to wait at the master */
-	IntParams_.createParam("SOLVER/MIP", OsiCpx);
+	IntParams_.createParam("SOLVER/MIP", OsiGrb);
 
 	/** minimum number of processes to wait at the master */
 	IntParams_.createParam("SOLVER/QP", OsiCpx);

@@ -115,6 +115,20 @@ DSP_RTN_CODE DeDriver::run()
 #endif
 		break;
 	}
+
+	case OsiGrb: {
+#ifdef DSP_HAS_GRB
+		si_ = new OsiGrbSolverInterface();
+		printf("debug");
+		si_->messageHandler()->setLogLevel(par_->getIntParam("LOG_LEVEL"));
+		OsiGrbSolverInterface* grb = dynamic_cast<OsiGrbSolverInterface*>(si_);
+		GRBsetintparam(grb->getEnvironmentPtr(), GRB_INT_PAR_THREADS, par_->getIntParam("NUM_CORES"));
+#else
+		throw CoinError("OsiGrb is not available.", "run", "DeDriver");
+#endif
+		break;
+	}
+
 	case OsiScip: {
 #ifdef DSP_HAS_SCIP
 		si_ = new OsiScipSolverInterface();
@@ -200,6 +214,13 @@ DSP_RTN_CODE DeDriver::solve() {
 			cpx->branchAndBound();
 		}
 #endif
+	} else if (par_->getIntParam("SOLVER/MIP") == OsiGrb) {
+#ifdef DSP_HAS_GRB
+		OsiGrbSolverInterface* grb = dynamic_cast<OsiGrbSolverInterface*>(si_);
+		if (grb) {
+			grb->branchAndBound();
+		}
+#endif
 	} else {
 		si_->initialSolve();
 	}
@@ -245,6 +266,13 @@ void DeDriver::writeExtMps(const char * name)
 		si = new OsiCpxSolverInterface();
 #else
 		throw CoinError("OsiCpx is not available.", "writeExtMps", "DeDriver");
+#endif
+		break;
+	case OsiGrb:
+#ifdef DSP_HAS_GRB
+		si = new OsiGrbSolverInterface();
+#else
+		throw CoinError("OsiGrb is not available.", "writeExtMps", "DeDriver");
 #endif
 		break;
 	case OsiScip:
