@@ -17,5 +17,5 @@ url=https://github.com/kibaekkim/CHiPPS-ALPS.git
 	branch = stable/1.17
 [submodule "extra/Osi"]
 	path = extra/Osi
-	url = https://github.com/kibaekkim/Osi.new.git
+url=https://github.com/kibaekkim/Osi.git
 	branch = stable/dsp
