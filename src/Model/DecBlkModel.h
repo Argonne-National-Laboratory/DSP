@@ -56,6 +56,11 @@ public:
 	double evalLhsCouplingRowSubprob(int row, int subprob, double * subprobSolution);
 	//@}
 
+	/**
+	 * Retruns the coupling column objective coefficients
+	 */
+	const double * getCouplingColsObjs() {return blk_->block(0)->getObj();}
+
 	double getCouplingRowLower(int row) {return blk_->block(0)->getRowLower()[row];}
 	double getCouplingRowUpper(int row) {return blk_->block(0)->getRowUpper()[row];}
 
@@ -66,6 +71,11 @@ public:
 	bool nonanticipativity() {return false;}
 
 	bool isStochastic() {return false;}
+	bool isDro() {return false;}
+	int getNumReferences() {return 0;}
+	double getWassersteinSize() {return 0.0;}
+	double getWassersteinDist(int i, int j) {return 0.0;}
+	double getReferenceProbability(int i) {return 0.0;}
 
 	DSP_RTN_CODE decompose(
 		int size,                /**< [in] size of subproblem subset */

@@ -55,6 +55,7 @@ public:
 	/** update problem */
 	DSP_RTN_CODE updateProblem(
 			double * lambda,
+			double probability,
 			double primal_bound = COIN_DBL_MAX);
 
 	/** push cuts */
@@ -82,7 +83,6 @@ public:
 private:
 
 	double * obj_;    /**< original objective coefficients */
-	double * lambda_; /**< lambda */
 
 	CoinPackedMatrix * cpl_mat_; /**< coupling constraint matrix */
 	int *    cpl_cols_;          /**< coupling columns */

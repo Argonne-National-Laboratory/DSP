@@ -112,6 +112,11 @@ public:
 	double evalLhsCouplingRowSubprob(int row, int subprob, double * subprobSolution);
 
 	/**
+	 * Retruns the coupling column objective coefficients
+	 */
+	const double * getCouplingColsObjs() {return getObjCore(0);}
+
+	/**
 	 * Returns the coupling row lower bound.
 	 */
 	double getCouplingRowLower(int row) {return 0;}
@@ -136,6 +141,11 @@ public:
 	bool nonanticipativity() {return true;}
 
 	bool isStochastic() {return true;}
+	bool isDro() {return TssModel::isDro();}
+	int getNumReferences() {return TssModel::getNumReferences();}
+	double getWassersteinSize() {return TssModel::getWassersteinSize();}
+	double getWassersteinDist(int i, int j) {return TssModel::getWassersteinDist(i,j);}
+	double getReferenceProbability(int i) {return TssModel::getReferenceProbability(i);}
 
 	DSP_RTN_CODE decompose(
 		int size,                    /**< [in] size of subproblem subset */

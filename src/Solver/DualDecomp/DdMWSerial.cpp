@@ -132,10 +132,15 @@ DSP_RTN_CODE DdMWSerial::finalize() {
 DSP_RTN_CODE DdMWSerial::run() {
 #define FREE_MEMORY \
 	FREE_ARRAY_PTR(lambdas) \
-	thetas = NULL;
+	FREE_ARRAY_PTR(nsubsolution) \
+	thetas = NULL; \
+	Ps = NULL;
 
 	const double * thetas  = NULL; /**< of master problem */
 	double **      lambdas = NULL; /**< of master problem */
+	const double * Ps      = NULL; /**< of DRO master problem */
+
+	int * nsubsolution = NULL; /**< size of subproblem solution */
 
 	/** pointers to workers */
 	DdWorkerLB * workerlb = NULL;
@@ -143,6 +148,7 @@ DSP_RTN_CODE DdMWSerial::run() {
 	DdWorkerCGBd * workercg = NULL;
 #endif
 	DdWorkerUB * workerub = NULL;
+	TssModel* tss = NULL;
 
 	Solutions coupling_solutions; /**< coupling solutions */
 
@@ -152,6 +158,15 @@ DSP_RTN_CODE DdMWSerial::run() {
 	int cg_status = DSP_STAT_MW_CONTINUE;
 
 	BGN_TRY_CATCH
+
+	if (model_->isStochastic()) {
+		try {
+			tss = dynamic_cast<TssModel*>(model_);
+		} catch (const std::bad_cast &e) {
+			printf("Error: Model claims to be stochastic when it is not\n");
+            return DSP_RTN_ERR;
+		}
+	}
 
 	/** retrieve DdWorker pointers */
 	for (unsigned i = 0; i < worker_.size(); ++i)
@@ -177,7 +192,20 @@ DSP_RTN_CODE DdMWSerial::run() {
 	assert(workerlb!=NULL);
 
 	/** allocate memory for lambdas */
+	/** NOTE: lambdas will be used as shallow pointers. */
 	lambdas = new double * [model_->getNumSubproblems()];
+
+	nsubsolution = new int [model_->getNumSubproblems()];
+	if (model_->isDro()) {
+		for (int s = 0; s < model_->getNumSubproblems(); ++s) {
+			nsubsolution[s] = workerlb->subprobs_[s]->getNumCols();
+			DSPdebugMessage("nsubsolution[%d] = %d\n", s, nsubsolution[s]);
+		}
+	} else {
+		for (int s = 0; s < model_->getNumSubproblems(); ++s) {
+			nsubsolution[s] = workerlb->subprobs_[s]->ncols_coupling_;
+		}
+	}
 
 	printHeaderInfo();
 
@@ -211,8 +239,7 @@ DSP_RTN_CODE DdMWSerial::run() {
 			master_->subprimobj_[sindex] = workerlb->subprobs_[s]->getPrimalObjective();
 			master_->subdualobj_[sindex] = workerlb->subprobs_[s]->getDualObjective();
 			CoinCopyN(workerlb->subprobs_[s]->getPrimalSolution(),
-					workerlb->subprobs_[s]->ncols_coupling_,
-					master_->subsolution_[sindex]);
+					nsubsolution[s], master_->subsolution_[sindex]);
 			subprimobj += workerlb->subprobs_[s]->getPrimalObjective();
 			subdualobj += workerlb->subprobs_[s]->getDualObjective();
 			DSPdebugMessage("Scenario %d, primobj %+e, dualobj %+e, primobj_sum %+e, dualobj_sum %+e\n",
@@ -231,24 +258,28 @@ DSP_RTN_CODE DdMWSerial::run() {
 			if (parFeasCuts_ >= 0 || parOptCuts_ >= 0)
 			{
 #ifdef DSP_HAS_SCIP
-				DSPdebugMessage("generate Benders cuts\n");
-				cg_status = generateBendersCuts(workercg, coupling_solutions, cuts);
-				/** resolve subproblems? */
-				if (cg_status == DSP_STAT_MW_RESOLVE)
-				{
-					printIterInfo();
-					DSPdebugMessage("Resolve subproblems.\n");
-					continue;
+				if (model_->isDro()) {
+					message_->print(0, "Cut procedures are not implemented for DRO.\n");
+				} else {
+					DSPdebugMessage("generate Benders cuts\n");
+					cg_status = generateBendersCuts(workercg, coupling_solutions, cuts);
+					/** resolve subproblems? */
+					if (cg_status == DSP_STAT_MW_RESOLVE)
+					{
+						printIterInfo();
+						DSPdebugMessage("Resolve subproblems.\n");
+						continue;
+					}
+					/** move cuts to a global pool */
+					for (int i = 0; i < cuts.sizeCuts(); ++i)
+					{
+						OsiRowCut * rc = cuts.rowCutPtr(i);
+						cutsToAdd_->insert(rc);
+					}
+					cuts.dumpCuts();
+					DSPdebugMessage("Benders cuts %d\n", cutsToAdd_->sizeCuts());
+					DSPdebug2(cutsToAdd_->printCuts());
 				}
-				/** move cuts to a global pool */
-				for (int i = 0; i < cuts.sizeCuts(); ++i)
-				{
-					OsiRowCut * rc = cuts.rowCutPtr(i);
-					cutsToAdd_->insert(rc);
-				}
-				cuts.dumpCuts();
-				DSPdebugMessage("Benders cuts %d\n", cutsToAdd_->sizeCuts());
-				DSPdebug2(cutsToAdd_->printCuts());
 #endif
 			}
 			/** evaluate coupling solutions */
@@ -277,9 +308,9 @@ DSP_RTN_CODE DdMWSerial::run() {
 					DSPdebugMessage("model_->getNumCouplingCols() [%d] <= master_->bestprimsol_.size() [%d]", 
 						model_->getNumCouplingCols(), (int)master_->bestprimsol_.size());
 					assert(model_->getNumCouplingCols()<=master_->bestprimsol_.size());
-					CoinCopyN(coupling_solutions[bestprimsol]->denseVector(model_->getNumCouplingCols()),
-							model_->getNumCouplingCols(),
-							&master_->bestprimsol_[0]);
+					for (int j = 0; j < model_->getNumCouplingCols(); ++j) {
+						master_->bestprimsol_[j] = (*coupling_solutions[bestprimsol])[j];
+					}
 				}
 			}
 			/** clear stored solutions */
@@ -287,17 +318,14 @@ DSP_RTN_CODE DdMWSerial::run() {
 		}
 
 		/** update problem */
+#ifdef DSP_DEBUG		
+		DSPdebugMessage("subdualobj_:\n");
+		DspMessage::printArray(master_->subdualobj_.size(), &(master_->subdualobj_[0]));
+#endif
 		double olddual = master_->bestdualobj_;
 		master_->updateProblem();
-		if (olddual < master_->bestdualobj_)
-		{
+		if (olddual < master_->bestdualobj_) {
 			itercode_ = itercode_ == 'P' ? 'B' : 'D';
-			if (master_->getLambda()) {
-				DSPdebugMessage("model_->getNumCouplingRows() [%d] == master_->bestdualsol_.size() [%d]", 
-					model_->getNumCouplingRows(), (int)master_->bestdualsol_.size());
-				assert(model_->getNumCouplingRows()==master_->bestdualsol_.size());
-				CoinCopyN(master_->getLambda(), model_->getNumCouplingRows(), &master_->bestdualsol_[0]);
-			}
 		}
 
 		/** STOP with iteration limit */
@@ -351,14 +379,28 @@ DSP_RTN_CODE DdMWSerial::run() {
 			lambdas[i] = master_primsol + j;
 			j += model_->getNumSubproblemCouplingRows(i);
 		}
+		if (model_->isStochastic()) {
+			if (model_->isDro()) {
+				Ps = master_primsol + master_->getNumCols() - tss->getNumScenarios();
+			} else {
+				Ps = tss->getProbability();
+			}
+		}
 		master_primsol = NULL;
 
 		/** update subproblems */
+		int sindex = -1;
+		double probability = -1.0;
 		for (int s = 0; s < model_->getNumSubproblems(); ++s)
 		{
-			int sindex = workerlb->subprobs_[s]->sind_;
+			sindex = workerlb->subprobs_[s]->sind_;
 			workerlb->subprobs_[s]->theta_ = thetas[sindex];
-			workerlb->subprobs_[s]->updateProblem(lambdas[sindex], master_->bestprimobj_);
+			if (model_->isStochastic()) {
+				probability = Ps[sindex];
+			}
+			// DSPdebugMessage("s = %d, probability = %e, lambdas = \n", s, probability);
+			// DspMessage::printArray(model_->getNumSubproblemCouplingRows(sindex), lambdas[sindex]);
+			workerlb->subprobs_[s]->updateProblem(lambdas[sindex], probability, master_->bestprimobj_);
 			/** apply Benders cuts */
 			if (parFeasCuts_ >= 0 || parOptCuts_ >= 0)
 			{
@@ -369,8 +411,6 @@ DSP_RTN_CODE DdMWSerial::run() {
 	}
 
 	if (parEvalUb_ >= 0 && model_->isStochastic()) {
-		TssModel* tss = dynamic_cast<TssModel*>(model_);
-
 		DdWorkerUB * workerub = NULL;
 		for (unsigned i = 0; i < worker_.size(); ++i)
 			if (worker_[i]->getType() == DdWorker::UB) {

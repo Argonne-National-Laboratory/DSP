@@ -133,6 +133,11 @@ public:
 	virtual double evalLhsCouplingRowSubprob(int row, int subprob, double * subprobSolution) = 0;
 
 	/**
+	 * Retruns the coupling column objective coefficients
+	 */
+	virtual const double * getCouplingColsObjs() = 0;
+
+	/**
 	 * Returns the coupling row lower bound
 	 */
 	virtual double getCouplingRowLower(int row) = 0;
@@ -170,6 +175,31 @@ public:
 	 * Used to handle specific stochastic cases.
 	 */
 	virtual bool isStochastic() = 0;
+
+	/**
+	 * If true, this is a distributionally robust variant.
+	 */
+	virtual bool isDro() = 0;
+
+	/**
+	 * Returns the number of reference scenarios (for DRO).
+	 */
+	virtual int getNumReferences() = 0;
+
+	/**
+	 * Returns the Wasserstein distance limit for DRO.
+	 */
+	virtual double getWassersteinSize() = 0;
+
+	/**
+	 * Returns the Wasserstein distance between two random realizations i and j.
+	 */
+	virtual double getWassersteinDist(int i, int j) = 0;
+
+	/**
+	 * Returns the probability of reference i.
+	 */
+	virtual double getReferenceProbability(int i) = 0;
 
 	/**
 	 * This routine decomposes the model based on inputs. If size = 0, then

@@ -24,6 +24,7 @@ mat_mp_(NULL),
 rlbd_org_(NULL),
 rubd_org_(NULL),
 si_(NULL),
+si_dro_(NULL),
 ub_(0.0) {}
 
 DdWorkerUB::DdWorkerUB(const DdWorkerUB& rhs) : 
@@ -47,6 +48,8 @@ ub_(rhs.ub_) {
 		CoinCopyN(rhs.rlbd_org_[s], si_[s]->getNumRows(), rlbd_org_[s]);
 		CoinCopyN(rhs.rubd_org_[s], si_[s]->getNumRows(), rubd_org_[s]);
 	}
+	if (model_->isDro())
+		si_dro_ = rhs.si_dro_->clone();
 }
 
 DdWorkerUB::~DdWorkerUB() {
@@ -54,6 +57,7 @@ DdWorkerUB::~DdWorkerUB() {
 	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), rlbd_org_);
 	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), rubd_org_);
 	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), si_);
+	FREE_PTR(si_dro_);
 }
 
 DSP_RTN_CODE DdWorkerUB::init() {
@@ -72,7 +76,16 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 	FREE_ARRAY_PTR(clbd_reco)  \
 	FREE_ARRAY_PTR(cubd_reco)  \
 	FREE_ARRAY_PTR(ctype_reco) \
-	FREE_ARRAY_PTR(obj_reco)
+	FREE_ARRAY_PTR(obj_reco)   \
+	FREE_ARRAY_PTR(clbd_dro)   \
+	FREE_ARRAY_PTR(cubd_dro)   \
+	FREE_ARRAY_PTR(rlbd_dro)   \
+	FREE_ARRAY_PTR(rubd_dro)   \
+	FREE_ARRAY_PTR(obj_dro)    \
+	FREE_ARRAY_PTR(elem_dro)   \
+	FREE_ARRAY_PTR(ind_dro)    \
+	FREE_ARRAY_PTR(bgn_dro)    \
+	FREE_ARRAY_PTR(len_dro)
 
 	/** recourse problem data */
 	CoinPackedMatrix * mat_reco = NULL;
@@ -80,6 +93,17 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 	double * cubd_reco   = NULL;
 	double * obj_reco    = NULL;
 	char *   ctype_reco  = NULL;
+
+	/** DRO UB problem */
+	double * clbd_dro = NULL;
+	double * cubd_dro = NULL;
+	double * obj_dro = NULL;
+	double * rlbd_dro = NULL;
+	double * rubd_dro = NULL;
+	double * elem_dro = NULL;
+	int * ind_dro = NULL;
+	int * bgn_dro = NULL;
+	int * len_dro = NULL;
 
 	TssModel* tss = NULL;
 
@@ -103,6 +127,12 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 		DSP_RTN_CHECK_THROW(tss->copyRecoProb(par_->getIntPtrParam("ARR_PROC_IDX")[s],
 				mat_mp_[s], mat_reco, clbd_reco, cubd_reco, ctype_reco,
 				obj_reco, rlbd_org_[s], rubd_org_[s]));
+
+		if (model_->isDro()) {
+			for (int j = 0; j < tss->getNumCols(1); ++j) {
+				obj_reco[j] /= tss->getProbability()[par_->getIntPtrParam("ARR_PROC_IDX")[s]];
+			}
+		}
 
 		/** creating solver interface */
     	switch (par_->getIntParam("SOLVER/MIP")) {
@@ -138,6 +168,93 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 
 		FREE_MEMORY
     }
+
+	/** create DRO upper bounding problem */
+	if (model_->isDro()) {
+		int ncols_dro = 1 + model_->getNumReferences();
+		int nrows_dro = model_->getNumReferences() * tss->getNumScenarios();
+		int nzcnt_dro = nrows_dro * 2;
+
+		/** allocate memory */
+		clbd_dro = new double [ncols_dro];
+		cubd_dro = new double [ncols_dro];
+		obj_dro = new double [ncols_dro];
+		rlbd_dro = new double [nrows_dro];
+		rubd_dro = new double [nrows_dro];
+		bgn_dro = new int [nrows_dro+1];
+		len_dro = new int [nrows_dro];
+		ind_dro = new int [nzcnt_dro];
+		elem_dro = new double [nzcnt_dro];
+
+		/** column bounds */
+		clbd_dro[0] = 0.0;
+		CoinFillN(clbd_dro + 1, ncols_dro - 1, -COIN_DBL_MAX);
+		CoinFillN(cubd_dro, ncols_dro, COIN_DBL_MAX);
+
+		/** row bounds */
+		CoinFillN(rlbd_dro, nrows_dro, -COIN_DBL_MAX);
+		CoinFillN(rubd_dro, nrows_dro, COIN_DBL_MAX);
+
+		/** objective coefficients */
+		obj_dro[0] = model_->getWassersteinSize();
+		for (int j = 1; j < ncols_dro; ++j)
+			obj_dro[j] = model_->getReferenceProbability(j-1);
+
+		int pos_dro = 0;
+		int rnum = 0;
+		for (int k = 0; k < tss->getNumScenarios(); ++k) {
+			for (int s = 0; s < model_->getNumReferences(); ++s) {
+				rnum = k * model_->getNumReferences() + s;
+
+				bgn_dro[rnum] = pos_dro;
+
+				// alpha
+				ind_dro[pos_dro] = 0; 
+				elem_dro[pos_dro] = model_->getWassersteinDist(s,k);
+				pos_dro++;
+
+				// beta_s
+				ind_dro[pos_dro] = 1 + s; 
+				elem_dro[pos_dro] = 1.0;
+				pos_dro++;
+
+				len_dro[rnum] = pos_dro - bgn_dro[rnum];
+			}
+		}
+		bgn_dro[nrows_dro] = pos_dro;
+		assert(pos_dro == nzcnt_dro);
+
+		/** constraint matrix */
+		CoinPackedMatrix *mat_dro = new CoinPackedMatrix(false, ncols_dro, nrows_dro, nzcnt_dro, elem_dro, ind_dro, bgn_dro, len_dro);
+		DSPdebug(mat_dro->verifyMtx(4));
+		
+		/** creating solver interface */
+    	switch (par_->getIntParam("SOLVER/MIP")) {
+    	case OsiCpx:
+#ifdef DSP_HAS_CPX
+    		si_dro_ = new OsiCpxSolverInterface();
+			CPXsetintparam(dynamic_cast<OsiCpxSolverInterface*>(si_dro_)->getEnvironmentPtr(), CPX_PARAM_SCRIND, CPX_OFF);
+    		break;
+#endif
+    	case OsiScip:
+#ifdef DSP_HAS_SCIP
+            si_dro_ = new OsiScipSolverInterface();
+            break;
+#endif
+    	default:
+    		break;
+    	}
+
+	    /** no display */
+	    si_dro_->messageHandler()->setLogLevel(0);
+
+	    /** load problem */
+	    si_dro_->loadProblem(*mat_dro, clbd_dro, cubd_dro, obj_dro, rlbd_dro, rubd_dro);
+
+		/** free matrix */
+		FREE_PTR(mat_dro);
+	}
+
 	END_TRY_CATCH_RTN(FREE_MEMORY, DSP_RTN_ERR)
 
 	FREE_MEMORY
@@ -296,6 +413,23 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 
 		/** consume time */
 		time_remains_ -= CoinGetTimeOfDay() - walltime;
+	}
+
+	/** solve the DRO UB problem */
+	if (model_->isDro() && status_ != DSP_STAT_MW_STOP) {
+		assert(nsubprobs == model_->getNumSubproblems());
+		for (int k = 0; k < nsubprobs; ++k) {
+			for (int s = 0; s < model_->getNumReferences(); ++s) {
+				si_dro_->setRowLower(k * model_->getNumReferences() + s, si_[k]->getObjValue());
+			}
+		}
+		si_dro_->initialSolve();
+
+		if (si_dro_->isProvenOptimal()) {
+			primobj = si_dro_->getObjValue();
+		} else {
+			primobj = COIN_DBL_MAX;
+		}
 	}
 
 	/** get primal objective */

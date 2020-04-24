@@ -44,6 +44,9 @@ public:
 	/** read SMPS files */
 	DSP_RTN_CODE readSmps(const char * filename);
 
+	/** read DRO file */
+	DSP_RTN_CODE readDro(const char * filename);
+
 	void __printData();
 
 public:
@@ -156,6 +159,12 @@ public:
 			int offset,   /**< offset by which indices are shifted */
 			int start = 0 /**< index only after which indices are shifted */);
 
+	bool isDro() {return isdro_;}
+	int getNumReferences() {return nrefs_;}
+	double getWassersteinSize() {return wass_eps_;}
+	double getWassersteinDist(int i, int j);
+	double getReferenceProbability(int i);
+
 protected:
 
 	/*
@@ -199,6 +208,12 @@ protected:
 	Solutions init_solutions_; /**< initial solutions */
 
 	bool fromSMPS_; /**< problem was read from SMPS files? */
+
+	bool isdro_;                /**< is this distributionally robust? */
+	int nrefs_;                 /**< number of reference scenarios for DRO */
+	double wass_eps_;           /**< size of the Wasserstein ball */
+	double ** wass_dist_;       /**< Wasserstein distances between two realizations */
+	double * refs_probability_; /** probability vector of references */
 
 public:
 

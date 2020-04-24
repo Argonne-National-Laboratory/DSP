@@ -6,6 +6,7 @@
  */
 
 #include "CoinHelperFunctions.hpp"
+#include "Model/DecTssModel.h"
 #include "Solver/DualDecomp/DdMaster.h"
 
 DdMaster::DdMaster(DecModel* model, DspParams* par, DspMessage* message) :
@@ -19,9 +20,18 @@ DdMaster::DdMaster(const DdMaster& rhs) :
 DecSolver(rhs),
 lambda_(rhs.lambda_) {
 	subsolution_ = new double * [model_->getNumSubproblems()];
-	for (int s = 0; s < model_->getNumSubproblems(); ++s) {
-		subsolution_[s] = new double [model_->getNumSubproblemCouplingCols(s)];
-		CoinCopyN(rhs.subsolution_[s], model_->getNumSubproblemCouplingCols(s), subsolution_[s]);
+	if (model_->isDro()) {
+		DecTssModel* tss = dynamic_cast<DecTssModel*>(model_);
+		int nsubsolution = tss->getNumCols(0) + tss->getNumCols(1) + 1;
+		for (int s = 0; s < model_->getNumSubproblems(); ++s) {
+			subsolution_[s] = new double [nsubsolution];
+			CoinCopyN(rhs.subsolution_[s], nsubsolution, subsolution_[s]);
+		}
+	} else {
+		for (int s = 0; s < model_->getNumSubproblems(); ++s) {
+			subsolution_[s] = new double [model_->getNumSubproblemCouplingCols(s)];
+			CoinCopyN(rhs.subsolution_[s], model_->getNumSubproblemCouplingCols(s), subsolution_[s]);
+		}
 	}
 }
 
@@ -41,8 +51,15 @@ DSP_RTN_CODE DdMaster::init() {
 
 	/** allocate memory */
 	subsolution_ = new double * [model_->getNumSubproblems()];
-	for (int s = 0; s < model_->getNumSubproblems(); ++s)
-		subsolution_[s] = new double [model_->getNumSubproblemCouplingCols(s)];
+	if (model_->isDro()) {
+		DecTssModel* tss = dynamic_cast<DecTssModel*>(model_);
+		int nsubsolution = tss->getNumCols(0) + tss->getNumCols(1) + 1;
+		for (int s = 0; s < model_->getNumSubproblems(); ++s)
+			subsolution_[s] = new double [nsubsolution];
+	} else {
+		for (int s = 0; s < model_->getNumSubproblems(); ++s)
+			subsolution_[s] = new double [model_->getNumSubproblemCouplingCols(s)];
+	}
 
 	/** initialize */
 	primsol_.resize(model_->getNumCouplingCols());

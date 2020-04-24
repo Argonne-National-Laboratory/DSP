@@ -10,6 +10,7 @@
 #include "CoinWarmStartBasis.hpp"
 #include "SolverInterface/DspOsi.h"
 #include "Solver/DualDecomp/DdMasterTr.h"
+#include "Model/TssModel.h"
 
 DdMasterTr::DdMasterTr(
 		DecModel *   model,   /**< model pointer */
@@ -18,6 +19,9 @@ DdMasterTr::DdMasterTr(
 DdMaster(model, par, message),
 nthetas_(0),
 nlambdas_(0),
+nus_(0),
+nPs_(0),
+obj_reco_(NULL),
 stability_param_(0.0),
 stability_center_(NULL),
 trcnt_(0),
@@ -34,7 +38,8 @@ parTrSize_(0.0),
 parTrDecrease_(true),
 parNumCutsPerIter_(1),
 parMasterAlgo_(IPM_Feasible),
-parLogLevel_(0) {
+parLogLevel_(0),
+nstalls_(0) {
     DSPdebug(message_->logLevel_ = 9999;);
 }
 
@@ -42,6 +47,9 @@ DdMasterTr::DdMasterTr(const DdMasterTr& rhs) :
 DdMaster(rhs),
 nthetas_(rhs.nthetas_),
 nlambdas_(rhs.nlambdas_),
+nus_(rhs.nus_),
+nPs_(rhs.nPs_),
+obj_reco_(rhs.obj_reco_),
 stability_param_(rhs.stability_param_),
 trcnt_(rhs.trcnt_),
 numIters_(rhs.numIters_),
@@ -59,16 +67,18 @@ parTrSize_(rhs.parTrSize_),
 parTrDecrease_(rhs.parTrDecrease_),
 parNumCutsPerIter_(rhs.parNumCutsPerIter_),
 parMasterAlgo_(rhs.parMasterAlgo_),
-parLogLevel_(rhs.parLogLevel_) {
+parLogLevel_(rhs.parLogLevel_),
+nstalls_(rhs.nstalls_) {
 	if (rhs.stability_center_) {
-		stability_center_ = new double [nlambdas_];
-		CoinCopyN(rhs.stability_center_, nlambdas_, stability_center_);
+		stability_center_ = new double [nlambdas_+nus_+nPs_];
+		CoinCopyN(rhs.stability_center_, nlambdas_+nus_+nPs_, stability_center_);
 	}
 	cuts_ = new OsiCuts(*(rhs.cuts_));
 }
 
 DdMasterTr::~DdMasterTr()
 {
+	FREE_2D_ARRAY_PTR(model_->getNumSubproblems(), obj_reco_);
 	FREE_ARRAY_PTR(stability_center_);
 	FREE_PTR(cuts_);
 }
@@ -123,6 +133,7 @@ DSP_RTN_CODE DdMasterTr::solve()
 		switch(status_)
 		{
 		case DSP_STAT_PRIM_INFEASIBLE:
+			DSPdebugMessage("The master is infeasible and increases the trust region.\n");
 			// increase the trust-region size
 			stability_param_ *= 2;
 			setTrustRegion(stability_param_, stability_center_);
@@ -137,7 +148,6 @@ DSP_RTN_CODE DdMasterTr::solve()
 			primobj_ = si_->getObjValue();
 			/** get solution */
 			CoinCopyN(si_->getColSolution(), si_->getNumCols(), &primsol_[0]);
-			lambda_ = primsol_.data() + nthetas_;
 #ifdef DSP_DEBUG
 			printf("Master solution (obj %+e):\n", primobj_);
 			DspMessage::printArray(si_->getNumCols(), &primsol_[0]);
@@ -156,6 +166,7 @@ DSP_RTN_CODE DdMasterTr::solve()
 			message_->print(3, "Master solution time %.2f sec.\n", CoinGetTimeOfDay() - walltime);
 
 			resolve = false;
+			DSPdebug(si_->writeMps("master"));
 	
 			break;
 		}
@@ -188,7 +199,7 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 	FREE_ARRAY_PTR(elem);  \
 	FREE_PTR(mat);
 
-	int i, pos;
+	int i, j, k, pos;
 	int ncols, nrows, nzcnt;
 	char * ctype = NULL;
 	double * clbd = NULL;
@@ -202,17 +213,45 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 	double * elem = NULL;
 	CoinPackedMatrix * mat = NULL;
 
+	TssModel *tss = NULL;
+
 	BGN_TRY_CATCH
 
-	/** TODO */
+	try {
+		tss = dynamic_cast<TssModel*>(model_);
+	} catch (const std::bad_cast &e) {
+		printf("Error: Model claims to be stochastic when it is not\n");
+		return DSP_RTN_ERR;
+	}
+
+	/** Dual variables for SO */
 	nthetas_  = model_->getNumSubproblems();//CoinMin(model_->getNumSubproblems(), parNumCutsPerIter_);
 	nlambdas_ = model_->getNumCouplingRows();
+
+	/** Additional dual variables for DRO */
+	if (model_->isDro()) {
+		nus_ = model_->getNumSubproblems() * model_->getNumReferences();
+		nPs_ = model_->getNumSubproblems();
+	}
 
 	/** LP dimension */
 	if (model_->nonanticipativity())
 	{
-		nrows = model_->getNumSubproblemCouplingCols(0); /** initial normalization constraint for nonanticipativity constraints */
+		/** initial normalization constraint for nonanticipativity constraints */
+		nrows = model_->getNumCouplingCols(); // number of first-stage variables
 		nzcnt = nrows * model_->getNumSubproblems();
+
+		/** Additional constraints for DRO */
+		if (model_->isDro()) {
+			nrows += 1 + model_->getNumReferences() + model_->getNumSubproblems();
+			for (i = 0; i < model_->getNumSubproblems(); ++i) {
+				for (j = 0; j < model_->getNumReferences(); ++j) {
+					if (fabs(model_->getWassersteinDist(j,i)) < 1e-10) continue;
+					nzcnt++;
+				}
+			}
+			nzcnt += nus_ * 2 + nPs_;
+		}
 	}
 	else
 	{
@@ -220,8 +259,18 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 		nzcnt = 0;
 	}
 	ncols = nthetas_ + nlambdas_;
+	/** Increase number of columns for DRO */
+	if (model_->isDro()) {
+		ncols += nus_ + nPs_;
+	}
 	DSPdebugMessage("nrows %d ncols %d nzcnt %d nthetas_ %d nlambdas_ %d\n",
                     nrows, ncols, nzcnt, nthetas_, nlambdas_);
+
+	if (model_->isDro()) {
+		obj_reco_ = new double * [tss->getNumScenarios()];
+		for (int j = 0; j < tss->getNumScenarios(); ++j)
+			tss->copyRecoObj(j, obj_reco_[j], false);
+	}
 
 	/** allocate memory */
 	ctype = new char [ncols];
@@ -240,14 +289,40 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 
 	/** c */
 	CoinFillN(obj, nthetas_, 1.0);
-	CoinZeroN(obj + nthetas_, nlambdas_);
+	CoinZeroN(obj + nthetas_, ncols - nthetas_);
 
 	/** trust region */
 	stability_param_ = parTr_ ? parTrSize_ : COIN_DBL_MAX;
 	if (parTr_)
 	{
-		stability_center_ = new double [nlambdas_];
-		CoinZeroN(stability_center_, nlambdas_);
+		stability_center_ = new double [ncols-nthetas_];
+		if (model_->nonanticipativity()) {
+			for (i = 0; i < model_->getNumCouplingCols(); ++i) {
+				for (j = 0; j < model_->getNumSubproblems(); ++j) {
+					k = model_->getNumCouplingCols()*j+i;
+					stability_center_[k] = model_->getCouplingColsObjs()[i] / model_->getNumSubproblems();
+				}
+			}
+
+			if (model_->isDro()) {
+				for (i = 0; i < model_->getNumReferences(); ++i) {
+					for (j = 0; j < model_->getNumSubproblems(); ++j) {
+						if (i == j)
+							stability_center_[nlambdas_+model_->getNumReferences()*j+i] = model_->getReferenceProbability(i);
+						else
+							stability_center_[nlambdas_+model_->getNumReferences()*j+i] = 0.0;
+					}
+				}
+				for (i = 0; i < nPs_; ++i) {
+					if (i < model_->getNumReferences())
+						stability_center_[nlambdas_+nus_+i] = model_->getReferenceProbability(i);
+					else
+						stability_center_[nlambdas_+nus_+i] = 0.0;
+				}
+			}
+		} else {
+			CoinZeroN(stability_center_, ncols-nthetas_);
+		}
 	}
 
 	/** bounds */
@@ -255,44 +330,134 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 	CoinFillN(cubd, nthetas_, +COIN_DBL_MAX);
 
 	/** trust region bound */
-	CoinFillN(clbd + nthetas_, nlambdas_, -stability_param_);
-	CoinFillN(cubd + nthetas_, nlambdas_, +stability_param_);
+	if (model_->nonanticipativity()) {
+		for (i = 0; i < model_->getNumCouplingCols(); ++i) {
+			double avg_c = model_->getCouplingColsObjs()[i] / model_->getNumSubproblems();
+			for (j = 0; j < model_->getNumSubproblems(); ++j) {
+				k = nthetas_+model_->getNumCouplingCols()*j+i;
+				clbd[k] = avg_c - stability_param_;
+				cubd[k] = avg_c + stability_param_;
+			}
+		}
 
-	/** nonnegative or nonpositive multipliers according to sense */
-	for (i = 0; i < nlambdas_; i++)
-	{
-		if (model_->getSenseCouplingRow(i) == 'L')
-			clbd[nthetas_ + i] = 0;
-		else if (model_->getSenseCouplingRow(i) == 'G')
-			cubd[nthetas_ + i] = 0;
-	}
-
-	if (model_->nonanticipativity())
-	{
-		/** row bounds */
-		CoinZeroN(rlbd, nrows);
-		CoinZeroN(rubd, nrows);
-
-		/** for constraints */
+		/** create row-ordered constraint matrix */
 		pos = 0;
-		for (i = 0; i < nrows; ++i)
+		int rpos = 0;
+		// lambdas
+		for (i = 0; i < model_->getNumCouplingCols(); ++i)
 		{
-			bgn[i] = pos;
-			for (int j = 0; j < model_->getNumSubproblems(); ++j)
+			rlbd[rpos] = model_->getCouplingColsObjs()[i];
+			rubd[rpos] = model_->getCouplingColsObjs()[i];
+
+			bgn[rpos] = pos;
+			for (j = 0; j < model_->getNumSubproblems(); ++j)
 			{
-				ind[pos] = nthetas_ + j * nrows + i;
+				assert(nthetas_ + j * model_->getNumCouplingCols() + i < ncols);
+				ind[pos] = nthetas_ + j * model_->getNumCouplingCols() + i;
 				elem[pos] = 1.0;
 				pos++;
 			}
-			len[i] = pos - bgn[i];
+			len[rpos] = pos - bgn[rpos];
+			rpos++;
 		}
-		bgn[nrows] = pos;
+
+		if (model_->isDro()) {
+
+			/** additional column bounds for DRO */
+			for (i = 0; i < model_->getNumReferences(); ++i) {
+				for (j = 0; j < model_->getNumSubproblems(); ++j) {
+					clbd[nthetas_+nlambdas_+model_->getNumReferences()*j+i] = CoinMax(0.0, stability_center_[nlambdas_+model_->getNumReferences()*j+i] - stability_param_);
+					cubd[nthetas_+nlambdas_+model_->getNumReferences()*j+i] = CoinMin(1.0, stability_center_[nlambdas_+model_->getNumReferences()*j+i] + stability_param_);
+				}
+			}
+			for (i = 0; i < nPs_; ++i) {
+				clbd[nthetas_+nlambdas_+nus_+i] = CoinMax(0.0, stability_center_[nlambdas_+nus_+i] - stability_param_);
+				cubd[nthetas_+nlambdas_+nus_+i] = CoinMin(1.0, stability_center_[nlambdas_+nus_+i] + stability_param_);
+			}
+
+			/** additional constraints for DRO */
+
+			// Wasserstein distance
+			rlbd[rpos] = -COIN_DBL_MAX;
+			rubd[rpos] = model_->getWassersteinSize();
+
+			bgn[rpos] = pos;
+			for (i = 0; i < model_->getNumSubproblems(); ++i) {
+				for (j = 0; j < model_->getNumReferences(); ++j) {
+					if (fabs(model_->getWassersteinDist(j,i)) < 1e-10) continue;
+					ind[pos] = nthetas_ + nlambdas_ + i * model_->getNumReferences() + j;
+					elem[pos] = model_->getWassersteinDist(j,i);
+					pos++;
+				}
+			}
+			len[rpos] = pos - bgn[rpos];
+			rpos++;
+
+			// u's
+			for (i = 0; i < model_->getNumReferences(); ++i) {
+				rlbd[rpos] = model_->getReferenceProbability(i);
+				rubd[rpos] = model_->getReferenceProbability(i);
+
+				bgn[rpos] = pos;
+				for (j = 0; j < model_->getNumSubproblems(); ++j) {
+					ind[pos] = nthetas_ + nlambdas_ + j * model_->getNumReferences() + i;
+					elem[pos] = 1.0;
+					pos++;
+				}
+				len[rpos] = pos - bgn[rpos];
+				rpos++;
+			}
+
+			// P's
+			for (j = 0; j < model_->getNumSubproblems(); ++j) {
+				rlbd[rpos] = 0;
+				rubd[rpos] = 0;
+
+				bgn[rpos] = pos;
+				for (i = 0; i < model_->getNumReferences(); ++i) {
+					ind[pos] = nthetas_ + nlambdas_ + j * model_->getNumReferences() + i;
+					elem[pos] = 1.0;
+					pos++;
+				}
+				ind[pos] = nthetas_ + nlambdas_ + + nus_ + j;
+				elem[pos] = -1.0;
+				pos++;
+				len[rpos] = pos - bgn[rpos];
+				rpos++;
+			}
+		}
+
+		assert(rpos == nrows);
 		assert(pos == nzcnt);
+		bgn[nrows] = pos;
+
+	} else {
+		CoinFillN(clbd+nthetas_, nlambdas_, -COIN_DBL_MAX);
+		CoinFillN(cubd+nthetas_, nlambdas_, +COIN_DBL_MAX);
+
+		/** nonnegative or nonpositive multipliers according to sense */
+		for (i = 0; i < nlambdas_; i++)
+		{
+			if (model_->getSenseCouplingRow(i) == 'L')
+				clbd[nthetas_ + i] = 0;
+			else if (model_->getSenseCouplingRow(i) == 'G')
+				cubd[nthetas_ + i] = 0;
+		}
 	}
+
+	for (int j = nthetas_; j < ncols; ++j) {
+		DSPdebugMessage("j = %d, clbd = %e, stability_center_ = %e, cubd = %e\n", j, clbd[j], stability_center_[j-nthetas_], cubd[j]);
+		assert(clbd[j] <= stability_center_[j-nthetas_]);
+		assert(cubd[j] >= stability_center_[j-nthetas_]);
+	}
+#ifdef DSP_DEBUG
+	DSPdebugMessage("stability_center_:\n");
+	DspMessage::printArray(ncols-nthetas_, stability_center_);
+#endif
 
 	/** constraint matrix */
 	mat = new CoinPackedMatrix(false, ncols, nrows, nzcnt, elem, ind, bgn, len);
-	DSPdebug(mat->verifyMtx(4));
+	// DSPdebug(mat->verifyMtx(4));
 
 	/** create solver interface */
 	DSPdebugMessage("parMasterAlgo_ %d\n", parMasterAlgo_);
@@ -356,13 +521,21 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 	/** allocate memory for solution */
 	primsol_.resize(ncols);
 	CoinFillN(&primsol_[0], nthetas_, COIN_DBL_MAX);
-	CoinZeroN(&primsol_[nthetas_], nlambdas_);
+	if (model_->nonanticipativity()) {
+		CoinCopyN(stability_center_, ncols-nthetas_, &primsol_[nthetas_]);
+	} else {
+		CoinZeroN(&primsol_[nthetas_], nlambdas_);
+	}
+
+	if (model_->isDro()) {
+		bestdualsol_.resize(ncols-nthetas_);
+	}
 
 	/** initialize cut pool */
 	cuts_ = new OsiCuts;
 
 	/** set print level */
-	si_->messageHandler()->setLogLevel(parLogLevel_);
+	si_->messageHandler()->setLogLevel(0);
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
@@ -387,6 +560,7 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 	double newdual = 0.0;
 	for (int s = 0; s < model_->getNumSubproblems(); ++s)
 	{
+		DSPdebugMessage("subdualobj_[%d] = %e\n", s, subdualobj_[s]);
 		newprimal += subprimobj_[s];
 		newdual += subdualobj_[s];
 	}
@@ -408,7 +582,7 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 			if (isSolved_)
 			{
 				/** update proximal point */
-				CoinCopyN(&primsol_[nthetas_], nlambdas_, stability_center_);
+				CoinCopyN(&primsol_[nthetas_], si_->getNumCols()-nthetas_, stability_center_);
 				message_->print(3, ", updated proximal point");
 
 				/** possibly delete cuts */
@@ -434,6 +608,13 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 			/** update dual bound */
 			bestdualobj_ = newdual;
 			trcnt_ = 0;
+			nstalls_ = 0;
+
+			/** update best solution */
+			DSPdebugMessage("si_->getNumCols()-nthetas_ [%d] == bestdualsol_.size() [%d]", 
+				si_->getNumCols()-nthetas_, (int) bestdualsol_.size());
+			assert(si_->getNumCols()-nthetas_==bestdualsol_.size());
+			CoinCopyN(&primsol_[nthetas_], si_->getNumCols()-nthetas_, &bestdualsol_[0]);
 
 			message_->print(2, "\n");
 		}
@@ -458,9 +639,14 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 				stability_param_ = CoinMax(1.0e-2, stability_param_/CoinMin(rho, 4.));
 				message_->print(3, ", decreased trust region size %e", stability_param_);
 				trcnt_ = 0;
+				nstalls_ = 0;
 
 				/** set trust region */
 				setTrustRegion(stability_param_, stability_center_);
+			}
+			else if (nCutsAdded == 0)
+			{
+				nstalls_++;
 			}
 
 			message_->print(3, "\n");
@@ -472,6 +658,12 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 		if (newdual >= bestdualobj_ + 1.0e-4 * (curprimobj - bestdualobj_))
 			/** update dual bound */
 			bestdualobj_ = newdual;
+
+			/** update best solution */
+			DSPdebugMessage("si_->getNumCols()-nthetas_ [%d] == bestdualsol_.size() [%d]", 
+				si_->getNumCols()-nthetas_, (int) bestdualsol_.size());
+			assert(si_->getNumCols()-nthetas_==bestdualsol_.size());
+			CoinCopyN(&primsol_[nthetas_], si_->getNumCols()-nthetas_, &bestdualsol_[0]);
 	}
 
 #ifdef DSP_HAS_OOQP
@@ -534,8 +726,15 @@ int DdMasterTr::addCuts(
 	CoinPackedVector cutvec; /**< cut body */
 	double cutrhs;           /**< cut RHS */
 	int nCutsAdded; /**< number of cuts added */
+	int cutidx;
 
 	BGN_TRY_CATCH
+
+	int ncols = si_->getNumCols();
+#ifdef DSP_DEBUG
+	DSPdebugMessage("primsol_:\n");
+	DspMessage::printArray(ncols, &primsol_[0]);
+#endif
 
 	/** initialize linearization error */
 	linerr_ = -bestdualobj_;
@@ -545,8 +744,8 @@ int DdMasterTr::addCuts(
 	aggrhs = new double [nthetas_];
 	for (int i = 0; i < nthetas_; ++i)
 	{
-		aggvec[i] = new double [nthetas_ + nlambdas_];
-		CoinZeroN(aggvec[i], nthetas_ + nlambdas_);
+		aggvec[i] = new double [ncols];
+		CoinZeroN(aggvec[i], ncols);
 		aggrhs[i] = 0.0;
 	}
 
@@ -554,7 +753,7 @@ int DdMasterTr::addCuts(
 	for (int s = 0; s < model_->getNumSubproblems(); ++s)
 	{
 		/** cut index */
-		int cutidx = s % nthetas_;
+		cutidx = s % nthetas_;
 
 		/** calculate error and construct cut */
 		linerr_ += subprimobj_[s];
@@ -565,10 +764,48 @@ int DdMasterTr::addCuts(
 			double hx_d = model_->evalLhsCouplingRowSubprob(i, s, subsolution_[s]) - model_->getRhsCouplingRow(i);
 			aggvec[cutidx][nthetas_ + i] -= hx_d; /** coefficients for lambda */
 			linerr_ += hx_d * stability_center_[i];
-			if (isSolved_) {
+			// if (isSolved_) {
 				linerr_ -= hx_d * primsol_[nthetas_ + i];
 				aggrhs[cutidx] -= hx_d * primsol_[nthetas_ + i];
+			// }
+		}
+	}
+
+	if (model_->isDro()) {
+
+		TssModel* tss = NULL;
+		try {
+			tss = dynamic_cast<TssModel*>(model_);
+		} catch (const std::bad_cast &e) {
+			printf("Error: Model claims to be stochastic when it is not\n");
+            return DSP_RTN_ERR;
+		}
+		double recourse_obj;
+
+		/** add DRO elements */
+		for (int s = 0; s < model_->getNumSubproblems(); ++s) {
+#ifdef DSP_DEBUG
+			printf("subsolution[%d]:\n", s);
+			DspMessage::printArray(tss->getNumCols(0)+tss->getNumCols(1)+1, subsolution_[s]);
+#endif
+
+			/** cut index */
+			cutidx = s % nthetas_;
+
+			// P
+			recourse_obj = 0.0;
+			for (int j = 0; j < tss->getNumCols(1); ++j) {
+				recourse_obj += obj_reco_[s][j] * subsolution_[s][tss->getNumCols(0)+j];
+				DSPdebugMessage("obj_reco_[%d][%d] = %e, subsolution_[%d][%d] = %e\n", 
+					s, j, obj_reco_[s][j], s, tss->getNumCols(0)+j, subsolution_[s][tss->getNumCols(0)+j]);
 			}
+			// recourse_obj = scen_obj->dotProduct(subsolution_[s] + tss->getNumCols(0));
+
+			linerr_ += recourse_obj * (stability_center_[nlambdas_+nus_+s] - primsol_[ncols-nPs_+s]);
+			aggvec[cutidx][ncols-nPs_+s] = -recourse_obj;
+			aggrhs[cutidx] -= recourse_obj * primsol_[ncols-nPs_+s];
+			DSPdebugMessage("recourse_obj[%d] = %e, primsol_[%d] = %e, aggvec[%d][%d] = %e\n", 
+				s, recourse_obj, ncols-nPs_+s, primsol_[ncols-nPs_+s], cutidx, ncols-nPs_+s, aggvec[cutidx][ncols-nPs_+s]);
 		}
 	}
 
@@ -579,7 +816,7 @@ int DdMasterTr::addCuts(
 
 		/** set it as sparse */
 		aggvec[s][s] = 1.0;
-		for (int j = 0; j < nthetas_ + nlambdas_; ++j)
+		for (int j = 0; j < ncols; ++j)
 		{
 			if (fabs(aggvec[s][j]) > 1E-10)
 				cutvec.insert(j, aggvec[s][j]);
@@ -589,6 +826,13 @@ int DdMasterTr::addCuts(
 		cutrhs = aggrhs[s];
 		if (fabs(cutrhs) < 1E-10)
 			cutrhs = 0.0;
+#ifdef DSP_DEBUG
+		if (model_->isDro() && fabs(cutrhs) > 0.0) {
+			DSPdebugMessage("cutrhs[%d] = %e\n", s, cutrhs);
+			cutrhs = 0.0;
+		}
+#endif
+		assert(model_->isDro() == false || cutrhs == 0.0);
 
 		OsiRowCut * rc = new OsiRowCut;
 		rc->setRow(cutvec);
@@ -925,6 +1169,10 @@ DSP_RTN_CODE DdMasterTr::setTrustRegion(double stability_param, double * stabili
 			clbd = CoinMax((double) 0.0, clbd); /* lambda >= 0 */
 		else if (model_->getSenseCouplingRow(j - nthetas_) == 'G')
 			cubd = CoinMin((double) 0.0, cubd); /* lambda <= 0 */
+		if (j - nthetas_ - nlambdas_ >= 0) {
+			clbd = CoinMax(0.0, clbd);
+			cubd = CoinMin(1.0, cubd);
+		}
 		si_->setColBounds(j, clbd, cubd);
 	}
 
@@ -950,12 +1198,16 @@ DSP_RTN_CODE DdMasterTr::terminationTest()
 	double time_elapsed = CoinGetTimeOfDay() - walltime_elapsed_;
 	double absgap = getAbsApproxGap();
 	double relgap = getRelApproxGap();
-	DSPdebugMessage("absgap %+e relgap %+e\n", getAbsApproxGap(), relgap);
+	DSPdebugMessage("absgap %+e relgap %+e\n", absgap, relgap);
 	double gaptol = par_->getDblParam("DD/STOP_TOL");
 	if (si_->getNumIntegers() > 0) gaptol += par_->getDblParam("MIP/GAP_TOL");
 	if (relgap <= gaptol) {
 		status_ = DSP_STAT_MW_STOP;
 		message_->print(1, "Tr  STOP with gap tolerance %+e (%.2f%%).\n", absgap, relgap*100);
+	}
+	else if (nstalls_ >= 3 && si_->getObjValue() < bestdualobj_) {
+		status_ = DSP_STAT_MW_STOP;
+		message_->print(1, "Tr  STOP with stalling (%d).\n", nstalls_);
 	}
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)

@@ -12,6 +12,7 @@
 
 #include "Solver/DualDecomp/DdMasterAtr.h"
 #include "Solver/DualDecomp/DdMWAsync.h"
+#include "Model/TssModel.h"
 
 DdMWAsync::DdMWAsync(
 		MPI_Comm     comm,   /**< MPI communicator */
@@ -1095,7 +1096,18 @@ DSP_RTN_CODE DdMWAsync::runWorkerInit()
 	double * recvbuf = NULL; /**< MPI_Scatterv: receive buffer */
 	int      rcount  = 0;    /**< MPI_Scatterv: receive buffer size */
 
+	TssModel* tss = NULL;
+
 	BGN_TRY_CATCH
+
+	if (model_->isStochastic()) {
+		try {
+			tss = dynamic_cast<TssModel*>(model_);
+		} catch (const std::bad_cast &e) {
+			printf("Error: Model claims to be stochastic when it is not\n");
+            return DSP_RTN_ERR;
+		}
+	}
 
 	assert(worker_[0]->getType()==DdWorker::LB);
 	DdWorkerLB * workerlb = dynamic_cast<DdWorkerLB*>(worker_[0]);
@@ -1149,7 +1161,7 @@ DSP_RTN_CODE DdMWAsync::runWorkerInit()
 	for (int s = 0, pos = 0; s < narrprocidx; ++s)
 	{
 		workerlb->subprobs_[s]->theta_ = recvbuf[pos++];
-		workerlb->subprobs_[s]->updateProblem(recvbuf + pos);
+		workerlb->subprobs_[s]->updateProblem(recvbuf + pos, tss->getProbability()[workerlb->subprobs_[s]->sind_]);
 		pos += model_->getNumSubproblemCouplingRows(workerlb->subprobs_[s]->sind_);
 	}
 

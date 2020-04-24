@@ -8,22 +8,22 @@
 #include "Model/DecTssModel.h"
 
 DecTssModel::DecTssModel() :
-		TssModel(),
-		master_col_indices_(NULL) {
+TssModel(),
+master_col_indices_(NULL) {
 	/** nothing to do */
 }
 
 /** copy constructor */
 DecTssModel::DecTssModel(const DecTssModel & rhs) :
-		TssModel(rhs),
-		master_col_indices_(NULL) {
+TssModel(rhs),
+master_col_indices_(NULL) {
 	/** nothing to do */
 }
 
 /** copy constructor */
 DecTssModel::DecTssModel(const TssModel & rhs) :
-		TssModel(rhs),
-		master_col_indices_(NULL) {
+TssModel(rhs),
+master_col_indices_(NULL) {
 	/** nothing to do */
 }
 DecTssModel::~DecTssModel() {
