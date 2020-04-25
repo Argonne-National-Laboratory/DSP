@@ -59,7 +59,8 @@ set(DSP_LIBS
 	${DEPEND_DIR}/lib/libCoinUtils.a 
 	${ZLIB_LIBRARIES}
 	${BZIP2_LIBRARIES}
-	${GFORTRANLIB}
+    ${GFORTRANLIB}
+    ${LAPACK_LIBRARIES}
     -ldl
 )
 
@@ -137,8 +138,8 @@ if(MA27LIB)
 		${DEPEND_DIR}/lib/libooqpdense.a
 		${DEPEND_DIR}/lib/libooqpsparse.a
 		${DEPEND_DIR}/lib/libooqpbase.a
-		${MA27LIB}
-		${LAPACK_LIBRARIES})
+        ${MA27LIB}
+    )
 	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDSP_HAS_OOQP")
 	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DDSP_HAS_OOQP")
 endif(MA27LIB)
