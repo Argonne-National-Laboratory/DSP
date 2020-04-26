@@ -169,9 +169,10 @@ if (MPI_CXX_FOUND)
 endif(MPI_CXX_FOUND)
 
 set(DSP_LIBS ${DSP_LIBS}
+    ${GFORTRANLIB}
     ${BLAS_LIBRARIES}
     ${LAPACK_LIBRARIES}
-    ${GFORTRANLIB}
+    -lquadmath
     -ldl)
 
 include_directories(${DSP_INC_DIR})
