@@ -171,6 +171,21 @@ if (MPI_CXX_FOUND)
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${MPI_CXX_COMPILE_FLAGS} -DDSP_HAS_MPI -DOMPI_IGNORE_CXX_SEEK")
 endif(MPI_CXX_FOUND)
 
+if(APPLE)
+    set(DSP_LIBS ${DSP_LIBS}
+        ${GFORTRANLIB}
+        ${BLAS_LIBRARIES}
+        ${LAPACK_LIBRARIES}
+        -ldl)
+else(APPLE)
+    set(DSP_LIBS ${DSP_LIBS}
+        ${GFORTRANLIB}
+        ${BLAS_LIBRARIES}
+        ${LAPACK_LIBRARIES}
+        -lquadmath
+        -ldl)
+endif(APPLE)
+
 include_directories(${DSP_INC_DIR})
 add_library(DspObj OBJECT ${DSP_SRC})
 set_property(TARGET DspObj PROPERTY POSITION_INDEPENDENT_CODE ON)
