@@ -48,7 +48,8 @@ set(DSP_SRC
 )
 set(DSP_INC_DIR 
     .
-    ${DEPEND_DIR}/include/coin)
+    ${DEPEND_DIR}/include/coin
+    ${DEPEND_DIR}/include/coin-or)
 set(DSP_LIBS 
     ${MPI_CXX_LIBRARIES}
 	${DEPEND_DIR}/lib/libSmi.a 
