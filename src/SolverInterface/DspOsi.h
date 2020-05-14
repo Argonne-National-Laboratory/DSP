@@ -12,6 +12,7 @@
 #include "OsiSolverInterface.hpp"
 #include "OsiClpSolverInterface.hpp"
 #include "SolverInterface/DspOsiCpx.h"
+#include "SolverInterface/DspOsiGlpk.h"
 #include "SolverInterface/DspOsiScip.h"
 
 #ifdef DSP_HAS_OOQP
