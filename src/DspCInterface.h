@@ -11,7 +11,7 @@
 #include <cstdlib>
 #include <cstdio>
 
-#include "CoinTypes.hpp"
+#include "CoinTypes.h"
 #include "Utility/DspMpi.h"
 
 /** DSP */
