@@ -8,11 +8,6 @@
 // #define DSP_DEBUG
 
 #include "SolverInterface/DspOsi.h"
-
-#ifdef HAS_CBC
-#include "OsiCbcSolverInterface.hpp"
-#endif
-
 #include "Solver/DantzigWolfe/DwWorker.h"
 #include "Model/TssModel.h"
 #include "Utility/DspUtility.h"
@@ -585,13 +580,6 @@ DSP_RTN_CODE DwWorker::solveSubproblems() {
 
 	/** TODO: That's it? Dual infeasible??? */
 	for (int s = 0; s < parProcIdxSize_; ++s) {
-#ifdef HAS_CBC
-		/** reset problem status */
-		const OsiCbcSolverInterface* cbc = dynamic_cast<OsiCbcSolverInterface*>(si_[s]);
-		if (cbc)
-			cbc->getModelPtr()->setProblemStatus(-1);
-#endif
-
 		if (si_[s]->getNumIntegers() > 0) {
 
 			/** increase time limit */
