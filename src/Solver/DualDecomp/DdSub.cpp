@@ -11,7 +11,10 @@
 #include "Utility/DspMessage.h"
 #include "Model/TssModel.h"
 #include "Solver/DualDecomp/DdSub.h"
-#include "SolverInterface/DspOsi.h"
+#include "SolverInterface/DspOsiClp.h"
+#include "SolverInterface/DspOsiCbc.h"
+#include "SolverInterface/DspOsiCpx.h"
+#include "SolverInterface/DspOsiScip.h"
 
 #ifdef DSP_HAS_SCIP
 #include "Solver/DualDecomp/SCIPconshdlrBendersDd.h"
@@ -41,8 +44,8 @@ theta_(rhs.theta_),
 gapTol_(rhs.gapTol_),
 obj_offset_(rhs.obj_offset_) {
 	// copy obj_
-	obj_ = new double [si_->getNumCols()];
-	CoinCopyN(rhs.obj_, si_->getNumCols(), obj_);
+	obj_ = new double [getSiPtr()->getNumCols()];
+	CoinCopyN(rhs.obj_, getSiPtr()->getNumCols(), obj_);
 
 	// copy coupling matrix
 	cpl_mat_ = new CoinPackedMatrix(*(rhs.cpl_mat_));
@@ -75,7 +78,7 @@ DSP_RTN_CODE DdSub::init()
 	DSP_RTN_CHECK_THROW(addCutGenerator());
 
 	/** allocate memory */
-    primsol_.resize(si_->getNumCols());
+    primsol_.resize(getSiPtr()->getNumCols());
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -89,53 +92,53 @@ DSP_RTN_CODE DdSub::solve()
 	bool dualinfeas = false;
 
 	while (1) {
-		if (si_->getNumIntegers() > 0)
-			si_->branchAndBound();
+		if (getSiPtr()->getNumIntegers() > 0)
+			getSiPtr()->branchAndBound();
 		else
-			si_->resolve();
+			getSiPtr()->resolve();
 	
 		/** check status. there might be unexpected results. */
-		convertOsiToDspStatus(si_, status_);
+		status_ = osi_->status();
 		switch (status_) {
 		case DSP_STAT_OPTIMAL:
 		case DSP_STAT_LIM_ITERorTIME:
 		case DSP_STAT_STOPPED_GAP:
 		case DSP_STAT_STOPPED_NODE:
 		case DSP_STAT_STOPPED_TIME:
-			primobj_ = si_->getObjValue();
-			dualobj_ = si_->getNumIntegers() > 0 ? si_->getBestDualBound() : primobj_;
-			CoinCopyN(si_->getColSolution(), si_->getNumCols(), &primsol_[0]);
+			primobj_ = osi_->getPrimObjValue();
+			dualobj_ = osi_->getDualObjValue();
+			CoinCopyN(getSiPtr()->getColSolution(), getSiPtr()->getNumCols(), &primsol_[0]);
 			DSPdebugMessage("primal objective %+e, dual objective %+e\n", primobj_, dualobj_);
 			dualinfeas = false;
 			// char submps[64];
 			// sprintf(submps, "sub%d", sind_);
-			// si_->writeMps(submps);
+			// getSiPtr()->writeMps(submps);
 			break;
 		case DSP_STAT_LIM_INFEAS:
 			primobj_ = COIN_DBL_MAX;
-			dualobj_ = si_->getBestDualBound();
+			dualobj_ = osi_->getDualObjValue();
 			dualinfeas = false;
 			break;
 		case DSP_STAT_DUAL_INFEASIBLE:
 			message_->print(0, "Subproblem %d is dual infeasible. DSP will fix any unbounded column bounds to a large number.\n", sind_);
-			for (int j = 0; j < si_->getNumCols(); ++j) {
-				if (si_->getColLower()[j] < -1.0e+20) {
-					DSPdebugMessage("Fix column %d lower bound %+e to %+e\n", j, si_->getColLower()[j], -1.0e+10);
-					si_->setColLower(j, -1.0e+10);
+			for (int j = 0; j < getSiPtr()->getNumCols(); ++j) {
+				if (getSiPtr()->getColLower()[j] < -1.0e+20) {
+					DSPdebugMessage("Fix column %d lower bound %+e to %+e\n", j, getSiPtr()->getColLower()[j], -1.0e+10);
+					getSiPtr()->setColLower(j, -1.0e+10);
 				}
-				if (si_->getColUpper()[j] > 1.0e+20) {
-					DSPdebugMessage("Fix column %d upper bound %+e to %+e\n", j, si_->getColUpper()[j], 1.0e+10);
-					si_->setColUpper(j, 1.0e+10);
+				if (getSiPtr()->getColUpper()[j] > 1.0e+20) {
+					DSPdebugMessage("Fix column %d upper bound %+e to %+e\n", j, getSiPtr()->getColUpper()[j], 1.0e+10);
+					getSiPtr()->setColUpper(j, 1.0e+10);
 				}
 			}
 			if (dualinfeas) {
-				si_->writeMps("dual_infeas_sub");
+				getSiPtr()->writeMps("dual_infeas_sub");
 				dualinfeas = false;
 			} else {
 				dualinfeas = true;
 			}
 			//DSPdebugMessage("Dual infeasible subproblem!\n");
-			//DSPdebug(si_->writeMps("dual_infeas_sub"));
+			//DSPdebug(getSiPtr()->writeMps("dual_infeas_sub"));
 			break;
 		default:
 			break;
@@ -277,41 +280,42 @@ DSP_RTN_CODE DdSub::createProblem() {
     	case OsiCpx:
 #ifdef DSP_HAS_CPX
 		{
-    		si_ = new OsiCpxSolverInterface();
-			OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
-			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, 1);
+    		osi_ = new DspOsiCpx();
     		break;
 		}
 #endif
     	case OsiScip:
 #ifdef DSP_HAS_SCIP
-            si_ = new OsiScipSolverInterface();
+            osi_ = new DspOsiScip();
             break;
 #endif
+    	case OsiCbc:
     	default:
+            osi_ = new DspOsiCbc();
     		break;
     	}
+		osi_->setNumCores(1);
     } else
-        si_ = new OsiClpSolverInterface();
+        osi_ = new DspOsiClp();
 
     /** no display */
 #ifdef DSP_DEBUG
-    si_->messageHandler()->setLogLevel(5);
+    osi_->setLogLevel(5);
 #else
-    si_->messageHandler()->setLogLevel(par_->getIntParam("DD/SUB/LOG_LEVEL"));
+    osi_->setLogLevel(par_->getIntParam("DD/SUB/LOG_LEVEL"));
 #endif
 
     /** load problem */
-    si_->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
+    getSiPtr()->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
 	for (int j = 0; j < mat->getNumCols(); ++j) {
 		if (ctype[j] != 'C')
-			si_->setInteger(j);
+			getSiPtr()->setInteger(j);
 	}
     DSPdebug(mat->verifyMtx(4));
 
     /** set solution gap tolerance */
 	if (nIntegers > 0)
-	    si_->setMipRelGap(gapTol_);
+	    osi_->setRelMipGap(gapTol_);
 
     END_TRY_CATCH_RTN(FREE_MEMORY, DSP_RTN_ERR)
 
@@ -324,7 +328,7 @@ DSP_RTN_CODE DdSub::createProblem() {
 /** add cut generator */
 DSP_RTN_CODE DdSub::addCutGenerator() {
 #ifdef DSP_HAS_SCIP
-    OsiScipSolverInterface *si = dynamic_cast<OsiScipSolverInterface *>(si_);
+    OsiScipSolverInterface *si = dynamic_cast<DspOsiScip*>(osi_)->scip_;
     if (si) {
         /** create constraint handler */
         SCIPconshdlrBendersDd *conshdlr = new SCIPconshdlrBendersDd(si->getScip());
@@ -355,7 +359,7 @@ DSP_RTN_CODE DdSub::updateProblem(
 
 	BGN_TRY_CATCH
 
-	int ncols = si_->getNumCols();
+	int ncols = getSiPtr()->getNumCols();
 
 	if (lambda)
 	{
@@ -406,12 +410,12 @@ DSP_RTN_CODE DdSub::updateProblem(
 		// printf("### newobj[%d]:\n", sind_);
 		// DspMessage::printArray(ncols, newobj);
 
-		si_->setObjective(newobj);
+		getSiPtr()->setObjective(newobj);
 	}
 
 	/** update primal bound (bounds of auxiliary constraint) */
 	if (primal_bound < COIN_DBL_MAX)
-		si_->setColUpper(ncols - 1, primal_bound);//si_->setColBounds(ncols - 1, primal_bound, primal_bound);
+		getSiPtr()->setColUpper(ncols - 1, primal_bound);//getSiPtr()->setColBounds(ncols - 1, primal_bound, primal_bound);
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
@@ -430,23 +434,23 @@ DSP_RTN_CODE DdSub::pushCuts(OsiCuts * cuts)
 /** set wall clock time limit */
 void DdSub::setTimeLimit(double sec)
 {
-	assert(si_);
-	si_->setTimeLimit(sec);
+	assert(osi_);
+	osi_->setTimeLimit(sec);
 }
 
 /** set accuracy tolerance */
 void DdSub::setGapTol(double tol)
 {
-	assert(si_);
+	assert(osi_);
 	gapTol_ = tol;
-	si_->setMipRelGap(gapTol_);
+	osi_->setRelMipGap(gapTol_);
 }
 
 /** set print level */
 void DdSub::setPrintLevel(int level)
 {
 	if (par_->getIntParam("SOLVER/MIP") == OsiScip)
-		si_->messageHandler()->setLogLevel(level);
+		osi_->setLogLevel(level);
 	else
-		si_->messageHandler()->setLogLevel(CoinMax(0, level - 2));
+		osi_->setLogLevel(CoinMax(0, level - 2));
 }

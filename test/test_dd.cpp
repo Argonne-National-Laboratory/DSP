@@ -28,14 +28,15 @@ int main(int argc, char* argv[])
         
         env->solver_ = new DdDriverSerial(env->model_, env->par_, env->message_);
         env->solver_->init();
+        env->solver_->setLogLevel(0);
         dynamic_cast<DdDriverSerial*>(env->solver_)->run();
         env->solver_->finalize();
 
         double bestprimobj = env->solver_->getBestPrimalObjective();
         double bestdualobj = env->solver_->getBestDualObjective();
         double relgap = env->solver_->getRelDualityGap();
-        printf("best primal bound: %.10f\n", bestprimobj);
-        printf("best dual bound  : %.10f\n", bestdualobj);
+        printf("best primal bound: %e\n", bestprimobj);
+        printf("best dual bound  : %e\n", bestdualobj);
         printf("relative gap (%%) : %f\n", relgap*100);
 
         FREE_PTR(env);

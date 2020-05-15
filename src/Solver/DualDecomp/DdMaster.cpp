@@ -78,8 +78,8 @@ DSP_RTN_CODE DdMaster::init() {
 DSP_RTN_CODE DdMaster::setInitSolution(const double * sol) {
 	BGN_TRY_CATCH
 
-	if (primsol_.size() >= si_->getNumCols())
-		CoinCopyN(sol, si_->getNumCols(), &primsol_[0]);
+	if (primsol_.size() >= getSiPtr()->getNumCols())
+		CoinCopyN(sol, getSiPtr()->getNumCols(), &primsol_[0]);
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 

@@ -122,7 +122,7 @@ protected:
 
 	int numFixedRows_; /**< number of fixed rows in the dual master */
 
-	std::shared_ptr<OsiSolverInterface> primal_si_;
+	std::shared_ptr<DspOsi> primal_si_;
 
 	//@{
 	/** functions specific to external solver */
@@ -143,11 +143,11 @@ protected:
 	virtual void assignMasterSolution(std::vector<double>& sol);
 
 	/** get objective value */
-	virtual double getObjValue() { return si_->getObjValue(); }
+	virtual double getObjValue() { return osi_->si_->getObjValue(); }
 
 	/** add row to the dual master */
 	virtual void addDualRow(const CoinPackedVector& v, const double lb, const double ub) {
-		si_->addRow(v, lb, ub);
+		osi_->si_->addRow(v, lb, ub);
 	}
 
     /** remove all columns in the DW master */

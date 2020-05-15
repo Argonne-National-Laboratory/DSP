@@ -8,9 +8,7 @@
 #ifndef SRC_SOLVER_DANTZIGWOLFE_DWWORKER_H_
 #define SRC_SOLVER_DANTZIGWOLFE_DWWORKER_H_
 
-/** Coin */
-#include "OsiSolverInterface.hpp"
-/** Dsp */
+#include "SolverInterface/DspOsi.h"
 #include "Model/DecModel.h"
 #include "Utility/DspParams.h"
 #include "Utility/DspMessage.h"
@@ -101,7 +99,7 @@ public:
 
 protected:
 
-	OsiSolverInterface** si_; /**< solver interface */
+	DspOsi** osi_; /**< solver interface */
 
 	//DwSub* sub_; /**< subproblem solver */
 	double** sub_objs_; /**< subproblem objective coefficients */

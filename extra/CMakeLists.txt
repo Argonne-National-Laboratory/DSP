@@ -7,10 +7,14 @@ set(EXTRA_DIR      "${CMAKE_SOURCE_DIR}/extra")
 set(COINUTILS_DIR  "${EXTRA_DIR}/CoinUtils")
 set(OSI_DIR        "${EXTRA_DIR}/Osi")
 set(CLP_DIR        "${EXTRA_DIR}/Clp")
+set(CGL_DIR        "${EXTRA_DIR}/Cgl")
+set(CBC_DIR        "${EXTRA_DIR}/Cbc")
 set(SMI_DIR        "${EXTRA_DIR}/Smi")
-set(COIN_INC_DIR   "${DEPEND_DIR}/include/coin-or")
+set(COIN_INC_DIR   "${DEPEND_DIR}/include/coin")
 set(COINUTILS_LIB  "-L${DEPEND_DIR}/lib -lCoinUtils")
 set(OSI_LIB        "-L${DEPEND_DIR}/lib -lOsi")
+set(CLP_LIB        "-L${DEPEND_DIR}/lib -lOsiClp - lClp")
+set(CGL_LIB        "-L${DEPEND_DIR}/lib -lCgl")
 set(ALPS_DIR       "${EXTRA_DIR}/Alps")
 set(OOQP_DIR       "${EXTRA_DIR}/OOQP")
 set(ALPS_LIB       "-L${DEPEND_DIR}/lib -lAlps")
@@ -60,19 +64,6 @@ ExternalProject_Add(CoinUtils
 # Compile OSI
 ##################################################
 
-ExternalProject_Add(Glpk
-	DOWNLOAD_DIR ${EXTRA_DIR}
-	SOURCE_DIR ${EXTRA_DIR}/glpk-4.65
-	INSTALL_DIR ${EXTRA_DIR}/glpk-4.65/build
-	DOWNLOAD_COMMAND wget http://ftp.gnu.org/gnu/glpk/glpk-4.65.tar.gz &&
-		tar -zxvf glpk-4.65.tar.gz && rm glpk-4.65.tar.gz
-	CONFIGURE_COMMAND ${EXTRA_DIR}/glpk-4.65/configure --prefix=<INSTALL_DIR> CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} CFLAGS=${EXTRA_CMAKE_INCLUDE_FLAGS} CPPFLAGS=${EXTRA_CMAKE_INCLUDE_FLAGS} LDFLAGS=${EXTRA_CMAKE_LIBRARY_FLAGS}
-	BUILD_COMMAND make
-	INSTALL_COMMAND make install
-)
-set(GLPK_LIB "-L${EXTRA_DIR}/glpk-4.65/build/lib -lglpk")
-set(GLPK_INCDIR "${EXTRA_DIR}/glpk-4.65/build/include")
-
 if(CPLEXLIB)
 	set(CPLEX_LIB "-L${CPLEX_LIB_DIR} -lcplex -lm -lpthread")
 	set(WITH_CPLEX_LIB "--with-cplex --with-cplex-lflags=${CPLEX_LIB}")
@@ -83,18 +74,14 @@ else()
 endif()
 
 ExternalProject_Add(Osi
-	DEPENDS CoinUtils Glpk
+	DEPENDS CoinUtils
 	SOURCE_DIR ${OSI_DIR}
 	CONFIGURE_COMMAND ${OSI_DIR}/configure
 		--prefix=${DEPEND_DIR}
 		--enable-static 
 		--disable-shared
-		--with-coinutils
-		--with-coinutils-lflags=${COINUTILS_LIB}
-		--with-coinutils-cflags=-I${COIN_INC_DIR}
-		--with-glpk
-		--with-glpk-lflags=${GLPK_LIB}
-		--with-glpk-cflags=-I${GLPK_INCDIR}
+		--with-coinutils-lib=${COINUTILS_LIB}
+		--with-coinutils-incdir=${COIN_INC_DIR}
 		${WITH_CPLEX_LIB}
 		${WITH_CPLEX_INCDIR}
 		--disable-cplex-libcheck
@@ -108,10 +95,10 @@ ExternalProject_Add(Osi
 ##################################################
 
 if(APPLE)
-	set(CLP_BLAS "LDFLAGS=-framework Accelerate")
+	set(COIN_BLAS "LDFLAGS=-framework Accelerate")
 else(APPLE)
-	set(CLP_BLAS "--with-blas-lib=${BLAS_LIBRARIES}")
-    string(REPLACE ";" "\ " CLP_BLAS "${CLP_BLAS}")
+	set(COIN_BLAS "--with-blas-lib=${BLAS_LIBRARIES}")
+	string(REPLACE ";" "\ " COIN_BLAS "${COIN_BLAS}")
 endif(APPLE)
 
 ExternalProject_Add(Clp
@@ -121,15 +108,57 @@ ExternalProject_Add(Clp
 		--prefix=${DEPEND_DIR}
 		--enable-static 
 		--disable-shared
-		${CLP_BLAS}
-		--with-coinutils
-		--with-coinutils-lflags=${COINUTILS_LIB}
-		--with-coinutils-cflags=-I${COIN_INC_DIR}
-		--with-osi
-		--with-osi-lflags=${OSI_LIB}
-		--with-osi-cflags=-I${COIN_INC_DIR}
+		${COIN_BLAS}
+		--with-coinutils-lib=${COINUTILS_LIB}
+		--with-coinutils-incdir=${COIN_INC_DIR}
+		--with-osi-lib=${OSI_LIB}
+		--with-osi-incdir=${COIN_INC_DIR}
 		ADD_CXXFLAGS=-fPIC
 		# CXX=${CMAKE_CXX_COMPILER}
+	BUILD_COMMAND make
+	INSTALL_COMMAND make install)
+
+##################################################
+# Compile Cgl
+##################################################
+
+ExternalProject_Add(Cgl
+	DEPENDS CoinUtils Osi Clp
+	SOURCE_DIR ${CGL_DIR}
+	CONFIGURE_COMMAND ${CGL_DIR}/configure
+		--prefix=${DEPEND_DIR}
+		--enable-static 
+		--disable-shared
+		${COIN_BLAS}
+		--with-coinutils-lib=${COINUTILS_LIB}
+		--with-coinutils-incdir=${COIN_INC_DIR}
+		--with-osi-lib=${OSI_LIB}
+		--with-osi-incdir=${COIN_INC_DIR}
+		--with-clp-lib=${CLP_LIB}
+		--with-clp-incdir=${COIN_INC_DIR}
+		ADD_CXXFLAGS=-fPIC
+	BUILD_COMMAND make
+	INSTALL_COMMAND make install)
+
+##################################################
+# Compile Cbc
+##################################################
+
+ExternalProject_Add(Cbc
+	DEPENDS Osi Cgl
+	SOURCE_DIR ${CBC_DIR}
+	CONFIGURE_COMMAND ${CBC_DIR}/configure
+		--prefix=${DEPEND_DIR}
+		--enable-static 
+		--disable-shared
+		${COIN_BLAS}
+		--with-coinutils-lib=${COINUTILS_LIB}
+		--with-coinutils-incdir=${COIN_INC_DIR}
+		--with-osi-lib=${OSI_LIB}
+		--with-osi-incdir=${COIN_INC_DIR}
+		--with-cgl-lib=${CGL_LIB}
+		--with-cgl-incdir=${COIN_INC_DIR}
+		ADD_CXXFLAGS=-fPIC
 	BUILD_COMMAND make
 	INSTALL_COMMAND make install)
 

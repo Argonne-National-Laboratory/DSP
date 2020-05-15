@@ -28,16 +28,17 @@ int main(int argc, char* argv[])
         
         env->solver_ = new DeDriver(env->model_, env->par_, env->message_);
         // env->par_->setBoolPtrParam("RELAX_INTEGRALITY", 1, true);
-        env->solver_->setTimeLimit(10.0);
+        // env->solver_->setLogLevel(0);
+        env->solver_->setTimeLimit(5.0);
         env->solver_->init();
         dynamic_cast<DeDriver*>(env->solver_)->run();
         env->solver_->finalize();
 
         double bestprimobj = env->solver_->getBestPrimalObjective();
-        double bestdualobj = env->solver_->getBestPrimalObjective();
+        double bestdualobj = env->solver_->getBestDualObjective();
         double relgap = env->solver_->getRelDualityGap();
-        printf("best primal bound: %.10f\n", bestprimobj);
-        printf("best dual bound  : %.10f\n", bestdualobj);
+        printf("best primal bound: %e\n", bestprimobj);
+        printf("best dual bound  : %e\n", bestdualobj);
         printf("relative gap (%%) : %f\n", relgap*100);
 
         FREE_PTR(env);

@@ -18,7 +18,7 @@ DecSolver::DecSolver(
 model_(model),
 par_(par),
 message_(message),
-si_(NULL),
+osi_(NULL),
 status_(DSP_STAT_UNKNOWN),
 bestprimobj_(COIN_DBL_MAX),
 primobj_(COIN_DBL_MAX),
@@ -50,7 +50,7 @@ tic_(rhs.tic_),
 numIterations_(rhs.numIterations_),
 numNodes_(rhs.numNodes_),
 iterlim_(rhs.iterlim_) {
-	si_ = rhs.si_->clone();
+	osi_ = rhs.osi_->clone();
 	bestprimsol_ = rhs.bestprimsol_;
 	primsol_ = rhs.primsol_;
 	bestdualsol_ = rhs.bestdualsol_;
@@ -64,7 +64,7 @@ iterlim_(rhs.iterlim_) {
 }
 
 DecSolver::~DecSolver() {
-	FREE_PTR(si_);
+	FREE_PTR(osi_);
 	message_ = NULL;
 	par_ = NULL;
 	model_ = NULL;

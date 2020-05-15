@@ -42,6 +42,17 @@ set(DSP_SRC
     Solver/DualDecomp/DdWorkerCG.cpp
     Solver/DualDecomp/DdWorkerLB.cpp
     Solver/DualDecomp/DdWorkerUB.cpp
+    Solver/DantzigWolfe/DwBranchInt.cpp
+    Solver/DantzigWolfe/DwBranchNonant.cpp
+    Solver/DantzigWolfe/DwBranchNonant2.cpp
+    Solver/DantzigWolfe/DwBranchGenDisj.cpp
+    Solver/DantzigWolfe/DwModel.cpp
+    Solver/DantzigWolfe/DwMaster.cpp
+    Solver/DantzigWolfe/DwBundleDual.cpp
+    Solver/DantzigWolfe/DwBundleDualSmip.cpp
+    Solver/DantzigWolfe/DwHeuristic.cpp
+    Solver/DantzigWolfe/DwSolverSerial.cpp
+    Solver/DantzigWolfe/DwWorker.cpp
     TreeSearch/DspModel.cpp
     TreeSearch/DspTreeNode.cpp
     Utility/DspParams.cpp
@@ -55,8 +66,10 @@ set(DSP_LIBS
 	${DEPEND_DIR}/lib/libSmi.a 
 	${DEPEND_DIR}/lib/libOsi.a 
 	${DEPEND_DIR}/lib/libOsiClp.a 
-	${DEPEND_DIR}/lib/libOsiGlpk.a 
+	${DEPEND_DIR}/lib/libOsiCbc.a 
 	${DEPEND_DIR}/lib/libClp.a 
+	${DEPEND_DIR}/lib/libCbc.a 
+	${DEPEND_DIR}/lib/libCgl.a 
 	${DEPEND_DIR}/lib/libAlps.a
 	${DEPEND_DIR}/lib/libCoinUtils.a 
 	${ZLIB_LIBRARIES}
@@ -66,20 +79,6 @@ set(DSP_LIBS
 )
 
 if(CPLEXLIB)
-    set(DSP_SRC 
-        ${DSP_SRC}
-        Solver/DantzigWolfe/DwBranchInt.cpp
-        Solver/DantzigWolfe/DwBranchNonant.cpp
-        Solver/DantzigWolfe/DwBranchNonant2.cpp
-        Solver/DantzigWolfe/DwBranchGenDisj.cpp
-        Solver/DantzigWolfe/DwModel.cpp
-        Solver/DantzigWolfe/DwMaster.cpp
-        Solver/DantzigWolfe/DwBundleDual.cpp
-        Solver/DantzigWolfe/DwBundleDualSmip.cpp
-        Solver/DantzigWolfe/DwHeuristic.cpp
-        Solver/DantzigWolfe/DwSolverSerial.cpp
-        Solver/DantzigWolfe/DwWorker.cpp
-    )
     set(DSP_INC_DIR 
         ${DSP_INC_DIR} 
         ${CPLEX_INC_DIR})
@@ -223,25 +222,21 @@ install(CODE "message(\"${Blue}** Please add the following line to the .bash_pro
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ../test)
 add_executable(test_de ../test/test_de.cpp $<TARGET_OBJECTS:DspObj>)
 add_executable(test_dd ../test/test_dd.cpp $<TARGET_OBJECTS:DspObj>)
+add_executable(test_dw ../test/test_dw.cpp $<TARGET_OBJECTS:DspObj>)
 target_link_libraries(test_de ${DSP_LIBS})
 target_link_libraries(test_dd ${DSP_LIBS})
+target_link_libraries(test_dw ${DSP_LIBS})
 if(SCIPLIB)
     add_executable(test_bd ../test/test_bd.cpp $<TARGET_OBJECTS:DspObj>)
     target_link_libraries(test_bd ${DSP_LIBS})
 endif(SCIPLIB)
-if(CPLEXLIB)
-    add_executable(test_dw ../test/test_dw.cpp $<TARGET_OBJECTS:DspObj>)
-    target_link_libraries(test_dw ${DSP_LIBS})
-endif(CPLEXLIB)
 if(MPI_CXX_FOUND)
     add_executable(test_dd_mpi ../test/test_dd_mpi.cpp $<TARGET_OBJECTS:DspObj>)
+    add_executable(test_dw_mpi ../test/test_dw_mpi.cpp $<TARGET_OBJECTS:DspObj>)
     target_link_libraries(test_dd_mpi ${DSP_LIBS})
+    target_link_libraries(test_dw_mpi ${DSP_LIBS})
     if(SCIPLIB)
         add_executable(test_bd_mpi ../test/test_bd_mpi.cpp $<TARGET_OBJECTS:DspObj>)
         target_link_libraries(test_bd_mpi ${DSP_LIBS})
     endif(SCIPLIB)
-    if(CPLEXLIB)
-        add_executable(test_dw_mpi ../test/test_dw_mpi.cpp $<TARGET_OBJECTS:DspObj>)
-        target_link_libraries(test_dw_mpi ${DSP_LIBS})
-    endif(CPLEXLIB)
 endif(MPI_CXX_FOUND)

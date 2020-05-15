@@ -8,7 +8,9 @@
 // #define DSP_DEBUG
 #include "Model/TssModel.h"
 #include "Solver/DualDecomp/DdWorkerUB.h"
-#include "SolverInterface/DspOsi.h"
+#include "SolverInterface/DspOsiCbc.h"
+#include "SolverInterface/DspOsiCpx.h"
+#include "SolverInterface/DspOsiScip.h"
 
 #ifdef DSP_HAS_SCIP
 #include "Solver/DualDecomp/SCIPconshdlrBendersDd.h"
@@ -23,8 +25,8 @@ bestub_(COIN_DBL_MAX),
 mat_mp_(NULL),
 rlbd_org_(NULL),
 rubd_org_(NULL),
-si_(NULL),
-si_dro_(NULL),
+osi_(NULL),
+osi_dro_(NULL),
 ub_(0.0) {}
 
 DdWorkerUB::DdWorkerUB(const DdWorkerUB& rhs) : 
@@ -39,25 +41,25 @@ ub_(rhs.ub_) {
 	mat_mp_    = new CoinPackedMatrix * [nsubprobs];
 	rlbd_org_  = new double * [nsubprobs];
 	rubd_org_  = new double * [nsubprobs];
-	si_        = new OsiSolverInterface * [nsubprobs];
+	osi_        = new DspOsi * [nsubprobs];
 	for (int s = 0; s < nsubprobs; ++s) {
 		mat_mp_[s] = new CoinPackedMatrix(*(rhs.mat_mp_[s]));
-		rlbd_org_[s] = new double [si_[s]->getNumRows()];
-		rubd_org_[s] = new double [si_[s]->getNumRows()];
-		si_[s] = rhs.si_[s]->clone();
-		CoinCopyN(rhs.rlbd_org_[s], si_[s]->getNumRows(), rlbd_org_[s]);
-		CoinCopyN(rhs.rubd_org_[s], si_[s]->getNumRows(), rubd_org_[s]);
+		rlbd_org_[s] = new double [osi_[s]->si_->getNumRows()];
+		rubd_org_[s] = new double [osi_[s]->si_->getNumRows()];
+		osi_[s] = rhs.osi_[s]->clone();
+		CoinCopyN(rhs.rlbd_org_[s], osi_[s]->si_->getNumRows(), rlbd_org_[s]);
+		CoinCopyN(rhs.rubd_org_[s], osi_[s]->si_->getNumRows(), rubd_org_[s]);
 	}
 	if (model_->isDro())
-		si_dro_ = rhs.si_dro_->clone();
+		osi_dro_ = rhs.osi_dro_->clone();
 }
 
 DdWorkerUB::~DdWorkerUB() {
 	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), mat_mp_);
 	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), rlbd_org_);
 	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), rubd_org_);
-	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), si_);
-	FREE_PTR(si_dro_);
+	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), osi_);
+	FREE_PTR(osi_dro_);
 }
 
 DSP_RTN_CODE DdWorkerUB::init() {
@@ -118,7 +120,7 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 	mat_mp_    = new CoinPackedMatrix * [nsubprobs];
 	rlbd_org_  = new double * [nsubprobs];
 	rubd_org_  = new double * [nsubprobs];
-	si_        = new OsiSolverInterface * [nsubprobs];
+	osi_       = new DspOsi * [nsubprobs];
 	primsols_.resize(nsubprobs);
 
 	for (int s = 0; s < nsubprobs; ++s) {
@@ -138,33 +140,35 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
     	switch (par_->getIntParam("SOLVER/MIP")) {
     	case OsiCpx:
 #ifdef DSP_HAS_CPX
-    		si_[s] = new OsiCpxSolverInterface();
-			CPXsetintparam(dynamic_cast<OsiCpxSolverInterface*>(si_[s])->getEnvironmentPtr(), CPX_PARAM_SCRIND, CPX_OFF);
+    		osi_[s] = new DspOsiCpx();
+			CPXsetintparam(dynamic_cast<DspOsiCpx*>(osi_[s])->cpx_->getEnvironmentPtr(), CPX_PARAM_SCRIND, CPX_OFF);
     		break;
 #endif
     	case OsiScip:
 #ifdef DSP_HAS_SCIP
-            si_[s] = new OsiScipSolverInterface();
+            osi_[s] = new DspOsiScip();
             break;
 #endif
+    	case OsiCbc:
     	default:
+            osi_[s] = new DspOsiCbc();
     		break;
     	}
 
 	    /** no display */
-	    si_[s]->messageHandler()->setLogLevel(0);
+	    osi_[s]->setLogLevel(0);
 
 	    /** load problem */
-	    si_[s]->loadProblem(*mat_reco, clbd_reco, cubd_reco, obj_reco, rlbd_org_[s], rubd_org_[s]);
+	    osi_[s]->si_->loadProblem(*mat_reco, clbd_reco, cubd_reco, obj_reco, rlbd_org_[s], rubd_org_[s]);
 		for (int j = 0; j < mat_reco->getNumCols(); ++j) {
 			if (ctype_reco[j] != 'C')
-				si_[s]->setInteger(j);
+				osi_[s]->si_->setInteger(j);
 		}
 	    DSPdebug(mat_reco->verifyMtx(4));
-		DSPdebugMessage("number of integers: %d\n", si_[s]->getNumIntegers());
+		DSPdebugMessage("number of integers: %d\n", osi_[s]->si_->getNumIntegers());
 
 		/** allocate array size for each scenario primal solution */
-		primsols_[s].resize(si_[s]->getNumCols());
+		primsols_[s].resize(osi_[s]->si_->getNumCols());
 
 		FREE_MEMORY
     }
@@ -232,24 +236,26 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
     	switch (par_->getIntParam("SOLVER/MIP")) {
     	case OsiCpx:
 #ifdef DSP_HAS_CPX
-    		si_dro_ = new OsiCpxSolverInterface();
-			CPXsetintparam(dynamic_cast<OsiCpxSolverInterface*>(si_dro_)->getEnvironmentPtr(), CPX_PARAM_SCRIND, CPX_OFF);
+    		osi_dro_ = new DspOsiCpx();
+			CPXsetintparam(dynamic_cast<DspOsiCpx*>(osi_dro_)->cpx_->getEnvironmentPtr(), CPX_PARAM_SCRIND, CPX_OFF);
     		break;
 #endif
     	case OsiScip:
 #ifdef DSP_HAS_SCIP
-            si_dro_ = new OsiScipSolverInterface();
+            osi_dro_ = new DspOsiScip();
             break;
 #endif
+    	case OsiCbc:
     	default:
+            osi_dro_ = new DspOsiCbc();
     		break;
     	}
 
 	    /** no display */
-	    si_dro_->messageHandler()->setLogLevel(0);
+	    osi_dro_->setLogLevel(0);
 
 	    /** load problem */
-	    si_dro_->loadProblem(*mat_dro, clbd_dro, cubd_dro, obj_dro, rlbd_dro, rubd_dro);
+	    osi_dro_->si_->loadProblem(*mat_dro, clbd_dro, cubd_dro, obj_dro, rlbd_dro, rubd_dro);
 
 		/** free matrix */
 		FREE_PTR(mat_dro);
@@ -310,13 +316,13 @@ double DdWorkerUB::evaluate(CoinPackedVector* solution) {
 		mat_mp_[s]->times(x, Tx);
 
 		/** adjust row bounds */
-		const double* rlbd = si_[s]->getRowLower();
-		const double* rubd = si_[s]->getRowUpper();
-		for (int i = si_[s]->getNumRows() - 1; i >= 0; --i) {
+		const double* rlbd = osi_[s]->si_->getRowLower();
+		const double* rubd = osi_[s]->si_->getRowUpper();
+		for (int i = osi_[s]->si_->getNumRows() - 1; i >= 0; --i) {
 			if (rlbd_org_[s][i] > -COIN_DBL_MAX)
-				si_[s]->setRowLower(i, rlbd[i] - Tx[i]);
+				osi_[s]->si_->setRowLower(i, rlbd[i] - Tx[i]);
 			if (rubd_org_[s][i] < COIN_DBL_MAX)
-				si_[s]->setRowUpper(i, rubd[i] - Tx[i]);
+				osi_[s]->si_->setRowUpper(i, rubd[i] - Tx[i]);
 		}
 
 		/** first-stage objective value */
@@ -340,9 +346,9 @@ double DdWorkerUB::evaluate(CoinPackedVector* solution) {
 
 	/** restore row bounds */
 	for (int s = nsubprobs - 1; s >= 0; --s) {
-		for (int i = si_[s]->getNumRows() - 1; i >= 0; --i) {
-			si_[s]->setRowLower(i, rlbd_org_[s][i]);
-			si_[s]->setRowUpper(i, rubd_org_[s][i]);
+		for (int i = osi_[s]->si_->getNumRows() - 1; i >= 0; --i) {
+			osi_[s]->si_->setRowLower(i, rlbd_org_[s][i]);
+			osi_[s]->si_->setRowUpper(i, rubd_org_[s][i]);
 		}
 	}
 
@@ -371,19 +377,15 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 		walltime = CoinGetTimeOfDay();
 
 		/** set time limit */
-		si_[s]->setTimeLimit(
+		osi_[s]->setTimeLimit(
 				CoinMin(CoinMax(0.01, time_remains_),
 				par_->getDblParam("MIP/TIME_LIM")));
 
 		/** solve */
-		if (si_[s]->getNumIntegers() > 0)
-			si_[s]->branchAndBound();
-		else
-			si_[s]->initialSolve();
+		osi_[s]->solve();
 
 		/** check status. there might be unexpected results. */
-		int status;
-		convertOsiToDspStatus(si_[s], status);
+		int status = osi_[s]->status();
 		DSPdebugMessage("status = %d\n", status);
 		switch (status) {
 		case DSP_STAT_OPTIMAL:
@@ -405,9 +407,9 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 			break;
 		}
 
-		primobj += si_[s]->getObjValue();
-		dualobj += si_[s]->getBestDualBound();
-		CoinCopyN(si_[s]->getColSolution(), si_[s]->getNumCols(), &primsols_[s][0]);
+		primobj += osi_[s]->getPrimObjValue();
+		dualobj += osi_[s]->getDualObjValue();
+		CoinCopyN(osi_[s]->si_->getColSolution(), osi_[s]->si_->getNumCols(), &primsols_[s][0]);
 		total_cputime += CoinCpuTime() - cputime;
 		total_walltime += CoinGetTimeOfDay() - walltime;
 
@@ -420,13 +422,13 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 		assert(nsubprobs == model_->getNumSubproblems());
 		for (int k = 0; k < nsubprobs; ++k) {
 			for (int s = 0; s < model_->getNumReferences(); ++s) {
-				si_dro_->setRowLower(k * model_->getNumReferences() + s, si_[k]->getObjValue());
+				osi_dro_->si_->setRowLower(k * model_->getNumReferences() + s, osi_[k]->si_->getObjValue());
 			}
 		}
-		si_dro_->initialSolve();
+		osi_dro_->solve();
 
-		if (si_dro_->isProvenOptimal()) {
-			primobj = si_dro_->getObjValue();
+		if (osi_dro_->si_->isProvenOptimal()) {
+			primobj = osi_dro_->getPrimObjValue();
 		} else {
 			primobj = COIN_DBL_MAX;
 		}

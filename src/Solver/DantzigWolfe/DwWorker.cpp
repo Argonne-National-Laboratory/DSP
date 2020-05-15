@@ -7,18 +7,17 @@
 
 // #define DSP_DEBUG
 
-#include "SolverInterface/DspOsi.h"
+#include "SolverInterface/DspOsiCbc.h"
+#include "SolverInterface/DspOsiCpx.h"
 #include "Solver/DantzigWolfe/DwWorker.h"
 #include "Model/TssModel.h"
 #include "Utility/DspUtility.h"
-
-#define SI OsiCpxSolverInterface
 
 DwWorker::DwWorker(DecModel * model, DspParams * par, DspMessage * message) :
 		model_(model),
 		par_(par),
 		message_(message),
-		si_(NULL),
+		osi_(NULL),
 		sub_objs_(NULL) {
 
 	/** parameters */
@@ -38,9 +37,14 @@ DwWorker::DwWorker(DecModel * model, DspParams * par, DspMessage * message) :
 	//sub_ = new DwSub();
 
 	/** create solver interface */
-	si_ = new OsiSolverInterface* [parProcIdxSize_];
-	for (int i = 0; i < parProcIdxSize_; ++i)
-		si_[i] = new SI();
+	osi_ = new DspOsi* [parProcIdxSize_];
+	if (par_->getIntParam("SOLVER/MIP") == OsiCpx) {
+		for (int i = 0; i < parProcIdxSize_; ++i)
+			osi_[i] = new DspOsiCbc();
+	} else if (par_->getIntParam("SOLVER/MIP") == OsiCbc) {
+		for (int i = 0; i < parProcIdxSize_; ++i)
+			osi_[i] = new DspOsiCbc();
+	}
 
 	/** subproblem objective coefficients */
 	sub_objs_ = new double* [parProcIdxSize_];
@@ -71,7 +75,7 @@ DwWorker::DwWorker(DecModel * model, DspParams * par, DspMessage * message) :
 }
 
 DwWorker::~DwWorker() {
-	FREE_2D_PTR(parProcIdxSize_, si_);
+	FREE_2D_PTR(parProcIdxSize_, osi_);
 	//FREE_PTR(sub_);
 	FREE_2D_ARRAY_PTR(parProcIdxSize_, sub_objs_);
 	FREE_2D_ARRAY_PTR(parProcIdxSize_, sub_clbd_);
@@ -124,34 +128,29 @@ DSP_RTN_CODE DwWorker::createSubproblems() {
 		DSPdebug(DspMessage::printArray(model_->getNumCouplingCols(), sub_objs_[s]));
 
 		/** load problem to si */
-		si_[s]->loadProblem(*mat, sub_clbd_[s], sub_cubd_[s], sub_objs_[s], rlbd, rubd);
+		osi_[s]->si_->loadProblem(*mat, sub_clbd_[s], sub_cubd_[s], sub_objs_[s], rlbd, rubd);
 
 		/** set integers */
 		int nintegers = 0;
-		for (int j = 0; j < si_[s]->getNumCols(); ++j) {
+		for (int j = 0; j < osi_[s]->si_->getNumCols(); ++j) {
 			if (ctype[j] != 'C') {
-				si_[s]->setInteger(j);
+				osi_[s]->si_->setInteger(j);
 				nintegers++;
 			}
 		}
 
-		si_[s]->messageHandler()->setLogLevel(par_->getIntParam("DW/SUB/LOG_LEVEL"));
+		osi_[s]->setLogLevel(par_->getIntParam("DW/SUB/LOG_LEVEL"));
 
 		/** set parameters */
-		si_[s]->setMipRelGap(par_->getDblParam("DW/SUB/GAPTOL"));
-		si_[s]->setTimeLimit(par_->getDblParam("DW/SUB/TIME_LIM"));
-		OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_[s]);
-		if (cpx) {
-			if (nintegers > 0)
-				cpx->switchToMIP();
-			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("DW/SUB/THREADS"));
-			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_ADVIND, par_->getIntParam("DW/SUB/ADVIND"));
-		}
+		osi_[s]->setRelMipGap(par_->getDblParam("DW/SUB/GAPTOL"));
+		osi_[s]->setTimeLimit(par_->getDblParam("DW/SUB/TIME_LIM"));
+		osi_[s]->setNumCores(par_->getIntParam("DW/SUB/THREADS"));
 
-		if (nintegers > 0)
-			si_[s]->branchAndBound();
-		else
-			si_[s]->initialSolve();
+		/** TODO: Is this option critical to performance? */
+		// CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_ADVIND, par_->getIntParam("DW/SUB/ADVIND"));
+
+		/** initial solve */
+		osi_[s]->solve();
 
 #ifdef DSP_DEBUG
 		if (s >= 0) {
@@ -159,7 +158,7 @@ DSP_RTN_CODE DwWorker::createSubproblems() {
 			char ofname[128];
 			sprintf(ofname, "sub%d", parProcIdx_[s]);
 			DSPdebugMessage("Writing MPS file: %s\n", ofname);
-			si_[s]->writeMps(ofname);
+			osi_[s]->si_->writeMps(ofname);
 		}
 #endif
 
@@ -225,13 +224,12 @@ DSP_RTN_CODE DwWorker::generateCols(
 		indices.push_back(sind);
 
 		/** store solution status */
-		int status;
-		convertOsiToDspStatus(si_[s], status);
+		int status = osi_[s]->status();
 		if (status == DSP_STAT_STOPPED_TIME)
 			num_timelim_stops_[s]++;
 		else if (status != DSP_STAT_UNKNOWN) {
 			num_timelim_stops_[s] = 0;
-			si_[s]->setTimeLimit(par_->getDblParam("DW/SUB/TIME_LIM"));
+			osi_[s]->setTimeLimit(par_->getDblParam("DW/SUB/TIME_LIM"));
 		}
 
 		DSPdebugMessage("sind %d status %d\n", sind, status);
@@ -239,11 +237,11 @@ DSP_RTN_CODE DwWorker::generateCols(
 
 		if (status != DSP_STAT_UNKNOWN && status != DSP_STAT_PRIM_INFEASIBLE) {
 			sol = new CoinPackedVector;
-			sol->reserve(si_[s]->getNumCols());
+			sol->reserve(osi_[s]->si_->getNumCols());
 
 			if (status == DSP_STAT_DUAL_INFEASIBLE) {
 				/** retrieve ray if unbounded */
-				std::vector<double*> rays = si_[s]->getPrimalRays(1);
+				std::vector<double*> rays = osi_[s]->si_->getPrimalRays(1);
 				if (rays.size() == 0 || rays[0] == NULL)
 					throw CoinError("No primal ray is available.", "generateCols", "DwWorker");
 				double* ray = rays[0];
@@ -252,13 +250,13 @@ DSP_RTN_CODE DwWorker::generateCols(
 				/** subproblem objective value */
 				cx = 0.0;
 				objval = 0.0;
-				for (int j = 0; j < si_[s]->getNumCols(); ++j) {
+				for (int j = 0; j < osi_[s]->si_->getNumCols(); ++j) {
 					cx += sub_objs_[s][j] * ray[j];
-					objval += si_[s]->getObjCoefficients()[j] * ray[j];
+					objval += osi_[s]->si_->getObjCoefficients()[j] * ray[j];
 				}
 
 				/** subproblem coupling solution */
-				for (int j = 0; j < si_[s]->getNumCols(); ++j) {
+				for (int j = 0; j < osi_[s]->si_->getNumCols(); ++j) {
 					double xval = ray[j];
 					if (fabs(xval) > 1.0e-8) {
 						if (model_->isStochastic()) {
@@ -274,18 +272,18 @@ DSP_RTN_CODE DwWorker::generateCols(
 				/** free ray */
 				FREE_ARRAY_PTR(ray);
 			} else /*if (si_[s]->isProvenOptimal())*/ {
-				const double* x = si_[s]->getColSolution();
+				const double* x = osi_[s]->si_->getColSolution();
 
 				/** subproblem objective value */
-				objval = si_[s]->getObjValue();
+				objval = osi_[s]->getPrimObjValue();
 					
 				cx = 0.0;
-				for (int j = 0; j < si_[s]->getNumCols(); ++j)
+				for (int j = 0; j < osi_[s]->si_->getNumCols(); ++j)
 					cx += sub_objs_[s][j] * x[j];
 				DSPdebugMessage("Subprob %d: objval %e, cx %e\n", sind, objval, cx);
 
 				/** subproblem coupling solution */
-				for (int j = 0; j < si_[s]->getNumCols(); ++j) {
+				for (int j = 0; j < osi_[s]->si_->getNumCols(); ++j) {
 					double xval = x[j];
 					//if (sub_clbd_[s][j] == sub_cubd_[s][j])
 					//	printf("sind %d j %d [%e, %e, %e]\n", sind, j, sub_clbd_[s][j], xval, sub_cubd_[s][j]);
@@ -343,8 +341,8 @@ DSP_RTN_CODE DwWorker::generateColsByFix(
 
 	/** set objective function */
 	for (int s = 0; s < parProcIdxSize_; ++s) {
-		for (int j = 0; j < si_[s]->getNumCols(); ++j) {
-			si_[s]->setObjCoeff(j, sub_objs_[s][j]);
+		for (int j = 0; j < osi_[s]->si_->getNumCols(); ++j) {
+			osi_[s]->si_->setObjCoeff(j, sub_objs_[s][j]);
 			// message_->print(0, "sub_objs_[%d][%d] = %e\n", s, j, sub_objs_[s][j]);
 		}
 	}
@@ -352,7 +350,7 @@ DSP_RTN_CODE DwWorker::generateColsByFix(
 	/** fix column bounds */
 	for (int s = 0; s < parProcIdxSize_; ++s) {
 		for (int j = 0; j < ncols_first_stage; ++j)
-			si_[s]->setColBounds(j, x[j], x[j]);
+			osi_[s]->si_->setColBounds(j, x[j], x[j]);
 	}
 
 	/** solve subproblems */
@@ -377,34 +375,33 @@ DSP_RTN_CODE DwWorker::generateColsByFix(
 		indices.push_back(sind);
 
 		/** store solution status */
-		int status;
-		convertOsiToDspStatus(si_[s], status);
+		int status = osi_[s]->status();
 		if (status == DSP_STAT_STOPPED_TIME) {
 			num_timelim_stops_[s]++;
 		} else if (status != DSP_STAT_UNKNOWN) {
 			num_timelim_stops_[s] = 0;
-			si_[s]->setTimeLimit(par_->getDblParam("DW/SUB/TIME_LIM"));
+			osi_[s]->setTimeLimit(par_->getDblParam("DW/SUB/TIME_LIM"));
 		}
 
 		DSPdebugMessage("sind %d status %d\n", sind, status);
 		statuses.push_back(status);
 
-		if (!si_[s]->isAbandoned() && !si_[s]->isProvenPrimalInfeasible()) {
+		if (!osi_[s]->si_->isAbandoned() && !osi_[s]->si_->isProvenPrimalInfeasible()) {
 			sol = new CoinPackedVector;
-			sol->reserve(si_[s]->getNumCols());
+			sol->reserve(osi_[s]->si_->getNumCols());
 
-			if (!si_[s]->isProvenDualInfeasible()) {
-				const double* x = si_[s]->getColSolution();
+			if (!osi_[s]->si_->isProvenDualInfeasible()) {
+				const double* x = osi_[s]->si_->getColSolution();
 
 				/** subproblem objective value */
-				if (si_[s]->getNumIntegers())
-					objval = si_[s]->getBestDualBound();
+				if (osi_[s]->si_->getNumIntegers())
+					objval = osi_[s]->getDualObjValue();
 				else
-					objval = si_[s]->getObjValue();
+					objval = osi_[s]->getPrimObjValue();
 				DSPdebugMessage("Subprob %d: objval %e\n", sind, objval);
 
 				/** subproblem coupling solution */
-				for (int j = 0; j < si_[s]->getNumCols(); ++j) {
+				for (int j = 0; j < osi_[s]->si_->getNumCols(); ++j) {
 					double xval = x[j];
 					//if (sub_clbd_[s][j] == sub_cubd_[s][j])
 					//	printf("sind %d j %d [%e, %e, %e]\n", sind, j, sub_clbd_[s][j], xval, sub_cubd_[s][j]);
@@ -462,29 +459,29 @@ DSP_RTN_CODE DwWorker::adjustObjFunction(
 		if (model_->isStochastic()) {
 			if (phase == 1) {
 				for (int j = 0; j < ncols_first_stage; ++j)
-					si_[s]->setObjCoeff(j, -piA[sind * ncols_first_stage + j]);
-				for (int j = ncols_first_stage; j < si_[s]->getNumCols(); ++j)
-					si_[s]->setObjCoeff(j, -piA[(nscen-1) * ncols_first_stage + sind * ncols_second_stage + j]);
+					osi_[s]->si_->setObjCoeff(j, -piA[sind * ncols_first_stage + j]);
+				for (int j = ncols_first_stage; j < osi_[s]->si_->getNumCols(); ++j)
+					osi_[s]->si_->setObjCoeff(j, -piA[(nscen-1) * ncols_first_stage + sind * ncols_second_stage + j]);
 			} else if (phase == 2) {
 				for (int j = 0; j < ncols_first_stage; ++j)
-					si_[s]->setObjCoeff(j, sub_objs_[s][j] - piA[sind * ncols_first_stage + j]);
-				for (int j = ncols_first_stage; j < si_[s]->getNumCols(); ++j)
-					si_[s]->setObjCoeff(j, sub_objs_[s][j] - piA[(nscen-1) * ncols_first_stage + sind * ncols_second_stage + j]);
+					osi_[s]->si_->setObjCoeff(j, sub_objs_[s][j] - piA[sind * ncols_first_stage + j]);
+				for (int j = ncols_first_stage; j < osi_[s]->si_->getNumCols(); ++j)
+					osi_[s]->si_->setObjCoeff(j, sub_objs_[s][j] - piA[(nscen-1) * ncols_first_stage + sind * ncols_second_stage + j]);
 			}
 		} else {
 			if (phase == 1) {
-				for (int j = 0; j < si_[s]->getNumCols(); ++j) {
+				for (int j = 0; j < osi_[s]->si_->getNumCols(); ++j) {
 					if (j < model_->getNumCouplingCols())
-						si_[s]->setObjCoeff(j, -piA[j]);
+						osi_[s]->si_->setObjCoeff(j, -piA[j]);
 					else
-						si_[s]->setObjCoeff(j, 0.0);
+						osi_[s]->si_->setObjCoeff(j, 0.0);
 				}
 			} else if (phase == 2) {
-				for (int j = 0; j < si_[s]->getNumCols(); ++j) {
+				for (int j = 0; j < osi_[s]->si_->getNumCols(); ++j) {
 					if (j < model_->getNumCouplingCols())
-						si_[s]->setObjCoeff(j, sub_objs_[s][j] - piA[j]);
+						osi_[s]->si_->setObjCoeff(j, sub_objs_[s][j] - piA[j]);
 					else
-						si_[s]->setObjCoeff(j, sub_objs_[s][j]);
+						osi_[s]->si_->setObjCoeff(j, sub_objs_[s][j]);
 				}
 			}
 		}
@@ -503,7 +500,7 @@ void DwWorker::setColBounds(int j, double lb, double ub) {
 		TssModel* tss = dynamic_cast<TssModel*>(model_);
 		for (int s = 0; s < parProcIdxSize_; ++s) {
 			if (j < tss->getNumScenarios() * tss->getNumCols(0)) {
-				si_[s]->setColBounds(j % tss->getNumCols(0), lb, ub);
+				osi_[s]->si_->setColBounds(j % tss->getNumCols(0), lb, ub);
 				sub_clbd_[s][j % tss->getNumCols(0)] = lb;
 				sub_cubd_[s][j % tss->getNumCols(0)] = ub;
 				DSPdebugMessage("subproblem %d changed column bounds: %d [%e %e]\n", parProcIdx_[s], j % tss->getNumCols(0), lb, ub);
@@ -511,7 +508,7 @@ void DwWorker::setColBounds(int j, double lb, double ub) {
 				int jj = j - tss->getNumScenarios() * tss->getNumCols(0);
 				if (jj < parProcIdx_[s] * tss->getNumCols(1) || jj >= (parProcIdx_[s]+1) * tss->getNumCols(1))
 					continue;
-				si_[s]->setColBounds(tss->getNumCols(0) + jj % tss->getNumCols(1), lb, ub);
+				osi_[s]->si_->setColBounds(tss->getNumCols(0) + jj % tss->getNumCols(1), lb, ub);
 				sub_clbd_[s][tss->getNumCols(0) + jj % tss->getNumCols(1)] = lb;
 				sub_cubd_[s][tss->getNumCols(0) + jj % tss->getNumCols(1)] = ub;
 				DSPdebugMessage("subproblem %d changed column bounds: %d [%e %e]\n", parProcIdx_[s], tss->getNumCols(0) + jj % tss->getNumCols(1), lb, ub);
@@ -520,7 +517,7 @@ void DwWorker::setColBounds(int j, double lb, double ub) {
 	} else {
 		for (int s = 0; s < parProcIdxSize_; ++s) {
 			if (coupled_[s][j] == true) {
-				si_[s]->setColBounds(j, lb, ub);
+				osi_[s]->si_->setColBounds(j, lb, ub);
 				sub_clbd_[s][j] = lb;
 				sub_cubd_[s][j] = ub;
 				DSPdebugMessage("subproblem %d changed column bounds: %d [%e %e]\n", parProcIdx_[s], j, lb, ub);
@@ -536,8 +533,8 @@ void DwWorker::setColBounds(int size, const int* indices, const double* lbs, con
 
 void DwWorker::addRow(const CoinPackedVector* vec, double lb, double ub) {
 	for (int s = 0; s < parProcIdxSize_; ++s) {
-		si_[s]->addRow(*vec, lb, ub);
-		added_rowids_[s].push_back(si_[s]->getNumRows()-1);
+		osi_[s]->si_->addRow(*vec, lb, ub);
+		added_rowids_[s].push_back(osi_[s]->si_->getNumRows()-1);
 		//printf("addRow: s %d size %u row index %d\n", s, added_rowids_[s].size(), si_[s]->getNumRows()-1);
 	}
 }
@@ -547,7 +544,7 @@ void DwWorker::removeAddedRows() {
 		//printf("removeAddedRows (s %u)\n", added_rowids_[s].size());
 		if (added_rowids_[s].size() > 0) {
 			//DspMessage::printArray(added_rowids_[s].size(), &(added_rowids_[s])[0]);
-			si_[s]->deleteRows(added_rowids_[s].size(), &(added_rowids_[s])[0]);
+			osi_[s]->si_->deleteRows(added_rowids_[s].size(), &(added_rowids_[s])[0]);
 			added_rowids_[s].clear();
 		}
 	}
@@ -565,7 +562,7 @@ DSP_RTN_CODE DwWorker::solveSubproblems() {
 			char ofname[128];
 			sprintf(ofname, "sub%d", s);
 			DSPdebugMessage("Writing MPS file: %s\n", ofname);
-			si_[s]->writeMps(ofname);
+			osi_[s]->si_->writeMps(ofname);
 		}
 	}
 #endif
@@ -580,31 +577,31 @@ DSP_RTN_CODE DwWorker::solveSubproblems() {
 
 	/** TODO: That's it? Dual infeasible??? */
 	for (int s = 0; s < parProcIdxSize_; ++s) {
-		if (si_[s]->getNumIntegers() > 0) {
+		if (osi_[s]->si_->getNumIntegers() > 0) {
 
 			/** increase time limit */
 			if (max_stops > 0)
-				si_[s]->setTimeLimit(timlim);
+				osi_[s]->setTimeLimit(timlim);
 
 			/** solve */
-			si_[s]->branchAndBound();
+			osi_[s]->solve();
 #ifdef DSP_DEBUG
-			convertOsiToDspStatus(si_[s], status);
+			status = osi_[s]->status();
 			DSPdebugMessage("MILP subproblem %d status %d\n", parProcIdx_[s], status);
 #endif
-			if (si_[s]->isProvenDualInfeasible()) {
+			if (osi_[s]->si_->isProvenDualInfeasible()) {
 				/** If primal unbounded, ray may not be immediately available.
 				 * But, it becomes available if it is solved one more time.
 				 * This is probably because the resolve() above behaved as initialSolve(),
 				 * in which case presolve determines unboundedness without solve.
 				 */
-				si_[s]->resolve();
+				osi_[s]->si_->resolve();
 			}
 		} else {
 			/** solve LP relaxation */
-			si_[s]->resolve();
+			osi_[s]->si_->resolve();
 #ifdef DSP_DEBUG
-			convertOsiToDspStatus(si_[s], status);
+			status = osi_[s]->status();
 			DSPdebugMessage("LP relaxation subproblem %d status %d\n", parProcIdx_[s], status);
 #endif
 		}
@@ -617,17 +614,13 @@ DSP_RTN_CODE DwWorker::solveSubproblems() {
 
 void DwWorker::setTimeLimit(double limit) {
 	for (int s = 0; s < parProcIdxSize_; ++s) {
-		OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_[s]);
-		if (cpx)
-			CPXsetdblparam(cpx->getEnvironmentPtr(), CPX_PARAM_TILIM, limit);
+		osi_[s]->setTimeLimit(limit);
 	}
 }
 
 void DwWorker::setGapTolerance(double gaptol) {
 	for (int s = 0; s < parProcIdxSize_; ++s) {
-		OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_[s]);
-		if (cpx)
-			CPXsetdblparam(cpx->getEnvironmentPtr(), CPX_PARAM_EPGAP, gaptol);
+		osi_[s]->setRelMipGap(gaptol);
 	}
 }
 
@@ -639,8 +632,8 @@ DSP_RTN_CODE DwWorker::resetSubproblems() {
 	BGN_TRY_CATCH
 	/** restore bounds */
 	for (int s = 0; s < parProcIdxSize_; ++s) {
-		for (int j = 0; j < si_[s]->getNumCols(); ++j)
-			si_[s]->setColBounds(j, sub_clbd_[s][j], sub_cubd_[s][j]);
+		for (int j = 0; j < osi_[s]->si_->getNumCols(); ++j)
+			osi_[s]->si_->setColBounds(j, sub_clbd_[s][j], sub_cubd_[s][j]);
 	}
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;

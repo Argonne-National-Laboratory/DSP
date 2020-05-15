@@ -208,11 +208,13 @@ void DspParams::initIntParams()
 	/** minimum number of processes to wait at the master */
 	IntParams_.createParam("DD/MIN_PROCS", 1);
 
-	/** minimum number of processes to wait at the master */
+#ifdef DSP_HAS_CPX
 	IntParams_.createParam("SOLVER/MIP", OsiCpx);
-
-	/** minimum number of processes to wait at the master */
 	IntParams_.createParam("SOLVER/QP", OsiCpx);
+#else
+	IntParams_.createParam("SOLVER/MIP", OsiCbc);
+	IntParams_.createParam("SOLVER/QP", OsiClp);
+#endif
 
 	/** display frequency */
 	IntParams_.createParam("SCIP/DISPLAY_FREQ", 100);

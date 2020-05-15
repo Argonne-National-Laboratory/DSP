@@ -36,8 +36,8 @@ int main(int argc, char* argv[])
         double bestprimobj = env->solver_->getBestPrimalObjective();
         double bestdualobj = env->solver_->getBestDualObjective();
         double relgap = env->solver_->getRelDualityGap();
-        printf("best primal bound: %.10f\n", bestprimobj);
-        printf("best dual bound  : %.10f\n", bestdualobj);
+        printf("best primal bound: %e\n", bestprimobj);
+        printf("best dual bound  : %e\n", bestdualobj);
         printf("relative gap (%%) : %f\n", relgap*100);
 
         FREE_PTR(env);

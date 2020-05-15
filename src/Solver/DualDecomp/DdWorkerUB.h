@@ -9,7 +9,7 @@
 #define SRC_SOLVER_DUALDECOMP_DDWORKERUB_H_
 
 #include "Solver/DualDecomp/DdWorker.h"
-#include "OsiSolverInterface.hpp"
+#include "SolverInterface/DspOsi.h"
 
 /** A worker class for solving upper bounding subproblems. */
 class DdWorkerUB: public DdWorker {
@@ -69,8 +69,8 @@ private:
 	double** rlbd_org_; /**< original row lower bounds for each subproblem */
 	double** rubd_org_; /**< original row upper bounds for each subproblem */
 
-	OsiSolverInterface ** si_;    /**< solver interface for each subproblem */
-	OsiSolverInterface * si_dro_; /**< solver interface for DRO upper bound */
+	DspOsi ** osi_;    /**< solver interface for each subproblem */
+	DspOsi * osi_dro_; /**< solver interface for DRO upper bound */
 	double ub_; /**< upper bound */
 };
 

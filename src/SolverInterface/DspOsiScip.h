@@ -13,47 +13,110 @@
 #include "SolverInterface/OsiScipSolverInterface.hpp"
 #include "SolverInterface/SCIPbranchruleLB.h"
 
-inline void convertOsiScipToDspStatus(OsiScipSolverInterface* si, int& status) {
-    int scipstat = SCIPgetStatus(si->getScip());
-    switch(scipstat) {
-    case SCIP_STATUS_USERINTERRUPT:
-        status = DSP_STAT_STOPPED_USER;
-        break;
-    case SCIP_STATUS_NODELIMIT:
-    case SCIP_STATUS_TOTALNODELIMIT:
-        status = DSP_STAT_STOPPED_NODE;
-        break;
-    case SCIP_STATUS_TIMELIMIT:
-        status = DSP_STAT_STOPPED_TIME;
-        break;
-    case SCIP_STATUS_GAPLIMIT:
-        status = DSP_STAT_STOPPED_GAP;
-        break;
-    case SCIP_STATUS_SOLLIMIT:
-    case SCIP_STATUS_BESTSOLLIMIT:
-        status = DSP_STAT_STOPPED_SOLUTION;
-        break;
-    case SCIP_STATUS_STALLNODELIMIT:
-    case SCIP_STATUS_MEMLIMIT:
-    case SCIP_STATUS_RESTARTLIMIT:
-        status = DSP_STAT_STOPPED_UNKNOWN;
-        break;
-    case SCIP_STATUS_OPTIMAL:
-        status = DSP_STAT_OPTIMAL;
-        break;
-    case SCIP_STATUS_INFEASIBLE:
-        status = DSP_STAT_PRIM_INFEASIBLE;
-        break;
-    case SCIP_STATUS_UNBOUNDED:
-    case SCIP_STATUS_INFORUNBD:
-        status = DSP_STAT_DUAL_INFEASIBLE;
-        break;
-    case SCIP_STATUS_UNKNOWN:
-    default:
-        status = DSP_STAT_UNKNOWN;
-        break;
+class DspOsiScip : public DspOsi {
+public:
+
+    /** default constructor */
+	DspOsiScip() {
+		si_ = new OsiScipSolverInterface();
+        cbc_ = dynamic_cast<OsiScipSolverInterface*>(si_);
+	}
+
+	/** copy constructor */
+	DspOsiScip(const DspOsiScip& rhs) {
+        si_ = new OsiScipSolverInterface(*(rhs.scip_));
+        cbc_ = dynamic_cast<OsiScipSolverInterface*>(si_);
     }
-}
+
+	/** clone constructor */
+	virtual DspOsiScip* clone() const {
+        return new DspOsiScip(*this);
+    }
+
+    /** destructor */
+	virtual ~DspOsiScip() {
+        scip_ = NULL;
+    }
+
+	/** solve problem */
+	virtual void solve() {
+		si_->initialSolve();
+		if (si_->getNumIntegers() > 0)
+			si_->branchAndBound();
+	}
+
+	/** solution statue */
+	virtual int status() {
+        int scipstat = SCIPgetStatus(scip_->getScip());
+        switch(scipstat) {
+        case SCIP_STATUS_USERINTERRUPT:
+            status = DSP_STAT_STOPPED_USER;
+            break;
+        case SCIP_STATUS_NODELIMIT:
+        case SCIP_STATUS_TOTALNODELIMIT:
+            status = DSP_STAT_STOPPED_NODE;
+            break;
+        case SCIP_STATUS_TIMELIMIT:
+            status = DSP_STAT_STOPPED_TIME;
+            break;
+        case SCIP_STATUS_GAPLIMIT:
+            status = DSP_STAT_STOPPED_GAP;
+            break;
+        case SCIP_STATUS_SOLLIMIT:
+        case SCIP_STATUS_BESTSOLLIMIT:
+            status = DSP_STAT_STOPPED_SOLUTION;
+            break;
+        case SCIP_STATUS_STALLNODELIMIT:
+        case SCIP_STATUS_MEMLIMIT:
+        case SCIP_STATUS_RESTARTLIMIT:
+            status = DSP_STAT_STOPPED_UNKNOWN;
+            break;
+        case SCIP_STATUS_OPTIMAL:
+            status = DSP_STAT_OPTIMAL;
+            break;
+        case SCIP_STATUS_INFEASIBLE:
+            status = DSP_STAT_PRIM_INFEASIBLE;
+            break;
+        case SCIP_STATUS_UNBOUNDED:
+        case SCIP_STATUS_INFORUNBD:
+            status = DSP_STAT_DUAL_INFEASIBLE;
+            break;
+        case SCIP_STATUS_UNKNOWN:
+        default:
+            status = DSP_STAT_UNKNOWN;
+            break;
+        }
+		return status;
+	}
+
+	/** get dual objective value */
+	virtual double getDualObjValue() {
+        return SCIPgetDualbound(scip_->getScip());
+    }
+
+	/** get number of branch-and-bound nodes explored */
+	virtual int getNumNodes() {return SCIPgetNNodes(scip_);}
+
+	/** set number of cores */
+	virtual void setNumCores(int num) {}
+
+	/** set time limit */
+	virtual void setTimeLimit(double time) {
+        SCIPsetRealParam(scip_->getScip(), "limits/time", time);
+    }
+
+	/** set node limit */
+	virtual void setNodeLimit(double num) {
+        SCIPsetLongintParam(scip_->getScip(), "limits/nodes", num);
+    }
+
+	/** set relative MIP gap */
+	virtual void setRelMipGap(double tol) {
+        SCIPsetRealParam(scip_->getScip(), "limits/gap", tol);
+    }
+
+    OsiScipSolverInterface* scip_;  
+};
 
 #endif /* DSP_HAS_SCIP */
 
