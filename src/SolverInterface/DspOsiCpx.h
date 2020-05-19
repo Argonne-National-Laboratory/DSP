@@ -12,6 +12,7 @@
 
 #include "cplex.h"
 #include "OsiCpxSolverInterface.hpp"
+#include "SolverInterface/DspOsi.h"
 
 class DspOsiCpx : public DspOsi {
 public:
@@ -30,7 +31,7 @@ public:
 
 	/** clone constructor */
 	virtual DspOsiCpx* clone() const {
-		return new OsiCpxSolverInterface(*this);
+		return new DspOsiCpx(*this);
 	}
 
 	/** destructor */
@@ -165,7 +166,7 @@ public:
 
 	/** set number of cores */
 	virtual void setNumCores(int num) {
-		CPXsetintparam(cpx_->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("NUM_CORES"));
+		CPXsetintparam(cpx_->getEnvironmentPtr(), CPX_PARAM_THREADS, num);
 	}
 
 	/** set time limit */
