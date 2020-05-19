@@ -36,7 +36,7 @@ enum DSP_EXTERNAL_SOLVER {
 	OsiScip,
 	OsiOoqp,
 	OsiCbc,
-	OsiClp // TODO: This needs to be replaced by OsiCbc.
+	OsiClp,
 };
 
 enum DSP_DW_BRANCH {
