@@ -1,0 +1,4 @@
+int SOLVER/MIP 0
+int SOLVER/QP 0
+int DD/ITER_LIM 10
+double MIP/GAP_TOL 0.0
