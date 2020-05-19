@@ -174,9 +174,7 @@ public:
 	virtual void setIterLimit(int n) {iterlim_ = n;}
 
 	/** set log level */
-	virtual void setLogLevel(int level) {
-		par_->setIntParam("LOG_LEVEL", level);
-	}
+	virtual void setLogLevel(int level) {message_->logLevel_ = level;}
 
 	/** set status */
 	void setStatus(int status) {status_ = status;}
