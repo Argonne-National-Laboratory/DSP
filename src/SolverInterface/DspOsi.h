@@ -10,10 +10,6 @@
 
 #include "Utility/DspRtnCodes.h"
 #include "OsiSolverInterface.hpp"
-#include "OsiClpSolverInterface.hpp"
-#include "OsiCbcSolverInterface.hpp"
-#include "SolverInterface/DspOsiCpx.h"
-#include "SolverInterface/DspOsiScip.h"
 
 #ifdef DSP_HAS_OOQP
 #include "SolverInterface/OsiOoqpSolverInterface.hpp"
