@@ -228,9 +228,9 @@ DSP_RTN_CODE DdSub::createProblem() {
         }
 
 		double probability = tssModel->getProbability()[sind_];
+		for (int j = 0; j < tssModel->getNumCols(0); ++j)
+			obj[j] *= probability;
 		if (model_->isDro()) {
-			for (int j = 0; j < tssModel->getNumCols(0); ++j)
-				obj[j] /= tssModel->getNumScenarios();
 			if (sind_ < tssModel->getNumReferences()) {
 				for (int j = tssModel->getNumCols(0); j < tssModel->getNumCols(0) + tssModel->getNumCols(1); ++j) {
 					obj[j] *= tssModel->getReferenceProbability(sind_) / probability;
@@ -238,17 +238,14 @@ DSP_RTN_CODE DdSub::createProblem() {
 			} else {
 				CoinZeroN(obj + tssModel->getNumCols(0), tssModel->getNumCols(1));
 			}
-			for (int j = 0; j < tssModel->getNumCols(1); ++j) {
-				obj_[tssModel->getNumCols(0)+j] /= probability;
-			}
-#ifdef DSP_DEBUG
-			DSPdebugMessage("sind_ = %d, probability = %e, lambdas = \n", sind_, tssModel->getReferenceProbability(sind_));
-			DspMessage::printArray(tssModel->getNumCols(0), obj);
-#endif
-		} else {
-			for (int j = 0; j < tssModel->getNumCols(0); ++j)
-				obj[j] *= probability;
 		}
+		for (int j = 0; j < tssModel->getNumCols(1); ++j)
+			obj_[tssModel->getNumCols(0)+j] /= probability;
+
+#ifdef DSP_DEBUG
+		DSPdebugMessage("sind_ = %d, probability = %e, lambdas = \n", sind_, model_->isDro() ? tssModel->getReferenceProbability(sind_) : probability);
+		DspMessage::printArray(tssModel->getNumCols(0), obj);
+#endif
 
         /** convert column types */
         if (parRelaxIntegrality_[0]) {
@@ -374,24 +371,17 @@ DSP_RTN_CODE DdSub::updateProblem(
 			assert(nrows_coupling_<ncols);
 
 			// coefficients for the second-stage variables
-			if (model_->isDro()) {
-				CoinCopyN(lambda, nrows_coupling_, newobj);
-				// printf("DdSub::updateProblem lambda:\n");
-				// DspMessage::printArray(nrows_coupling_, lambda);
-				for (int j = nrows_coupling_; j < ncols-1; ++j) {
-					newobj[j] = obj_[j] * probability;
-					// printf("update subproblem %d: obj_[%d] = %e, probability = %e, newobj -> %e\n", sind_, j, obj_[j], probability, newobj[j]);
-				}
-				newobj[ncols-1] = obj_[ncols-1];
-			} else {
-				CoinZeroN(newobj, nrows_coupling_);
-				CoinCopyN(obj_ + nrows_coupling_, ncols - nrows_coupling_, newobj + nrows_coupling_);
+			CoinCopyN(lambda, nrows_coupling_, newobj);
+			// printf("DdSub::updateProblem lambda:\n");
+			// DspMessage::printArray(nrows_coupling_, lambda);
+			for (int j = nrows_coupling_; j < ncols-1; ++j) {
+				newobj[j] = obj_[j] * probability;
+				// printf("update subproblem %d: obj_[%d] = %e, probability = %e, newobj -> %e\n", sind_, j, obj_[j], probability, newobj[j]);
 			}
+			newobj[ncols-1] = obj_[ncols-1];
 		} else {
 			CoinCopyN(obj_, ncols, newobj);
-		}
 
-		if (model_->isDro() == false) {
 			for (int i = 0; i < nrows_coupling_; i++)
 			{
 				/** add lambda wrt coupling row i */

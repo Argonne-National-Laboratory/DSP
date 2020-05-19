@@ -20,7 +20,7 @@ DdMaster::DdMaster(const DdMaster& rhs) :
 DecSolver(rhs),
 lambda_(rhs.lambda_) {
 	subsolution_ = new double * [model_->getNumSubproblems()];
-	if (model_->isDro()) {
+	if (model_->isStochastic()) {
 		DecTssModel* tss = dynamic_cast<DecTssModel*>(model_);
 		int nsubsolution = tss->getNumCols(0) + tss->getNumCols(1) + 1;
 		for (int s = 0; s < model_->getNumSubproblems(); ++s) {
@@ -51,7 +51,7 @@ DSP_RTN_CODE DdMaster::init() {
 
 	/** allocate memory */
 	subsolution_ = new double * [model_->getNumSubproblems()];
-	if (model_->isDro()) {
+	if (model_->isStochastic()) {
 		DecTssModel* tss = dynamic_cast<DecTssModel*>(model_);
 		int nsubsolution = tss->getNumCols(0) + tss->getNumCols(1) + 1;
 		for (int s = 0; s < model_->getNumSubproblems(); ++s)

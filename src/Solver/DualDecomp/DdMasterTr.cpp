@@ -218,11 +218,13 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 
 	BGN_TRY_CATCH
 
-	try {
-		tss = dynamic_cast<TssModel*>(model_);
-	} catch (const std::bad_cast &e) {
-		printf("Error: Model claims to be stochastic when it is not\n");
-		return DSP_RTN_ERR;
+	if (model_->isStochastic()) {
+		try {
+			tss = dynamic_cast<TssModel*>(model_);
+		} catch (const std::bad_cast &e) {
+			printf("Error: Model claims to be stochastic when it is not\n");
+			return DSP_RTN_ERR;
+		}
 	}
 
 	/** Dual variables for SO */
@@ -260,10 +262,9 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 		nzcnt = 0;
 	}
 	ncols = nthetas_ + nlambdas_;
+
 	/** Increase number of columns for DRO */
-	if (model_->isDro()) {
-		ncols += nus_ + nPs_;
-	}
+	ncols += nus_ + nPs_;
 	DSPdebugMessage("nrows %d ncols %d nzcnt %d nthetas_ %d nlambdas_ %d\n",
                     nrows, ncols, nzcnt, nthetas_, nlambdas_);
 
@@ -305,21 +306,20 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 				}
 			}
 
-			if (model_->isDro()) {
-				for (i = 0; i < model_->getNumReferences(); ++i) {
-					for (j = 0; j < model_->getNumSubproblems(); ++j) {
-						if (i == j)
-							stability_center_[nlambdas_+model_->getNumReferences()*j+i] = model_->getReferenceProbability(i);
-						else
-							stability_center_[nlambdas_+model_->getNumReferences()*j+i] = 0.0;
-					}
-				}
-				for (i = 0; i < nPs_; ++i) {
-					if (i < model_->getNumReferences())
-						stability_center_[nlambdas_+nus_+i] = model_->getReferenceProbability(i);
+			/** stability center for DRO model */
+			for (i = 0; i < model_->getNumReferences(); ++i) {
+				for (j = 0; j < model_->getNumSubproblems(); ++j) {
+					if (i == j)
+						stability_center_[nlambdas_+model_->getNumReferences()*j+i] = model_->getReferenceProbability(i);
 					else
-						stability_center_[nlambdas_+nus_+i] = 0.0;
+						stability_center_[nlambdas_+model_->getNumReferences()*j+i] = 0.0;
 				}
+			}
+			for (i = 0; i < nPs_; ++i) {
+				if (i < model_->getNumReferences())
+					stability_center_[nlambdas_+nus_+i] = model_->getReferenceProbability(i);
+				else
+					stability_center_[nlambdas_+nus_+i] = 0.0;
 			}
 		} else {
 			CoinZeroN(stability_center_, ncols-nthetas_);
@@ -529,7 +529,7 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 		CoinZeroN(&primsol_[nthetas_], nlambdas_);
 	}
 
-	if (model_->isDro()) {
+	if (model_->isStochastic()) {
 		bestdualsol_.resize(ncols-nthetas_);
 	}
 

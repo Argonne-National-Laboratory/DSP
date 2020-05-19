@@ -196,15 +196,9 @@ DSP_RTN_CODE DdMWSerial::run() {
 	lambdas = new double * [model_->getNumSubproblems()];
 
 	nsubsolution = new int [model_->getNumSubproblems()];
-	if (model_->isDro()) {
-		for (int s = 0; s < model_->getNumSubproblems(); ++s) {
-			nsubsolution[s] = workerlb->subprobs_[s]->getNumCols();
-			DSPdebugMessage("nsubsolution[%d] = %d\n", s, nsubsolution[s]);
-		}
-	} else {
-		for (int s = 0; s < model_->getNumSubproblems(); ++s) {
-			nsubsolution[s] = workerlb->subprobs_[s]->ncols_coupling_;
-		}
+	for (int s = 0; s < model_->getNumSubproblems(); ++s) {
+		nsubsolution[s] = workerlb->subprobs_[s]->getNumCols();
+		DSPdebugMessage("nsubsolution[%d] = %d\n", s, nsubsolution[s]);
 	}
 
 	printHeaderInfo();
