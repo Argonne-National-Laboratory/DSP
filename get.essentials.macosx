@@ -1,6 +1,0 @@
-#!/bin/bash
-
-brew update
-brew install openmpi cmake homebrew/dupes/zlib
-
-echo "Please set GNU c/c++ compilers as your default compilers.\n"
