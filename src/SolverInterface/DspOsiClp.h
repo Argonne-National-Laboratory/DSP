@@ -43,7 +43,8 @@ public:
 
 	/** solve problem */
 	virtual void solve() {
-		si_->initialSolve();
+		// si_->initialSolve();
+        si_->resolve();
 	}
 
 	/** solution statue */
@@ -65,6 +66,12 @@ public:
             status = DSP_STAT_ABORT;
         }
 		return status;
+	}
+
+	/** set log level */
+	virtual void setLogLevel(int level) {
+        clp_->messageHandler()->setLogLevel(level);
+		clp_->getModelPtr()->setLogLevel(level);
 	}
 
 	/** set number of cores */
