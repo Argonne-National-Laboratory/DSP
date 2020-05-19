@@ -8,6 +8,7 @@
 // #define DSP_DEBUG
 #include "Model/TssModel.h"
 #include "Solver/DualDecomp/DdWorkerUB.h"
+#include "SolverInterface/DspOsiClp.h"
 #include "SolverInterface/DspOsiCbc.h"
 #include "SolverInterface/DspOsiCpx.h"
 #include "SolverInterface/DspOsiScip.h"
@@ -109,6 +110,8 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 
 	TssModel* tss = NULL;
 
+	bool has_integer = false;
+
 	BGN_TRY_CATCH
 
 	int nsubprobs = par_->getIntPtrParamSize("ARR_PROC_IDX");
@@ -136,6 +139,12 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 			}
 		}
 
+		for (int j = 0; j < mat_reco->getNumCols(); ++j)
+			if (ctype_reco[j] != 'C') {
+				has_integer = true;
+				break;
+			}
+
 		/** creating solver interface */
     	switch (par_->getIntParam("SOLVER/MIP")) {
     	case OsiCpx:
@@ -151,12 +160,16 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 #endif
     	case OsiCbc:
     	default:
-            osi_[s] = new DspOsiCbc();
+			if (has_integer)
+            	osi_[s] = new DspOsiCbc();
+			else
+            	osi_[s] = new DspOsiClp();
     		break;
     	}
 
 	    /** no display */
 	    osi_[s]->setLogLevel(0);
+		DSPdebug(osi_[s]->setLogLevel(5));
 
 	    /** load problem */
 	    osi_[s]->si_->loadProblem(*mat_reco, clbd_reco, cubd_reco, obj_reco, rlbd_org_[s], rubd_org_[s]);
@@ -247,7 +260,7 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 #endif
     	case OsiCbc:
     	default:
-            osi_dro_ = new DspOsiCbc();
+            osi_dro_ = new DspOsiClp();
     		break;
     	}
 
