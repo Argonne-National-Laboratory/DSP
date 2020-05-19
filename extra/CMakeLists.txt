@@ -66,8 +66,8 @@ ExternalProject_Add(CoinUtils
 
 if(CPLEXLIB)
 	set(CPLEX_LIB "-L${CPLEX_LIB_DIR} -lcplex -lm -lpthread")
-	set(WITH_CPLEX_LIB "--with-cplex --with-cplex-lflags=${CPLEX_LIB}")
-	set(WITH_CPLEX_INCDIR "--with-cplex-cflags=${CPLEX_INC_DIR}")
+	set(WITH_CPLEX_LIB "--with-cplex-lib=${CPLEX_LIB}")
+	set(WITH_CPLEX_INCDIR "--with-cplex-incdir=${CPLEX_INC_DIR}")
 else()
 	set(WITH_CPLEX_LIB "")
 	set(WITH_CPLEX_INCDIR "")
