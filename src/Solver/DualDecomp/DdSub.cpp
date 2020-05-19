@@ -92,13 +92,11 @@ DSP_RTN_CODE DdSub::solve()
 	bool dualinfeas = false;
 
 	while (1) {
-		if (getSiPtr()->getNumIntegers() > 0)
-			getSiPtr()->branchAndBound();
-		else
-			getSiPtr()->resolve();
+		osi_->solve();
 	
 		/** check status. there might be unexpected results. */
 		status_ = osi_->status();
+		DSPdebugMessage("solution status %d\n", status_);
 		switch (status_) {
 		case DSP_STAT_OPTIMAL:
 		case DSP_STAT_LIM_ITERorTIME:
@@ -107,12 +105,16 @@ DSP_RTN_CODE DdSub::solve()
 		case DSP_STAT_STOPPED_TIME:
 			primobj_ = osi_->getPrimObjValue();
 			dualobj_ = osi_->getDualObjValue();
+			assert(primsol_.size() == getSiPtr()->getNumCols());
 			CoinCopyN(getSiPtr()->getColSolution(), getSiPtr()->getNumCols(), &primsol_[0]);
 			DSPdebugMessage("primal objective %+e, dual objective %+e\n", primobj_, dualobj_);
+			DSPdebugMessage("fraction gap %e\n", fabs(primobj_-dualobj_) / fabs(dualobj_));
 			dualinfeas = false;
-			// char submps[64];
-			// sprintf(submps, "sub%d", sind_);
-			// getSiPtr()->writeMps(submps);
+#ifdef DSP_DEBUG
+			char submps[64];
+			sprintf(submps, "sub%d", sind_);
+			getSiPtr()->writeMps(submps);
+#endif
 			break;
 		case DSP_STAT_LIM_INFEAS:
 			primobj_ = COIN_DBL_MAX;
@@ -296,13 +298,13 @@ DSP_RTN_CODE DdSub::createProblem() {
         osi_ = new DspOsiClp();
 
     /** no display */
-#ifdef DSP_DEBUG
-    osi_->setLogLevel(5);
-#else
     osi_->setLogLevel(par_->getIntParam("DD/SUB/LOG_LEVEL"));
-#endif
 
     /** load problem */
+#ifdef DSP_DEBUG
+	printf("create subproblem (s=%d):\n", sind_);
+	DspMessage::printArray(mat->getNumCols(), obj);
+#endif
     getSiPtr()->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
 	for (int j = 0; j < mat->getNumCols(); ++j) {
 		if (ctype[j] != 'C')
@@ -396,10 +398,10 @@ DSP_RTN_CODE DdSub::updateProblem(
 				obj_offset_ += lambda[i] * (-cpl_rhs_[i]);
 			}
 		}
-
-		// printf("### newobj[%d]:\n", sind_);
-		// DspMessage::printArray(ncols, newobj);
-
+#ifdef DSP_DEBUG
+		printf("### newobj[%d]:\n", sind_);
+		DspMessage::printArray(ncols, newobj);
+#endif
 		getSiPtr()->setObjective(newobj);
 	}
 

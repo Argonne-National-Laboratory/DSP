@@ -96,6 +96,13 @@ DSP_RTN_CODE DdMasterTr::init()
 	parTrSize_ = par_->getDblParam("DD/TR/SIZE");
 	parTrDecrease_ = par_->getBoolParam("DD/TR/DECREASE");
 	parNumCutsPerIter_ = par_->getIntParam("DD/NUM_CUTS_PER_ITER");
+#ifndef DSP_HAS_OOQP
+	if (par_->getIntParam("DD/MASTER_ALGO")  == IPM_Feasible) {
+		printf("DD/MASTER_ALGO = %d is not valid without OOQP.\n", IPM_Feasible);
+		printf("The parameter value is changed to %d.\n", IPM);
+		par_->setIntParam("DD/MASTER_ALGO", IPM);
+	}
+#endif
 	parMasterAlgo_ = par_->getIntParam("DD/MASTER_ALGO");
 	parLogLevel_ = par_->getIntParam("LOG_LEVEL");
 	DSPdebugMessage("Trust region size %f\n", parTrSize_);
@@ -537,7 +544,7 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 	cuts_ = new OsiCuts;
 
 	/** set print level */
-	osi_->setLogLevel(0);
+	osi_->setLogLevel(CoinMax(0,par_->getIntParam("LOG_LEVEL")-1));
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
@@ -613,7 +620,7 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 			nstalls_ = 0;
 
 			/** update best solution */
-			DSPdebugMessage("getSiPtr()->getNumCols()-nthetas_ [%d] == bestdualsol_.size() [%d]", 
+			DSPdebugMessage("getSiPtr()->getNumCols()-nthetas_ [%d] == bestdualsol_.size() [%d]\n", 
 				getSiPtr()->getNumCols()-nthetas_, (int) bestdualsol_.size());
 			assert(getSiPtr()->getNumCols()-nthetas_==bestdualsol_.size());
 			CoinCopyN(&primsol_[nthetas_], getSiPtr()->getNumCols()-nthetas_, &bestdualsol_[0]);
@@ -759,7 +766,7 @@ int DdMasterTr::addCuts(
 
 		/** calculate error and construct cut */
 		linerr_ += subprimobj_[s];
- 		aggrhs[cutidx] += subprimobj_[s];
+		aggrhs[cutidx] += subprimobj_[s];
 		for (int i = 0; i < nlambdas_; i++)
 		{
 			/** evaluate solution on coupling constraints (if they are Hx = d, this is (Hx - d)_i) */
