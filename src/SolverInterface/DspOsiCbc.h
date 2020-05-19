@@ -15,7 +15,7 @@ class DspOsiCbc : public DspOsi {
 public:
 
     /** default constructor */
-	DspOsiCbc() {
+	DspOsiCbc() : clbd_(NULL), cubd_(NULL) {
 		si_ = new OsiCbcSolverInterface();
         cbc_ = dynamic_cast<OsiCbcSolverInterface*>(si_);
 	}
@@ -24,6 +24,10 @@ public:
 	DspOsiCbc(const DspOsiCbc& rhs) {
         si_ = new OsiCbcSolverInterface(*(rhs.cbc_));
         cbc_ = dynamic_cast<OsiCbcSolverInterface*>(si_);
+        clbd_ = new double [si_->getNumCols()];
+        cubd_ = new double [si_->getNumCols()];
+        CoinCopyN(rhs.clbd_, si_->getNumCols(), clbd_);
+        CoinCopyN(rhs.cubd_, si_->getNumCols(), cubd_);
     }
 
 	/** clone constructor */
@@ -33,14 +37,39 @@ public:
 
     /** destructor */
 	virtual ~DspOsiCbc() {
+        if (clbd_) {
+            delete [] clbd_;
+            clbd_ = NULL;
+        }
+        if (cubd_) {
+            delete [] cubd_;
+            cubd_ = NULL;
+        }
         cbc_ = NULL;
     }
 
 	/** solve problem */
 	virtual void solve() {
-		si_->initialSolve();
-		if (si_->getNumIntegers() > 0)
+        cbc_->getModelPtr()->resetModel();
+
+        if (!clbd_) {
+            clbd_ = new double [si_->getNumCols()];
+            CoinCopyN(si_->getColLower(), si_->getNumCols(), clbd_);
+        }
+        if (!cubd_) {
+            cubd_ = new double [si_->getNumCols()];
+            CoinCopyN(si_->getColUpper(), si_->getNumCols(), cubd_);
+        }
+
+		// si_->initialSolve();
+		if (si_->getNumIntegers() > 0) {
+            si_->initialSolve();
 			si_->branchAndBound();
+        } else
+            si_->resolve();
+
+        si_->setColLower(clbd_);
+        si_->setColUpper(cubd_);
 	}
 
 	/** solution statue */
@@ -93,6 +122,7 @@ public:
 
 	/** set log level */
 	virtual void setLogLevel(int level) {
+        cbc_->messageHandler()->setLogLevel(level);
 		cbc_->getModelPtr()->setLogLevel(level);
 	}
 
@@ -117,6 +147,11 @@ public:
     }
 
     OsiCbcSolverInterface* cbc_;    
+
+protected:
+
+    double * clbd_;
+    double * cubd_;
 };
 
 #endif /* SRC_SOLVERINTERFACE_DSPOSICBC_H_ */
