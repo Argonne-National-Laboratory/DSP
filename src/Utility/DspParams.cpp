@@ -248,8 +248,8 @@ void DspParams::initDblParams()
 	DblParams_.createParam("DW/TIME_LIM", MAX_DBL_NUM);
 
 	/** options for trust region */
-	DblParams_.createParam("DD/TR/SIZE", 0.1);
-	DblParams_.createParam("DW/TR/SIZE", 0.1);
+	DblParams_.createParam("DD/TR/SIZE", 100.0);
+	DblParams_.createParam("DW/TR/SIZE", 100.0);
 	DblParams_.createParam("DW/MIN_INCREASE", 1.0e-6);
 	DblParams_.createParam("DW/INIT_CENTER", 0.1);
 
