@@ -571,7 +571,8 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 	{
 		DSPdebugMessage("subdualobj_[%d] = %e\n", s, subdualobj_[s]);
 		newprimal += subprimobj_[s];
-		newdual += subdualobj_[s];
+		//newdual += subdualobj_[s];
+		newdual += subprimobj_[s];
 	}
 
 	/** update trust region FIRST, because this does not change problem. */
