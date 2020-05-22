@@ -25,13 +25,12 @@ compiler:
 #   - test -n $CC  && unset CC
 #   - test -n $CXX && unset CXX
 
-before_script:
+before_install:
   - export PATH=/usr/lib:/usr/local/lib:${PATH}
   - export LD_LIBRARY_PATH=/usr/lib:/usr/local/lib:${LD_LIBRARY_PATH}
   - export DYLD_LIBRARY_PATH=/usr/lib:/usr/local/lib:${DYLD_LIBRARY_PATH}
   - gfortran -v
-  - ls /usr/lib/libgfortran*
 
-script:
+install:
   - cmake . && make && make test
   
