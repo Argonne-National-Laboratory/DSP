@@ -1,0 +1,15 @@
+language: cpp
+
+# install: make get-deps
+
+compiler:
+  - clang
+  - gcc
+
+before_install:
+  - test -n $CC  && unset CC
+  - test -n $CXX && unset CXX
+
+script:
+  - cmake . && make && make test
+  
