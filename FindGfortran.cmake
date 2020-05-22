@@ -66,5 +66,8 @@ if(CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
 	unset(GFORTRAN_LIB_DIR_STR)
 endif(CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
 
-find_library(GFORTRANLIB REQUIRED NAMES gfortran libgfortran 
+find_library(GFORTRANLIB NAMES gfortran libgfortran 
 	PATHS ENV ${LIBRARY_PATH_VAR_NAME} ${GFORTRAN_LIBRARIES_DIR})
+if(NOT GFORTRANLIB)
+	message(FATAL_ERROR "gfortran library is required, but cannot be found. Please either locate the library to a searchable path or set a proper environment variable for the path.")
+endif(NOT GFORTRANLIB)
