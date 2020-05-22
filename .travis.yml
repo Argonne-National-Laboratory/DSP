@@ -7,12 +7,12 @@ os:
 addons:
   apt:
     packages: 
-      - gcc
+      - gfortran
       - libblas-dev
       - liblapack-dev
   homebrew:
     packages: 
-      - gcc
+      - gfortran
     update: true
 
 # install: make get-deps
