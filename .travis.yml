@@ -1,5 +1,11 @@
 language: cpp
 
+addons:
+  apt:
+    packages: gfortran
+  homebrew:
+    packages: gfortran
+
 # install: make get-deps
 
 compiler:
