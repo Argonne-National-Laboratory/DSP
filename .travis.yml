@@ -28,6 +28,7 @@ compiler:
 before_script:
   - echo $LD_LIBRARY_PATH
   - echo $DYLD_LIBRARY_PATH
+  - gfortran -v
 
 script:
   - cmake . && make && make test

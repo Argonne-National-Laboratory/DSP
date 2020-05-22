@@ -36,8 +36,8 @@ if (MPI_CXX_FOUND)
 endif()
 
 find_library(GFORTRANLIB 
-	NAMES gfortran libgfortran gfortran3 libgfortran3 gfortran5 libgfortran5 
-    PATHS ENV ${LIBRARY_PATH_VAR_NAME})
+	NAMES gfortran libgfortran
+    PATHS "/usr/bin" "/usr/local/bin" ENV ${LIBRARY_PATH_VAR_NAME})
 if(NOT GFORTRANLIB)
 	message(FATAL_ERROR "gfortran library is required, but cannot be found. Please either locate the library to a searchable path or set a proper environment variable for the path.")
 endif(NOT GFORTRANLIB)
