@@ -50,7 +50,7 @@ find_library(CPLEXLIB cplex PATHS ${CPLEX_LIB_DIR})
 # endif()
 
 add_subdirectory(extra)
-# add_subdirectory(src)
+add_subdirectory(src)
 
-# enable_testing()
-# add_subdirectory(test)
+enable_testing()
+add_subdirectory(test)
