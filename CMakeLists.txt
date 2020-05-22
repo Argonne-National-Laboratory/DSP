@@ -35,7 +35,8 @@ if (MPI_CXX_FOUND)
 	set(CMAKE_Fortran_COMPILER ${MPI_Fortran_COMPILER})
 endif()
 
-find_library(GFORTRANLIB NAMES gfortran libgfortran 
+find_library(GFORTRANLIB 
+	NAMES gfortran libgfortran gfortran3 libgfortran3 gfortran5 libgfortran5 
     PATHS ENV ${LIBRARY_PATH_VAR_NAME})
 if(NOT GFORTRANLIB)
 	message(FATAL_ERROR "gfortran library is required, but cannot be found. Please either locate the library to a searchable path or set a proper environment variable for the path.")
