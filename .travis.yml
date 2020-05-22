@@ -7,12 +7,13 @@ os:
 addons:
   apt:
     packages: 
-      - gfortran
+      - gfortran-6
       - libblas-dev
       - liblapack-dev
   homebrew:
     packages: 
-      - gfortran
+      - gfortran-6
+    update: true
 
 # install: make get-deps
 
@@ -25,5 +26,5 @@ before_install:
   - test -n $CXX && unset CXX
 
 script:
-  - cmake . && make && make test
+  - FC=gfortran-6 cmake . && make && make test
   
