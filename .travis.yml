@@ -21,9 +21,13 @@ compiler:
   - clang
   - gcc
 
-before_install:
-  - test -n $CC  && unset CC
-  - test -n $CXX && unset CXX
+# before_install:
+#   - test -n $CC  && unset CC
+#   - test -n $CXX && unset CXX
+
+before_script:
+  - echo $LD_LIBRARY_PATH
+  - echo $DYLD_LIBRARY_PATH
 
 script:
   - cmake . && make && make test
