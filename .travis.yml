@@ -1,10 +1,18 @@
 language: cpp
 
+os:
+  - linux
+  - osx
+
 addons:
   apt:
-    packages: gfortran
+    packages: 
+      - gfortran
+      - libblas-dev
+      - liblapack-dev
   homebrew:
-    packages: gfortran
+    packages: 
+      - gfortran
 
 # install: make get-deps
 
