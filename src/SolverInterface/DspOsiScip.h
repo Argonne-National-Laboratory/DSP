@@ -17,36 +17,37 @@ class DspOsiScip : public DspOsi {
 public:
 
     /** default constructor */
-	DspOsiScip() {
-		si_ = new OsiScipSolverInterface();
-        cbc_ = dynamic_cast<OsiScipSolverInterface*>(si_);
-	}
-
-	/** copy constructor */
-	DspOsiScip(const DspOsiScip& rhs) {
-        si_ = new OsiScipSolverInterface(*(rhs.scip_));
-        cbc_ = dynamic_cast<OsiScipSolverInterface*>(si_);
+    DspOsiScip() {
+        si_ = new OsiScipSolverInterface();
+        scip_ = dynamic_cast<OsiScipSolverInterface*>(si_);
     }
 
-	/** clone constructor */
-	virtual DspOsiScip* clone() const {
+    /** copy constructor */
+    DspOsiScip(const DspOsiScip& rhs) {
+        si_ = new OsiScipSolverInterface(*(rhs.scip_));
+        scip_ = dynamic_cast<OsiScipSolverInterface*>(si_);
+    }
+
+    /** clone constructor */
+    virtual DspOsiScip* clone() const {
         return new DspOsiScip(*this);
     }
 
     /** destructor */
-	virtual ~DspOsiScip() {
+    virtual ~DspOsiScip() {
         scip_ = NULL;
     }
 
-	/** solve problem */
-	virtual void solve() {
-		si_->initialSolve();
-		if (si_->getNumIntegers() > 0)
-			si_->branchAndBound();
-	}
+    /** solve problem */
+    virtual void solve() {
+        si_->initialSolve();
+        if (si_->getNumIntegers() > 0)
+            si_->branchAndBound();
+    }
 
-	/** solution statue */
-	virtual int status() {
+    /** solution statue */
+    virtual int status() {
+        int status = DSP_STAT_UNKNOWN;    
         int scipstat = SCIPgetStatus(scip_->getScip());
         switch(scipstat) {
         case SCIP_STATUS_USERINTERRUPT:
@@ -86,32 +87,32 @@ public:
             status = DSP_STAT_UNKNOWN;
             break;
         }
-		return status;
-	}
+        return status;
+    }
 
-	/** get dual objective value */
-	virtual double getDualObjValue() {
+    /** get dual objective value */
+    virtual double getDualObjValue() {
         return SCIPgetDualbound(scip_->getScip());
     }
 
-	/** get number of branch-and-bound nodes explored */
-	virtual int getNumNodes() {return SCIPgetNNodes(scip_);}
+    /** get number of branch-and-bound nodes explored */
+    virtual int getNumNodes() {return SCIPgetNNodes(scip_->getScip());}
 
-	/** set number of cores */
-	virtual void setNumCores(int num) {}
+    /** set number of cores */
+    virtual void setNumCores(int num) {}
 
-	/** set time limit */
-	virtual void setTimeLimit(double time) {
+    /** set time limit */
+    virtual void setTimeLimit(double time) {
         SCIPsetRealParam(scip_->getScip(), "limits/time", time);
     }
 
-	/** set node limit */
-	virtual void setNodeLimit(double num) {
+    /** set node limit */
+    virtual void setNodeLimit(double num) {
         SCIPsetLongintParam(scip_->getScip(), "limits/nodes", num);
     }
 
-	/** set relative MIP gap */
-	virtual void setRelMipGap(double tol) {
+    /** set relative MIP gap */
+    virtual void setRelMipGap(double tol) {
         SCIPsetRealParam(scip_->getScip(), "limits/gap", tol);
     }
 
