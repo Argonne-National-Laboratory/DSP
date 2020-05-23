@@ -27,7 +27,7 @@ matrix:
       osx_image: xcode11.4
       compiler: clang
       addons:
-        ssh_known_hosts: xgitlab.cels.anl.go
+        ssh_known_hosts: xgitlab.cels.anl.gov
 
 before_install:
   - openssl aes-256-cbc -K $encrypted_db2095f63ba3_key -iv $encrypted_db2095f63ba3_iv -in deploy_rsa.enc -out /tmp/deploy_rsa -d
@@ -37,9 +37,11 @@ before_install:
   - git clone git@xgitlab.cels.anl.gov:kimk/DSPThirdPartyLibs.git
   - cd DSPThirdPartyLibs
   - if [ $TRAVIS_OS_NAME == linux ]; then chmod +x SCIPOptSuite-7.0.0-Linux.sh && ./SCIPOptSuite-7.0.0-Linux.sh; fi
+  - if [ $TRAVIS_OS_NAME == linux ]; then sed -i 's/set(SCIPOPT_INC_DIR \"\"/set(SCIPOPT_INC_DIR \"${PWD}/include\"/g' ../UserConfig.cmake; fi
+  - if [ $TRAVIS_OS_NAME == linux ]; then sed -i 's/set(SCIPOPT_LIB_DIR \"\"/set(SCIPOPT_LIB_DIR \"${PWD}/lib\"/g' ../UserConfig.cmake; fi
   - if [ $TRAVIS_OS_NAME == osx ]; then chmod +x SCIPOptSuite-7.0.0-Darwin.sh && ./SCIPOptSuite-7.0.0-Darwin.sh; fi
-  - sed -i'' -e 's/set(SCIPOPT_INC_DIR \"\"/set(SCIPOPT_INC_DIR \"${PWD}/include\"/g' ../UserConfig.cmake
-  - sed -i'' -e 's/set(SCIPOPT_LIB_DIR \"\"/set(SCIPOPT_LIB_DIR \"${PWD}/lib\"/g' ../UserConfig.cmake
+  - if [ $TRAVIS_OS_NAME == osx ]; then sed -i'' -e 's/set(SCIPOPT_INC_DIR \"\"/set(SCIPOPT_INC_DIR \"${PWD}/include\"/g' ../UserConfig.cmake; fi
+  - if [ $TRAVIS_OS_NAME == osx ]; then sed -i'' -e 's/set(SCIPOPT_LIB_DIR \"\"/set(SCIPOPT_LIB_DIR \"${PWD}/lib\"/g' ../UserConfig.cmake; fi
   - cat ../UserConfig.cmake
   - cd ..
 
