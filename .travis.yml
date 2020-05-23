@@ -17,10 +17,10 @@ addons:
       - gfortran
       - libblas-dev
       - liblapack-dev
-  homebrew:
-    packages: 
-      - gfortran
-    update: true
+  # homebrew:
+  #   packages: 
+  #     - gfortran
+  #   update: true
 
 before_install:
   - export PATH=/usr/lib:/usr/local/lib:${PATH}
@@ -34,5 +34,5 @@ install:
   - cmake ..
   - make
 
-script:
-  - make test
+# script:
+#   - make test
