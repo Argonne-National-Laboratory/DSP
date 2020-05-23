@@ -14,7 +14,7 @@ compiler:
 addons:
   apt:
     packages: 
-      - gfortran
+      - gcc-9
       - libblas-dev
       - liblapack-dev
   # homebrew:
@@ -34,5 +34,5 @@ install:
   - cmake ..
   - make
 
-# script:
-#   - make test
+script:
+  - ctest --verbose
