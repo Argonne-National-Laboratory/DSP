@@ -31,7 +31,7 @@ before_install:
 install:
   - mkdir build
   - cd build
-  - cmake .
+  - cmake ..
   - make
 
 script:
