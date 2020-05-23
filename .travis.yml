@@ -1,7 +1,6 @@
 language: cpp
-sudo: required
 
-jobs:
+matrix:
   include:
     - os: linux
       dist: xenial
@@ -28,8 +27,6 @@ before_install:
   - export LD_LIBRARY_PATH=/usr/lib:/usr/local/lib:${LD_LIBRARY_PATH}
   - export DYLD_LIBRARY_PATH=/usr/lib:/usr/local/lib:${DYLD_LIBRARY_PATH}
   - gfortran -v
-  - ls /usr/lib/libgfortran*
-  - ls /usr/local/lib/libgfortran*
 
 install:
   - mkdir build
