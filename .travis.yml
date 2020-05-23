@@ -45,7 +45,7 @@ before_install:
   # - chmod 600 /tmp/deploy_rsa
   # - ssh-add /tmp/deploy_rsa
   # - git clone git@xgitlab.cels.anl.gov:kimk/DSPThirdPartyLibs.git
-  - ls DSPThirdPartyLibs
+  # - ls DSPThirdPartyLibs
   - export PATH=/usr/lib:/usr/local/lib:${PATH}
   - export LD_LIBRARY_PATH=/usr/lib:/usr/local/lib:${LD_LIBRARY_PATH}
   - export DYLD_LIBRARY_PATH=/usr/lib:/usr/local/lib:${DYLD_LIBRARY_PATH}
