@@ -1,9 +1,16 @@
 language: cpp
-dist: xenial
+sudo: required
 
-os:
-  - linux
-  - osx
+jobs:
+  include:
+    - os: linux
+      dist: xenial
+    - os: osx
+      osx_image: xcode11.4
+
+compiler:
+  - clang
+  - gcc
 
 addons:
   apt:
@@ -16,22 +23,19 @@ addons:
       - gfortran
     update: true
 
-# install: make get-deps
-
-compiler:
-  - clang
-  - gcc
-
-# before_install:
-#   - test -n $CC  && unset CC
-#   - test -n $CXX && unset CXX
-
 before_install:
   - export PATH=/usr/lib:/usr/local/lib:${PATH}
   - export LD_LIBRARY_PATH=/usr/lib:/usr/local/lib:${LD_LIBRARY_PATH}
   - export DYLD_LIBRARY_PATH=/usr/lib:/usr/local/lib:${DYLD_LIBRARY_PATH}
   - gfortran -v
+  - ls /usr/lib/libgfortran*
+  - ls /usr/local/lib/libgfortran*
 
 install:
-  - cmake . && make && make test
-  
+  - mkdir build
+  - cd build
+  - cmake .
+  - make
+
+script:
+  - make test
