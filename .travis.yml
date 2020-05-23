@@ -6,6 +6,7 @@ matrix:
       dist: xenial
       compiler: clang
       addons:
+        ssh_known_hosts: xgitlab.cels.anl.gov
         apt:
           packages:
             - libblas-dev
@@ -14,6 +15,7 @@ matrix:
       dist: xenial
       compiler: gcc
       addons:
+        ssh_known_hosts: xgitlab.cels.anl.gov
         apt:
           sources:
             - ubuntu-toolchain-r-test
@@ -24,16 +26,8 @@ matrix:
     - os: osx
       osx_image: xcode11.4
       compiler: clang
-
-addons:
-  ssh_known_hosts: xgitlab.cels.anl.gov
-#   apt:
-#     sources:
-#       - ubuntu-toolchain-r-test
-#     packages: 
-#       - gcc-9
-#       - libblas-dev
-#       - liblapack-dev
+      addons:
+        ssh_known_hosts: xgitlab.cels.anl.go
   # homebrew:
   #   packages: 
   #     - gfortran
@@ -45,11 +39,9 @@ before_install:
   - chmod 600 /tmp/deploy_rsa
   - ssh-add /tmp/deploy_rsa
   - git clone git@xgitlab.cels.anl.gov:kimk/DSPThirdPartyLibs.git
-  - ls DSPThirdPartyLibs
-  - export PATH=/usr/lib:/usr/local/lib:${PATH}
-  - export LD_LIBRARY_PATH=/usr/lib:/usr/local/lib:${LD_LIBRARY_PATH}
-  - export DYLD_LIBRARY_PATH=/usr/lib:/usr/local/lib:${DYLD_LIBRARY_PATH}
-  - gfortran -v
+  - cd DSPThirdPartyLibs
+  - if [ $TRAVIS_OS_NAME == linux ]; then chmod +x SCIPOptSuite-7.0.0-Linux.sh && ./SCIPOptSuite-7.0.0-Linux.sh; fi
+  - if [ $TRAVIS_OS_NAME == osx ]; then chmod +x SCIPOptSuite-7.0.0-Darwin.sh && ./SCIPOptSuite-7.0.0-Darwin.sh; fi
 
 install:
   - mkdir build
