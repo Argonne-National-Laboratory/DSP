@@ -42,6 +42,7 @@ before_install:
   - cd DSPThirdPartyLibs
   - if [ $TRAVIS_OS_NAME == linux ]; then chmod +x SCIPOptSuite-7.0.0-Linux.sh && ./SCIPOptSuite-7.0.0-Linux.sh; fi
   - if [ $TRAVIS_OS_NAME == osx ]; then chmod +x SCIPOptSuite-7.0.0-Darwin.sh && ./SCIPOptSuite-7.0.0-Darwin.sh; fi
+  - cd ..
 
 install:
   - mkdir build
