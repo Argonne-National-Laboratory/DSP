@@ -36,12 +36,12 @@ before_install:
   - ssh-add /tmp/deploy_rsa
   - git clone git@xgitlab.cels.anl.gov:kimk/DSPThirdPartyLibs.git
   - cd DSPThirdPartyLibs
-  - if [ $TRAVIS_OS_NAME == linux ]; then chmod +x SCIPOptSuite-7.0.0-Linux.sh && ./SCIPOptSuite-7.0.0-Linux.sh; fi
-  - if [ $TRAVIS_OS_NAME == linux ]; then sed -i 's/set(SCIPOPT_INC_DIR \"\"/set(SCIPOPT_INC_DIR \"${PWD}/include\"/g' ../UserConfig.cmake; fi
-  - if [ $TRAVIS_OS_NAME == linux ]; then sed -i 's/set(SCIPOPT_LIB_DIR \"\"/set(SCIPOPT_LIB_DIR \"${PWD}/lib\"/g' ../UserConfig.cmake; fi
-  - if [ $TRAVIS_OS_NAME == osx ]; then chmod +x SCIPOptSuite-7.0.0-Darwin.sh && ./SCIPOptSuite-7.0.0-Darwin.sh; fi
-  - if [ $TRAVIS_OS_NAME == osx ]; then sed -i'' -e 's/set(SCIPOPT_INC_DIR \"\"/set(SCIPOPT_INC_DIR \"${PWD}/include\"/g' ../UserConfig.cmake; fi
-  - if [ $TRAVIS_OS_NAME == osx ]; then sed -i'' -e 's/set(SCIPOPT_LIB_DIR \"\"/set(SCIPOPT_LIB_DIR \"${PWD}/lib\"/g' ../UserConfig.cmake; fi
+  - if [ $TRAVIS_OS_NAME == linux ]; then sh ./SCIPOptSuite-7.0.0-Linux.sh --skip-license; fi
+  - if [ $TRAVIS_OS_NAME == linux ]; then sed -i 's|set(SCIPOPT_INC_DIR \"\"|set(SCIPOPT_INC_DIR \"${PWD}/include\"|g' ../UserConfig.cmake; fi
+  - if [ $TRAVIS_OS_NAME == linux ]; then sed -i 's|set(SCIPOPT_LIB_DIR \"\"|set(SCIPOPT_LIB_DIR \"${PWD}/lib\"|g' ../UserConfig.cmake; fi
+  - if [ $TRAVIS_OS_NAME == osx ]; then sh ./SCIPOptSuite-7.0.0-Darwin.sh --skip-license; fi
+  - if [ $TRAVIS_OS_NAME == osx ]; then sed -i'' -e 's|set(SCIPOPT_INC_DIR \"\"|set(SCIPOPT_INC_DIR \"${PWD}/include\"|g' ../UserConfig.cmake; fi
+  - if [ $TRAVIS_OS_NAME == osx ]; then sed -i'' -e 's|set(SCIPOPT_LIB_DIR \"\"|set(SCIPOPT_LIB_DIR \"${PWD}/lib\"|g' ../UserConfig.cmake; fi
   - cat ../UserConfig.cmake
   - cd ..
 
