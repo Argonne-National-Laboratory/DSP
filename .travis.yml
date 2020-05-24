@@ -28,6 +28,10 @@ matrix:
       compiler: clang
       addons:
         ssh_known_hosts: xgitlab.cels.anl.gov
+        homebrew:
+          packages:
+            - git-lfs
+          update: true
 
 before_install:
   - openssl aes-256-cbc -K $encrypted_db2095f63ba3_key -iv $encrypted_db2095f63ba3_iv -in deploy_rsa.enc -out /tmp/deploy_rsa -d
@@ -38,11 +42,11 @@ before_install:
   - cd DSPThirdPartyLibs
   - git lfs pull
   - if [ $TRAVIS_OS_NAME == linux ]; then sh ./SCIPOptSuite-7.0.0-Linux.sh --skip-license; fi
-  - if [ $TRAVIS_OS_NAME == linux ]; then sed -i 's|set(SCIPOPT_INC_DIR \"\"|set(SCIPOPT_INC_DIR \"$TRAVIS_BUILD_DIR/DSPThirdPartyLibs/include\"|g' ../UserConfig.cmake; fi
-  - if [ $TRAVIS_OS_NAME == linux ]; then sed -i 's|set(SCIPOPT_LIB_DIR \"\"|set(SCIPOPT_LIB_DIR \"$TRAVIS_BUILD_DIR/DSPThirdPartyLibs/lib\"|g' ../UserConfig.cmake; fi
+  - if [ $TRAVIS_OS_NAME == linux ]; then sed -i 's|set(SCIPOPT_INC_DIR \"\"|set(SCIPOPT_INC_DIR \"'"$PWD"'/include\"|g' ../UserConfig.cmake; fi
+  - if [ $TRAVIS_OS_NAME == linux ]; then sed -i 's|set(SCIPOPT_LIB_DIR \"\"|set(SCIPOPT_LIB_DIR \"'"$PWD"'/lib\"|g' ../UserConfig.cmake; fi
   - if [ $TRAVIS_OS_NAME == osx ]; then sh ./SCIPOptSuite-7.0.0-Darwin.sh --skip-license; fi
-  - if [ $TRAVIS_OS_NAME == osx ]; then sed -i'' -e 's|set(SCIPOPT_INC_DIR \"\"|set(SCIPOPT_INC_DIR \"$TRAVIS_BUILD_DIR/DSPThirdPartyLibs/include\"|g' ../UserConfig.cmake; fi
-  - if [ $TRAVIS_OS_NAME == osx ]; then sed -i'' -e 's|set(SCIPOPT_LIB_DIR \"\"|set(SCIPOPT_LIB_DIR \"$TRAVIS_BUILD_DIR/DSPThirdPartyLibs/lib\"|g' ../UserConfig.cmake; fi
+  - if [ $TRAVIS_OS_NAME == osx ]; then sed -i'' -e 's|set(SCIPOPT_INC_DIR \"\"|set(SCIPOPT_INC_DIR \"'"$PWD"'/include\"|g' ../UserConfig.cmake; fi
+  - if [ $TRAVIS_OS_NAME == osx ]; then sed -i'' -e 's|set(SCIPOPT_LIB_DIR \"\"|set(SCIPOPT_LIB_DIR \"'"$PWD"'/lib\"|g' ../UserConfig.cmake; fi
   - cat ../UserConfig.cmake
   - cd ..
 
