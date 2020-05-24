@@ -17,15 +17,21 @@ matrix:
       addons:
         ssh_known_hosts: xgitlab.cels.anl.gov
         apt:
-          sources:
-            - ubuntu-toolchain-r-test
           packages: 
-            - gcc-9
             - libblas-dev
             - liblapack-dev
     - os: osx
       osx_image: xcode11.4
       compiler: clang
+      addons:
+        ssh_known_hosts: xgitlab.cels.anl.gov
+        homebrew:
+          packages:
+            - git-lfs
+          update: true
+    - os: osx
+      osx_image: xcode11.4
+      compiler: gcc
       addons:
         ssh_known_hosts: xgitlab.cels.anl.gov
         homebrew:
