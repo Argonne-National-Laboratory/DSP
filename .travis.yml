@@ -37,7 +37,7 @@ before_install:
   # - git clone git@xgitlab.cels.anl.gov:kimk/DSPThirdPartyLibs.git
   - mkdir DSPThirdPartyLibs
   - cd DSPThirdPartyLibs
-  - if [ $TRAVIS_OS_NAME == linux ]; then wget https://xgitlab.cels.anl.gov/kimk/DSPThirdPartyLibs/raw/master/SCIPOptSuite-7.0.0-Linux.sh
+  - if [ $TRAVIS_OS_NAME == linux ]; then wget https://xgitlab.cels.anl.gov/kimk/DSPThirdPartyLibs/raw/master/SCIPOptSuite-7.0.0-Linux.sh; fi
   - if [ $TRAVIS_OS_NAME == linux ]; then sh ./SCIPOptSuite-7.0.0-Linux.sh --skip-license; fi
   - if [ $TRAVIS_OS_NAME == linux ]; then sed -i 's|set(SCIPOPT_INC_DIR \"\"|set(SCIPOPT_INC_DIR \"'"$PWD"'/include\"|g' ../UserConfig.cmake; fi
   - if [ $TRAVIS_OS_NAME == linux ]; then sed -i 's|set(SCIPOPT_LIB_DIR \"\"|set(SCIPOPT_LIB_DIR \"'"$PWD"'/lib\"|g' ../UserConfig.cmake; fi
