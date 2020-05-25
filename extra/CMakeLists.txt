@@ -22,6 +22,8 @@ set(OOQP_HSL_LIB   "MA27LIB=${MA27LIB}")
 set(OOQP_BLAS      "BLAS=${BLAS_LIBRARIES}")
 string(REPLACE ";" "\ " OOQP_BLAS "${OOQP_BLAS}")
 
+set(EXTRA_CXX_FLAGS "-fPIC -Wno-sign-conversion -Wno-float-conversion -Wno-shorten-64-to-32 -Wno-unused-variable -Wno-constant-logical-operand -Wno-dynamic-class-memaccess -Wno-unused-private-field")
+
 ##################################################
 # Compile OOQP with ma27
 ##################################################
@@ -31,7 +33,7 @@ if(MA27LIB)
 		SOURCE_DIR ${OOQP_DIR}
 		CONFIGURE_COMMAND ${OOQP_DIR}/configure
 			--prefix=${DEPEND_DIR}
-			CXXFLAGS=-fPIC 
+			CXXFLAGS=${EXTRA_CXX_FLAGS}
 			FFLAGS=-fPIC
 			${OOQP_HSL_LIB}
 			${OOQP_BLAS}
@@ -54,7 +56,7 @@ ExternalProject_Add(CoinUtils
 		--prefix=${DEPEND_DIR}
 		--enable-static 
 		--disable-shared
-		ADD_CXXFLAGS=-fPIC
+		ADD_CXXFLAGS=${EXTRA_CXX_FLAGS}
 		# CXX=${CMAKE_CXX_COMPILER}
 	BUILD_COMMAND make
 	INSTALL_COMMAND make install)
@@ -84,7 +86,7 @@ ExternalProject_Add(Osi
 		${WITH_CPLEX_LIB}
 		${WITH_CPLEX_INCDIR}
 		--disable-cplex-libcheck
-		ADD_CXXFLAGS=-fPIC
+		ADD_CXXFLAGS=${EXTRA_CXX_FLAGS}
 		# CXX=${CMAKE_CXX_COMPILER}
 	BUILD_COMMAND make
 	INSTALL_COMMAND make install)
@@ -112,7 +114,7 @@ ExternalProject_Add(Clp
 		--with-coinutils-incdir=${COIN_INC_DIR}
 		--with-osi-lib=${OSI_LIB}
 		--with-osi-incdir=${COIN_INC_DIR}
-		ADD_CXXFLAGS=-fPIC
+		ADD_CXXFLAGS=${EXTRA_CXX_FLAGS}
 		# CXX=${CMAKE_CXX_COMPILER}
 	BUILD_COMMAND make
 	INSTALL_COMMAND make install)
@@ -133,7 +135,7 @@ ExternalProject_Add(Smi
 		--with-coinutils-incdir=${COIN_INC_DIR}
 		--with-osi-lib=${OSI_LIB}
 		--with-osi-incdir=${COIN_INC_DIR}
-		ADD_CXXFLAGS=-fPIC
+		ADD_CXXFLAGS=${EXTRA_CXX_FLAGS}
 		# CXX=${CMAKE_CXX_COMPILER}
 	BUILD_COMMAND make
 	INSTALL_COMMAND make install)
@@ -153,7 +155,7 @@ ExternalProject_Add(Alps
 		--with-coinutils-incdir=${COIN_INC_DIR}
 		--with-osi-lib=${OSI_LIB}
 		--with-osi-incdir=${COIN_INC_DIR}
-		ADD_CXXFLAGS=-fPIC
+		ADD_CXXFLAGS=${EXTRA_CXX_FLAGS}
 		# CXX=${CMAKE_CXX_COMPILER}
 	BUILD_COMMAND make
 	INSTALL_COMMAND make install)
