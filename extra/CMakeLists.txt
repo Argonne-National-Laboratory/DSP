@@ -41,8 +41,7 @@ if(MA27LIB)
 		BUILD_COMMAND make all_libs
 		INSTALL_COMMAND make install_headers install_libs)
 else()
-	message(WARNING "Library ma27 cannot be found.")
-	message(WARNING "OOQP is disabled.")
+	message(STATUS "Could not find ma27 (disabled OOQP solver)")
 endif()
 
 ##################################################
