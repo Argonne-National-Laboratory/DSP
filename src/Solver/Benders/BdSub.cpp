@@ -9,12 +9,13 @@
 
 #include "Utility/DspMessage.h"
 #include "Solver/Benders/BdSub.h"
-#include "SolverInterface/DspOsi.h"
+#include "SolverInterface/DspOsiClp.h"
+#include "SolverInterface/DspOsiCpx.h"
 
 #ifdef DSP_HAS_CPX
-#define COIN_OSI OsiCpxSolverInterface
+#define DSP_OSI DspOsiCpx
 #else
-#define COIN_OSI OsiClpSolverInterface
+#define DSP_OSI DspOsiClp
 #endif
 
 BdSub::BdSub(DspParams* par):
@@ -34,7 +35,7 @@ nsubprobs_(rhs.nsubprobs_) {
 	/** copy things ... */
 	setSubIndices(rhs.nsubprobs_, rhs.subindices_);
 	mat_mp_     = new CoinPackedMatrix * [nsubprobs_];
-	cglp_       = new OsiSolverInterface * [nsubprobs_];
+	cglp_       = new DspOsi * [nsubprobs_];
 	warm_start_ = new CoinWarmStart * [nsubprobs_];
 	objvals_    = new double [nsubprobs_];
 	solutions_  = new double * [nsubprobs_];
@@ -44,8 +45,8 @@ nsubprobs_(rhs.nsubprobs_) {
 		cglp_[i] = rhs.cglp_[i]->clone();
 		warm_start_[i] = rhs.warm_start_[i]->clone();
 		objvals_[i] = rhs.objvals_[i];
-		solutions_[i] = new double [cglp_[i]->getNumCols()];
-		CoinCopyN(rhs.solutions_[i], cglp_[i]->getNumCols(), solutions_[i]);
+		solutions_[i] = new double [cglp_[i]->si_->getNumCols()];
+		CoinCopyN(rhs.solutions_[i], cglp_[i]->si_->getNumCols(), solutions_[i]);
 		status_[i] = rhs.status_[i];
 	}
 }
@@ -104,7 +105,7 @@ DSP_RTN_CODE BdSub::loadProblem(DecModel* model)
 
 	/** allocate memory */
 	mat_mp_     = new CoinPackedMatrix * [nsubprobs_];
-	cglp_       = new OsiSolverInterface * [nsubprobs_];
+	cglp_       = new DspOsi * [nsubprobs_];
 	warm_start_ = new CoinWarmStart * [nsubprobs_];
 	objvals_    = new double [nsubprobs_];
 	solutions_  = new double * [nsubprobs_];
@@ -123,17 +124,17 @@ DSP_RTN_CODE BdSub::loadProblem(DecModel* model)
 				obj_reco, rlbd_reco, rubd_reco));
 
 		/** creating solver interface */
-		cglp_[i] = new COIN_OSI;
-		cglp_[i]->loadProblem(*mat_reco, clbd_reco, cubd_reco, obj_reco, rlbd_reco, rubd_reco);
-		for (int j = 0; j < cglp_[i]->getNumCols(); ++j)
+		cglp_[i] = new DSP_OSI;
+		cglp_[i]->si_->loadProblem(*mat_reco, clbd_reco, cubd_reco, obj_reco, rlbd_reco, rubd_reco);
+		for (int j = 0; j < cglp_[i]->si_->getNumCols(); ++j)
 		{
 			if (ctype_reco[j] != 'C')
-				cglp_[i]->setInteger(j);
+				cglp_[i]->si_->setInteger(j);
 		}
-		cglp_[i]->messageHandler()->setLogLevel(0);
+		cglp_[i]->setLogLevel(0);
 
 		/** allocate memory for solution */
-		solutions_[i] = new double [cglp_[i]->getNumCols()];
+		solutions_[i] = new double [cglp_[i]->si_->getNumCols()];
 
 		/** free memory */
 		FREE_MEMORY
@@ -213,38 +214,38 @@ void BdSub::solveOneSubproblem(
 #define FREE_MEMORY \
 	FREE_PTR(cglp)
 
-	OsiSolverInterface * cglp = NULL;
+	DspOsi * cglp = NULL;
 
 	BGN_TRY_CATCH
 
 	DSPdebugMessage("Scenario %d\n", s);
 
 	/** local variables */
-	const double * rlbd = cgl->cglp_[s]->getRowLower();
-	const double * rubd = cgl->cglp_[s]->getRowUpper();
-	const double * clbd = cgl->cglp_[s]->getColLower();
-	const double * cubd = cgl->cglp_[s]->getColUpper();
+	const double * rlbd = cgl->cglp_[s]->si_->getRowLower();
+	const double * rubd = cgl->cglp_[s]->si_->getRowUpper();
+	const double * clbd = cgl->cglp_[s]->si_->getColLower();
+	const double * cubd = cgl->cglp_[s]->si_->getColUpper();
 	const double * pi   = NULL; /** dual variables */
 	const double * rc   = NULL; /** reduced costs */
 
 	/** clone CGLP */
-	cglp = new COIN_OSI;
-	cglp->loadProblem(*(cgl->cglp_[s]->getMatrixByCol()),
-			cgl->cglp_[s]->getColLower(), cgl->cglp_[s]->getColUpper(),
-			cgl->cglp_[s]->getObjCoefficients(),
-			cgl->cglp_[s]->getRowLower(), cgl->cglp_[s]->getRowUpper());
-	cglp->setWarmStart(cgl->warm_start_[s]);
+	cglp = new DSP_OSI;
+	cglp->si_->loadProblem(*(cgl->cglp_[s]->si_->getMatrixByCol()),
+			cgl->cglp_[s]->si_->getColLower(), cgl->cglp_[s]->si_->getColUpper(),
+			cgl->cglp_[s]->si_->getObjCoefficients(),
+			cgl->cglp_[s]->si_->getRowLower(), cgl->cglp_[s]->si_->getRowUpper());
+	cglp->si_->setWarmStart(cgl->warm_start_[s]);
 
-	int nrows = cglp->getNumRows();
+	int nrows = cglp->si_->getNumRows();
 
 	/** loop over CGLP rows to update row bounds */
 	for (int i = nrows - 1; i >= 0; --i)
 	{
 		DSPdebugMessage("s %d, i %d, rlbd %e, rubd %e, Tx %e\n", s, i, rlbd[i], rubd[i], Tx[s][i]);
 		if (rlbd[i] > -1.0e+20)
-			cglp->setRowLower(i, rlbd[i] - Tx[s][i]);
+			cglp->si_->setRowLower(i, rlbd[i] - Tx[s][i]);
 		if (rubd[i] < 1.0e+20)
-			cglp->setRowUpper(i, rubd[i] - Tx[s][i]);
+			cglp->si_->setRowUpper(i, rubd[i] - Tx[s][i]);
 	}
 
 	/** solve feasibility problem */
@@ -256,24 +257,24 @@ void BdSub::solveOneSubproblem(
 	/** get warmstart */
 	if (!cgl->warm_start_[s])
 	{
-		cgl->warm_start_[s] = cglp->getWarmStart();
+		cgl->warm_start_[s] = cglp->si_->getWarmStart();
 		CoinWarmStartBasis * basis = dynamic_cast<CoinWarmStartBasis*>(cgl->warm_start_[s]);
-		basis->resize(cglp->getNumRows(), cglp->getNumCols() - nAddedCols);
+		basis->resize(cglp->si_->getNumRows(), cglp->si_->getNumCols() - nAddedCols);
 		basis = NULL;
 	}
 
 	/** infeasible? */
-	if (cglp->getObjValue() > 1.e-6)
+	if (cglp->getPrimObjValue() > 1.e-6)
 	{
 		/** save solution status */
 		cgl->status_[s] = DSP_STAT_PRIM_INFEASIBLE;
-		DSPdebugMessage("  Subproblem %d is infeasible (infeasibility %e).\n", s, cglp->getObjValue());
+		DSPdebugMessage("  Subproblem %d is infeasible (infeasibility %e).\n", s, cglp->getPrimObjValue());
 
 		/** calculate feasibility cut elements */
 		calculateCutElements(
-				cglp->getNumRows(), cglp->getNumCols(), cgl->mat_mp_[s],
-				rlbd, rubd, cglp->getColLower(), cglp->getColUpper(),
-				cglp->getRowPrice(), cglp->getReducedCost(), cutval[s], cutrhs[s]);
+				cglp->si_->getNumRows(), cglp->si_->getNumCols(), cgl->mat_mp_[s],
+				rlbd, rubd, cglp->si_->getColLower(), cglp->si_->getColUpper(),
+				cglp->si_->getRowPrice(), cglp->si_->getReducedCost(), cutval[s], cutrhs[s]);
 
 		FREE_MEMORY
 		return;
@@ -286,32 +287,32 @@ void BdSub::solveOneSubproblem(
 		return;
 	}
 	/** change to original problem */
-	chgToOrgProblem(cglp, cgl->cglp_[s]->getObjCoefficients(), nAddedCols);
+	chgToOrgProblem(cglp, cgl->cglp_[s]->si_->getObjCoefficients(), nAddedCols);
 
 	/** prepare for generating optimality cuts */
 #ifdef DSP_DEBUG
-	cglp->messageHandler()->setLogLevel(5);
+	cglp->setLogLevel(5);
 #else
-	cglp->messageHandler()->setLogLevel(0);
+	cglp->setLogLevel(0);
 #endif
-	cglp->setHintParam(OsiDoScale);
-	cglp->setHintParam(OsiDoPresolveInResolve);
-	cglp->setHintParam(OsiDoDualInResolve);
+	cglp->si_->setHintParam(OsiDoScale);
+	cglp->si_->setHintParam(OsiDoPresolveInResolve);
+	cglp->si_->setHintParam(OsiDoDualInResolve);
 
 	/** set warmstart */
-	cglp->setWarmStart(cgl->warm_start_[s]);
+	cglp->si_->setWarmStart(cgl->warm_start_[s]);
 
 	/** solve */
-	cglp->resolve();
+	cglp->solve();
 
 	/** update warmstart */
 	FREE_PTR(cgl->warm_start_[s]);
-	cgl->warm_start_[s] = cglp->getWarmStart();
+	cgl->warm_start_[s] = cglp->si_->getWarmStart();
 
-	DSPdebugMessage("  objective value %E\n", cglp->getObjValue());
+	DSPdebugMessage("  objective value %E\n", cglp->getPrimObjValue());
 
 	/** solution status */
-	convertOsiToDspStatus(cglp, cgl->status_[s]);
+	cgl->status_[s] = cglp->status();
 	DSPdebugMessage("  solution status: %d\n", cgl->status_[s]);
 
 	if (cgl->status_[s] == DSP_STAT_OPTIMAL)
@@ -319,31 +320,31 @@ void BdSub::solveOneSubproblem(
 		/** TODO: add parametric cuts */
 
 		/** get objective value */
-		cgl->objvals_[s] = cglp->getObjValue();
+		cgl->objvals_[s] = cglp->getPrimObjValue();
 
 		/** get primal solution */
-		CoinCopyN(cglp->getColSolution(), cglp->getNumCols(), cgl->solutions_[s]);
+		CoinCopyN(cglp->si_->getColSolution(), cglp->si_->getNumCols(), cgl->solutions_[s]);
 
 		/** get dual variables and reduced costs */
-		pi = cglp->getRowPrice();
-		rc = cglp->getReducedCost();
+		pi = cglp->si_->getRowPrice();
+		rc = cglp->si_->getReducedCost();
 #ifdef DSP_DEBUG2
-		for (int i = 0; i < cglp->getNumRows(); ++i)
+		for (int i = 0; i < cglp->si_->getNumRows(); ++i)
 		{
 			printf("  rlbd[%d] = %E, rubd[%d] = %E, pi[%d] = %E\n",
 					i, rlbd[i], i, rubd[i], i, pi[i]);
 		}
-		for (int j = 0; j < cglp->getNumCols(); ++j)
+		for (int j = 0; j < cglp->si_->getNumCols(); ++j)
 		{
-			printf("  y[%d] = %E, rc[%d] = %E\n", j, cglp->getColSolution()[j], j, rc[j]);
+			printf("  y[%d] = %E, rc[%d] = %E\n", j, cglp->si_->getColSolution()[j], j, rc[j]);
 		}
 #endif
 
 		/** calculate cut elements */
-		calculateCutElements(cglp->getNumRows(), cglp->getNumCols(),
+		calculateCutElements(cglp->si_->getNumRows(), cglp->si_->getNumCols(),
 				cgl->mat_mp_[s], rlbd, rubd, clbd, cubd, pi, rc, cutval[s], cutrhs[s]);
 	} else {
-		cglp->writeMps("subprob");
+		cglp->si_->writeMps("subprob");
 	}
 
 	END_TRY_CATCH(FREE_MEMORY)
@@ -353,28 +354,28 @@ void BdSub::solveOneSubproblem(
 }
 
 DSP_RTN_CODE BdSub::solveFeasProblem(
-		OsiSolverInterface * si, /**< [in] subproblem solver interface */
-		int & nAddedCols         /**< [out] number of columns added */)
+		DspOsi * osi,
+		int & nAddedCols)
 {
 	BGN_TRY_CATCH
 
-	for (int j = 0; j < si->getNumCols(); ++j)
-		si->setObjCoeff(j, 0.0);
+	for (int j = 0; j < osi->si_->getNumCols(); ++j)
+		osi->si_->setObjCoeff(j, 0.0);
 	std::vector<int> columnStarts, rows;
 	std::vector<double> elements, clbd, cubd, obj;
-	for (int i = 0; i < si->getNumRows(); ++i)
+	for (int i = 0; i < osi->si_->getNumRows(); ++i)
 	{
 		columnStarts.push_back(elements.size());
 		rows.push_back(i);
-		if (si->getRowSense()[i] == 'G')
+		if (osi->si_->getRowSense()[i] == 'G')
 			elements.push_back(1.0);
 		else
 			elements.push_back(-1.0);
 		clbd.push_back(0.0);
 		cubd.push_back(COIN_DBL_MAX);
 		obj.push_back(1.0);
-		if (si->getRowSense()[i] == 'E' ||
-			si->getRowSense()[i] == 'R')
+		if (osi->si_->getRowSense()[i] == 'E' ||
+			osi->si_->getRowSense()[i] == 'R')
 		{
 			columnStarts.push_back(elements.size());
 			rows.push_back(i);
@@ -386,22 +387,22 @@ DSP_RTN_CODE BdSub::solveFeasProblem(
 	}
 	columnStarts.push_back(elements.size());
 	nAddedCols = columnStarts.size() - 1;
-	si->addCols(nAddedCols, &columnStarts[0], &rows[0], &elements[0], &clbd[0], &cubd[0], &obj[0]);
+	osi->si_->addCols(nAddedCols, &columnStarts[0], &rows[0], &elements[0], &clbd[0], &cubd[0], &obj[0]);
 
 #ifdef DSP_DEBUG
-	si->messageHandler()->setLogLevel(1);
+	osi->setLogLevel(1);
 #else
-	si->messageHandler()->setLogLevel(0);
+	osi->setLogLevel(0);
 #endif
-	si->setHintParam(OsiDoScale);
-	si->setHintParam(OsiDoPresolveInInitial);
-	si->setHintParam(OsiDoDualInInitial);
+	osi->si_->setHintParam(OsiDoScale);
+	osi->si_->setHintParam(OsiDoPresolveInInitial);
+	osi->si_->setHintParam(OsiDoDualInInitial);
 
-	si->initialSolve();
+	osi->solve();
 	//si_copy->writeMps("debug");
 
 	/** should be always optimal */
-	assert(si->isProvenOptimal());
+	assert(osi->si_->isProvenOptimal());
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -409,9 +410,9 @@ DSP_RTN_CODE BdSub::solveFeasProblem(
 }
 
 DSP_RTN_CODE BdSub::chgToOrgProblem(
-		OsiSolverInterface * si, /**< [in] subproblem solver interface */
-		const double * obj,      /**< [in] original objective function */
-		int & nAddedCols         /**< [out] number of columns added */)
+		DspOsi * osi,
+		const double * obj,
+		int & nAddedCols)
 {
 #define FREE_MEMORY \
 	FREE_ARRAY_PTR(delind)
@@ -422,11 +423,11 @@ DSP_RTN_CODE BdSub::chgToOrgProblem(
 
 	/** delete columns */
 	delind = new int [nAddedCols];
-	CoinIotaN(delind, nAddedCols, si->getNumCols() - nAddedCols);
-	si->deleteCols(nAddedCols, delind);
+	CoinIotaN(delind, nAddedCols, osi->si_->getNumCols() - nAddedCols);
+	osi->si_->deleteCols(nAddedCols, delind);
 
 	/** set original objective */
-	si->setObjective(obj);
+	osi->si_->setObjective(obj);
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 

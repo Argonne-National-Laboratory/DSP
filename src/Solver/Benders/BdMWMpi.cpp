@@ -8,7 +8,7 @@
 //#define DSP_DEBUG
 #include "Solver/Benders/BdMWMpi.h"
 #include "Solver/Benders/SCIPconshdlrBendersWorker.h"
-#include "SolverInterface/DspOsi.h"
+#include "SolverInterface/DspOsiScip.h"
 
 BdMWMpi::BdMWMpi(
 		MPI_Comm comm,

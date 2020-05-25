@@ -10,6 +10,7 @@
 
 #ifdef DSP_HAS_SCIP
 
+#include "SolverInterface/DspOsi.h"
 #include "SolverInterface/OsiScipSolverInterface.hpp"
 #include "SolverInterface/SCIPbranchruleLB.h"
 
@@ -40,9 +41,7 @@ public:
 
     /** solve problem */
     virtual void solve() {
-        si_->initialSolve();
-        if (si_->getNumIntegers() > 0)
-            si_->branchAndBound();
+        si_->branchAndBound();
     }
 
     /** solution statue */

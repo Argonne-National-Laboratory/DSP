@@ -12,7 +12,7 @@
 #include "Utility/DspMacros.h"
 #include "Utility/DspRtnCodes.h"
 #include "Utility/DspParams.h"
-#include "OsiSolverInterface.hpp"
+#include "SolverInterface/DspOsi.h"
 #include "Model/DecModel.h"
 
 /**
@@ -72,7 +72,7 @@ public:
 	int * getSubprobIndices() {return subindices_;}
 
 	/** get number of columns */
-	int getNumCols(int i) {return cglp_[i]->getNumCols();}
+	int getNumCols(int i) {return cglp_[i]->si_->getNumCols();}
 
 private:
 
@@ -88,12 +88,12 @@ private:
 
 	/** solve feasibility problem */
 	static DSP_RTN_CODE solveFeasProblem(
-			OsiSolverInterface * si, /**< [in] subproblem solver interface */
+			DspOsi * osi, /**< [in] subproblem solver interface */
 			int & nAddedCols         /**< [out] number of columns added */);
 
 	/** change feasibility problem to original problem */
 	static DSP_RTN_CODE chgToOrgProblem(
-			OsiSolverInterface * si, /**< [in] subproblem solver interface */
+			DspOsi * osi, /**< [in] subproblem solver interface */
 			const double * obj,      /**< [in] original objective function */
 			int & nAddedCols         /**< [out] number of columns added */);
 
@@ -119,7 +119,7 @@ protected:
 	int * subindices_; /**< subproblem indices indices for cut generation */
 
 	CoinPackedMatrix   ** mat_mp_;     /**< array of matrix corresponding to master problem part */
-	OsiSolverInterface ** cglp_;       /**< array of Cut Generation LP */
+	DspOsi ** cglp_;       /**< array of Cut Generation LP */
 	CoinWarmStart **      warm_start_; /**< warm start information for each subproblem */
 	double *              objvals_;    /**< subproblem objective values */
 	double **             solutions_;  /**< subproblem solutions */

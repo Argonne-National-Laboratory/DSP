@@ -285,7 +285,7 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 		{
 			/** create empty row */
 			SCIP_ROW * row = NULL;
-			SCIP_CALL(SCIPcreateEmptyRowCons(scip, &row, conshdlr, "benders", rc->lb(), SCIPinfinity(scip),
+			SCIP_CALL(SCIPcreateEmptyRowConshdlr(scip, &row, conshdlr, "benders", rc->lb(), SCIPinfinity(scip),
 					FALSE, /**< is row local? */
 					FALSE, /**< is row modifiable? */
 					FALSE  /**< is row removable? can this be TRUE? */));
