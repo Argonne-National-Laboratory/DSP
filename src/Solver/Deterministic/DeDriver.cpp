@@ -7,7 +7,6 @@
 
 #include "Model/TssModel.h"
 #include "Solver/Deterministic/DeDriver.h"
-#include "SolverInterface/DspOsiCbc.h"
 #include "SolverInterface/DspOsiCpx.h"
 #include "SolverInterface/DspOsiScip.h"
 
@@ -124,11 +123,8 @@ DSP_RTN_CODE DeDriver::run()
 #endif
 		break;
 	}
-	case OsiCbc:
 	default:
-		par_->setIntParam("SOLVER/MIP", OsiCbc);
-		osi_ = new DspOsiCbc();
-		osi_->setLogLevel(par_->getIntParam("LOG_LEVEL"));
+		throw CoinError("Invalid value for SOLVER/MIP parameter", "run", "DeDriver");
 		break;
 	}
 
@@ -251,7 +247,7 @@ void DeDriver::writeExtMps(const char * name)
 #endif
 		break;
 	default:
-		osi = new DspOsiCbc();
+		throw CoinError("Invalid value for SOLVER/MIP parameter", "run", "DeDriver");
 		break;
 	}
 

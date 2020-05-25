@@ -119,50 +119,6 @@ ExternalProject_Add(Clp
 	INSTALL_COMMAND make install)
 
 ##################################################
-# Compile Cgl
-##################################################
-
-ExternalProject_Add(Cgl
-	DEPENDS CoinUtils Osi Clp
-	SOURCE_DIR ${CGL_DIR}
-	CONFIGURE_COMMAND ${CGL_DIR}/configure
-		--prefix=${DEPEND_DIR}
-		--enable-static 
-		--disable-shared
-		${COIN_BLAS}
-		--with-coinutils-lib=${COINUTILS_LIB}
-		--with-coinutils-incdir=${COIN_INC_DIR}
-		--with-osi-lib=${OSI_LIB}
-		--with-osi-incdir=${COIN_INC_DIR}
-		--with-clp-lib=${CLP_LIB}
-		--with-clp-incdir=${COIN_INC_DIR}
-		ADD_CXXFLAGS=-fPIC
-	BUILD_COMMAND make
-	INSTALL_COMMAND make install)
-
-##################################################
-# Compile Cbc
-##################################################
-
-ExternalProject_Add(Cbc
-	DEPENDS Osi Cgl
-	SOURCE_DIR ${CBC_DIR}
-	CONFIGURE_COMMAND ${CBC_DIR}/configure
-		--prefix=${DEPEND_DIR}
-		--enable-static 
-		--disable-shared
-		${COIN_BLAS}
-		--with-coinutils-lib=${COINUTILS_LIB}
-		--with-coinutils-incdir=${COIN_INC_DIR}
-		--with-osi-lib=${OSI_LIB}
-		--with-osi-incdir=${COIN_INC_DIR}
-		--with-cgl-lib=${CGL_LIB}
-		--with-cgl-incdir=${COIN_INC_DIR}
-		ADD_CXXFLAGS=-fPIC
-	BUILD_COMMAND make
-	INSTALL_COMMAND make install)
-
-##################################################
 # Compile CoinSMI
 ##################################################
 

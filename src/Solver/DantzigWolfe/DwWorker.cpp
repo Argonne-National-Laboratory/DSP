@@ -7,7 +7,7 @@
 
 // #define DSP_DEBUG
 
-#include "SolverInterface/DspOsiCbc.h"
+#include "SolverInterface/DspOsiScip.h"
 #include "SolverInterface/DspOsiCpx.h"
 #include "Solver/DantzigWolfe/DwWorker.h"
 #include "Model/TssModel.h"
@@ -26,7 +26,7 @@ DwWorker::DwWorker(DecModel * model, DspParams * par, DspMessage * message) :
 	DSPdebugMessage("Created parameters, DwWorker.\n");
 
 	if (parProcIdxSize_ <= 0) {
-		throw printf("Parameter ARR_PROC_IDX should be assigned. in DwWorker::DwWorker\n");
+		throw CoinError("Parameter ARR_PROC_IDX should be assigned.", "DwWorker", "DwWorker.cpp");
 	}
 
 	/** number of total subproblems */
@@ -39,11 +39,19 @@ DwWorker::DwWorker(DecModel * model, DspParams * par, DspMessage * message) :
 	/** create solver interface */
 	osi_ = new DspOsi* [parProcIdxSize_];
 	if (par_->getIntParam("SOLVER/MIP") == OsiCpx) {
+#ifdef DSP_HAS_CPX
 		for (int i = 0; i < parProcIdxSize_; ++i)
-			osi_[i] = new DspOsiCbc();
-	} else if (par_->getIntParam("SOLVER/MIP") == OsiCbc) {
+			osi_[i] = new DspOsiCpx();
+#else
+		throw CoinError("Invalid value fo SOLVER/MIP parameter", "DwWorker", "DwWorker.cpp");
+#endif
+	} else if (par_->getIntParam("SOLVER/MIP") == OsiScip) {
+#ifdef DSP_HAS_SCIP
 		for (int i = 0; i < parProcIdxSize_; ++i)
-			osi_[i] = new DspOsiCbc();
+			osi_[i] = new DspOsiScip();
+#else
+		throw CoinError("Invalid value fo SOLVER/MIP parameter", "DwWorker", "DwWorker.cpp");
+#endif
 	}
 
 	/** subproblem objective coefficients */

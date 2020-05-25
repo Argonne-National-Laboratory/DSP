@@ -12,7 +12,6 @@
 #include "Model/TssModel.h"
 #include "Solver/DualDecomp/DdSub.h"
 #include "SolverInterface/DspOsiClp.h"
-#include "SolverInterface/DspOsiCbc.h"
 #include "SolverInterface/DspOsiCpx.h"
 #include "SolverInterface/DspOsiScip.h"
 
@@ -288,9 +287,8 @@ DSP_RTN_CODE DdSub::createProblem() {
             osi_ = new DspOsiScip();
             break;
 #endif
-    	case OsiCbc:
     	default:
-            osi_ = new DspOsiCbc();
+			throw CoinError("Invalid value for SOLVER/MIP parameter", "createProblem", "DdSub");
     		break;
     	}
 		osi_->setNumCores(1);

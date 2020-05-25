@@ -35,7 +35,6 @@ enum DSP_EXTERNAL_SOLVER {
 	OsiCpx = 0,
 	OsiScip,
 	OsiOoqp,
-	OsiCbc,
 	OsiClp,
 };
 

@@ -212,7 +212,7 @@ void DspParams::initIntParams()
 	IntParams_.createParam("SOLVER/MIP", OsiCpx);
 	IntParams_.createParam("SOLVER/QP", OsiCpx);
 #else
-	IntParams_.createParam("SOLVER/MIP", OsiCbc);
+	IntParams_.createParam("SOLVER/MIP", OsiScip);
 	IntParams_.createParam("SOLVER/QP", OsiClp);
 #endif
 

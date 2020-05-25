@@ -66,10 +66,7 @@ set(DSP_LIBS
 	${DEPEND_DIR}/lib/libSmi.a 
 	${DEPEND_DIR}/lib/libOsi.a 
 	${DEPEND_DIR}/lib/libOsiClp.a 
-	${DEPEND_DIR}/lib/libOsiCbc.a 
 	${DEPEND_DIR}/lib/libClp.a 
-	${DEPEND_DIR}/lib/libCbc.a 
-	${DEPEND_DIR}/lib/libCgl.a 
 	${DEPEND_DIR}/lib/libAlps.a
 	${DEPEND_DIR}/lib/libCoinUtils.a 
 	${ZLIB_LIBRARIES}

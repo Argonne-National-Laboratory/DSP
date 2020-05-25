@@ -9,7 +9,6 @@
 #include "Model/TssModel.h"
 #include "Solver/DualDecomp/DdWorkerUB.h"
 #include "SolverInterface/DspOsiClp.h"
-#include "SolverInterface/DspOsiCbc.h"
 #include "SolverInterface/DspOsiCpx.h"
 #include "SolverInterface/DspOsiScip.h"
 
@@ -158,10 +157,9 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
             osi_[s] = new DspOsiScip();
             break;
 #endif
-    	case OsiCbc:
     	default:
 			if (has_integer)
-            	osi_[s] = new DspOsiCbc();
+				throw CoinError("Invalid value for SOLVER/MIP parameter", "createProblem", "DdWorkerUB");
 			else
             	osi_[s] = new DspOsiClp();
     		break;
