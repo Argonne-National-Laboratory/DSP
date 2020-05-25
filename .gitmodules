@@ -15,10 +15,6 @@ url=https://github.com/kibaekkim/CHiPPS-ALPS.git
 	path = extra/Osi
 url=https://github.com/kibaekkim/Osi.git
 	branch = stable/dsp
-[submodule "extra/Cgl"]
-	path = extra/Cgl
-	url = https://github.com/coin-or/Cgl.git
-	branch = stable/0.60
 [submodule "extra/CoinUtils"]
 	path = extra/CoinUtils
 	url = https://github.com/coin-or/CoinUtils.git
