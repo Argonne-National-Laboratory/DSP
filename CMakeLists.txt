@@ -18,12 +18,6 @@ if(NOT CMAKE_BUILD_TYPE)
 endif(NOT CMAKE_BUILD_TYPE)
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
-if(APPLE)
-	set(LIBRARY_PATH_VAR_NAME "DYLD_LIBRARY_PATH")
-else(APPLE)
-	set(LIBRARY_PATH_VAR_NAME "LD_LIBRARY_PATH")
-endif(APPLE)
-
 find_package(BLAS REQUIRED)
 find_package(LAPACK REQUIRED)
 find_package(ZLIB REQUIRED)
@@ -35,12 +29,24 @@ if (MPI_CXX_FOUND)
 	set(CMAKE_Fortran_COMPILER ${MPI_Fortran_COMPILER})
 endif()
 
-find_library(GFORTRANLIB 
-	NAMES gfortran libgfortran
-    PATHS "/usr/bin" "/usr/local/bin" ENV ${LIBRARY_PATH_VAR_NAME})
-if(NOT GFORTRANLIB)
-	message(FATAL_ERROR "gfortran library is required, but cannot be found. Please either locate the library to a searchable path or set a proper environment variable for the path.")
-endif(NOT GFORTRANLIB)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+	# if(APPLE)
+	# 	set(LIBRARY_PATH_VAR_NAME "DYLD_LIBRARY_PATH")
+	# else(APPLE)
+	# 	set(LIBRARY_PATH_VAR_NAME "LD_LIBRARY_PATH")
+	# endif(APPLE)
+	# find_library(GFORTRANLIB 
+	# 	NAMES gfortran libgfortran
+	# 	PATHS ENV ${LIBRARY_PATH_VAR_NAME})
+	# if(GFORTRANLIB)
+	# 	message(STATUS "Found libgfortran: ${GFORTRANLIB}")
+	# else(GFORTRANLIB)
+	# 	message(FATAL_ERROR "gfortran library is required, but cannot be found. Please either locate the library to a searchable path or set a proper environment variable for the path.")
+	# endif(GFORTRANLIB)
+	set(GFORTRANLIB "")
+else()
+	set(GFORTRANLIB "")
+endif()
 
 find_library(SCIPLIB scip PATHS ${SCIPOPT_LIB_DIR})
 find_library(MA27LIB  ma27  PATHS ${MA27LIB_DIR})
