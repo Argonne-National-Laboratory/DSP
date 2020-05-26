@@ -249,16 +249,19 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 #ifdef DSP_HAS_CPX
     		osi_dro_ = new DspOsiCpx();
 			CPXsetintparam(dynamic_cast<DspOsiCpx*>(osi_dro_)->cpx_->getEnvironmentPtr(), CPX_PARAM_SCRIND, CPX_OFF);
-    		break;
+#else
+			throw CoinError("Invalid value for SOLVER/MIP parameter", "createProblem", "DdWorkerUB");
 #endif
+    		break;
     	case OsiScip:
 #ifdef DSP_HAS_SCIP
             osi_dro_ = new DspOsiScip();
-            break;
+#else
+			throw CoinError("Invalid value for SOLVER/MIP parameter", "createProblem", "DdWorkerUB");
 #endif
-    	case OsiCbc:
+            break;
     	default:
-            osi_dro_ = new DspOsiClp();
+			throw CoinError("Invalid value for SOLVER/MIP parameter", "createProblem", "DdWorkerUB");
     		break;
     	}
 
