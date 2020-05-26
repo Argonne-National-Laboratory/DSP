@@ -8,7 +8,6 @@
 // #define DSP_DEBUG
 #include "Model/TssModel.h"
 #include "Solver/DualDecomp/DdWorkerUB.h"
-#include "SolverInterface/DspOsiClp.h"
 #include "SolverInterface/DspOsiCpx.h"
 #include "SolverInterface/DspOsiScip.h"
 
@@ -150,18 +149,19 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 #ifdef DSP_HAS_CPX
     		osi_[s] = new DspOsiCpx();
 			CPXsetintparam(dynamic_cast<DspOsiCpx*>(osi_[s])->cpx_->getEnvironmentPtr(), CPX_PARAM_SCRIND, CPX_OFF);
-    		break;
+#else
+			throw CoinError("Invalid value for SOLVER/MIP parameter", "createProblem", "DdWorkerUB");
 #endif
+    		break;
     	case OsiScip:
 #ifdef DSP_HAS_SCIP
             osi_[s] = new DspOsiScip();
-            break;
+#else
+			throw CoinError("Invalid value for SOLVER/MIP parameter", "createProblem", "DdWorkerUB");
 #endif
+            break;
     	default:
-			if (has_integer)
-				throw CoinError("Invalid value for SOLVER/MIP parameter", "createProblem", "DdWorkerUB");
-			else
-            	osi_[s] = new DspOsiClp();
+			throw CoinError("Invalid value for SOLVER/MIP parameter", "createProblem", "DdWorkerUB");
     		break;
     	}
 
