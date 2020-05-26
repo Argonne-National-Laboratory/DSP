@@ -13,6 +13,7 @@
 #include "SolverInterface/DspOsi.h"
 #include "SolverInterface/OsiScipSolverInterface.hpp"
 #include "SolverInterface/SCIPbranchruleLB.h"
+#include "CoinHelperFunctions.hpp"
 
 class DspOsiScip : public DspOsi {
 public:
