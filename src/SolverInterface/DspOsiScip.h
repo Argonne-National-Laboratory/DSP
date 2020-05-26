@@ -97,6 +97,11 @@ public:
     /** get number of branch-and-bound nodes explored */
     virtual int getNumNodes() {return SCIPgetNNodes(scip_->getScip());}
 
+	/** set log level */
+	virtual void setLogLevel(int level) {
+		SCIPsetIntParam(scip_->getScip(), "display/verblevel", CoinMax(0,CoinMin(5,level)));
+	}
+
     /** set number of cores */
     virtual void setNumCores(int num) {}
 
