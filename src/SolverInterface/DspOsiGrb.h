@@ -103,14 +103,14 @@ public:
         case GRB_NODE_LIMIT:
 	    	status = DSP_STAT_STOPPED_NODE;
 	    	break;
-	    case GRB_TIME_LIMIT:
-	    	status = DSP_STAT_STOPPED_TIME;
-	    	break;
-	    case GRB_NUMERIC:
-	    case GRB_INTERRUPTED:
-	    	status = DSP_STAT_STOPPED_USER;
-	    	break;
-        case GRB_LOAdEd:
+        case GRB_TIME_LIMIT:
+        	status = DSP_STAT_STOPPED_TIME;
+        	break;
+        case GRB_NUMERIC:
+        case GRB_INTERRUPTED:
+            status = DSP_STAT_STOPPED_USER;
+            break;
+        case GRB_LOADED:
         case GRB_INPROGRESS:
             status = DSP_STAT_ABORT;
 	    	break;
