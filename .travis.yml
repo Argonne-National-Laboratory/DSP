@@ -9,6 +9,7 @@ matrix:
         ssh_known_hosts: xgitlab.cels.anl.gov
         apt:
           packages:
+            - gfortran
             - libblas-dev
             - liblapack-dev
             - libtbb-dev
@@ -19,6 +20,7 @@ matrix:
         ssh_known_hosts: xgitlab.cels.anl.gov
         apt:
           packages:
+            - gfortran
             - libblas-dev
             - liblapack-dev
             - libtbb-dev
@@ -89,12 +91,14 @@ before_install:
   - if [ $TRAVIS_OS_NAME == linux ]; then export PATH=/usr/local/lib:$PATH; fi
   - if [ $TRAVIS_OS_NAME == linux ]; then export LD_LIBRARY_PATH=$PWD/lib:$LD_LIBRARY_PATH; fi
   - if [ $TRAVIS_OS_NAME == linux ]; then export LD_LIBRARY_PATH=$(dirname `${GFORTRAN} --print-file-name libgfortran.so`):/usr/local/lib:$LD_LIBRARY_PATH; fi
+  - if [ $TRAVIS_OS_NAME == linux ]; then ls -al `${GFORTRAN} --print-file-name libgfortran.so`; fi
   - if [ $TRAVIS_OS_NAME == osx ]; then sh ./SCIPOptSuite-7.0.0-Darwin.sh --skip-license; fi
   - if [ $TRAVIS_OS_NAME == osx ]; then sed -i'' -e 's|set(SCIPOPT_INC_DIR \"\"|set(SCIPOPT_INC_DIR \"'"$PWD"'/include\"|g' ../UserConfig.cmake; fi
   - if [ $TRAVIS_OS_NAME == osx ]; then sed -i'' -e 's|set(SCIPOPT_LIB_DIR \"\"|set(SCIPOPT_LIB_DIR \"'"$PWD"'/lib\"|g' ../UserConfig.cmake; fi
   - if [ $TRAVIS_OS_NAME == osx ]; then export PATH=/usr/local/lib:$PATH; fi
   - if [ $TRAVIS_OS_NAME == osx ]; then export DYLD_LIBRARY_PATH=$PWD/lib:$DYLD_LIBRARY_PATH; fi
   - if [ $TRAVIS_OS_NAME == osx ]; then export DYLD_LIBRARY_PATH=$(dirname `${GFORTRAN} --print-file-name libgfortran.dylib`):/usr/local/lib:$DYLD_LIBRARY_PATH; fi
+  - if [ $TRAVIS_OS_NAME == osx ]; then ls -al `${GFORTRAN} --print-file-name libgfortran.dylib`; fi
   - echo $LD_LIBRARY_PATH
   - echo $DYLD_LIBRARY_PATH
   - cat ../UserConfig.cmake
