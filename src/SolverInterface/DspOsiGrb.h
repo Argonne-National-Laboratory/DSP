@@ -82,30 +82,30 @@ public:
         switch(stat) {
         case GRB_OPTIMAL:
         case GRB_SUBOPTIMAL:
-	        status = DSP_STAT_OPTIMAL;
-	        break;
+            status = DSP_STAT_OPTIMAL;
+            break;
         case GRB_INFEASIBLE:
         case GRB_CUTOFF:
-	        status = DSP_STAT_PRIM_INFEASIBLE;
-	        break;
+            status = DSP_STAT_PRIM_INFEASIBLE;
+            break;
         case GRB_INF_OR_UNBD:
-	        status = DSP_STAT_DUAL_INFEASIBLE;
-	        break;
+            status = DSP_STAT_DUAL_INFEASIBLE;
+            break;
         case GRB_UNBOUNDED:
-	        status = DSP_STAT_DUAL_INFEASIBLE;
-	        break;
+            status = DSP_STAT_DUAL_INFEASIBLE;
+            break;
         case GRB_USER_OBJ_LIMIT:
-        	status = DSP_STAT_LIM_PRIM_OBJ;
-        	break;
+            status = DSP_STAT_LIM_PRIM_OBJ;
+            break;
         case GRB_ITERATION_LIMIT:
-        	status = DSP_STAT_STOPPED_ITER;
-	    	break;
+            status = DSP_STAT_STOPPED_ITER;
+            break;
         case GRB_NODE_LIMIT:
-	    	status = DSP_STAT_STOPPED_NODE;
-	    	break;
+            status = DSP_STAT_STOPPED_NODE;
+            break;
         case GRB_TIME_LIMIT:
-        	status = DSP_STAT_STOPPED_TIME;
-        	break;
+            status = DSP_STAT_STOPPED_TIME;
+            break;
         case GRB_NUMERIC:
         case GRB_INTERRUPTED:
             status = DSP_STAT_STOPPED_USER;
@@ -113,10 +113,10 @@ public:
         case GRB_LOADED:
         case GRB_INPROGRESS:
             status = DSP_STAT_ABORT;
-	    	break;
+            break;
 	    default:
-	    	status = DSP_STAT_UNKNOWN;
-			break;
+            status = DSP_STAT_UNKNOWN;
+            break;
 	    return status;
 	}
 
