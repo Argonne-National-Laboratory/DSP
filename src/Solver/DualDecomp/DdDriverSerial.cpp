@@ -29,7 +29,7 @@ DSP_RTN_CODE DdDriverSerial::init() {
 	DSPdebugMessage("Created master-worker framework.\n");
 
 	/** initialize master-worker framework */
-	mw_->init();
+	DSP_RTN_CHECK_THROW(mw_->init());
 	DSPdebugMessage("Initialized master-worker framework.\n");
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)

@@ -97,18 +97,15 @@ DSP_RTN_CODE DdMasterTr::init()
 	parTrDecrease_ = par_->getBoolParam("DD/TR/DECREASE");
 	parNumCutsPerIter_ = par_->getIntParam("DD/NUM_CUTS_PER_ITER");
 #ifndef DSP_HAS_OOQP
-	if (par_->getIntParam("DD/MASTER_ALGO")  == IPM_Feasible) {
-		printf("DD/MASTER_ALGO = %d is not valid without OOQP.\n", IPM_Feasible);
-		printf("The parameter value is changed to %d.\n", IPM);
-		par_->setIntParam("DD/MASTER_ALGO", IPM);
-	}
+	if (par_->getIntParam("DD/MASTER_ALGO")  == IPM_Feasible)
+		throw CoinError("Invalid parameter value", "init", "DdMasterTr");
 #endif
 	parMasterAlgo_ = par_->getIntParam("DD/MASTER_ALGO");
 	parLogLevel_ = par_->getIntParam("LOG_LEVEL");
 	DSPdebugMessage("Trust region size %f\n", parTrSize_);
 
 	/** create problem */
-	createProblem();
+	DSP_RTN_CHECK_THROW(createProblem());
 
 	/** clock */
 	cputime_elapsed_  = CoinCpuTime();
@@ -468,54 +465,32 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 	// DSPdebug(mat->verifyMtx(4));
 
 	/** create solver interface */
+	if (parMasterAlgo_ != IPM_Feasible) {
+		osi_ = createDspOsi();
+		if (!osi_) throw CoinError("Failed to create DspOsi", "createProblem", "DdMasterTr");
+	}
+
 	DSPdebugMessage("parMasterAlgo_ %d\n", parMasterAlgo_);
 	switch (parMasterAlgo_) {
 	case Simplex:
-#ifdef DSP_HAS_CPX
-		osi_ = new DspOsiCpx();
-#else
-		osi_ = new DspOsiClp();
-#endif
+		osi_->use_simplex();
 		break;
-	case IPM: {
-		switch (par_->getIntParam("SOLVER/QP")) {
-		case OsiOoqp:
-#ifdef DSP_HAS_OOQP
-			osi_ = new DspOsiOoqp();
-			break;
-#else
-			printf("OOQP is not available for QP solve.\n");
-#endif
-		case OsiCpx: {
-#ifdef DSP_HAS_CPX
-			osi_ = new DspOsiCpx();
-			OsiCpxSolverInterface* cpx = dynamic_cast<DspOsiCpx*>(osi_)->cpx_;
-			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_LPMETHOD,          CPX_ALG_BARRIER);
-			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARCROSSALG,       -1);
-			//CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, 1);
-			CPXsetdblparam(cpx->getEnvironmentPtr(), CPX_PARAM_BAREPCOMP, 1e-5);
-			break;
-#else
-			printf("CPLEX is not available for QP solve.\n");
-#endif
-		}
-		default:
-			osi_ = new DspOsiClp();
-			break;
-		}
+	case IPM:
+		osi_->use_barrier();
 		break;
-	}
 	case IPM_Feasible:
 #ifdef DSP_HAS_OOQP
 		osi_ = new DspOsiOoqpEps();
-		break;
 #else
-		printf("OOQP is not available for QP solve.\n");
+		throw CoinError("DspOsiOoqpEps is not available.", "createProblem", "DdMasterTr");
 #endif
+		break;
 	default:
-		osi_ = new DspOsiClp();
+		throw CoinError("Invalid parameter value", "createProblem", "DdMasterTr");
 		break;
 	}
+
+	if (!osi_) throw CoinError("Failed to create DspOsi", "createProblem", "DdMasterTr");
 	DSPdebugMessage("Created master algorithm\n");
 
 	osi_->setNumCores(par_->getIntParam("NUM_CORES"));

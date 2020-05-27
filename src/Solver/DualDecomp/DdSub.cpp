@@ -273,29 +273,30 @@ DSP_RTN_CODE DdSub::createProblem() {
         }
     }
 
-    if (nIntegers > 0) {
-    	switch (par_->getIntParam("SOLVER/MIP")) {
-    	case OsiCpx:
+	switch (par_->getIntParam("DD/SUB/SOLVER")) {
+	case OsiCpx:
 #ifdef DSP_HAS_CPX
-		{
-    		osi_ = new DspOsiCpx();
-    		break;
-		}
+		osi_ = new DspOsiCpx();
+#else
+		throw CoinError("Cplex is not available.", "createProblem", "DdSub");
 #endif
-    	case OsiScip:
+		break;
+	case OsiScip:
 #ifdef DSP_HAS_SCIP
-            osi_ = new DspOsiScip();
-            break;
+		osi_ = new DspOsiScip();
+#else
+		throw CoinError("Scip is not available.", "createProblem", "DdSub");
 #endif
-    	default:
-			throw CoinError("Invalid value for SOLVER/MIP parameter", "createProblem", "DdSub");
-    		break;
-    	}
-		osi_->setNumCores(1);
-    } else
-        osi_ = new DspOsiClp();
+		break;
+	default:
+		throw CoinError("Invalid parameter value", "createProblem", "DdSub");
+		break;
+	}
 
-    /** no display */
+	/** set number of cores */
+	osi_->setNumCores(1);
+
+    /** set display */
     osi_->setLogLevel(par_->getIntParam("DD/SUB/LOG_LEVEL"));
 
     /** load problem */
@@ -439,8 +440,5 @@ void DdSub::setGapTol(double tol)
 /** set print level */
 void DdSub::setPrintLevel(int level)
 {
-	if (par_->getIntParam("SOLVER/MIP") == OsiScip)
-		osi_->setLogLevel(level);
-	else
-		osi_->setLogLevel(CoinMax(0, level - 2));
+	osi_->setLogLevel(par_->getIntParam("DD/SUB/SOLVER/LOG_LEVEL"));
 }

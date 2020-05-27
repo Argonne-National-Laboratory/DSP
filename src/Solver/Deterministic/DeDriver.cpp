@@ -104,29 +104,12 @@ DSP_RTN_CODE DeDriver::run()
 		}
 	}
 
-	switch(par_->getIntParam("SOLVER/MIP")) {
-	case OsiCpx: {
-#ifdef DSP_HAS_CPX
-		osi_ = new DspOsiCpx();
-		osi_->setLogLevel(par_->getIntParam("LOG_LEVEL"));
-#else
-		throw CoinError("OsiCpx is not available.", "run", "DeDriver");
-#endif
-		break;
-	}
-	case OsiScip: {
-#ifdef DSP_HAS_SCIP
-		osi_ = new DspOsiScip();
-		osi_->setLogLevel(CoinMin(par_->getIntParam("LOG_LEVEL") + 2, 5));
-#else
-		throw CoinError("OsiScip is not available.", "run", "DeDriver");
-#endif
-		break;
-	}
-	default:
-		throw CoinError("Invalid value for SOLVER/MIP parameter", "run", "DeDriver");
-		break;
-	}
+	/** create DspOsi */
+	osi_ = createDspOsi();
+	if (!osi_) throw CoinError("Failed to create DspOsi", "run", "DeDriver");
+
+	/** set display */
+	osi_->setLogLevel(par_->getIntParam("DE/SOLVER/LOG_LEVEL"));
 
 	/** set number of cores */
 	osi_->setNumCores(par_->getIntParam("NUM_CORES"));
@@ -231,25 +214,9 @@ void DeDriver::writeExtMps(const char * name)
 	/** get DE model */
 	DSP_RTN_CHECK_THROW(model_->getFullModel(mat, clbd, cubd, ctype, obj, rlbd, rubd));
 
-	switch(par_->getIntParam("SOLVER/MIP")) {
-	case OsiCpx:
-#ifdef DSP_HAS_CPX
-		osi = new DspOsiCpx();
-#else
-		throw CoinError("OsiCpx is not available.", "writeExtMps", "DeDriver");
-#endif
-		break;
-	case OsiScip:
-#ifdef DSP_HAS_SCIP
-		osi = new DspOsiScip();
-#else
-		throw CoinError("OsiScip is not available.", "writeExtMps", "DeDriver");
-#endif
-		break;
-	default:
-		throw CoinError("Invalid value for SOLVER/MIP parameter", "run", "DeDriver");
-		break;
-	}
+	/** create DspOsi */
+	osi = createDspOsi();
+	if (!osi) throw CoinError("Failed to create DspOsi", "writeExtMps", "DeDriver");
 
 	/** load problem */
 	osi->si_->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
@@ -267,4 +234,32 @@ void DeDriver::writeExtMps(const char * name)
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,;)
 #undef FREE_MEMORY
+}
+
+DspOsi * DeDriver::createDspOsi() {
+	DspOsi * osi = NULL;
+	BGN_TRY_CATCH
+
+	switch(par_->getIntParam("DE/SOLVER")) {
+	case OsiCpx:
+#ifdef DSP_HAS_CPX
+		osi = new DspOsiCpx();
+#else
+		throw CoinError("Cplex is not available.", "createDspOsi", "DeDriver");
+#endif
+		break;
+	case OsiScip:
+#ifdef DSP_HAS_SCIP
+		osi = new DspOsiScip();
+#else
+		throw CoinError("Scip is not available.", "createDspOsi", "DeDriver");
+#endif
+		break;
+	default:
+		throw CoinError("Invalid paramter value", "createDspOsi", "DeDriver");
+		break;
+	}
+
+	END_TRY_CATCH_RTN(;,osi)
+	return osi;
 }

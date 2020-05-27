@@ -43,8 +43,17 @@ public:
 
 	/** solve problem */
 	virtual void solve() {
-		// si_->initialSolve();
-        si_->resolve();
+        // resolve() does not seem to recognize quadratic objective.
+		si_->initialSolve();
+        // si_->resolve();
+	}
+
+	virtual void use_simplex() {
+		clp_->getModelPtr()->setSolveType(1);
+	}
+
+	virtual void use_barrier() {
+		clp_->getModelPtr()->setSolveType(3);
 	}
 
 	/** solution statue */

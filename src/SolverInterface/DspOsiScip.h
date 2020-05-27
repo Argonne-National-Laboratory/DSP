@@ -45,6 +45,8 @@ public:
         si_->branchAndBound();
     }
 
+	virtual void use_simplex() {}
+
     /** solution statue */
     virtual int status() {
         int status = DSP_STAT_UNKNOWN;    

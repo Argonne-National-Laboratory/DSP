@@ -7,7 +7,7 @@
 
 // #define DSP_DEBUG
 
-#include "SolverInterface/DspOsiClp.h"
+#include "SolverInterface/DspOsiScip.h"
 #include "SolverInterface/DspOsiCpx.h"
 #include "Solver/DantzigWolfe/DwBundleDual.h"
 #include "Utility/DspUtility.h"
@@ -87,7 +87,7 @@ DSP_RTN_CODE DwBundleDual::solve() {
 	u_ = par_->getDblParam("DW/INIT_CENTER");
 	counter_ = 0;
 	eps_ = COIN_DBL_MAX;
-	updateCenter(u_);
+	DSP_RTN_CHECK_THROW(updateCenter(u_));
 
 	DSPdebugMessage("Initial Setting at solve()\n");
 
@@ -95,7 +95,7 @@ DSP_RTN_CODE DwBundleDual::solve() {
 		/** generate initial columns */
 		DSPdebugMessage("Generating columns..\n");
 		double stime = CoinGetTimeOfDay();
-		DSP_RTN_CHECK_RTN_CODE(generateCols());
+		DSP_RTN_CHECK_THROW(generateCols());
 		t_colgen_ += CoinGetTimeOfDay() - stime;
 		DSPdebugMessage("Generated columns..\n");
 
@@ -120,11 +120,11 @@ DSP_RTN_CODE DwBundleDual::solve() {
 				bestdualobj_ = dualobj_;
 				bestdualsol_ = dualsol_;
 			}
-			DSP_RTN_CHECK_RTN_CODE(gutsOfSolve());
+			DSP_RTN_CHECK_THROW(gutsOfSolve());
 		}		
 	} else {
 		message_->print(1, "Starting with %u existing columns.\n", getSiPtr()->getNumRows());
-		DSP_RTN_CHECK_RTN_CODE(gutsOfSolve());
+		DSP_RTN_CHECK_THROW(gutsOfSolve());
 	}
 
 
@@ -139,8 +139,8 @@ DSP_RTN_CODE DwBundleDual::createProblem() {
 	clbd_node_ = clbd_orig_;
 	cubd_node_ = cubd_orig_;
 
-	DSP_RTN_CHECK_RTN_CODE(createPrimalProblem());
-	DSP_RTN_CHECK_RTN_CODE(createDualProblem());
+	DSP_RTN_CHECK_THROW(createPrimalProblem());
+	DSP_RTN_CHECK_THROW(createDualProblem());
 
 	/** always phase2 */
 	phase_ = 2;
@@ -169,18 +169,17 @@ DSP_RTN_CODE DwBundleDual::createPrimalProblem() {
 	std::copy(rubd_orig_.begin(), rubd_orig_.begin() + nrows_orig_, rubd.begin() + nrows_conv_);
 
 	/** create solver */
-#ifdef DSP_HAS_CPX
-	primal_si_.reset(new DspOsiCpx());
-#else
-	primal_si_.reset(new DspOsiClp());
-#endif
+	DspOsi * osi = createDspOsi();
+	if (osi)
+		primal_si_.reset(osi);
+	else
+		throw CoinError("Failed to create DspOsi", "createPrimalProblem", "DwBundleDual");
 
 	/** load problem data */
 	primal_si_->si_->loadProblem(*mat, NULL, NULL, NULL, &rlbd[0], &rubd[0]);
 
 	/** set display */
-	primal_si_->setLogLevel(0);
-	DSPdebug(primal_si_->setLogLevel(1));
+	primal_si_->setLogLevel(par_->getIntParam("DW/MASTER/SOLVER/LOG_LEVEL"));
 
 	/** set number of cores */
 	primal_si_->setNumCores(par_->getIntParam("NUM_CORES"));
@@ -197,19 +196,21 @@ void DwBundleDual::initDualSolver(
 		std::vector<double>& obj, 
 		std::vector<double>& rlbd, 
 		std::vector<double>& rubd) {
+	BGN_TRY_CATCH
+
 	/** create solver */
-#ifdef DSP_HAS_CPX
-	osi_ = new DspOsiCpx();
-#else
-	osi_ = new DspOsiClp();
-#endif
+	osi_ = createDspOsi();
+
 	/** set display */
-	osi_->setLogLevel(std::max(-1,par_->getIntParam("LOG_LEVEL")-4));
+	osi_->setLogLevel(par_->getIntParam("DW/MASTER/SOLVER/LOG_LEVEL"));
+
 	/** load problem data */
 	if (rlbd.size() == 0)
 		getSiPtr()->loadProblem(m, &clbd[0], &cubd[0], &obj[0], NULL, NULL);
 	else
 		getSiPtr()->loadProblem(m, &clbd[0], &cubd[0], &obj[0], &rlbd[0], &rubd[0]);
+
+	END_TRY_CATCH(;)
 }
 
 DSP_RTN_CODE DwBundleDual::createDualProblem() {
@@ -257,7 +258,7 @@ DSP_RTN_CODE DwBundleDual::createDualProblem() {
 	initDualSolver(*mat, clbd, cubd, obj, rlbd, rubd);
 
 	/** set quadratic objective term */
-	updateCenter(u_);
+	DSP_RTN_CHECK_THROW(updateCenter(u_));
 
 	/** set number of cores */
 	osi_->setNumCores(par_->getIntParam("NUM_CORES"));
@@ -313,90 +314,95 @@ DSP_RTN_CODE DwBundleDual::updateCenter(double penalty) {
 }
 
 DSP_RTN_CODE DwBundleDual::callMasterSolver() {
+	if (par_->getIntParam("DW/MASTER/SOLVER") == OsiCpx) {
 #ifdef DSP_HAS_CPX
-	OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(getSiPtr());
-	if (!cpx) {
-		CoinError("Failed to case Osi to OsiCpx", "solveMaster", "DwBundle");
-		return DSP_RTN_ERR;
-	} else {
+
+		OsiCpxSolverInterface* cpx = NULL;
+
+		BGN_TRY_CATCH
+
+		cpx = dynamic_cast<OsiCpxSolverInterface*>(getSiPtr());
+
+		END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
 		/** use dual simplex for QP, which is numerically much more stable than Barrier */
 		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_QPMETHOD, 0);
 		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, 0);
-	}
 
-	int pass = 0;
-	while (pass <= 2) {
-		CPXqpopt(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_PROBLEM));
-		int cpxstat = CPXgetstat(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
-		message_->print(5, "CPLEX status %d\n", cpxstat);
-		switch (cpxstat) {
-		case CPX_STAT_OPTIMAL:
-		case CPX_STAT_NUM_BEST:
-		case CPX_STAT_OPTIMAL_INFEAS:
-			status_ = DSP_STAT_OPTIMAL;
-			pass = 10;
-			break;
-		case CPX_STAT_INFEASIBLE:
-			status_ = DSP_STAT_DUAL_INFEASIBLE;
-			message_->print(0, "Unexpected CPLEX status %d\n", cpxstat);
-			pass = 10;
-			break;
-		case CPX_STAT_UNBOUNDED:
-		case CPX_STAT_INForUNBD:
-			if (pass == 0) {
-				CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, 1);
-				message_->print(1, "Re-running CPLEX with numerical emphasis\n");
-			} else if (pass == 1) {
-				CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_QPMETHOD, 2);
-				message_->print(1, "Re-running CPLEX with dual simplex\n");
-			} else {
-				status_ = DSP_STAT_PRIM_INFEASIBLE;
-				message_->print(1, "CPLEX failed to optimize\n");
+		int pass = 0;
+		while (pass <= 2) {
+			CPXqpopt(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_PROBLEM));
+			int cpxstat = CPXgetstat(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
+			message_->print(5, "CPLEX status %d\n", cpxstat);
+			switch (cpxstat) {
+			case CPX_STAT_OPTIMAL:
+			case CPX_STAT_NUM_BEST:
+			case CPX_STAT_OPTIMAL_INFEAS:
+				status_ = DSP_STAT_OPTIMAL;
+				pass = 10;
+				break;
+			case CPX_STAT_INFEASIBLE:
+				status_ = DSP_STAT_DUAL_INFEASIBLE;
 				message_->print(0, "Unexpected CPLEX status %d\n", cpxstat);
-				getSiPtr()->writeMps("unbounded_master");
-			}
-			pass++;
-			break;
-		case CPX_STAT_ABORT_OBJ_LIM:
-		case CPX_STAT_ABORT_PRIM_OBJ_LIM:
-			if (pass == 0) {
-				CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, 1);
-				message_->print(1, "Re-running CPLEX with numerical emphasis\n");
-			} else if (pass == 1) {
-				CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_QPMETHOD, 2);
-				message_->print(1, "Re-running CPLEX with dual simplex\n");
-			} else {
-				status_ = DSP_STAT_LIM_PRIM_OBJ;
-				message_->print(1, "CPLEX failed to optimize\n");
+				pass = 10;
+				break;
+			case CPX_STAT_UNBOUNDED:
+			case CPX_STAT_INForUNBD:
+				if (pass == 0) {
+					CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, 1);
+					message_->print(1, "Re-running CPLEX with numerical emphasis\n");
+				} else if (pass == 1) {
+					CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_QPMETHOD, 2);
+					message_->print(1, "Re-running CPLEX with dual simplex\n");
+				} else {
+					status_ = DSP_STAT_PRIM_INFEASIBLE;
+					message_->print(1, "CPLEX failed to optimize\n");
+					message_->print(0, "Unexpected CPLEX status %d\n", cpxstat);
+					getSiPtr()->writeMps("unbounded_master");
+				}
+				pass++;
+				break;
+			case CPX_STAT_ABORT_OBJ_LIM:
+			case CPX_STAT_ABORT_PRIM_OBJ_LIM:
+				if (pass == 0) {
+					CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, 1);
+					message_->print(1, "Re-running CPLEX with numerical emphasis\n");
+				} else if (pass == 1) {
+					CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_QPMETHOD, 2);
+					message_->print(1, "Re-running CPLEX with dual simplex\n");
+				} else {
+					status_ = DSP_STAT_LIM_PRIM_OBJ;
+					message_->print(1, "CPLEX failed to optimize\n");
+					message_->print(0, "Unexpected CPLEX status %d\n", cpxstat);
+					getSiPtr()->writeMps("unbounded_master");
+				}
+				pass++;
+				break;
+			case CPX_STAT_ABORT_DUAL_OBJ_LIM:
+				status_ = DSP_STAT_LIM_DUAL_OBJ;
+				pass = 10;
+				break;
+			case CPX_STAT_ABORT_IT_LIM:
+			case CPX_STAT_ABORT_TIME_LIM:
+				status_ = DSP_STAT_LIM_ITERorTIME;
+				pass = 10;
+				break;
+			case CPX_STAT_ABORT_USER:
+				status_ = DSP_STAT_ABORT;
+				pass = 10;
+				break;
+			default:
 				message_->print(0, "Unexpected CPLEX status %d\n", cpxstat);
-				getSiPtr()->writeMps("unbounded_master");
+				status_ = DSP_STAT_UNKNOWN;
+				pass = 10;
+				break;
 			}
-			pass++;
-			break;
-		case CPX_STAT_ABORT_DUAL_OBJ_LIM:
-			status_ = DSP_STAT_LIM_DUAL_OBJ;
-			pass = 10;
-			break;
-		case CPX_STAT_ABORT_IT_LIM:
-		case CPX_STAT_ABORT_TIME_LIM:
-			status_ = DSP_STAT_LIM_ITERorTIME;
-			pass = 10;
-			break;
-		case CPX_STAT_ABORT_USER:
-			status_ = DSP_STAT_ABORT;
-			pass = 10;
-			break;
-		default:
-			message_->print(0, "Unexpected CPLEX status %d\n", cpxstat);
-			status_ = DSP_STAT_UNKNOWN;
-			pass = 10;
-			break;
 		}
-	}
-#else
-	osi_->solve();
-	status_ = osi_->status();
 #endif
+	} else {
+		osi_->solve();
+		status_ = osi_->status();
+	}
 	return status_;
 }
 
@@ -414,6 +420,7 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 	status_ = callMasterSolver();
 
 	/** status_ must be set at this point. */
+	DSPdebugMessage("master status_ %d\n", status_);
 
 	switch(status_) {
 	case DSP_STAT_OPTIMAL:
@@ -476,6 +483,10 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 		break;
 	}
 	default:
+		char msg[128];
+		sprintf(msg, "Unexpected solution status: %d", status_);
+		getSiPtr()->writeMps("unexpected_master");
+		throw CoinError(msg, "solveMaster", "DwBundleDual");
 		break;
 	}
 
@@ -540,7 +551,7 @@ DSP_RTN_CODE DwBundleDual::updateModel() {
 			counter_ = std::min(counter_-1,-1);
 	}
 	u_ = newu;
-	updateCenter(u_);
+	DSP_RTN_CHECK_THROW(updateCenter(u_));
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;

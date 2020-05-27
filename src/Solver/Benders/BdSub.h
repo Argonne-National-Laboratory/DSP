@@ -76,6 +76,8 @@ public:
 
 private:
 
+	static DspOsi * createDspOsi(int solver);
+
 	/** solve one subproblem. this is a body of loop in gutsOfGenerateCuts */
 	static void solveOneSubproblem(
 			BdSub *     cgl,

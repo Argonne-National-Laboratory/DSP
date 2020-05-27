@@ -60,6 +60,9 @@ public:
 
 protected:
 
+	/** create DspOsi for master */
+	virtual DspOsi * createDspOsi();
+
 	const double* lambda_; /**< pointer to the lambda part (Lagrangian multiplier with respect to the relaxed constraints) of the solution */
 	std::vector<double> subprimobj_;   /**< subproblem primal objective values */
 	std::vector<double> subdualobj_;   /**< subproblem dual objective values */

@@ -12,12 +12,6 @@
 #include "SolverInterface/DspOsiClp.h"
 #include "SolverInterface/DspOsiCpx.h"
 
-#ifdef DSP_HAS_CPX
-#define DSP_OSI DspOsiCpx
-#else
-#define DSP_OSI DspOsiClp
-#endif
-
 BdSub::BdSub(DspParams* par):
 par_(par),
 nsubprobs_(0), 
@@ -124,7 +118,10 @@ DSP_RTN_CODE BdSub::loadProblem(DecModel* model)
 				obj_reco, rlbd_reco, rubd_reco));
 
 		/** creating solver interface */
-		cglp_[i] = new DSP_OSI;
+		cglp_[i] = createDspOsi(par_->getIntParam("BD/SUB/SOLVER"));
+		if (!cglp_[i]) throw CoinError("Failed to create DspOsi", "loadProblem", "BdSub");
+		
+		/** load problem */
 		cglp_[i]->si_->loadProblem(*mat_reco, clbd_reco, cubd_reco, obj_reco, rlbd_reco, rubd_reco);
 		for (int j = 0; j < cglp_[i]->si_->getNumCols(); ++j)
 		{
@@ -229,7 +226,8 @@ void BdSub::solveOneSubproblem(
 	const double * rc   = NULL; /** reduced costs */
 
 	/** clone CGLP */
-	cglp = new DSP_OSI;
+	cglp = createDspOsi(cgl->par_->getIntParam("BD/SUB/SOLVER"));
+	if (!cglp) throw CoinError("Failed to create DspOsi", "solveOneSubproblem", "BdSub");
 	cglp->si_->loadProblem(*(cgl->cglp_[s]->si_->getMatrixByCol()),
 			cgl->cglp_[s]->si_->getColLower(), cgl->cglp_[s]->si_->getColUpper(),
 			cgl->cglp_[s]->si_->getObjCoefficients(),
@@ -532,4 +530,28 @@ DSP_RTN_CODE BdSub::calculateCutElements(
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
+}
+
+DspOsi * BdSub::createDspOsi(int solver) {
+	DspOsi * osi = NULL;
+	BGN_TRY_CATCH
+
+	switch (solver) {
+		case OsiCpx:
+#ifdef DSP_HAS_CPX
+			osi = new DspOsiCpx();
+#else
+			throw CoinError("Cplex is not available.", "createDspOsi", "BdSub");
+#endif
+			break;
+		case OsiClp:
+			osi = new DspOsiClp();
+			break;
+		default:
+			throw CoinError("Invalid parameter value", "createDspOsi", "BdSub");
+			break;
+	}
+
+	END_TRY_CATCH_RTN(;,osi);
+	return osi;
 }

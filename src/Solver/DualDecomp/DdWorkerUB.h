@@ -56,6 +56,9 @@ public:
 
 protected:
 
+	/** create DspOsi */
+	virtual DspOsi * createDspOsi();
+
 	/** create problem */
 	virtual DSP_RTN_CODE createProblem();
 

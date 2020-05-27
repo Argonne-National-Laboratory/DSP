@@ -77,6 +77,9 @@ public:
 
 protected:
 
+    /** create DspOsi for master */
+    virtual DspOsi * createDspOsi();
+
 	/** Generate initial columns */
 	virtual DSP_RTN_CODE initialColumns();
 

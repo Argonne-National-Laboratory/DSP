@@ -84,18 +84,17 @@ DSP_RTN_CODE DwBundleDualSmip::createPrimalProblem() {
 	std::fill(rubd.begin(), rubd.begin() + nrows_conv_, 1.0);
 
 	/** create solver */
-#ifdef DSP_HAS_CPX
-	primal_si_.reset(new DspOsiCpx());
-#else
-	primal_si_.reset(new DspOsiClp());
-#endif
+	DspOsi * osi = createDspOsi();
+	if (osi)
+		primal_si_.reset(osi);
+	else
+		throw CoinError("Failed to create DspOsi", "createPrimalProblem", "DwBundleDualSmip");
 
 	/** load problem data */
 	primal_si_->si_->loadProblem(*mat, &clbd[0], &cubd[0], &obj[0], &rlbd[0], &rubd[0]);
 
 	/** set display */
-	primal_si_->setLogLevel(0);
-	DSPdebug(primal_si_->setLogLevel(1));
+	primal_si_->setLogLevel(par_->getIntParam("DW/MASTER/SOLVER/LOG_LEVEL"));
 
 	/** set number of cores */
 	primal_si_->setNumCores(par_->getIntParam("NUM_CORES"));
@@ -153,7 +152,7 @@ DSP_RTN_CODE DwBundleDualSmip::createDualProblem() {
 	initDualSolver(*mat, clbd, cubd, obj, rlbd, rubd);
 
 	/** set quadratic objective term */
-	updateCenter(u_);
+	DSP_RTN_CHECK_THROW(updateCenter(u_));
 
 	/** set number of cores */
 	primal_si_->setNumCores(par_->getIntParam("NUM_CORES"));

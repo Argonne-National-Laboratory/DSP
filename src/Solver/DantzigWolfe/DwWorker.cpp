@@ -38,21 +38,31 @@ DwWorker::DwWorker(DecModel * model, DspParams * par, DspMessage * message) :
 
 	/** create solver interface */
 	osi_ = new DspOsi* [parProcIdxSize_];
-	if (par_->getIntParam("SOLVER/MIP") == OsiCpx) {
+	switch(par_->getIntParam("DW/SUB/SOLVER")) {
+	case OsiCpx:
 #ifdef DSP_HAS_CPX
 		for (int i = 0; i < parProcIdxSize_; ++i)
 			osi_[i] = new DspOsiCpx();
 #else
-		throw CoinError("Invalid value fo SOLVER/MIP parameter", "DwWorker", "DwWorker.cpp");
+		throw CoinError("Cplex is not available.", "DwWorker", "DwWorker.cpp");
 #endif
-	} else if (par_->getIntParam("SOLVER/MIP") == OsiScip) {
+		break;
+	case OsiScip:
 #ifdef DSP_HAS_SCIP
 		for (int i = 0; i < parProcIdxSize_; ++i)
 			osi_[i] = new DspOsiScip();
 #else
-		throw CoinError("Invalid value fo SOLVER/MIP parameter", "DwWorker", "DwWorker.cpp");
+		throw CoinError("Scip is not available.", "DwWorker", "DwWorker.cpp");
 #endif
+		break;
+	default:
+		throw CoinError("Invalid paramter value", "DwWorker", "DwWorker.cpp");
+		break;
 	}
+
+	/** set display */
+	for (int i = 0; i < parProcIdxSize_; ++i) 
+		osi_[i]->setLogLevel(par_->getIntParam("DW/SUB/SOLVER/LOG_LEVEL"));
 
 	/** subproblem objective coefficients */
 	sub_objs_ = new double* [parProcIdxSize_];
@@ -147,7 +157,7 @@ DSP_RTN_CODE DwWorker::createSubproblems() {
 			}
 		}
 
-		osi_[s]->setLogLevel(par_->getIntParam("DW/SUB/LOG_LEVEL"));
+		osi_[s]->setLogLevel(par_->getIntParam("DW/SUB/SOLVER/LOG_LEVEL"));
 
 		/** set parameters */
 		osi_[s]->setRelMipGap(par_->getDblParam("DW/SUB/GAPTOL"));
