@@ -21,11 +21,13 @@ cglp_(NULL),
 objvals_(NULL), 
 solutions_(NULL),
 warm_start_(NULL), 
-status_(NULL) {}
+status_(NULL),
+recourse_has_integer_(false) {}
 
 BdSub::BdSub(const BdSub& rhs) :
 par_(rhs.par_),
-nsubprobs_(rhs.nsubprobs_) {
+nsubprobs_(rhs.nsubprobs_),
+recourse_has_integer_(rhs.recourse_has_integer_) {
 	/** copy things ... */
 	setSubIndices(rhs.nsubprobs_, rhs.subindices_);
 	mat_mp_     = new CoinPackedMatrix * [nsubprobs_];
@@ -125,8 +127,10 @@ DSP_RTN_CODE BdSub::loadProblem(DecModel* model)
 		cglp_[i]->si_->loadProblem(*mat_reco, clbd_reco, cubd_reco, obj_reco, rlbd_reco, rubd_reco);
 		for (int j = 0; j < cglp_[i]->si_->getNumCols(); ++j)
 		{
-			if (ctype_reco[j] != 'C')
+			if (ctype_reco[j] != 'C') {
 				cglp_[i]->si_->setInteger(j);
+				recourse_has_integer_ = true;
+			}
 		}
 		cglp_[i]->setLogLevel(0);
 
