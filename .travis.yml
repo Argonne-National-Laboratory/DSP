@@ -9,8 +9,10 @@ matrix:
         ssh_known_hosts: xgitlab.cels.anl.gov
         apt:
           packages:
+            - gfortran
             - libblas-dev
             - liblapack-dev
+            - tbb
     - os: linux
       dist: xenial
       compiler: gcc
@@ -18,8 +20,10 @@ matrix:
         ssh_known_hosts: xgitlab.cels.anl.gov
         apt:
           packages: 
+            - gfortran
             - libblas-dev
             - liblapack-dev
+            - tbb
     - os: osx
       osx_image: xcode11.4
       compiler: clang
@@ -27,6 +31,7 @@ matrix:
         ssh_known_hosts: xgitlab.cels.anl.gov
         homebrew:
           packages:
+            - gfortran
             - git-lfs
             - tbb
           update: true
@@ -37,6 +42,7 @@ matrix:
         ssh_known_hosts: xgitlab.cels.anl.gov
         homebrew:
           packages:
+            - gfortran
             - git-lfs
             - tbb
           update: true
@@ -52,11 +58,15 @@ before_install:
   - if [ $TRAVIS_OS_NAME == linux ]; then sh ./SCIPOptSuite-7.0.0-Linux.sh --skip-license; fi
   - if [ $TRAVIS_OS_NAME == linux ]; then sed -i 's|set(SCIPOPT_INC_DIR \"\"|set(SCIPOPT_INC_DIR \"'"$PWD"'/include\"|g' ../UserConfig.cmake; fi
   - if [ $TRAVIS_OS_NAME == linux ]; then sed -i 's|set(SCIPOPT_LIB_DIR \"\"|set(SCIPOPT_LIB_DIR \"'"$PWD"'/lib\"|g' ../UserConfig.cmake; fi
+  - if [ $TRAVIS_OS_NAME == linux ]; then export PATH=/usr/local/lib:$PATH; fi
   - if [ $TRAVIS_OS_NAME == linux ]; then export LD_LIBRARY_PATH=$PWD/lib:$LD_LIBRARY_PATH; fi
+  - if [ $TRAVIS_OS_NAME == linux ]; then export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH; fi
   - if [ $TRAVIS_OS_NAME == osx ]; then sh ./SCIPOptSuite-7.0.0-Darwin.sh --skip-license; fi
   - if [ $TRAVIS_OS_NAME == osx ]; then sed -i'' -e 's|set(SCIPOPT_INC_DIR \"\"|set(SCIPOPT_INC_DIR \"'"$PWD"'/include\"|g' ../UserConfig.cmake; fi
   - if [ $TRAVIS_OS_NAME == osx ]; then sed -i'' -e 's|set(SCIPOPT_LIB_DIR \"\"|set(SCIPOPT_LIB_DIR \"'"$PWD"'/lib\"|g' ../UserConfig.cmake; fi
+  - if [ $TRAVIS_OS_NAME == osx ]; then export PATH=/usr/local/lib:$PATH; fi
   - if [ $TRAVIS_OS_NAME == osx ]; then export DYLD_LIBRARY_PATH=$PWD/lib:$DYLD_LIBRARY_PATH; fi
+  - if [ $TRAVIS_OS_NAME == osx ]; then export DYLD_LIBRARY_PATH=/usr/local/lib:$DYLD_LIBRARY_PATH; fi
   - cat ../UserConfig.cmake
   - cd ..
 
