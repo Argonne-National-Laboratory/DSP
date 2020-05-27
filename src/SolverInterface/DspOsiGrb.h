@@ -117,7 +117,7 @@ public:
 	    default:
             status = DSP_STAT_UNKNOWN;
             break;
-	    return status;
+        return status;
 	}
 
 	/** get dual objective value */
