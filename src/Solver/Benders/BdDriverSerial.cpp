@@ -55,7 +55,7 @@ DSP_RTN_CODE BdDriverSerial::run()
 
 	/** find lower bound first if it is not given by user */
 	if (dualobj_ <= -COIN_DBL_MAX)
-		findLowerBound();
+		DSP_RTN_CHECK_THROW(findLowerBound());
 
 	/** set objective bounds */
 	DSPdebugMessage("setObjectiveBounds\n");
@@ -122,9 +122,9 @@ DSP_RTN_CODE BdDriverSerial::findLowerBound()
 
 	/** use dual decomposition */
 	dd = new DdDriverSerial(model_, par_, message_);
-	dd->init();
-	dd->run();
-	dd->finalize();
+	DSP_RTN_CHECK_THROW(dd->init());
+	DSP_RTN_CHECK_THROW(dd->run());
+	DSP_RTN_CHECK_THROW(dd->finalize());
 
 	/** set objective bounds */
 	primobj_ = dd->getPrimalObjective();
