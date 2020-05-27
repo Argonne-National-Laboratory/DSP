@@ -79,8 +79,8 @@ public:
         GUROBI_CALL("status", GRBupdatemodel(grb_->getLpPtr()));
         GUROBI_CALL("status", GRBgetintattr(grb->getLpPtr(), "Status", &stat));
 
-		switch(stat) {
-		case GRB_OPTIMAL:
+        switch(stat) {
+        case GRB_OPTIMAL:
         case GRB_SUBOPTIMAL:
 			status = DSP_STAT_OPTIMAL;
 			break;
