@@ -8,7 +8,10 @@ matrix:
       addons:
         ssh_known_hosts: xgitlab.cels.anl.gov
         apt:
+          sources:
+            - ubuntu-toolchain-r-test
           packages:
+            - gfortran-6
             - libblas-dev
             - liblapack-dev
             - libtbb-dev
@@ -18,7 +21,10 @@ matrix:
       addons:
         ssh_known_hosts: xgitlab.cels.anl.gov
         apt:
+          sources:
+            - ubuntu-toolchain-r-test
           packages: 
+            - gfortran-6
             - libblas-dev
             - liblapack-dev
             - libtbb-dev
@@ -75,4 +81,4 @@ install:
   - make
 
 script:
-  - ctest
+  - ctest --verbose
