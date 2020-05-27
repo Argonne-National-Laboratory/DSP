@@ -21,7 +21,7 @@ const char* gDspUsage =
 	"       --smps\tSMPS file name without extensions. For example, if your SMPS files are ../test/farmer.cor, ../test/farmer.sto, and ../test/farmer.tim, this value should be ../test/farmer\n"
 	"       --mps\tMPS file name\n"
 	"       --dec\tDEC file name\n"
-	"       --soln\toptional argument for solution file prefix. For exampe, if the prefix is given as MySol, then two files MySol.primal.txt and MySol.dual.txt will be written for primal and dual solutions, respectively.\n"
+	"       --soln\toptional argument for solution file prefix. For example, if the prefix is given as MySol, then two files MySol.primal.txt and MySol.dual.txt will be written for primal and dual solutions, respectively.\n"
 	"       --param\toptional paramater for parameter file name\n"
 	"       --test\toptional parameter for testing objective value\n";
 
@@ -233,7 +233,21 @@ int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* s
 
 			/** write solutions to files */
 			if (solnfile != NULL) {
+
+				char pobjname[128];
+				sprintf(pobjname, "%s.primobj.txt", solnfile);
+				ofstream pobjstream(pobjname);
+				pobjstream << primobj << endl;
+				pobjstream.close();
+
+				char dobjname[128];
+				sprintf(dobjname, "%s.dualobj.txt", solnfile);
+				ofstream dobjstream(dobjname);
+				dobjstream << dualobj << endl;
+				dobjstream.close();
+
 				if (primobj < 1.0e+20) {
+
 					double *primsol = new double [ncols];
 					getPrimalSolution(env, ncols, primsol);
 
