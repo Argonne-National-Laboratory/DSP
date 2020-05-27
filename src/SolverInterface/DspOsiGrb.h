@@ -82,18 +82,18 @@ public:
         switch(stat) {
         case GRB_OPTIMAL:
         case GRB_SUBOPTIMAL:
-			status = DSP_STAT_OPTIMAL;
-			break;
-		case GRB_INFEASIBLE:
+	        status = DSP_STAT_OPTIMAL;
+	        break;
+        case GRB_INFEASIBLE:
         case GRB_CUTOFF:
-			status = DSP_STAT_PRIM_INFEASIBLE;
-			break;
+	        status = DSP_STAT_PRIM_INFEASIBLE;
+	        break;
         case GRB_INF_OR_UNBD:
-			status = DSP_STAT_DUAL_INFEASIBLE;
-			break;
-		case GRB_UNBOUNDED:
-			status = DSP_STAT_DUAL_INFEASIBLE;
-			break;
+	        status = DSP_STAT_DUAL_INFEASIBLE;
+	        break;
+        case GRB_UNBOUNDED:
+	        status = DSP_STAT_DUAL_INFEASIBLE;
+	        break;
 		case GRB_USER_OBJ_LIMIT:
 			status = DSP_STAT_LIM_PRIM_OBJ;
 			break;
