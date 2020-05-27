@@ -94,28 +94,28 @@ public:
         case GRB_UNBOUNDED:
 	        status = DSP_STAT_DUAL_INFEASIBLE;
 	        break;
-		case GRB_USER_OBJ_LIMIT:
-			status = DSP_STAT_LIM_PRIM_OBJ;
-			break;
-		case GRB_ITERATION_LIMIT:
-			status = DSP_STAT_STOPPED_ITER;
-			break;
+        case GRB_USER_OBJ_LIMIT:
+        	status = DSP_STAT_LIM_PRIM_OBJ;
+        	break;
+        case GRB_ITERATION_LIMIT:
+        	status = DSP_STAT_STOPPED_ITER;
+	    	break;
         case GRB_NODE_LIMIT:
-			status = DSP_STAT_STOPPED_NODE;
-			break;
-		case GRB_TIME_LIMIT:
-			status = DSP_STAT_STOPPED_TIME;
-			break;
-		case GRB_NUMERIC:
-		case GRB_INTERRUPTED:
-			status = DSP_STAT_STOPPED_USER;
-			break;
+	    	status = DSP_STAT_STOPPED_NODE;
+	    	break;
+	    case GRB_TIME_LIMIT:
+	    	status = DSP_STAT_STOPPED_TIME;
+	    	break;
+	    case GRB_NUMERIC:
+	    case GRB_INTERRUPTED:
+	    	status = DSP_STAT_STOPPED_USER;
+	    	break;
         case GRB_LOAdEd:
         case GRB_INPROGRESS:
             status = DSP_STAT_ABORT;
-			break;
-		default:
-			status = DSP_STAT_UNKNOWN;
+	    	break;
+	    default:
+	    	status = DSP_STAT_UNKNOWN;
 			break;
 	    return status;
 	}
