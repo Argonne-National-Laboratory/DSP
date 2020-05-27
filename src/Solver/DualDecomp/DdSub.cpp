@@ -325,22 +325,28 @@ DSP_RTN_CODE DdSub::createProblem() {
 
 /** add cut generator */
 DSP_RTN_CODE DdSub::addCutGenerator() {
+	BGN_TRY_CATCH
 #ifdef DSP_HAS_SCIP
-    OsiScipSolverInterface *si = dynamic_cast<DspOsiScip*>(osi_)->scip_;
-    if (si) {
-        /** create constraint handler */
-        SCIPconshdlrBendersDd *conshdlr = new SCIPconshdlrBendersDd(si->getScip());
-        conshdlr->setOriginalVariables(si->getNumCols(), si->getScipVars(), 1);
-        DSPdebugMessage("numcols %d, conshdlr %p\n", si->getNumCols(), conshdlr);
-        /** add constraint handler */
-		SCIP_CALL_ABORT(SCIPincludeObjConshdlr(si->getScip(), conshdlr, true));
-		/* create constraint */
-		SCIP_CONS * cons = NULL;
-		SCIP_CALL_ABORT(SCIPcreateConsBenders(si->getScip(), &cons, "BendersDd"));
-		SCIP_CALL_ABORT(SCIPaddCons(si->getScip(), cons));
-		SCIP_CALL_ABORT(SCIPreleaseCons(si->getScip(), &cons));
-    }
+	if (par_->getIntParam("DD/SUB/SOLVER") == OsiScip) {
+		DspOsiScip * osiscip = dynamic_cast<DspOsiScip*>(osi_);
+		OsiScipSolverInterface *si = osiscip->scip_;
+		if (si) {
+			/** create constraint handler */
+			SCIPconshdlrBendersDd *conshdlr = new SCIPconshdlrBendersDd(si->getScip());
+			conshdlr->setOriginalVariables(si->getNumCols(), si->getScipVars(), 1);
+			DSPdebugMessage("numcols %d, conshdlr %p\n", si->getNumCols(), conshdlr);
+			/** add constraint handler */
+			SCIP_CALL_ABORT(SCIPincludeObjConshdlr(si->getScip(), conshdlr, true));
+			/* create constraint */
+			SCIP_CONS * cons = NULL;
+			SCIP_CALL_ABORT(SCIPcreateConsBenders(si->getScip(), &cons, "BendersDd"));
+			SCIP_CALL_ABORT(SCIPaddCons(si->getScip(), cons));
+			SCIP_CALL_ABORT(SCIPreleaseCons(si->getScip(), &cons));
+		}
+	}
 #endif
+	END_TRY_CATCH_RTN(;, DSP_RTN_ERR)
+
     return DSP_RTN_OK;
 }
 

@@ -233,8 +233,10 @@ DSP_RTN_CODE BdMaster::createProblem() {
 		}
 	}
 
-	assert(si_==NULL);
+	assert(osi_==NULL);
 	osi_ = new DspOsiScip();
+	if (!osi_) throw CoinError("Failed to create DspOsiScip", "createProblem", "DdMaster");
+	
 	osi_->setLogLevel(CoinMin(par_->getIntParam("LOG_LEVEL"), 5));
 	DSPdebugMessage("Successfully created SCIP interface \n");
 
