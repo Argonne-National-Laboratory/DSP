@@ -28,6 +28,7 @@ matrix:
         homebrew:
           packages:
             - git-lfs
+            - tbb
           update: true
     - os: osx
       osx_image: xcode11.4
@@ -37,6 +38,7 @@ matrix:
         homebrew:
           packages:
             - git-lfs
+            - tbb
           update: true
 
 before_install:
