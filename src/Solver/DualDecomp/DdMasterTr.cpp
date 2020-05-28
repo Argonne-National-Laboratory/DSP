@@ -480,12 +480,12 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 	case IPM: {
 		switch (par_->getIntParam("SOLVER/QP")) {
 		case OsiOoqp:
-#ifdef DSP_HAS_OOQP
-			osi_ = new DspOsiOoqp();
-			break;
-#else
-			printf("OOQP is not available for QP solve.\n");
-#endif
+//#ifdef DSP_HAS_OOQP
+//			osi_ = new DspOsiOoqp();
+//			break;
+//#else
+//			printf("OOQP is not available for QP solve.\n");
+//#endif
 		case OsiCpx: {
 #ifdef DSP_HAS_CPX
 			osi_ = new DspOsiCpx();
@@ -506,12 +506,14 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 		break;
 	}
 	case IPM_Feasible:
+	/*
 #ifdef DSP_HAS_OOQP
 		osi_ = new DspOsiOoqpEps();
 		break;
 #else
 		printf("OOQP is not available for QP solve.\n");
 #endif
+*/
 	default:
 		osi_ = new DspOsiClp();
 		break;
