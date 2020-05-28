@@ -58,8 +58,8 @@ ExternalProject_Add(CoinUtils
 		--disable-shared
 		ADD_CXXFLAGS=${EXTRA_CXX_FLAGS}
 		# CXX=${CMAKE_CXX_COMPILER}
-	BUILD_COMMAND make
-	INSTALL_COMMAND make install)
+	BUILD_COMMAND make -j1
+	INSTALL_COMMAND make -j1 install)
 
 ##################################################
 # Compile OSI

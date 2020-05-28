@@ -3,23 +3,27 @@ language: cpp
 matrix:
   include:
     - os: linux
-      dist: xenial
+      dist: bionic
       compiler: clang
       addons:
         ssh_known_hosts: xgitlab.cels.anl.gov
         apt:
           packages:
+            - gfortran
             - libblas-dev
             - liblapack-dev
+            - libtbb-dev
     - os: linux
-      dist: xenial
+      dist: bionic
       compiler: gcc
       addons:
         ssh_known_hosts: xgitlab.cels.anl.gov
         apt:
-          packages: 
+          packages:
+            - gfortran
             - libblas-dev
             - liblapack-dev
+            - libtbb-dev
     - os: osx
       osx_image: xcode11.4
       compiler: clang
@@ -42,6 +46,7 @@ matrix:
           update: true
 
 before_install:
+  - gfortran -v
   - openssl aes-256-cbc -K $encrypted_db2095f63ba3_key -iv $encrypted_db2095f63ba3_iv -in deploy_rsa.enc -out /tmp/deploy_rsa -d
   - eval "$(ssh-agent -s)"
   - chmod 600 /tmp/deploy_rsa
@@ -53,18 +58,25 @@ before_install:
   - if [ $TRAVIS_OS_NAME == linux ]; then sed -i 's|set(SCIPOPT_INC_DIR \"\"|set(SCIPOPT_INC_DIR \"'"$PWD"'/include\"|g' ../UserConfig.cmake; fi
   - if [ $TRAVIS_OS_NAME == linux ]; then sed -i 's|set(SCIPOPT_LIB_DIR \"\"|set(SCIPOPT_LIB_DIR \"'"$PWD"'/lib\"|g' ../UserConfig.cmake; fi
   - if [ $TRAVIS_OS_NAME == linux ]; then export LD_LIBRARY_PATH=$PWD/lib:$LD_LIBRARY_PATH; fi
-  - if [ $TRAVIS_OS_NAME == osx ]; then sh ./SCIPOptSuite-7.0.0-Darwin.sh --skip-license; fi
-  - if [ $TRAVIS_OS_NAME == osx ]; then sed -i'' -e 's|set(SCIPOPT_INC_DIR \"\"|set(SCIPOPT_INC_DIR \"'"$PWD"'/include\"|g' ../UserConfig.cmake; fi
-  - if [ $TRAVIS_OS_NAME == osx ]; then sed -i'' -e 's|set(SCIPOPT_LIB_DIR \"\"|set(SCIPOPT_LIB_DIR \"'"$PWD"'/lib\"|g' ../UserConfig.cmake; fi
-  - if [ $TRAVIS_OS_NAME == osx ]; then export DYLD_LIBRARY_PATH=$PWD/lib:$DYLD_LIBRARY_PATH; fi
+  - if [ $TRAVIS_OS_NAME == linux ]; then export LD_LIBRARY_PATH=$(dirname `gfortran --print-file-name libgfortran.so`):$LD_LIBRARY_PATH; fi
+  - if [ $TRAVIS_OS_NAME == linux ]; then ls -al `gfortran --print-file-name libgfortran.so`; fi
+  - if [ $TRAVIS_OS_NAME == osx ]; then ./build_scip.sh; fi
+  - if [ $TRAVIS_OS_NAME == osx ]; then export SCIP_DIR=$PWD/scip/build; fi
+  - if [ $TRAVIS_OS_NAME == osx ]; then $SCIP_DIR/bin/scip -v; fi
+  - if [ $TRAVIS_OS_NAME == osx ]; then sed -i'' -e 's|set(SCIPOPT_INC_DIR \"\"|set(SCIPOPT_INC_DIR \"'"$SCIP_DIR"'/include\"|g' ../UserConfig.cmake; fi
+  - if [ $TRAVIS_OS_NAME == osx ]; then sed -i'' -e 's|set(SCIPOPT_LIB_DIR \"\"|set(SCIPOPT_LIB_DIR \"'"$SCIP_DIR"'/lib\"|g' ../UserConfig.cmake; fi
+  - if [ $TRAVIS_OS_NAME == osx ]; then export DYLD_LIBRARY_PATH=$SCIP_DIR/lib:$DYLD_LIBRARY_PATH; fi
+  - if [ $TRAVIS_OS_NAME == osx ]; then export DYLD_LIBRARY_PATH=$(dirname `gfortran --print-file-name libgfortran.dylib`):$DYLD_LIBRARY_PATH; fi
+  - if [ $TRAVIS_OS_NAME == osx ]; then ls -al `gfortran --print-file-name libgfortran.dylib`; fi
+  - echo $LD_LIBRARY_PATH
+  - echo $DYLD_LIBRARY_PATH
   - cat ../UserConfig.cmake
   - cd ..
 
 install:
-  - mkdir build
-  - cd build
-  - cmake ..
-  - make
+  - mkdir build && cd build && cmake ..
+  - make -j
+  - make install
 
 script:
-  - ctest
+  - ctest --verbose
