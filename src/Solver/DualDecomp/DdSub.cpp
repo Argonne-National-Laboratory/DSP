@@ -11,7 +11,9 @@
 #include "Utility/DspMessage.h"
 #include "Model/TssModel.h"
 #include "Solver/DualDecomp/DdSub.h"
-#include "SolverInterface/DspOsi.h"
+#include "SolverInterface/DspOsiClp.h"
+#include "SolverInterface/DspOsiCpx.h"
+#include "SolverInterface/DspOsiScip.h"
 
 #ifdef DSP_HAS_SCIP
 #include "Solver/DualDecomp/SCIPconshdlrBendersDd.h"
@@ -41,8 +43,8 @@ theta_(rhs.theta_),
 gapTol_(rhs.gapTol_),
 obj_offset_(rhs.obj_offset_) {
 	// copy obj_
-	obj_ = new double [si_->getNumCols()];
-	CoinCopyN(rhs.obj_, si_->getNumCols(), obj_);
+	obj_ = new double [getSiPtr()->getNumCols()];
+	CoinCopyN(rhs.obj_, getSiPtr()->getNumCols(), obj_);
 
 	// copy coupling matrix
 	cpl_mat_ = new CoinPackedMatrix(*(rhs.cpl_mat_));
@@ -75,7 +77,7 @@ DSP_RTN_CODE DdSub::init()
 	DSP_RTN_CHECK_THROW(addCutGenerator());
 
 	/** allocate memory */
-    primsol_.resize(si_->getNumCols());
+    primsol_.resize(getSiPtr()->getNumCols());
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -89,53 +91,55 @@ DSP_RTN_CODE DdSub::solve()
 	bool dualinfeas = false;
 
 	while (1) {
-		if (si_->getNumIntegers() > 0)
-			si_->branchAndBound();
-		else
-			si_->resolve();
+		osi_->solve();
 	
 		/** check status. there might be unexpected results. */
-		convertOsiToDspStatus(si_, status_);
+		status_ = osi_->status();
+		DSPdebugMessage("solution status %d\n", status_);
 		switch (status_) {
 		case DSP_STAT_OPTIMAL:
 		case DSP_STAT_LIM_ITERorTIME:
 		case DSP_STAT_STOPPED_GAP:
 		case DSP_STAT_STOPPED_NODE:
 		case DSP_STAT_STOPPED_TIME:
-			primobj_ = si_->getObjValue();
-			dualobj_ = si_->getNumIntegers() > 0 ? si_->getBestDualBound() : primobj_;
-			CoinCopyN(si_->getColSolution(), si_->getNumCols(), &primsol_[0]);
+			primobj_ = osi_->getPrimObjValue();
+			dualobj_ = osi_->getDualObjValue();
+			assert(primsol_.size() == getSiPtr()->getNumCols());
+			CoinCopyN(getSiPtr()->getColSolution(), getSiPtr()->getNumCols(), &primsol_[0]);
 			DSPdebugMessage("primal objective %+e, dual objective %+e\n", primobj_, dualobj_);
+			DSPdebugMessage("fraction gap %e\n", fabs(primobj_-dualobj_) / fabs(dualobj_));
 			dualinfeas = false;
-			// char submps[64];
-			// sprintf(submps, "sub%d", sind_);
-			// si_->writeMps(submps);
+#ifdef DSP_DEBUG
+			char submps[64];
+			sprintf(submps, "sub%d", sind_);
+			getSiPtr()->writeMps(submps);
+#endif
 			break;
 		case DSP_STAT_LIM_INFEAS:
 			primobj_ = COIN_DBL_MAX;
-			dualobj_ = si_->getBestDualBound();
+			dualobj_ = osi_->getDualObjValue();
 			dualinfeas = false;
 			break;
 		case DSP_STAT_DUAL_INFEASIBLE:
 			message_->print(0, "Subproblem %d is dual infeasible. DSP will fix any unbounded column bounds to a large number.\n", sind_);
-			for (int j = 0; j < si_->getNumCols(); ++j) {
-				if (si_->getColLower()[j] < -1.0e+20) {
-					DSPdebugMessage("Fix column %d lower bound %+e to %+e\n", j, si_->getColLower()[j], -1.0e+10);
-					si_->setColLower(j, -1.0e+10);
+			for (int j = 0; j < getSiPtr()->getNumCols(); ++j) {
+				if (getSiPtr()->getColLower()[j] < -1.0e+20) {
+					DSPdebugMessage("Fix column %d lower bound %+e to %+e\n", j, getSiPtr()->getColLower()[j], -1.0e+10);
+					getSiPtr()->setColLower(j, -1.0e+10);
 				}
-				if (si_->getColUpper()[j] > 1.0e+20) {
-					DSPdebugMessage("Fix column %d upper bound %+e to %+e\n", j, si_->getColUpper()[j], 1.0e+10);
-					si_->setColUpper(j, 1.0e+10);
+				if (getSiPtr()->getColUpper()[j] > 1.0e+20) {
+					DSPdebugMessage("Fix column %d upper bound %+e to %+e\n", j, getSiPtr()->getColUpper()[j], 1.0e+10);
+					getSiPtr()->setColUpper(j, 1.0e+10);
 				}
 			}
 			if (dualinfeas) {
-				si_->writeMps("dual_infeas_sub");
+				getSiPtr()->writeMps("dual_infeas_sub");
 				dualinfeas = false;
 			} else {
 				dualinfeas = true;
 			}
 			//DSPdebugMessage("Dual infeasible subproblem!\n");
-			//DSPdebug(si_->writeMps("dual_infeas_sub"));
+			//DSPdebug(getSiPtr()->writeMps("dual_infeas_sub"));
 			break;
 		default:
 			break;
@@ -225,9 +229,9 @@ DSP_RTN_CODE DdSub::createProblem() {
         }
 
 		double probability = tssModel->getProbability()[sind_];
+		for (int j = 0; j < tssModel->getNumCols(0); ++j)
+			obj[j] *= probability;
 		if (model_->isDro()) {
-			for (int j = 0; j < tssModel->getNumCols(0); ++j)
-				obj[j] /= tssModel->getNumScenarios();
 			if (sind_ < tssModel->getNumReferences()) {
 				for (int j = tssModel->getNumCols(0); j < tssModel->getNumCols(0) + tssModel->getNumCols(1); ++j) {
 					obj[j] *= tssModel->getReferenceProbability(sind_) / probability;
@@ -235,17 +239,14 @@ DSP_RTN_CODE DdSub::createProblem() {
 			} else {
 				CoinZeroN(obj + tssModel->getNumCols(0), tssModel->getNumCols(1));
 			}
-			for (int j = 0; j < tssModel->getNumCols(1); ++j) {
-				obj_[tssModel->getNumCols(0)+j] /= probability;
-			}
-#ifdef DSP_DEBUG
-			DSPdebugMessage("sind_ = %d, probability = %e, lambdas = \n", sind_, tssModel->getReferenceProbability(sind_));
-			DspMessage::printArray(tssModel->getNumCols(0), obj);
-#endif
-		} else {
-			for (int j = 0; j < tssModel->getNumCols(0); ++j)
-				obj[j] *= probability;
 		}
+		for (int j = 0; j < tssModel->getNumCols(1); ++j)
+			obj_[tssModel->getNumCols(0)+j] /= probability;
+
+#ifdef DSP_DEBUG
+		DSPdebugMessage("sind_ = %d, probability = %e, lambdas = \n", sind_, model_->isDro() ? tssModel->getReferenceProbability(sind_) : probability);
+		DspMessage::printArray(tssModel->getNumCols(0), obj);
+#endif
 
         /** convert column types */
         if (parRelaxIntegrality_[0]) {
@@ -272,46 +273,47 @@ DSP_RTN_CODE DdSub::createProblem() {
         }
     }
 
-    if (nIntegers > 0) {
-    	switch (par_->getIntParam("SOLVER/MIP")) {
-    	case OsiCpx:
+	switch (par_->getIntParam("DD/SUB/SOLVER")) {
+	case OsiCpx:
 #ifdef DSP_HAS_CPX
-		{
-    		si_ = new OsiCpxSolverInterface();
-			OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
-			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, 1);
-    		break;
-		}
-#endif
-    	case OsiScip:
-#ifdef DSP_HAS_SCIP
-            si_ = new OsiScipSolverInterface();
-            break;
-#endif
-    	default:
-    		break;
-    	}
-    } else
-        si_ = new OsiClpSolverInterface();
-
-    /** no display */
-#ifdef DSP_DEBUG
-    si_->messageHandler()->setLogLevel(5);
+		osi_ = new DspOsiCpx();
 #else
-    si_->messageHandler()->setLogLevel(par_->getIntParam("DD/SUB/LOG_LEVEL"));
+		throw CoinError("Cplex is not available.", "createProblem", "DdSub");
 #endif
+		break;
+	case OsiScip:
+#ifdef DSP_HAS_SCIP
+		osi_ = new DspOsiScip();
+#else
+		throw CoinError("Scip is not available.", "createProblem", "DdSub");
+#endif
+		break;
+	default:
+		throw CoinError("Invalid parameter value", "createProblem", "DdSub");
+		break;
+	}
+
+	/** set number of cores */
+	osi_->setNumCores(1);
+
+    /** set display */
+    osi_->setLogLevel(par_->getIntParam("DD/SUB/LOG_LEVEL"));
 
     /** load problem */
-    si_->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
+#ifdef DSP_DEBUG
+	printf("create subproblem (s=%d):\n", sind_);
+	DspMessage::printArray(mat->getNumCols(), obj);
+#endif
+    getSiPtr()->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
 	for (int j = 0; j < mat->getNumCols(); ++j) {
 		if (ctype[j] != 'C')
-			si_->setInteger(j);
+			getSiPtr()->setInteger(j);
 	}
     DSPdebug(mat->verifyMtx(4));
 
     /** set solution gap tolerance */
 	if (nIntegers > 0)
-	    si_->setMipRelGap(gapTol_);
+	    osi_->setRelMipGap(gapTol_);
 
     END_TRY_CATCH_RTN(FREE_MEMORY, DSP_RTN_ERR)
 
@@ -323,22 +325,28 @@ DSP_RTN_CODE DdSub::createProblem() {
 
 /** add cut generator */
 DSP_RTN_CODE DdSub::addCutGenerator() {
+	BGN_TRY_CATCH
 #ifdef DSP_HAS_SCIP
-    OsiScipSolverInterface *si = dynamic_cast<OsiScipSolverInterface *>(si_);
-    if (si) {
-        /** create constraint handler */
-        SCIPconshdlrBendersDd *conshdlr = new SCIPconshdlrBendersDd(si->getScip());
-        conshdlr->setOriginalVariables(si->getNumCols(), si->getScipVars(), 1);
-        DSPdebugMessage("numcols %d, conshdlr %p\n", si->getNumCols(), conshdlr);
-        /** add constraint handler */
-		SCIP_CALL_ABORT(SCIPincludeObjConshdlr(si->getScip(), conshdlr, true));
-		/* create constraint */
-		SCIP_CONS * cons = NULL;
-		SCIP_CALL_ABORT(SCIPcreateConsBenders(si->getScip(), &cons, "BendersDd"));
-		SCIP_CALL_ABORT(SCIPaddCons(si->getScip(), cons));
-		SCIP_CALL_ABORT(SCIPreleaseCons(si->getScip(), &cons));
-    }
+	if (par_->getIntParam("DD/SUB/SOLVER") == OsiScip) {
+		DspOsiScip * osiscip = dynamic_cast<DspOsiScip*>(osi_);
+		OsiScipSolverInterface *si = osiscip->scip_;
+		if (si) {
+			/** create constraint handler */
+			SCIPconshdlrBendersDd *conshdlr = new SCIPconshdlrBendersDd(si->getScip());
+			conshdlr->setOriginalVariables(si->getNumCols(), si->getScipVars(), 1);
+			DSPdebugMessage("numcols %d, conshdlr %p\n", si->getNumCols(), conshdlr);
+			/** add constraint handler */
+			SCIP_CALL_ABORT(SCIPincludeObjConshdlr(si->getScip(), conshdlr, true));
+			/* create constraint */
+			SCIP_CONS * cons = NULL;
+			SCIP_CALL_ABORT(SCIPcreateConsBenders(si->getScip(), &cons, "BendersDd"));
+			SCIP_CALL_ABORT(SCIPaddCons(si->getScip(), cons));
+			SCIP_CALL_ABORT(SCIPreleaseCons(si->getScip(), &cons));
+		}
+	}
 #endif
+	END_TRY_CATCH_RTN(;, DSP_RTN_ERR)
+
     return DSP_RTN_OK;
 }
 
@@ -355,7 +363,7 @@ DSP_RTN_CODE DdSub::updateProblem(
 
 	BGN_TRY_CATCH
 
-	int ncols = si_->getNumCols();
+	int ncols = getSiPtr()->getNumCols();
 
 	if (lambda)
 	{
@@ -370,24 +378,17 @@ DSP_RTN_CODE DdSub::updateProblem(
 			assert(nrows_coupling_<ncols);
 
 			// coefficients for the second-stage variables
-			if (model_->isDro()) {
-				CoinCopyN(lambda, nrows_coupling_, newobj);
-				// printf("DdSub::updateProblem lambda:\n");
-				// DspMessage::printArray(nrows_coupling_, lambda);
-				for (int j = nrows_coupling_; j < ncols-1; ++j) {
-					newobj[j] = obj_[j] * probability;
-					// printf("update subproblem %d: obj_[%d] = %e, probability = %e, newobj -> %e\n", sind_, j, obj_[j], probability, newobj[j]);
-				}
-				newobj[ncols-1] = obj_[ncols-1];
-			} else {
-				CoinZeroN(newobj, nrows_coupling_);
-				CoinCopyN(obj_ + nrows_coupling_, ncols - nrows_coupling_, newobj + nrows_coupling_);
+			CoinCopyN(lambda, nrows_coupling_, newobj);
+			// printf("DdSub::updateProblem lambda:\n");
+			// DspMessage::printArray(nrows_coupling_, lambda);
+			for (int j = nrows_coupling_; j < ncols-1; ++j) {
+				newobj[j] = obj_[j] * probability;
+				// printf("update subproblem %d: obj_[%d] = %e, probability = %e, newobj -> %e\n", sind_, j, obj_[j], probability, newobj[j]);
 			}
+			newobj[ncols-1] = obj_[ncols-1];
 		} else {
 			CoinCopyN(obj_, ncols, newobj);
-		}
 
-		if (model_->isDro() == false) {
 			for (int i = 0; i < nrows_coupling_; i++)
 			{
 				/** add lambda wrt coupling row i */
@@ -402,16 +403,16 @@ DSP_RTN_CODE DdSub::updateProblem(
 				obj_offset_ += lambda[i] * (-cpl_rhs_[i]);
 			}
 		}
-
-		// printf("### newobj[%d]:\n", sind_);
-		// DspMessage::printArray(ncols, newobj);
-
-		si_->setObjective(newobj);
+#ifdef DSP_DEBUG
+		printf("### newobj[%d]:\n", sind_);
+		DspMessage::printArray(ncols, newobj);
+#endif
+		getSiPtr()->setObjective(newobj);
 	}
 
 	/** update primal bound (bounds of auxiliary constraint) */
 	if (primal_bound < COIN_DBL_MAX)
-		si_->setColUpper(ncols - 1, primal_bound);//si_->setColBounds(ncols - 1, primal_bound, primal_bound);
+		getSiPtr()->setColUpper(ncols - 1, primal_bound);//getSiPtr()->setColBounds(ncols - 1, primal_bound, primal_bound);
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
@@ -430,23 +431,20 @@ DSP_RTN_CODE DdSub::pushCuts(OsiCuts * cuts)
 /** set wall clock time limit */
 void DdSub::setTimeLimit(double sec)
 {
-	assert(si_);
-	si_->setTimeLimit(sec);
+	assert(osi_);
+	osi_->setTimeLimit(sec);
 }
 
 /** set accuracy tolerance */
 void DdSub::setGapTol(double tol)
 {
-	assert(si_);
+	assert(osi_);
 	gapTol_ = tol;
-	si_->setMipRelGap(gapTol_);
+	osi_->setRelMipGap(gapTol_);
 }
 
 /** set print level */
 void DdSub::setPrintLevel(int level)
 {
-	if (par_->getIntParam("SOLVER/MIP") == OsiScip)
-		si_->messageHandler()->setLogLevel(level);
-	else
-		si_->messageHandler()->setLogLevel(CoinMax(0, level - 2));
+	osi_->setLogLevel(par_->getIntParam("DD/SUB/SOLVER/LOG_LEVEL"));
 }

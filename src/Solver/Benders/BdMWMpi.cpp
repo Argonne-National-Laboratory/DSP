@@ -8,7 +8,7 @@
 //#define DSP_DEBUG
 #include "Solver/Benders/BdMWMpi.h"
 #include "Solver/Benders/SCIPconshdlrBendersWorker.h"
-#include "SolverInterface/DspOsi.h"
+#include "SolverInterface/DspOsiScip.h"
 
 BdMWMpi::BdMWMpi(
 		MPI_Comm comm,
@@ -47,6 +47,9 @@ DSP_RTN_CODE BdMWMpi::init()
 
 		/** create and initialize worker */
 		worker_ = new BdWorker(model_, par_, message_);
+
+		if (comm_rank_ == 1 && worker_->getBdSubPtr()->recourse_has_integer_)
+			warning_relaxation();
 	}
 #ifdef DSP_DEBUG
 	for (int i = 1; i < comm_size_; ++i)

@@ -376,8 +376,8 @@ DSP_RTN_CODE DdMasterDsb::createProblem()
 	switch (par_->getIntParam("DD/MASTER_ALGO"))
 	{
 	case DSBM:
-		si_ = new OsiOoqpSolverInterface();
-		si_->messageHandler()->setLogLevel(par_->getIntParam("LOG_LEVEL"));
+		si_ = new DspOsiOoqp();
+		si_->setLogLevel(par_->getIntParam("LOG_LEVEL"));
 		break;
 	default:
 		break;

@@ -8,6 +8,10 @@
 #include "CoinHelperFunctions.hpp"
 #include "Model/DecTssModel.h"
 #include "Solver/DualDecomp/DdMaster.h"
+#include "SolverInterface/DspOsiClp.h"
+#include "SolverInterface/DspOsiCpx.h"
+#include "SolverInterface/DspOsiScip.h"
+#include "SolverInterface/DspOsiOoqp.h"
 
 DdMaster::DdMaster(DecModel* model, DspParams* par, DspMessage* message) :
 		DecSolver(model, par, message),
@@ -20,7 +24,7 @@ DdMaster::DdMaster(const DdMaster& rhs) :
 DecSolver(rhs),
 lambda_(rhs.lambda_) {
 	subsolution_ = new double * [model_->getNumSubproblems()];
-	if (model_->isDro()) {
+	if (model_->isStochastic()) {
 		DecTssModel* tss = dynamic_cast<DecTssModel*>(model_);
 		int nsubsolution = tss->getNumCols(0) + tss->getNumCols(1) + 1;
 		for (int s = 0; s < model_->getNumSubproblems(); ++s) {
@@ -51,7 +55,7 @@ DSP_RTN_CODE DdMaster::init() {
 
 	/** allocate memory */
 	subsolution_ = new double * [model_->getNumSubproblems()];
-	if (model_->isDro()) {
+	if (model_->isStochastic()) {
 		DecTssModel* tss = dynamic_cast<DecTssModel*>(model_);
 		int nsubsolution = tss->getNumCols(0) + tss->getNumCols(1) + 1;
 		for (int s = 0; s < model_->getNumSubproblems(); ++s)
@@ -78,10 +82,49 @@ DSP_RTN_CODE DdMaster::init() {
 DSP_RTN_CODE DdMaster::setInitSolution(const double * sol) {
 	BGN_TRY_CATCH
 
-	if (primsol_.size() >= si_->getNumCols())
-		CoinCopyN(sol, si_->getNumCols(), &primsol_[0]);
+	if (primsol_.size() >= getSiPtr()->getNumCols())
+		CoinCopyN(sol, getSiPtr()->getNumCols(), &primsol_[0]);
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
+}
+
+DspOsi * DdMaster::createDspOsi() {
+	DspOsi * osi = NULL;
+	BGN_TRY_CATCH
+
+	switch (par_->getIntParam("DD/MASTER/SOLVER")) {
+	case OsiCpx:
+#ifdef DSP_HAS_CPX
+		osi = new DspOsiCpx();
+#else
+		throw CoinError("Cplex is not available.", "createDspOsi", "DdMaster");
+#endif
+		break;
+	case OsiScip:
+#ifdef DSP_HAS_SCIP
+		osi = new DspOsiScip();
+#else
+		throw CoinError("Scip is not available.", "createDspOsi", "DdMaster");
+#endif
+		break;
+	case OsiOoqp:
+#ifdef DSP_HAS_OOQP
+		osi = new DspOsiOoqp();
+#else
+		throw CoinError("OOQP is not available.", "createDspOsi", "DdMaster");
+#endif
+		break;
+	case OsiClp:
+		osi = new DspOsiClp();
+		break;
+	default:
+		throw CoinError("Invalid parameter value", "createDspOsi", "DdMaster");
+		break;
+	}
+
+	END_TRY_CATCH(;)
+	
+	return osi;
 }

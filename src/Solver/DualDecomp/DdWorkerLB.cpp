@@ -118,8 +118,8 @@ DSP_RTN_CODE DdWorkerLB::solve() {
 		if (subprobs_[s]->getStatus() == DSP_STAT_LIM_INFEAS)
 			primobj = COIN_DBL_MAX;
 		else if (primobj < COIN_DBL_MAX)
-			primobj += subprobs_[s]->getSiPtr()->getObjValue();
-		dualobj += subprobs_[s]->getSiPtr()->getBestDualBound();
+			primobj += subprobs_[s]->getDspOsiPtr()->getPrimObjValue();
+		dualobj += subprobs_[s]->getDspOsiPtr()->getDualObjValue();
 		total_cputime += CoinCpuTime() - cputime;
 		total_walltime += CoinGetTimeOfDay() - walltime;
 

@@ -41,7 +41,14 @@ public:
 	/** default constructor */
 	virtual ~SCIPconshdlrBendersDd()
 	{
-		/** nothing to do */
+		if (cutsToAdd_) {
+			clearCuts(cutsToAdd_);
+			delete cutsToAdd_;
+		}
+		if (cutsAdded_) {
+			clearCuts(cutsAdded_);
+			delete cutsAdded_;
+		}
 	}
 
 	/** destructor of constraint handler to free user data (called when SCIP is exiting) */

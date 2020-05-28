@@ -6,7 +6,8 @@
  */
 
 //#define DSP_DEBUG
-#include "SolverInterface/DspOsi.h"
+#include "SolverInterface/DspOsiClp.h"
+#include "SolverInterface/DspOsiCpx.h"
 #include "Solver/DantzigWolfe/DwBundleDualSmip.h"
 #include "Utility/DspUtility.h"
 
@@ -83,18 +84,20 @@ DSP_RTN_CODE DwBundleDualSmip::createPrimalProblem() {
 	std::fill(rubd.begin(), rubd.begin() + nrows_conv_, 1.0);
 
 	/** create solver */
-	primal_si_.reset(new OsiCpxSolverInterface());
+	DspOsi * osi = createDspOsi();
+	if (osi)
+		primal_si_.reset(osi);
+	else
+		throw CoinError("Failed to create DspOsi", "createPrimalProblem", "DwBundleDualSmip");
 
 	/** load problem data */
-	primal_si_->loadProblem(*mat, &clbd[0], &cubd[0], &obj[0], &rlbd[0], &rubd[0]);
+	primal_si_->si_->loadProblem(*mat, &clbd[0], &cubd[0], &obj[0], &rlbd[0], &rubd[0]);
 
 	/** set display */
-	primal_si_->messageHandler()->setLogLevel(0);
-	DSPdebug(primal_si_->messageHandler()->setLogLevel(1));
+	primal_si_->setLogLevel(par_->getIntParam("DW/MASTER/SOLVER/LOG_LEVEL"));
 
-	OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(primal_si_.get());
-	if (cpx)
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("NUM_CORES"));
+	/** set number of cores */
+	primal_si_->setNumCores(par_->getIntParam("NUM_CORES"));
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -149,12 +152,10 @@ DSP_RTN_CODE DwBundleDualSmip::createDualProblem() {
 	initDualSolver(*mat, clbd, cubd, obj, rlbd, rubd);
 
 	/** set quadratic objective term */
-	updateCenter(u_);
+	DSP_RTN_CHECK_THROW(updateCenter(u_));
 
-	OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
-	if (cpx) {
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("NUM_CORES"));
-	}
+	/** set number of cores */
+	primal_si_->setNumCores(par_->getIntParam("NUM_CORES"));
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -162,13 +163,13 @@ DSP_RTN_CODE DwBundleDualSmip::createDualProblem() {
 }
 
 void DwBundleDualSmip::removeAllPrimCols() {
-	std::vector<int> delcols(primal_si_->getNumCols() - tss_->getNumCols(0));
+	std::vector<int> delcols(primal_si_->si_->getNumCols() - tss_->getNumCols(0));
 	std::iota(delcols.begin(), delcols.end(), tss_->getNumCols(0));
-	primal_si_->deleteCols(primal_si_->getNumCols() - tss_->getNumCols(0), &delcols[0]);
+	primal_si_->si_->deleteCols(primal_si_->si_->getNumCols() - tss_->getNumCols(0), &delcols[0]);
 }
 
 void DwBundleDualSmip::removeAllDualRows() {
-	std::vector<int> delrows(si_->getNumRows() - tss_->getNumCols(0));
+	std::vector<int> delrows(getSiPtr()->getNumRows() - tss_->getNumCols(0));
 	std::iota(delrows.begin(), delrows.end(), tss_->getNumCols(0));
-	si_->deleteRows(si_->getNumRows() - tss_->getNumCols(0), &delrows[0]);
+	getSiPtr()->deleteRows(getSiPtr()->getNumRows() - tss_->getNumCols(0), &delrows[0]);
 }

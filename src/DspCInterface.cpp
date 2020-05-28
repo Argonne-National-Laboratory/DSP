@@ -316,6 +316,7 @@ void solveDw(DspApiEnv * env)
 /** solve serial Benders decomposition */
 void solveBd(DspApiEnv * env)
 {
+	BGN_TRY_CATCH
 #ifdef DSP_HAS_SCIP
 	DSP_API_CHECK_MODEL();
 	freeSolver(env);
@@ -361,12 +362,15 @@ void solveBd(DspApiEnv * env)
 #else
 	printf("Benders decomposition has been disabled because SCIP was not available.\n");
 #endif
+	END_TRY_CATCH(;)
 }
 
 #ifdef DSP_HAS_MPI
 /** solve parallel dual decomposition */
 void solveDdMpi(DspApiEnv * env, MPI_Comm comm)
 {
+	BGN_TRY_CATCH
+
 	int comm_size;
 	MPI_Comm_size(comm, &comm_size);
 
@@ -382,11 +386,15 @@ void solveDdMpi(DspApiEnv * env, MPI_Comm comm)
 	DSP_RTN_CHECK_THROW(env->solver_->init());
 	DSP_RTN_CHECK_THROW(dynamic_cast<DdDriverMpi*>(env->solver_)->run());
 	DSP_RTN_CHECK_THROW(env->solver_->finalize());
+
+	END_TRY_CATCH(;)
 }
 
 /** solve parallel Dantzig-Wolfe decomposition with branch-and-bound */
 void solveDwMpi(DspApiEnv * env, MPI_Comm comm)
 {
+	BGN_TRY_CATCH
+
 	int comm_size;
 	MPI_Comm_size(comm, &comm_size);
 
@@ -402,12 +410,16 @@ void solveDwMpi(DspApiEnv * env, MPI_Comm comm)
 	DSP_RTN_CHECK_THROW(env->solver_->init());
 	DSP_RTN_CHECK_THROW(dynamic_cast<DwSolverMpi*>(env->solver_)->run());
 	DSP_RTN_CHECK_THROW(env->solver_->finalize());
+
+	END_TRY_CATCH(;)
 }
 
 /** solve parallel Benders decomposition */
 void solveBdMpi(
 		DspApiEnv * env, MPI_Comm comm)
 {
+	BGN_TRY_CATCH
+	
 	int comm_size;
 	MPI_Comm_size(comm, &comm_size);
 
@@ -461,6 +473,8 @@ void solveBdMpi(
 #else
 	printf("Benders decomposition has been disabled because SCIP was not available.\n");
 #endif
+
+	END_TRY_CATCH(;)
 }
 #endif
 

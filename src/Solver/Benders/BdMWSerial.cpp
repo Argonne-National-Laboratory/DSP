@@ -9,7 +9,7 @@
 
 #include "Solver/Benders/BdMWSerial.h"
 #include "Solver/Benders/SCIPconshdlrBenders.h"
-#include "SolverInterface/DspOsi.h"
+#include "SolverInterface/DspOsiScip.h"
 
 BdMWSerial::BdMWSerial(
 		DecModel *   model,  /**< model pointer */
@@ -40,6 +40,9 @@ DSP_RTN_CODE BdMWSerial::init()
 
 	/** create Benders worker */
 	worker_ = new BdWorker(model_, par_, message_);
+
+	if (worker_->getBdSubPtr()->recourse_has_integer_)
+		warning_relaxation();
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 

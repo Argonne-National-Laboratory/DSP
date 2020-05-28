@@ -7,8 +7,8 @@
 
 // #define DSP_DEBUG
 
-#include "cplex.h"
-#include "OsiCpxSolverInterface.hpp"
+#include "SolverInterface/DspOsiScip.h"
+#include "SolverInterface/DspOsiCpx.h"
 #include "Solver/DantzigWolfe/DwBundleDual.h"
 #include "Utility/DspUtility.h"
 
@@ -87,15 +87,15 @@ DSP_RTN_CODE DwBundleDual::solve() {
 	u_ = par_->getDblParam("DW/INIT_CENTER");
 	counter_ = 0;
 	eps_ = COIN_DBL_MAX;
-	updateCenter(u_);
+	DSP_RTN_CHECK_THROW(updateCenter(u_));
 
 	DSPdebugMessage("Initial Setting at solve()\n");
 
-	if (si_ == NULL || si_->getNumRows() == numFixedRows_) {
+	if (osi_ == NULL || getSiPtr()->getNumRows() == numFixedRows_) {
 		/** generate initial columns */
 		DSPdebugMessage("Generating columns..\n");
 		double stime = CoinGetTimeOfDay();
-		DSP_RTN_CHECK_RTN_CODE(generateCols());
+		DSP_RTN_CHECK_THROW(generateCols());
 		t_colgen_ += CoinGetTimeOfDay() - stime;
 		DSPdebugMessage("Generated columns..\n");
 
@@ -120,11 +120,11 @@ DSP_RTN_CODE DwBundleDual::solve() {
 				bestdualobj_ = dualobj_;
 				bestdualsol_ = dualsol_;
 			}
-			DSP_RTN_CHECK_RTN_CODE(gutsOfSolve());
+			DSP_RTN_CHECK_THROW(gutsOfSolve());
 		}		
 	} else {
-		message_->print(1, "Starting with %u existing columns.\n", si_->getNumRows());
-		DSP_RTN_CHECK_RTN_CODE(gutsOfSolve());
+		message_->print(1, "Starting with %u existing columns.\n", getSiPtr()->getNumRows());
+		DSP_RTN_CHECK_THROW(gutsOfSolve());
 	}
 
 
@@ -139,8 +139,8 @@ DSP_RTN_CODE DwBundleDual::createProblem() {
 	clbd_node_ = clbd_orig_;
 	cubd_node_ = cubd_orig_;
 
-	DSP_RTN_CHECK_RTN_CODE(createPrimalProblem());
-	DSP_RTN_CHECK_RTN_CODE(createDualProblem());
+	DSP_RTN_CHECK_THROW(createPrimalProblem());
+	DSP_RTN_CHECK_THROW(createDualProblem());
 
 	/** always phase2 */
 	phase_ = 2;
@@ -169,22 +169,20 @@ DSP_RTN_CODE DwBundleDual::createPrimalProblem() {
 	std::copy(rubd_orig_.begin(), rubd_orig_.begin() + nrows_orig_, rubd.begin() + nrows_conv_);
 
 	/** create solver */
-	primal_si_.reset(new OsiCpxSolverInterface());
+	DspOsi * osi = createDspOsi();
+	if (osi)
+		primal_si_.reset(osi);
+	else
+		throw CoinError("Failed to create DspOsi", "createPrimalProblem", "DwBundleDual");
 
 	/** load problem data */
-	primal_si_->loadProblem(*mat, NULL, NULL, NULL, &rlbd[0], &rubd[0]);
+	primal_si_->si_->loadProblem(*mat, NULL, NULL, NULL, &rlbd[0], &rubd[0]);
 
 	/** set display */
-	primal_si_->messageHandler()->setLogLevel(0);
-	DSPdebug(primal_si_->messageHandler()->setLogLevel(1));
+	primal_si_->setLogLevel(par_->getIntParam("DW/MASTER/SOLVER/LOG_LEVEL"));
 
-	OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(primal_si_.get());
-	if (!cpx) {
-		CoinError("Failed to case Osi to OsiCpx", "createPrimalProblem", "DwBundleDual");
-		return DSP_RTN_ERR;
-	} else {
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("NUM_CORES"));
-	}
+	/** set number of cores */
+	primal_si_->setNumCores(par_->getIntParam("NUM_CORES"));
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -198,16 +196,21 @@ void DwBundleDual::initDualSolver(
 		std::vector<double>& obj, 
 		std::vector<double>& rlbd, 
 		std::vector<double>& rubd) {
+	BGN_TRY_CATCH
+
 	/** create solver */
-	si_ = new OsiCpxSolverInterface();
-	OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
+	osi_ = createDspOsi();
+
 	/** set display */
-	si_->messageHandler()->setLogLevel(std::max(-1,par_->getIntParam("LOG_LEVEL")-4));
+	osi_->setLogLevel(par_->getIntParam("DW/MASTER/SOLVER/LOG_LEVEL"));
+
 	/** load problem data */
 	if (rlbd.size() == 0)
-		si_->loadProblem(m, &clbd[0], &cubd[0], &obj[0], NULL, NULL);
+		getSiPtr()->loadProblem(m, &clbd[0], &cubd[0], &obj[0], NULL, NULL);
 	else
-		si_->loadProblem(m, &clbd[0], &cubd[0], &obj[0], &rlbd[0], &rubd[0]);
+		getSiPtr()->loadProblem(m, &clbd[0], &cubd[0], &obj[0], &rlbd[0], &rubd[0]);
+
+	END_TRY_CATCH(;)
 }
 
 DSP_RTN_CODE DwBundleDual::createDualProblem() {
@@ -255,15 +258,10 @@ DSP_RTN_CODE DwBundleDual::createDualProblem() {
 	initDualSolver(*mat, clbd, cubd, obj, rlbd, rubd);
 
 	/** set quadratic objective term */
-	updateCenter(u_);
+	DSP_RTN_CHECK_THROW(updateCenter(u_));
 
-	OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
-	if (!cpx) {
-		// CoinError("Failed to case Osi to OsiCpx", "createDualProblem", "DwBundleDual");
-		// return DSP_RTN_ERR;
-	} else {
-		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_THREADS, par_->getIntParam("NUM_CORES"));
-	}
+	/** set number of cores */
+	osi_->setNumCores(par_->getIntParam("NUM_CORES"));
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -271,119 +269,145 @@ DSP_RTN_CODE DwBundleDual::createDualProblem() {
 }
 
 DSP_RTN_CODE DwBundleDual::updateCenter(double penalty) {
-	double coef;
-	OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
-	const double* rlbd = primal_si_->getRowLower();
-	const double* rubd = primal_si_->getRowUpper();
+#define FREE_MEMORY \
+	FREE_PTR(qmat)
 
-	if (cpx) {
-		for (int j = nrows_conv_; j < nrows_; ++j) {
-			/** objective coefficient */
-			coef = -penalty*bestdualsol_[j];
-			if (fabs(rlbd[j]) < 1.0e+20)
-				coef -= rlbd[j];
-			if (fabs(rubd[j]) < 1.0e+20)
-				coef -= rubd[j];
-			if (fabs(coef) >= 1.0e+20) {
-				printf("penalty = %e, bestdualsol_[%d] = %e, coef = %e\n", penalty, j, bestdualsol_[j], coef);
-				CoinError("Invalid objective coefficient.", "updateCenter", "DwBundleDual");
-				return DSP_RTN_ERR;
-			}
-			si_->setObjCoeff(j, coef);
-			CPXchgqpcoef(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), j, j, penalty);
+	CoinPackedMatrix *qmat = NULL;
+
+	BGN_TRY_CATCH
+
+	double coef;
+	const double* rlbd = primal_si_->si_->getRowLower();
+	const double* rubd = primal_si_->si_->getRowUpper();
+
+	/** update linear coefficients */
+	for (int j = nrows_conv_; j < nrows_; ++j) {
+		coef = -penalty*bestdualsol_[j];
+		if (fabs(rlbd[j]) < 1.0e+20)
+			coef -= rlbd[j];
+		if (fabs(rubd[j]) < 1.0e+20)
+			coef -= rubd[j];
+		if (fabs(coef) >= 1.0e+20) {
+			printf("penalty = %e, bestdualsol_[%d] = %e, coef = %e\n", penalty, j, bestdualsol_[j], coef);
+			CoinError("Invalid objective coefficient.", "updateCenter", "DwBundleDual");
+			return DSP_RTN_ERR;
 		}
-	} else {
-		CoinError("This supports OsiCpxSolverInterface only.", "updateCenter", "DwBundleDual");
-		return DSP_RTN_ERR;
+		getSiPtr()->setObjCoeff(j, coef);
 	}
+
+	/** update quadratic term */
+	vector<int> indices;
+	indices.reserve(nrows_ - nrows_conv_);
+	for (int j = nrows_conv_; j < nrows_; ++j) {
+		indices.push_back(j);
+	}
+	vector<double> elements(nrows_ - nrows_conv_, penalty);
+
+	qmat = new CoinPackedMatrix(true, &indices[0], &indices[0], &elements[0], nrows_-nrows_conv_);
+	osi_->loadQuadraticObjective(*qmat);
+
+	FREE_MEMORY
+
+	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
+
 	return DSP_RTN_OK;
 }
 
 DSP_RTN_CODE DwBundleDual::callMasterSolver() {
-	OsiCpxSolverInterface* cpx = dynamic_cast<OsiCpxSolverInterface*>(si_);
-	if (!cpx) {
-		CoinError("Failed to case Osi to OsiCpx", "solveMaster", "DwBundle");
-		return DSP_RTN_ERR;
-	} else {
+	if (par_->getIntParam("DW/MASTER/SOLVER") == OsiCpx) {
+#ifdef DSP_HAS_CPX
+
+		OsiCpxSolverInterface* cpx = NULL;
+
+		BGN_TRY_CATCH
+
+		cpx = dynamic_cast<OsiCpxSolverInterface*>(getSiPtr());
+
+		END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
 		/** use dual simplex for QP, which is numerically much more stable than Barrier */
 		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_QPMETHOD, 0);
 		CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, 0);
-	}
 
-	int pass = 0;
-	while (pass <= 2) {
-		CPXqpopt(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_PROBLEM));
-		int cpxstat = CPXgetstat(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
-		message_->print(5, "CPLEX status %d\n", cpxstat);
-		switch (cpxstat) {
-		case CPX_STAT_OPTIMAL:
-		case CPX_STAT_NUM_BEST:
-		case CPX_STAT_OPTIMAL_INFEAS:
-			status_ = DSP_STAT_OPTIMAL;
-			pass = 10;
-			break;
-		case CPX_STAT_INFEASIBLE:
-			status_ = DSP_STAT_DUAL_INFEASIBLE;
-			message_->print(0, "Unexpected CPLEX status %d\n", cpxstat);
-			pass = 10;
-			break;
-		case CPX_STAT_UNBOUNDED:
-		case CPX_STAT_INForUNBD:
-			if (pass == 0) {
-				CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, 1);
-				message_->print(1, "Re-running CPLEX with numerical emphasis\n");
-			} else if (pass == 1) {
-				CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_QPMETHOD, 2);
-				message_->print(1, "Re-running CPLEX with dual simplex\n");
-			} else {
-				status_ = DSP_STAT_PRIM_INFEASIBLE;
-				message_->print(1, "CPLEX failed to optimize\n");
+		int pass = 0;
+		while (pass <= 2) {
+			CPXqpopt(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_PROBLEM));
+			int cpxstat = CPXgetstat(cpx->getEnvironmentPtr(), cpx->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
+			message_->print(5, "CPLEX status %d\n", cpxstat);
+			switch (cpxstat) {
+			case CPX_STAT_OPTIMAL:
+			case CPX_STAT_NUM_BEST:
+			case CPX_STAT_OPTIMAL_INFEAS:
+				status_ = DSP_STAT_OPTIMAL;
+				pass = 10;
+				break;
+			case CPX_STAT_INFEASIBLE:
+				status_ = DSP_STAT_DUAL_INFEASIBLE;
 				message_->print(0, "Unexpected CPLEX status %d\n", cpxstat);
-				si_->writeMps("unbounded_master");
-			}
-			pass++;
-			break;
-		case CPX_STAT_ABORT_OBJ_LIM:
-		case CPX_STAT_ABORT_PRIM_OBJ_LIM:
-			if (pass == 0) {
-				CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, 1);
-				message_->print(1, "Re-running CPLEX with numerical emphasis\n");
-			} else if (pass == 1) {
-				CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_QPMETHOD, 2);
-				message_->print(1, "Re-running CPLEX with dual simplex\n");
-			} else {
-				status_ = DSP_STAT_LIM_PRIM_OBJ;
-				message_->print(1, "CPLEX failed to optimize\n");
+				pass = 10;
+				break;
+			case CPX_STAT_UNBOUNDED:
+			case CPX_STAT_INForUNBD:
+				if (pass == 0) {
+					CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, 1);
+					message_->print(1, "Re-running CPLEX with numerical emphasis\n");
+				} else if (pass == 1) {
+					CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_QPMETHOD, 2);
+					message_->print(1, "Re-running CPLEX with dual simplex\n");
+				} else {
+					status_ = DSP_STAT_PRIM_INFEASIBLE;
+					message_->print(1, "CPLEX failed to optimize\n");
+					message_->print(0, "Unexpected CPLEX status %d\n", cpxstat);
+					getSiPtr()->writeMps("unbounded_master");
+				}
+				pass++;
+				break;
+			case CPX_STAT_ABORT_OBJ_LIM:
+			case CPX_STAT_ABORT_PRIM_OBJ_LIM:
+				if (pass == 0) {
+					CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, 1);
+					message_->print(1, "Re-running CPLEX with numerical emphasis\n");
+				} else if (pass == 1) {
+					CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_QPMETHOD, 2);
+					message_->print(1, "Re-running CPLEX with dual simplex\n");
+				} else {
+					status_ = DSP_STAT_LIM_PRIM_OBJ;
+					message_->print(1, "CPLEX failed to optimize\n");
+					message_->print(0, "Unexpected CPLEX status %d\n", cpxstat);
+					getSiPtr()->writeMps("unbounded_master");
+				}
+				pass++;
+				break;
+			case CPX_STAT_ABORT_DUAL_OBJ_LIM:
+				status_ = DSP_STAT_LIM_DUAL_OBJ;
+				pass = 10;
+				break;
+			case CPX_STAT_ABORT_IT_LIM:
+			case CPX_STAT_ABORT_TIME_LIM:
+				status_ = DSP_STAT_LIM_ITERorTIME;
+				pass = 10;
+				break;
+			case CPX_STAT_ABORT_USER:
+				status_ = DSP_STAT_ABORT;
+				pass = 10;
+				break;
+			default:
 				message_->print(0, "Unexpected CPLEX status %d\n", cpxstat);
-				si_->writeMps("unbounded_master");
+				status_ = DSP_STAT_UNKNOWN;
+				pass = 10;
+				break;
 			}
-			pass++;
-			break;
-		case CPX_STAT_ABORT_DUAL_OBJ_LIM:
-			status_ = DSP_STAT_LIM_DUAL_OBJ;
-			pass = 10;
-			break;
-		case CPX_STAT_ABORT_IT_LIM:
-		case CPX_STAT_ABORT_TIME_LIM:
-			status_ = DSP_STAT_LIM_ITERorTIME;
-			pass = 10;
-			break;
-		case CPX_STAT_ABORT_USER:
-			status_ = DSP_STAT_ABORT;
-			pass = 10;
-			break;
-		default:
-			message_->print(0, "Unexpected CPLEX status %d\n", cpxstat);
-			status_ = DSP_STAT_UNKNOWN;
-			pass = 10;
-			break;
 		}
+#endif
+	} else {
+		osi_->solve();
+		status_ = osi_->status();
 	}
 	return status_;
 }
 
 void DwBundleDual::assignMasterSolution(std::vector<double>& sol) {
-	sol.assign(si_->getColSolution(), si_->getColSolution() + si_->getNumCols());
+	sol.assign(getSiPtr()->getColSolution(), getSiPtr()->getColSolution() + getSiPtr()->getNumCols());
 }
 
 DSP_RTN_CODE DwBundleDual::solveMaster() {
@@ -396,6 +420,7 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 	status_ = callMasterSolver();
 
 	/** status_ must be set at this point. */
+	DSPdebugMessage("master status_ %d\n", status_);
 
 	switch(status_) {
 	case DSP_STAT_OPTIMAL:
@@ -417,7 +442,7 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 		double polyapprox = 0.0;
 		absp_ = 0.0;
 		for (int j = 0; j < nrows_conv_; ++j)
-			polyapprox -= si_->getColSolution()[j];
+			polyapprox -= getSiPtr()->getColSolution()[j];
 		for (int j = nrows_conv_; j < nrows_; ++j) {
 			d_[j-nrows_conv_] = dualsol_[j] - bestdualsol_[j];
 			p_[j-nrows_conv_] = -u_ * d_[j-nrows_conv_];
@@ -444,11 +469,11 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 			alpha_ += p_[j-nrows_conv_] * d_[j-nrows_conv_];
 
 		/** get primal solutions by solving the primal master */
-		DSPdebug(primal_si_->writeMps("PrimMaster"));
-		primal_si_->resolve();
-		if (primal_si_->isProvenOptimal()) {
-			primobj_ = primal_si_->getObjValue();
-			primsol_.assign(primal_si_->getColSolution(), primal_si_->getColSolution() + primal_si_->getNumCols());
+		DSPdebug(primal_si_->si_->writeMps("PrimMaster"));
+		primal_si_->si_->resolve();
+		if (primal_si_->si_->isProvenOptimal()) {
+			primobj_ = primal_si_->getPrimObjValue();
+			primsol_.assign(primal_si_->si_->getColSolution(), primal_si_->si_->getColSolution() + primal_si_->si_->getNumCols());
 		} else {
 			message_->print(5, "  The primal master could not be solved to optimality.\n");
 			primobj_ = COIN_DBL_MAX;
@@ -458,6 +483,10 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 		break;
 	}
 	default:
+		char msg[128];
+		sprintf(msg, "Unexpected solution status: %d", status_);
+		getSiPtr()->writeMps("unexpected_master");
+		throw CoinError(msg, "solveMaster", "DwBundleDual");
 		break;
 	}
 
@@ -522,7 +551,7 @@ DSP_RTN_CODE DwBundleDual::updateModel() {
 			counter_ = std::min(counter_-1,-1);
 	}
 	u_ = newu;
-	updateCenter(u_);
+	DSP_RTN_CHECK_THROW(updateCenter(u_));
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;
@@ -595,10 +624,10 @@ DSP_RTN_CODE DwBundleDual::addRows(
 	/** linearization error */
 	linerr_ = 0.0;
 	for (int i = nrows_conv_; i < nrows_; ++i) {
-		if (primal_si_->getRowLower()[i] > -1.0e+20)
-			linerr_ += primal_si_->getRowLower()[i] * d_[i-nrows_conv_];
-		if (primal_si_->getRowUpper()[i] < 1.0e+20)
-			linerr_ += primal_si_->getRowUpper()[i] * d_[i-nrows_conv_];
+		if (primal_si_->si_->getRowLower()[i] > -1.0e+20)
+			linerr_ += primal_si_->si_->getRowLower()[i] * d_[i-nrows_conv_];
+		if (primal_si_->si_->getRowUpper()[i] < 1.0e+20)
+			linerr_ += primal_si_->si_->getRowUpper()[i] * d_[i-nrows_conv_];
 	}
 
 	for (unsigned int s = 0; s < indices.size(); ++s) {
@@ -673,10 +702,10 @@ DSP_RTN_CODE DwBundleDual::addRows(
 			addDualRow(cutvec, -COIN_DBL_MAX, cutrhs);
 
 			/** add column to the primal master */
-			primal_si_->addCol(cutvec, 0.0, COIN_DBL_MAX, cutrhs);
+			primal_si_->si_->addCol(cutvec, 0.0, COIN_DBL_MAX, cutrhs);
 
 			/** store columns */
-			cols_generated_.push_back(new DwCol(sind, primal_si_->getNumCols() - 1, *x, cutvec, cutrhs, 0.0, COIN_DBL_MAX));
+			cols_generated_.push_back(new DwCol(sind, primal_si_->si_->getNumCols() - 1, *x, cutvec, cutrhs, 0.0, COIN_DBL_MAX));
 			ngenerated_++;
 		} else {
 			/** store columns */
@@ -697,8 +726,8 @@ DSP_RTN_CODE DwBundleDual::getLagrangianBound(
 	/** calculate lower bound */
 	dualobj_ = -std::accumulate(objs.begin(), objs.end(), 0.0);
 	DSPdebugMessage("Sum of subproblem objectives: %+e\n", -dualobj_);
-	const double* rlbd = primal_si_->getRowLower();
-	const double* rubd = primal_si_->getRowUpper();
+	const double* rlbd = primal_si_->si_->getRowLower();
+	const double* rubd = primal_si_->si_->getRowUpper();
 	for (int j = nrows_conv_; j < nrows_; ++j) {
 		if (rlbd[j] > -1.0e+20)
 			dualobj_ -= dualsol_[j] * rlbd[j];
@@ -734,14 +763,14 @@ DSP_RTN_CODE DwBundleDual::reduceCols(int &num_removed) {
 	for (unsigned k = 0; k < cols_generated_.size(); ++k) {
 		if (cols_generated_[k]->active_) {
 			int j = cols_generated_[k]->master_index_;
-			if (si_->getRowPrice()[j] < 1.0e-6)
+			if (getSiPtr()->getRowPrice()[j] < 1.0e-6)
 				cols_generated_[k]->age_++;
 			else
 				cols_generated_[k]->age_ = 0;
 			/** reduced cost fixing */
 			if (cols_generated_[k]->age_ >= par_->getIntParam("DW/MASTER/COL_AGE_LIM") &&
 				delblk[cols_generated_[k]->blockid_] > 1 &&
-				si_->getNumRows() - delrows.size() > si_->getNumCols()) {
+				getSiPtr()->getNumRows() - delrows.size() > getSiPtr()->getNumCols()) {
 
 				cols_generated_[k]->active_ = false;
 				delrows.push_back(j);
@@ -751,8 +780,8 @@ DSP_RTN_CODE DwBundleDual::reduceCols(int &num_removed) {
 	}
 
 	if (delrows.size() > 0) {
-		si_->deleteRows(delrows.size(), &delrows[0]);
-		primal_si_->deleteCols(delrows.size(), &delrows[0]);
+		getSiPtr()->deleteRows(delrows.size(), &delrows[0]);
+		primal_si_->si_->deleteCols(delrows.size(), &delrows[0]);
 
 		/** reset age? */
 		for (unsigned k = 0; k < cols_generated_.size(); ++k) {
@@ -786,10 +815,10 @@ DSP_RTN_CODE DwBundleDual::restoreCols(int &num_restored) {
 				cols_generated_[k]->active_ = true;
 				cols_generated_[k]->age_ = 0;
 				/** set master index */
-				cols_generated_[k]->master_index_ = primal_si_->getNumCols();
+				cols_generated_[k]->master_index_ = primal_si_->si_->getNumCols();
 				/** add row and column */
 				addDualRow(cols_generated_[k]->col_, -COIN_DBL_MAX, cols_generated_[k]->obj_);
-				primal_si_->addCol(cols_generated_[k]->col_, 0.0, COIN_DBL_MAX, cols_generated_[k]->obj_);
+				primal_si_->si_->addCol(cols_generated_[k]->col_, 0.0, COIN_DBL_MAX, cols_generated_[k]->obj_);
 				num_restored++;
 			}
 		}
@@ -808,35 +837,35 @@ void DwBundleDual::removeAllCols() {
 }
 
 void DwBundleDual::removeAllPrimCols() {
-	std::vector<int> delcols(primal_si_->getNumCols());
+	std::vector<int> delcols(primal_si_->si_->getNumCols());
 	std::iota(delcols.begin(), delcols.end(), 0.0);
-	primal_si_->deleteCols(primal_si_->getNumCols(), &delcols[0]);
+	primal_si_->si_->deleteCols(primal_si_->si_->getNumCols(), &delcols[0]);
 }
 
 void DwBundleDual::removeAllDualRows() {
-	std::vector<int> delrows(si_->getNumRows());
+	std::vector<int> delrows(getSiPtr()->getNumRows());
 	std::iota(delrows.begin(), delrows.end(), 0.0);
-	si_->deleteRows(si_->getNumRows(), &delrows[0]);
+	getSiPtr()->deleteRows(getSiPtr()->getNumRows(), &delrows[0]);
 }
 
 void DwBundleDual::removeBranchingRows() {
 	if (nrows_branch_ > 0) {
 		std::vector<int> delinds(nrows_branch_);
 		std::iota(delinds.begin(), delinds.end(), nrows_core_);
-		primal_si_->deleteRows(nrows_branch_, &delinds[0]);
-		si_->deleteCols(nrows_branch_, &delinds[0]);
+		primal_si_->si_->deleteRows(nrows_branch_, &delinds[0]);
+		getSiPtr()->deleteCols(nrows_branch_, &delinds[0]);
 		nrows_branch_ = 0;
 	}
 }
 
 void DwBundleDual::addBranchingRow(double lb, double ub) {
-	primal_si_->addRow(0, NULL, NULL, lb, ub);
-	si_->addCol(0, NULL, NULL, 0.0, ub, lb);
+	primal_si_->si_->addRow(0, NULL, NULL, lb, ub);
+	getSiPtr()->addCol(0, NULL, NULL, 0.0, ub, lb);
 }
 
 void DwBundleDual::addBranchingCol(const CoinPackedVector& col, double obj) {
 	addDualRow(col, -COIN_DBL_MAX, obj);
-	primal_si_->addCol(col, 0.0, COIN_DBL_MAX, obj);
+	primal_si_->si_->addCol(col, 0.0, COIN_DBL_MAX, obj);
 }
 
 void DwBundleDual::printIterInfo() {
@@ -847,7 +876,7 @@ void DwBundleDual::printIterInfo() {
 		message_->print(1, "(gap %.2f %%), ", getRelApproxGap()*100);
 	else
 		message_->print(1, "(gap Large %%), ");
-	message_->print(1, "nrows %d, ncols %d, ", si_->getNumRows(), si_->getNumCols());
+	message_->print(1, "nrows %d, ncols %d, ", getSiPtr()->getNumRows(), getSiPtr()->getNumCols());
 	message_->print(1, "timing (total %.2f, master %.2f, gencols %.2f), statue %d\n",
 			t_total_, t_master_, t_colgen_, status_);
 	message_->print(2, "  predicted ascent %+e, |p| %+e, alpha %+e, linerr %+e, eps %+e, u %+e, counter %d\n",

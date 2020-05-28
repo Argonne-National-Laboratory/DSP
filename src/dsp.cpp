@@ -11,7 +11,7 @@
 
 const char* gDspUsage = 
 	"Not enough or invalid arguments, please try again.\n\n"
-	"Usage: --algo <de,bd,dd,dro,dw> --smps <smps file> --mps <mps file> --dec <dec file> [--soln <solution file prefix> --param <param file>]\n\n"
+	"Usage: --algo <de,bd,dd,dro,dw> --smps <smps file> --mps <mps file> --dec <dec file> [--soln <solution file prefix> --param <param file> --test <benchmark objective value>]\n\n"
 	"       --algo\tchoice of algorithms.\n"
 	"               de: deterministic equivalent form\n"
 	"               bd: Benders decomposition\n"
@@ -21,16 +21,19 @@ const char* gDspUsage =
 	"       --smps\tSMPS file name without extensions. For example, if your SMPS files are ../test/farmer.cor, ../test/farmer.sto, and ../test/farmer.tim, this value should be ../test/farmer\n"
 	"       --mps\tMPS file name\n"
 	"       --dec\tDEC file name\n"
-	"       --soln\toptional argument for solution file prefix. For exampe, if the prefix is given as MySol, then two files MySol.primal.txt and MySol.dual.txt will be written for primal and dual solutions, respectively.\n"
-	"       --param\toptional paramater for parameter file name\n";
+	"       --soln\toptional argument for solution file prefix. For example, if the prefix is given as MySol, then two files MySol.primal.txt and MySol.dual.txt will be written for primal and dual solutions, respectively.\n"
+	"       --param\toptional paramater for parameter file name\n"
+	"       --test\toptional parameter for testing objective value\n";
 
 void setBlockIds(DspApiEnv* env, int nsubprobs, bool master_has_subblocks);
-void runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* paramfile);
+int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* paramfile, char* testvalue);
 void readMpsDec(DspApiEnv* env, char* mpsfile, char* decfile);
 void parseDecFile(char* decfile, vector<vector<string> >& rows_in_blocks);
 void createBlockModel(DspApiEnv* env, CoinMpsIO& p, const CoinPackedMatrix* mat, 
 	int blockid, vector<string>& rows_in_block, map<string,int>& rowname2index, 
 	const char* ctype, const double* obj);
+
+const double test_tolerance = 1.0e-8;
 
 /*
  This will compile a stand-alone binary file that reads problem instances.
@@ -63,6 +66,7 @@ int main(int argc, char* argv[]) {
 		char* decfile = NULL;
 		char* solnfile = NULL;
 		char* paramfile = NULL;
+		char* testvalue = NULL;
 		for (int i = 1; i < argc; ++i) {
 			if (i + 1 != argc) {
 				if (string(argv[i]) == "--algo") {
@@ -77,6 +81,8 @@ int main(int argc, char* argv[]) {
 					solnfile = argv[i+1];
 				} else if (string(argv[i]) == "--param") {
 					paramfile = argv[i+1];
+				} else if (string(argv[i]) == "--test") {
+					testvalue = argv[i+1];
 				} else {
 					EXIT_WITH_MSG
 				}
@@ -95,18 +101,19 @@ int main(int argc, char* argv[]) {
 		}
 
 		// run dsp
-		runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile);
+		int ret = runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue);
 
 #ifdef DSP_HAS_MPI
 		MPI_Finalize();
 #endif
-		return 0;
+		return ret;
 	}
 #undef EXIT_WITH_MSG
 }
 
-void runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* paramfile) {
+int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* paramfile, char* testvalue) {
 
+	int ret = 0;
 	bool isroot = true;
 	bool issolved = true;
 	bool isstochastic = true;
@@ -124,7 +131,7 @@ void runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* 
 	if (smpsfile != NULL) {
 		if (isroot) cout << "Reading SMPS files: " << smpsfile << endl;
 		int ret = readSmps(env, smpsfile);
-		if (ret != 0) return;
+		if (ret != 0) return ret;
 		if (isroot) {
 			cout << "First stage: " << getNumRows(env,0) << " rows, " << getNumCols(env,0) << " cols, " << getNumIntegers(env,0) << " integers" << endl;
 			cout << "Second stage: " << getNumRows(env,1) << " rows, " << getNumCols(env,1) << " cols, " << getNumIntegers(env,1) << " integers" << endl;
@@ -176,7 +183,7 @@ void runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* 
 			if (isroot) cout << "Reading DRO file: " << drofile << endl;
 
 			int ret = readDro(env, drofile);
-			if (ret != 0) return;
+			if (ret != 0) return ret;
 
 			if (isroot) cout << "Run dual decomposition for DRO" << endl;
 			solveDro(env);
@@ -212,9 +219,35 @@ void runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* 
 			cout << "Dual Bound  : " << dualobj << endl;
 			cout << "Gap (%)     : " << fabs(primobj-dualobj)/(fabs(primobj)+1.e-10)*100 << endl;
 
+			if (testvalue != NULL) {
+				double val = atof(testvalue);
+				cout << "Testing Bound: " << val << endl;
+				if (primobj >= dualobj) {
+					if (val > primobj + test_tolerance || val < dualobj - test_tolerance)
+						ret = 1;
+				} else {
+					if (val < primobj - test_tolerance || val > dualobj + test_tolerance)
+						ret = 1;
+				}
+			}
+
 			/** write solutions to files */
 			if (solnfile != NULL) {
+
+				char pobjname[128];
+				sprintf(pobjname, "%s.primobj.txt", solnfile);
+				ofstream pobjstream(pobjname);
+				pobjstream << primobj << endl;
+				pobjstream.close();
+
+				char dobjname[128];
+				sprintf(dobjname, "%s.dualobj.txt", solnfile);
+				ofstream dobjstream(dobjname);
+				dobjstream << dualobj << endl;
+				dobjstream.close();
+
 				if (primobj < 1.0e+20) {
+
 					double *primsol = new double [ncols];
 					getPrimalSolution(env, ncols, primsol);
 
@@ -250,6 +283,8 @@ void runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* 
 
 	if (isroot) cout << "Deleting DSP environment\n";
 	freeEnv(env);
+
+	return ret;
 }
 
 void setBlockIds(DspApiEnv* env, int nsubprobs, bool master_has_subblocks) {

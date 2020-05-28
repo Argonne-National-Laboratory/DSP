@@ -57,16 +57,16 @@ public:
 	//@{
 
 	/** A virtual member to return the number of columns. */
-	virtual int getNumCols() {return si_->getNumCols();}
+	virtual int getNumCols() {return getSiPtr()->getNumCols();}
 
 	/** A virtual member fo return the number of rows. */
-	virtual int getNumRows() {return si_->getNumRows();}
+	virtual int getNumRows() {return getSiPtr()->getNumRows();}
 
 	/** A virtual member to return column lower bound. */
-	virtual const double* getColLower() {return si_->getColLower();}
+	virtual const double* getColLower() {return getSiPtr()->getColLower();}
 
 	/** A virtual member to return column lower upper. */
-	virtual const double* getColUpper() {return si_->getColUpper();}
+	virtual const double* getColUpper() {return getSiPtr()->getColUpper();}
 
 	/** A virtual member to get best primal solution */
 	virtual const double * getBestPrimalSolution() {return &bestprimsol_[0];}
@@ -117,7 +117,10 @@ public:
 	virtual DspMessage * getMessagePtr() {return message_;}
 
 	/** A virtual member to get solver interface */
-	virtual OsiSolverInterface* getSiPtr() {return si_;}
+	virtual DspOsi* getDspOsiPtr() {return osi_;}
+
+	/** A virtual member to get solver interface */
+	virtual OsiSolverInterface* getSiPtr() {return osi_->si_;}
 
 	/** A virtual member to get solution time */
 	virtual double getCpuTime() {return cputime_;}
@@ -140,10 +143,10 @@ public:
 	virtual void setBranchingObjects(const DspBranchObj* branchobj) {}
 
 	/** set column bounds */
-	virtual void setColBounds(int j, double clbd, double cubd) {si_->setColBounds(j, clbd, cubd);}
+	virtual void setColBounds(int j, double clbd, double cubd) {getSiPtr()->setColBounds(j, clbd, cubd);}
 	virtual void setColBounds(const double* clbd, const double* cubd) {
-		for (int j = 0; j < si_->getNumCols(); ++j)
-			si_->setColBounds(j, clbd[j], cubd[j]);
+		for (int j = 0; j < getSiPtr()->getNumCols(); ++j)
+			getSiPtr()->setColBounds(j, clbd[j], cubd[j]);
 	}
 
 	/** set best primal objective */
@@ -200,7 +203,8 @@ protected:
 	DspParams * par_;      /**< parameters */
 	DspMessage * message_; /**< message */
 
-	OsiSolverInterface* si_; /**< Coin-Osi */
+	// OsiSolverInterface* si_; /**< Coin-Osi */
+	DspOsi * osi_;
 
 	DSP_RTN_CODE status_;  /**< solution status */
 	std::vector<double> bestprimsol_; /**< best primal solution */

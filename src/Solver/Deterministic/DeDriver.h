@@ -45,6 +45,10 @@ public:
 
 	/** write extensive form in MPS */
 	virtual void writeExtMps(const char * name);
+
+private:
+
+	virtual DspOsi * createDspOsi();
 };
 
 #endif /* SRC_SOLVER_DETERMINISTIC_DEDRIVER_H_ */

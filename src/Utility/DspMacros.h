@@ -57,7 +57,8 @@
  * try-catch macros
  */
 
-#define BGN_TRY_CATCH try {
+#define BGN_TRY_CATCH try { \
+	CoinError::printErrors_ = true;
 
 #define END_TRY_CATCH(STMT)                                                                \
 	} catch (std::bad_alloc& ba) {                                                         \
