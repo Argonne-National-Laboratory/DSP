@@ -187,9 +187,19 @@ else(APPLE)
 endif(APPLE)
 
 include_directories(${DSP_INC_DIR})
+
+# Build DspObj Object
 add_library(DspObj OBJECT ${DSP_SRC})
 set_property(TARGET DspObj PROPERTY POSITION_INDEPENDENT_CODE ON)
+add_dependencies(DspObj Alps Smi Clp)
+if(MA27LIB)
+add_dependencies(DspObj OOQP)
+endif(MA27LIB)
+
+# Build libDsp library
 add_library(Dsp SHARED $<TARGET_OBJECTS:DspObj>)
+
+# Build runDsp executable
 add_executable(runDsp dsp.cpp $<TARGET_OBJECTS:DspObj>)
 
 if (APPLE)

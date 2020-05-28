@@ -75,7 +75,8 @@ before_install:
 
 install:
   - mkdir build && cd build && cmake ..
-  - make
+  - make -j
+  - make install
 
 script:
   - ctest --verbose
