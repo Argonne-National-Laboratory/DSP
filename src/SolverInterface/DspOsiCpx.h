@@ -165,8 +165,13 @@ public:
 	/** get dual objective value */
 	virtual double getDualObjValue() {
 		double val;
-		CPXgetbestobjval(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(), &val);
-		return val * cpx_->getObjSense();
+		if (si_->getNumIntegers() > 0) {
+			CPXgetbestobjval(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(), &val);
+			val *= cpx_->getObjSense();
+		} else {
+			val = si_->getObjValue();
+		}
+		return val;
 	}
 
 	/** get number of branch-and-bound nodes explored */
