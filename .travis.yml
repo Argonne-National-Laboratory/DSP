@@ -61,6 +61,7 @@ before_install:
   - if [ $TRAVIS_OS_NAME == linux ]; then export LD_LIBRARY_PATH=$(dirname `gfortran --print-file-name libgfortran.so`):$LD_LIBRARY_PATH; fi
   - if [ $TRAVIS_OS_NAME == linux ]; then ls -al `gfortran --print-file-name libgfortran.so`; fi
   - if [ $TRAVIS_OS_NAME == osx ]; then ./build_scip.sh; fi
+  - if [ $TRAVIS_OS_NAME == osx ]; then export SCIP_DIR=$PWD/scip/build; fi
   - if [ $TRAVIS_OS_NAME == osx ]; then $SCIP_DIR/bin/scip -v; fi
   - if [ $TRAVIS_OS_NAME == osx ]; then sed -i'' -e 's|set(SCIPOPT_INC_DIR \"\"|set(SCIPOPT_INC_DIR \"'"$SCIP_DIR"'/include\"|g' ../UserConfig.cmake; fi
   - if [ $TRAVIS_OS_NAME == osx ]; then sed -i'' -e 's|set(SCIPOPT_LIB_DIR \"\"|set(SCIPOPT_LIB_DIR \"'"$SCIP_DIR"'/lib\"|g' ../UserConfig.cmake; fi
