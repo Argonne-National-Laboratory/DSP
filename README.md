@@ -1,5 +1,6 @@
 # DSP
 [![DOI](https://zenodo.org/badge/26612881.svg)](https://zenodo.org/badge/latestdoi/26612881)
+[![Build Status](https://travis-ci.org/Argonne-National-Laboratory/DSP.svg?branch=master)](https://travis-ci.org/Argonne-National-Laboratory/DSP)
 [![Documentation Status](https://readthedocs.org/projects/dsp/badge/?version=master)](https://dsp.readthedocs.io/?badge=master)
 
 DSP is an open-source and parallel package that implements decomposition methods for **structured mixed-integer programming** problems. These are structured optimization problems in the following form:
