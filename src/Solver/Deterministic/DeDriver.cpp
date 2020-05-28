@@ -8,6 +8,7 @@
 #include "Model/TssModel.h"
 #include "Solver/Deterministic/DeDriver.h"
 #include "SolverInterface/DspOsiCpx.h"
+#include "SolverInterface/DspOsiGrb.h"
 #include "SolverInterface/DspOsiScip.h"
 
 DeDriver::DeDriver(
@@ -111,6 +112,16 @@ DSP_RTN_CODE DeDriver::run()
 		osi_->setLogLevel(par_->getIntParam("LOG_LEVEL"));
 #else
 		throw CoinError("OsiCpx is not available.", "run", "DeDriver");
+#endif
+		break;
+	}
+	case OsiGrb: {
+#ifdef DSP_HAS_GRB
+		printf("DspHasGrb=%d/n", DSP_HAS_GRB);
+		osi_ = new DspOsiGrb();
+		osi_->setLogLevel(par_->getIntParam("LOG_LEVEL"));
+#else
+		throw CoinError("OsiGrb is not available.", "run", "DeDriver");
 #endif
 		break;
 	}
@@ -237,6 +248,13 @@ void DeDriver::writeExtMps(const char * name)
 		osi = new DspOsiCpx();
 #else
 		throw CoinError("OsiCpx is not available.", "writeExtMps", "DeDriver");
+#endif
+		break;
+	case OsiGrb:
+#ifdef DSP_HAS_GRB
+		osi = new DspOsiGrb();
+#else
+		throw CoinError("OsiGrb is not available.", "writeExtMps", "DeDriver");
 #endif
 		break;
 	case OsiScip:
