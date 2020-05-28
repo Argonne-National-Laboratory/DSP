@@ -207,10 +207,14 @@ void DspParams::initIntParams()
 
 	/** minimum number of processes to wait at the master */
 	IntParams_.createParam("DD/MIN_PROCS", 1);
-
+/*
 #ifdef DSP_HAS_CPX
 	IntParams_.createParam("SOLVER/MIP", OsiCpx);
 	IntParams_.createParam("SOLVER/QP", OsiCpx);
+*/
+#ifdef DSP_HAS_GRB
+	IntParams_.createParam("SOLVER/MIP", OsiGrb);
+	IntParams_.createParam("SOLVER/QP", OsiGrb);
 #else
 	IntParams_.createParam("SOLVER/MIP", OsiScip);
 	IntParams_.createParam("SOLVER/QP", OsiClp);
