@@ -51,6 +51,7 @@ endif()
 find_library(SCIPLIB scip PATHS ${SCIPOPT_LIB_DIR})
 find_library(MA27LIB  ma27  PATHS ${MA27LIB_DIR})
 find_library(CPLEXLIB cplex PATHS ${CPLEX_LIB_DIR})
+find_library(GUROBILIB gurobi${GUROBI_VERSION} PATHS ${GUROBI_LIB_DIR})
 
 # if(APPLE)
 # 	set(CMAKE_MACOSX_RPATH OFF)
