@@ -116,8 +116,8 @@ ExternalProject_Add(Clp
 		--with-osi-incdir=${COIN_INC_DIR}
 		ADD_CXXFLAGS=${EXTRA_CXX_FLAGS}
 		# CXX=${CMAKE_CXX_COMPILER}
-	BUILD_COMMAND make
-	INSTALL_COMMAND make install)
+	BUILD_COMMAND make -j1
+	INSTALL_COMMAND make -j1 install)
 
 ##################################################
 # Compile CoinSMI
