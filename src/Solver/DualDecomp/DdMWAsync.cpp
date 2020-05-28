@@ -376,8 +376,6 @@ DSP_RTN_CODE DdMWAsync::runMasterInit()
 	double *** subsolution = NULL;
 
 	/** to send solutions to workers */
-	MPI_Status status;
-
 	Solutions solutions;
 
 	int dummy;
@@ -596,7 +594,6 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 
 	/** MPI_Iprobe */
 	int recv_message; /**< indicate if there exists a message to receive */
-	int local_count; /**< local counter */
 
 	int * numCutsAdded = NULL; /**< number of cuts added to each LB worker */
 
@@ -1007,7 +1004,6 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 		solutions.clear();
 
 	/** sending stop signals to all the worker processes */
-	double garbage = -1;
 	message_->print(1, "The master is sending STOP signal to %d LB processors.\n", numLbWorkers);
 	while (numLbWorkers > 0)
 	{

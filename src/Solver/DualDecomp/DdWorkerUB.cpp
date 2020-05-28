@@ -279,7 +279,6 @@ double DdWorkerUB::evaluate(CoinPackedVector* solution) {
 	if (tss == NULL)
 		throw "This is not a stochastic programming problem.";
 
-	int nrows = mat_mp_[0]->getNumRows(); /** retrieve the number of rows in subproblem */
 	int nsubprobs = par_->getIntPtrParamSize("ARR_PROC_IDX");
 
 	/** first-stage objective value */

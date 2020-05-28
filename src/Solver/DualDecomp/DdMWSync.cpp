@@ -245,11 +245,8 @@ DSP_RTN_CODE DdMWSync::runMaster()
 	std::vector<double> dummy_double_array;
 
 	/** Benders cuts */
-	int ncuts = 0;
 	OsiCuts cuts, emptycuts;
 	int cg_status = DSP_STAT_MW_CONTINUE;
-
-	MPI_Status status;
 
 	BGN_TRY_CATCH
 
@@ -258,7 +255,7 @@ DSP_RTN_CODE DdMWSync::runMaster()
 	double mt_solve = 0.0; /**< solution time */
 	double mt_idle = 0.0; /**< idle time (due to subproblem solutions) */
 	double mts_total = CoinGetTimeOfDay();
-	double mts_solve, mts_idle;
+	double mts_idle;
 
 	int signal = DSP_STAT_MW_CONTINUE;   /**< signal to communicate with workers */
 	DdMaster * master = dynamic_cast<DdMaster*>(master_);
@@ -548,7 +545,6 @@ DSP_RTN_CODE DdMWSync::runWorker()
 	int * nsubsolution = NULL; /**< size of solution to send */
 
 	OsiCuts cuts, emptycuts;
-	bool resolveSubprob = false;
 	DSP_RTN_CODE cg_status = DSP_STAT_MW_CONTINUE;
 
 	BGN_TRY_CATCH
@@ -728,7 +724,7 @@ DSP_RTN_CODE DdMWSync::runWorker()
 			}
 
 		/** evaluate UB to get primal solution for each scenario */
-		double ub = workerub->evaluate(model_->getNumCouplingCols(), bestcouplingsol);
+		workerub->evaluate(model_->getNumCouplingCols(), bestcouplingsol);
 
 		/** send primal solution to root */
 		FREE_ARRAY_PTR(sendbuf);
@@ -771,7 +767,6 @@ DSP_RTN_CODE DdMWSync::bcastCouplingSolutions(
 	int * indices            = NULL; /**< indices of solution vectors */
 	double * elements        = NULL; /**< elements of solution vectors */
 
-	MPI_Status status;
 	int number_of_solutions; /** number of solutions to receive */
 
 	BGN_TRY_CATCH

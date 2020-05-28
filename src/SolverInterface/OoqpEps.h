@@ -19,8 +19,8 @@ public:
 	/** default constructor */
 	OoqpEps() :
 		OsiOoqpSolverInterface(),
-		mystat_(NULL),
 		hasOoqpStatus_(true),
+		mystat_(NULL),
 		epsilon_(COIN_DBL_MAX),
 		lowerBound_(-COIN_DBL_MAX),
 		upperBound_(COIN_DBL_MAX),

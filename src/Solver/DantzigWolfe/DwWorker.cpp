@@ -569,8 +569,6 @@ void DwWorker::removeAddedRows() {
 }
 
 DSP_RTN_CODE DwWorker::solveSubproblems() {
-	int status;
-
 	BGN_TRY_CATCH
 
 #ifdef DSP_DEBUG

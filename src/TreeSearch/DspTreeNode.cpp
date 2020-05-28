@@ -192,7 +192,7 @@ int DspTreeNode::process(bool isRoot, bool rampUp) {
 
 std::vector<CoinTriple<AlpsNodeDesc*, AlpsNodeStatus, double> > DspTreeNode::branch() {
 
-	int ret, status;
+	int ret;
 	int solver_loglevel;
 
 	/** retrieve objects */

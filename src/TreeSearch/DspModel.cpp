@@ -17,8 +17,8 @@ DspModel::DspModel() :
 		solver_(NULL), par_(NULL),
 		status_(DSP_STAT_UNKNOWN),
 		bestprimobj_(COIN_DBL_MAX),
-		primobj_(COIN_DBL_MAX),
 		bestdualobj_(-COIN_DBL_MAX),
+		primobj_(COIN_DBL_MAX),
 		dualobj_(-COIN_DBL_MAX),
 		infeasibility_(0.0) {
 	/** nothing to do */
@@ -29,8 +29,8 @@ DspModel::DspModel(DecSolver* solver) :
 		solver_(solver), par_(solver_->getParPtr()),
 		status_(DSP_STAT_UNKNOWN),
 		bestprimobj_(COIN_DBL_MAX),
-		primobj_(COIN_DBL_MAX),
 		bestdualobj_(-COIN_DBL_MAX),
+		primobj_(COIN_DBL_MAX),
 		dualobj_(-COIN_DBL_MAX),
 		infeasibility_(0.0) {
 	/** nothing to do */

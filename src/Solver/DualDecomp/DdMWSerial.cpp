@@ -154,7 +154,6 @@ DSP_RTN_CODE DdMWSerial::run() {
 	Solutions coupling_solutions; /**< coupling solutions */
 
 	/** Benders cuts */
-	int ncuts = 0;
 	OsiCuts cuts, emptycuts;
 	int cg_status = DSP_STAT_MW_CONTINUE;
 
@@ -414,7 +413,7 @@ DSP_RTN_CODE DdMWSerial::run() {
 			}
 		
 		/** evaluate UB to get primal solution for each scenario */
-		double ub = workerub->evaluate(model_->getNumCouplingCols(), &master_->bestprimsol_[0]);
+		workerub->evaluate(model_->getNumCouplingCols(), &master_->bestprimsol_[0]);
 		for (int s = 0; s < tss->getNumScenarios(); ++s) {
 			CoinCopyN(workerub->primsols_[s].data(), tss->getNumCols(1), 
 				&master_->bestprimsol_[tss->getNumCols(0) + s * tss->getNumCols(1)]);

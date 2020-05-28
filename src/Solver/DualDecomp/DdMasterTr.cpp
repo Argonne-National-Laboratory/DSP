@@ -1106,7 +1106,6 @@ DSP_RTN_CODE DdMasterTr::terminationTest()
 		return status_;
 #endif
 
-	double time_elapsed = CoinGetTimeOfDay() - walltime_elapsed_;
 	double absgap = getAbsApproxGap();
 	double relgap = getRelApproxGap();
 	DSPdebugMessage("absgap %+e relgap %+e\n", absgap, relgap);
