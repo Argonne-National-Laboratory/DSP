@@ -8,7 +8,7 @@
 //#define DSP_DEBUG
 
 #include "Solver/DualDecomp/DdMasterAtr.h"
-#include "SolverInterface/DspOsi.h"
+#include "SolverInterface/DspOsiOoqpEps.h"
 
 DdMasterAtr::DdMasterAtr(
 		DecModel *   model,   /**< model pointer */
@@ -267,15 +267,15 @@ DSP_RTN_CODE DdMasterAtr::updateProblem(
 	}
 
 #ifdef DSP_HAS_OOQP
-	OoqpEps * ooqp = dynamic_cast<OoqpEps*>(getSiPtr());
+	DspOsiOoqpEps * ooqp = dynamic_cast<DspOsiOoqpEps*>(osi_);
 	if (ooqp)
 	{
-		if (ooqp->hasOoqpStatus_ && isSolved_)
+		if (ooqp->ooqp_->hasOoqpStatus_ && isSolved_)
 		{
 			DSPdebugMessage("bestprimobj %+e bestdualobj %+e\n", bestprimobj_, bestdualobj_);
-			double epsilon = (getSiPtr()->getObjValue() - newdual + ooqp->getDualityGap()) / (1. + fabs(getSiPtr()->getObjValue()));
+			double epsilon = (getSiPtr()->getObjValue() - newdual + ooqp->ooqp_->getDualityGap()) / (1. + fabs(getSiPtr()->getObjValue()));
 			if (epsilon > 1.) epsilon = 1.;
-			ooqp->setOoqpStatus(epsilon, -bestprimobj_, -bestdualobj_);
+			ooqp->ooqp_->setOoqpStatus(epsilon, -bestprimobj_, -bestdualobj_);
 		}
 	}
 #endif

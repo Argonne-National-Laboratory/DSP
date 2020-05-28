@@ -193,7 +193,7 @@ add_library(DspObj OBJECT ${DSP_SRC})
 set_property(TARGET DspObj PROPERTY POSITION_INDEPENDENT_CODE ON)
 add_dependencies(DspObj Alps Smi Clp)
 if(MA27LIB)
-add_dependencies(DspObj OOQP)
+    add_dependencies(DspObj OOQP)
 endif(MA27LIB)
 
 # Build libDsp library
@@ -209,6 +209,7 @@ else(APPLE)
     set(CMAKE_EXE_LINKER_FLAGS "-Wl,--no-undefined")
     set(CMAKE_SHARED_LINKER_FLAGS "-Wl,--no-undefined")
 endif(APPLE)
+# message(STATUS ${DSP_LIBS})
 target_link_libraries(Dsp ${DSP_LIBS})
 target_link_libraries(runDsp ${DSP_LIBS})
 

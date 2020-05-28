@@ -9,9 +9,9 @@
 #include "Model/TssModel.h"
 #include "Solver/DualDecomp/DdMWSync.h"
 #include "Solver/DualDecomp/DdMasterTr.h"
-#ifdef DSP_HAS_OOQP
-#include "Solver/DualDecomp/DdMasterDsb.h"
-#endif
+// #ifdef DSP_HAS_OOQP
+// #include "Solver/DualDecomp/DdMasterDsb.h"
+// #endif
 #include "Solver/DualDecomp/DdMasterSubgrad.h"
 
 DdMWSync::DdMWSync(
