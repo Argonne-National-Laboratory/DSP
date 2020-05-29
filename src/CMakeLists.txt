@@ -71,8 +71,6 @@ set(DSP_LIBS
 	${DEPEND_DIR}/lib/libCoinUtils.a 
 	${ZLIB_LIBRARIES}
 	${BZIP2_LIBRARIES}
-	${GFORTRANLIB}
-    -ldl
 )
 
 if(CPLEXLIB)
@@ -148,8 +146,8 @@ if(MA27LIB)
 		${DEPEND_DIR}/lib/libooqpdense.a
 		${DEPEND_DIR}/lib/libooqpsparse.a
 		${DEPEND_DIR}/lib/libooqpbase.a
-		${MA27LIB}
-		${LAPACK_LIBRARIES})
+        ${MA27LIB}
+    )
 	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDSP_HAS_OOQP")
 	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DDSP_HAS_OOQP")
 endif(MA27LIB)
@@ -181,9 +179,12 @@ if (MPI_CXX_FOUND)
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${MPI_CXX_COMPILE_FLAGS} -DDSP_HAS_MPI -DOMPI_IGNORE_CXX_SEEK")
 endif(MPI_CXX_FOUND)
 
+<<<<<<< HEAD
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wno-absolute-value")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wno-absolute-value")
 
+=======
+>>>>>>> upstream/master
 if(APPLE)
     set(DSP_LIBS ${DSP_LIBS}
         ${GFORTRANLIB}
