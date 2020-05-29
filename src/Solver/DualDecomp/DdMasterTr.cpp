@@ -1097,6 +1097,8 @@ DSP_RTN_CODE DdMasterTr::terminationTest()
 	if (status_ == DSP_STAT_MW_STOP)
 		return status_;
 
+	int signal = status_;
+
 	BGN_TRY_CATCH
 
 #ifdef DSP_HAS_OOQP
@@ -1106,22 +1108,22 @@ DSP_RTN_CODE DdMasterTr::terminationTest()
 		return status_;
 #endif
 
-	double time_elapsed = CoinGetTimeOfDay() - walltime_elapsed_;
 	double absgap = getAbsApproxGap();
 	double relgap = getRelApproxGap();
 	DSPdebugMessage("absgap %+e relgap %+e\n", absgap, relgap);
 	double gaptol = par_->getDblParam("DD/STOP_TOL");
 	if (getSiPtr()->getNumIntegers() > 0) gaptol += par_->getDblParam("MIP/GAP_TOL");
 	if (relgap <= gaptol) {
-		status_ = DSP_STAT_MW_STOP;
+		signal = DSP_STAT_MW_STOP;
+		status_ = DSP_STAT_OPTIMAL;
 		message_->print(1, "Tr  STOP with gap tolerance %+e (%.2f%%).\n", absgap, relgap*100);
-	}
-	else if (nstalls_ >= 3 && getSiPtr()->getObjValue() < bestdualobj_) {
-		status_ = DSP_STAT_MW_STOP;
+	} else if (nstalls_ >= 3 && getSiPtr()->getObjValue() < bestdualobj_) {
+		signal = DSP_STAT_MW_STOP;
+		status_ = DSP_STAT_STOPPED_NUMERICS;
 		message_->print(1, "Tr  STOP with stalling (%d).\n", nstalls_);
 	}
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return status_;
+	return signal;
 }

@@ -85,8 +85,6 @@ DdMWPara::~DdMWPara() {
 
 DSP_RTN_CODE DdMWPara::init() {
 
-	MPI_Status status;
-
 	BGN_TRY_CATCH
 
 	DdMW::init();
@@ -468,7 +466,7 @@ DSP_RTN_CODE DdMWPara::setSubproblemIndices() {
 	if (lb_comm_ != MPI_COMM_NULL)
 	{
 		narrprocidx = 0;
-		for (int i = lb_comm_rank_, j = 0; i < model_->getNumSubproblems(); i += lb_comm_size_)
+		for (int i = lb_comm_rank_; i < model_->getNumSubproblems(); i += lb_comm_size_)
 			narrprocidx++;
 		arrprocidx = new int [narrprocidx];
 		for (int i = lb_comm_rank_, j = 0; i < model_->getNumSubproblems(); i += lb_comm_size_)
@@ -477,7 +475,7 @@ DSP_RTN_CODE DdMWPara::setSubproblemIndices() {
 	else if (cgub_comm_ != MPI_COMM_NULL)
 	{
 		narrprocidx = 0;
-		for (int i = cgub_comm_rank_, j = 0; i < model_->getNumSubproblems(); i += cgub_comm_size_)
+		for (int i = cgub_comm_rank_; i < model_->getNumSubproblems(); i += cgub_comm_size_)
 			narrprocidx++;
 		arrprocidx = new int [narrprocidx];
 		for (int i = cgub_comm_rank_, j = 0; i < model_->getNumSubproblems(); i += cgub_comm_size_)

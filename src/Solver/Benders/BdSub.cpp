@@ -18,9 +18,9 @@ nsubprobs_(0),
 subindices_(NULL),
 mat_mp_(NULL), 
 cglp_(NULL),
+warm_start_(NULL), 
 objvals_(NULL), 
 solutions_(NULL),
-warm_start_(NULL), 
 status_(NULL),
 recourse_has_integer_(false) {}
 
@@ -159,13 +159,10 @@ int BdSub::generateCuts(
 	FREE_2D_ARRAY_PTR(nsubprobs_,Tx);
 
 	assert(mat_mp_);
-	int status;
+	int status = DSP_STAT_UNKNOWN;
 	double ** Tx = NULL;
 
 	BGN_TRY_CATCH
-
-	/** retrieve the number of rows in subproblem */
-	int nrows = mat_mp_[0]->getNumRows();
 
 	/** allocate memory */
 	Tx = new double * [nsubprobs_];

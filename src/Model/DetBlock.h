@@ -100,9 +100,8 @@ public:
 protected:
 
 	int num_coupling_cols_; /**< number of coupling columns */
-	int* coupling_cols_;    /**< coupling columns */
-
 	int num_coupling_rows_; /**< number of coupling rows */
+	int* coupling_cols_;    /**< coupling columns */
 	int* coupling_rows_;    /**< coupling rows */
 };
 

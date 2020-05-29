@@ -12,7 +12,7 @@
 #include "Solver/DantzigWolfe/DwBranchInt.h"
 #include "Model/TssModel.h"
 
-DwModel::DwModel(): DspModel(), branch_(NULL), heuristic_time_elapsed_(0.0) {}
+DwModel::DwModel(): DspModel(), heuristic_time_elapsed_(0.0), branch_(NULL) {}
 
 DwModel::DwModel(DecSolver* solver): 
 DspModel(solver),
@@ -186,7 +186,6 @@ DSP_RTN_CODE DwModel::parseDantzigWolfeSolution() {
 
 	DwMaster* master = dynamic_cast<DwMaster*>(solver_);
 	DspMessage* message = master->getMessagePtr();
-	DecModel* model = solver_->getModelPtr();
 
 	std::fill(primsol_.begin(), primsol_.begin() + master->ncols_orig_, 0.0);
 

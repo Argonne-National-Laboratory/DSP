@@ -23,8 +23,8 @@ comm_(comm) {
 BdDriverMpi::BdDriverMpi(const BdDriverMpi& rhs) :
 BdDriver(rhs),
 comm_(rhs.comm_),
-comm_size_(rhs.comm_size_),
-comm_rank_(rhs.comm_rank_) {}
+comm_rank_(rhs.comm_rank_),
+comm_size_(rhs.comm_size_) {}
 
 BdDriverMpi::~BdDriverMpi() {}
 
