@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+// #define DSP_DEBUG
 #include "Model/TssModel.h"
 #include "Solver/DualDecomp/DdMWSync.h"
 #include "Solver/DualDecomp/DdMasterTr.h"
@@ -407,16 +407,6 @@ DSP_RTN_CODE DdMWSync::runMaster()
 
 			/** termination test */
 			signal = master_->terminationTest();
-			if (signal == DSP_STAT_MW_STOP)
-			{
-				master_->status_ = DSP_STAT_OPTIMAL;
-			}
-			else if (master_->getRelDualityGap() < master_->getParPtr()->getDblParam("DD/STOP_TOL"))
-			{
-				signal = DSP_STAT_MW_STOP;
-				message_->print(1, "The duality gap limit %+e is reached.\n", master_->getRelDualityGap());
-				master_->status_ = DSP_STAT_STOPPED_GAP;
-			}
 		}
 
 		/** broadcast signal */
@@ -520,9 +510,12 @@ DSP_RTN_CODE DdMWSync::runWorker()
 #define FREE_MEMORY         \
 	FREE_ARRAY_PTR(sendbuf) \
 	FREE_ARRAY_PTR(recvbuf) \
-	FREE_ARRAY_PTR(nsubsolution)
+	FREE_ARRAY_PTR(nsubsolution) \
+	Ps = NULL;
 
 #define SIG_BREAK if (signal == DSP_STAT_MW_STOP) break;
+
+	const double * Ps = NULL; /**< of DRO master problem */
 
 	/** MPI_Gatherv message:
 	 *   [for each subproblem]
@@ -547,7 +540,18 @@ DSP_RTN_CODE DdMWSync::runWorker()
 	OsiCuts cuts, emptycuts;
 	DSP_RTN_CODE cg_status = DSP_STAT_MW_CONTINUE;
 
+	TssModel* tss = NULL;
+
 	BGN_TRY_CATCH
+
+	if (model_->isStochastic()) {
+		try {
+			tss = dynamic_cast<TssModel*>(model_);
+		} catch (const std::bad_cast &e) {
+			printf("Error: Model claims to be stochastic when it is not\n");
+            return DSP_RTN_ERR;
+		}
+	}
 
 	/** timing results */
 	double st_total = 0.0;
@@ -684,17 +688,35 @@ DSP_RTN_CODE DdMWSync::runWorker()
 				if (parEvalUb_ >= 0)
 					/** receive upper bound */
 					MPI_Bcast(&bestprimalobj, 1, MPI_DOUBLE, 0, subcomm_);
+
 				/** receive message from the master */
 				sts_idle = CoinGetTimeOfDay();
 				MPI_Scatterv(NULL, NULL, NULL, MPI_DOUBLE, recvbuf, rcount, MPI_DOUBLE, 0, subcomm_);
 				st_idle += CoinGetTimeOfDay() - sts_idle;
-				DSPdebugMessage2("Worker received message (%d):\n", rcount);
-				DSPdebug2(message_->printArray(rcount, recvbuf));
+				DSPdebugMessage("Worker received message (%d):\n", rcount);
+				DSPdebug(message_->printArray(rcount, recvbuf));
+
+				if (model_->isStochastic()) {
+					if (model_->isDro()) {
+						/** TODO: need to implement parallel DRO */
+						//Ps = master_primsol + master_->getNumCols() - tss->getNumScenarios();
+						throw CoinError("DRO is not supported.", "ruwnWorker", "DdMWSync");
+					} else {
+						Ps = tss->getProbability();
+					}
+				}
+
 				/** parse message */
+				int sindex = -1;
+				double probability = -1.0;
 				for (int s = 0, pos = 0; s < narrprocidx; ++s)
 				{
+					sindex = workerlb->subprobs_[s]->sind_;
 					workerlb->subprobs_[s]->theta_ = recvbuf[pos++];
-					workerlb->subprobs_[s]->updateProblem(recvbuf + pos, bestprimalobj);
+					if (model_->isStochastic()) {
+						probability = Ps[sindex];
+					}
+					workerlb->subprobs_[s]->updateProblem(recvbuf + pos, probability, bestprimalobj);
 					/** apply Benders cuts */
 					if (parFeasCuts_ >= 0 || parOptCuts_ >= 0)
 					{

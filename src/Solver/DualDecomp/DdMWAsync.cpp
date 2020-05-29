@@ -500,7 +500,6 @@ DSP_RTN_CODE DdMWAsync::runMasterInit()
 	}
 
 	/** update problem */
-	//master->updateProblem();
 	master->addCuts();
 
 	/** solve problem */
@@ -1353,11 +1352,23 @@ DSP_RTN_CODE DdMWAsync::runWorkerCore()
 }
 
 DSP_RTN_CODE DdMWAsync::setWorkerLb(DdWorkerLB* workerlb, int nsubprobs, int* subindex, double* buf, double bestprimobj) {
+
+	TssModel* tss = NULL;
+
 	BGN_TRY_CATCH
+
+	if (model_->isStochastic()) {
+		try {
+			tss = dynamic_cast<TssModel*>(model_);
+		} catch (const std::bad_cast &e) {
+			printf("Error: Model claims to be stochastic when it is not\n");
+            return DSP_RTN_ERR;
+		}
+	}
 
 	for (int s = 0, pos = 0; s < nsubprobs; ++s) {
 		workerlb->subprobs_[s]->theta_ = buf[pos++];
-		workerlb->subprobs_[s]->updateProblem(buf + pos, bestprimobj);
+		workerlb->subprobs_[s]->updateProblem(buf + pos, tss->getProbability()[workerlb->subprobs_[s]->sind_], bestprimobj);
 		/** apply Benders cuts */
 		if (cutsToAdd_->sizeCuts() > 0 && (parFeasCuts_ >= 0 || parOptCuts_ >= 0)) {
 			workerlb->subprobs_[s]->pushCuts(cutsToAdd_);
