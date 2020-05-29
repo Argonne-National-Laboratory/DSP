@@ -144,26 +144,8 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 			}
 
 		/** creating solver interface */
-    	switch (par_->getIntParam("SOLVER/MIP")) {
-    	case OsiCpx:
-#ifdef DSP_HAS_CPX
-    		osi_[s] = new DspOsiCpx();
-			CPXsetintparam(dynamic_cast<DspOsiCpx*>(osi_[s])->cpx_->getEnvironmentPtr(), CPX_PARAM_SCRIND, CPX_OFF);
-#else
-			throw CoinError("Invalid value for SOLVER/MIP parameter", "createProblem", "DdWorkerUB");
-#endif
-    		break;
-    	case OsiScip:
-#ifdef DSP_HAS_SCIP
-            osi_[s] = new DspOsiScip();
-#else
-			throw CoinError("Invalid value for SOLVER/MIP parameter", "createProblem", "DdWorkerUB");
-#endif
-            break;
-    	default:
-			throw CoinError("Invalid value for SOLVER/MIP parameter", "createProblem", "DdWorkerUB");
-    		break;
-    	}
+		osi_[s] = createDspOsi();
+		if (!osi_[s]) throw CoinError("Failed to create DspOsi", "createProblem", "DdWorkerUB");
 
 	    /** no display */
 	    osi_[s]->setLogLevel(0);
@@ -244,26 +226,8 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 		DSPdebug(mat_dro->verifyMtx(4));
 		
 		/** creating solver interface */
-    	switch (par_->getIntParam("SOLVER/MIP")) {
-    	case OsiCpx:
-#ifdef DSP_HAS_CPX
-    		osi_dro_ = new DspOsiCpx();
-			CPXsetintparam(dynamic_cast<DspOsiCpx*>(osi_dro_)->cpx_->getEnvironmentPtr(), CPX_PARAM_SCRIND, CPX_OFF);
-#else
-			throw CoinError("Invalid value for SOLVER/MIP parameter", "createProblem", "DdWorkerUB");
-#endif
-    		break;
-    	case OsiScip:
-#ifdef DSP_HAS_SCIP
-            osi_dro_ = new DspOsiScip();
-#else
-			throw CoinError("Invalid value for SOLVER/MIP parameter", "createProblem", "DdWorkerUB");
-#endif
-            break;
-    	default:
-			throw CoinError("Invalid value for SOLVER/MIP parameter", "createProblem", "DdWorkerUB");
-    		break;
-    	}
+		osi_dro_ = createDspOsi();
+		if (!osi_dro_) throw CoinError("Failed to create DspOsi", "createProblem", "DdWorkerUB");
 
 	    /** no display */
 	    osi_dro_->setLogLevel(0);
@@ -463,4 +427,33 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
+}
+
+DspOsi * DdWorkerUB::createDspOsi() {
+	DspOsi * osi = NULL;
+	BGN_TRY_CATCH
+
+	switch (par_->getIntParam("DW/SUB/SOLVER")) {
+	case OsiCpx:
+#ifdef DSP_HAS_CPX
+		osi = new DspOsiCpx();
+		CPXsetintparam(dynamic_cast<DspOsiCpx*>(osi)->cpx_->getEnvironmentPtr(), CPX_PARAM_SCRIND, CPX_OFF);
+#else
+		throw CoinError("Cplex is not available.", "createDspOsi", "DdWorkerUB");
+#endif
+		break;
+	case OsiScip:
+#ifdef DSP_HAS_SCIP
+		osi = new DspOsiScip();
+#else
+		throw CoinError("Scip is not available.", "createDspOsi", "DdWorkerUB");
+#endif
+		break;
+	default:
+		throw CoinError("Invalid parameter value", "createDspOsi", "DdWorkerUB");
+		break;
+	}
+
+	END_TRY_CATCH(;)
+	return osi;
 }

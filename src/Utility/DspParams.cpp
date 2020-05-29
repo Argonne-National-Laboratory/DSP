@@ -183,7 +183,11 @@ void DspParams::initIntParams()
     IntParams_.createParam("DD/ITER_LIM", MAX_INT_NUM);
 
 	/** algorithm for the master */
+#ifdef DSP_HAS_OOQP
 	IntParams_.createParam("DD/MASTER_ALGO", IPM_Feasible);
+#else
+	IntParams_.createParam("DD/MASTER_ALGO", IPM);
+#endif
 
 	/** number of cuts to the master per iteration */
 	IntParams_.createParam("DD/NUM_CUTS_PER_ITER", 1);
@@ -207,6 +211,7 @@ void DspParams::initIntParams()
 
 	/** minimum number of processes to wait at the master */
 	IntParams_.createParam("DD/MIN_PROCS", 1);
+<<<<<<< HEAD
 /*
 #ifdef DSP_HAS_CPX
 	IntParams_.createParam("SOLVER/MIP", OsiCpx);
@@ -218,7 +223,32 @@ void DspParams::initIntParams()
 #else
 	IntParams_.createParam("SOLVER/MIP", OsiScip);
 	IntParams_.createParam("SOLVER/QP", OsiClp);
+=======
+
+	IntParams_.createParam("DD/MASTER/SOLVER", OsiClp);
+	IntParams_.createParam("DW/MASTER/SOLVER", OsiClp);
+	IntParams_.createParam("BD/SUB/SOLVER", OsiClp);
+
+#ifdef DSP_HAS_SCIP
+	IntParams_.createParam("DD/SUB/SOLVER", OsiScip);
+	IntParams_.createParam("DE/SOLVER", OsiScip);
+	IntParams_.createParam("DW/SUB/SOLVER", OsiScip);
 #endif
+
+#ifdef DSP_HAS_CPX
+	IntParams_.createParam("BD/SUB/SOLVER", OsiCpx);
+	IntParams_.createParam("DD/MASTER/SOLVER", OsiCpx);
+	IntParams_.createParam("DD/SUB/SOLVER", OsiCpx);
+	IntParams_.createParam("DE/SOLVER", OsiCpx);
+	IntParams_.createParam("DW/MASTER/SOLVER", OsiCpx);
+	IntParams_.createParam("DW/SUB/SOLVER", OsiCpx);
+>>>>>>> upstream/dev/rm-cpx
+#endif
+
+	IntParams_.createParam("DE/SOLVER/LOG_LEVEL", 0);
+	IntParams_.createParam("DD/SUB/SOLVER/LOG_LEVEL", 0);
+	IntParams_.createParam("DW/MASTER/SOLVER/LOG_LEVEL", 0);
+	IntParams_.createParam("DW/SUB/SOLVER/LOG_LEVEL", 0);
 
 	/** display frequency */
 	IntParams_.createParam("SCIP/DISPLAY_FREQ", 100);

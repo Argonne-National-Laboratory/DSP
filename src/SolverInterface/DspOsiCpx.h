@@ -70,6 +70,16 @@ public:
 			si_->initialSolve();
 	}
 
+	virtual void use_simplex() {
+		CPXsetintparam(cpx_->getEnvironmentPtr(), CPX_PARAM_LPMETHOD, CPX_ALG_DUAL);
+	}
+
+	virtual void use_barrier() {
+		CPXsetintparam(cpx_->getEnvironmentPtr(), CPX_PARAM_LPMETHOD, CPX_ALG_BARRIER);
+		CPXsetintparam(cpx_->getEnvironmentPtr(), CPX_PARAM_BARCROSSALG, -1);
+		CPXsetdblparam(cpx_->getEnvironmentPtr(), CPX_PARAM_BAREPCOMP, 1e-5);
+	}
+
 	/** solution statue */
 	virtual int status() {
 		int status = DSP_STAT_UNKNOWN;

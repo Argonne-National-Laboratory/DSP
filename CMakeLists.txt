@@ -29,30 +29,37 @@ if (MPI_CXX_FOUND)
 	set(CMAKE_Fortran_COMPILER ${MPI_Fortran_COMPILER})
 endif()
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-	# if(APPLE)
-	# 	set(LIBRARY_PATH_VAR_NAME "DYLD_LIBRARY_PATH")
-	# else(APPLE)
-	# 	set(LIBRARY_PATH_VAR_NAME "LD_LIBRARY_PATH")
-	# endif(APPLE)
-	# find_library(GFORTRANLIB 
-	# 	NAMES gfortran libgfortran
-	# 	PATHS ENV ${LIBRARY_PATH_VAR_NAME})
-	# if(GFORTRANLIB)
-	# 	message(STATUS "Found libgfortran: ${GFORTRANLIB}")
-	# else(GFORTRANLIB)
-	# 	message(FATAL_ERROR "gfortran library is required, but cannot be found. Please either locate the library to a searchable path or set a proper environment variable for the path.")
-	# endif(GFORTRANLIB)
+find_library(SCIPLIB scip PATHS ${SCIPOPT_LIB_DIR})
+find_library(MA27LIB  ma27  PATHS ${MA27LIB_DIR})
+find_library(CPLEXLIB cplex PATHS ${CPLEX_LIB_DIR})
+
+if(SCIPLIB)
+	if(APPLE)
+		set(LIBRARY_PATH_VAR_NAME "DYLD_LIBRARY_PATH")
+	else(APPLE)
+		set(LIBRARY_PATH_VAR_NAME "LD_LIBRARY_PATH")
+	endif(APPLE)
+	find_library(GFORTRANLIB 
+		NAMES gfortran libgfortran
+		PATHS ENV ${LIBRARY_PATH_VAR_NAME})
+	if(GFORTRANLIB)
+		message(STATUS "Found libgfortran: ${GFORTRANLIB}")
+	else(GFORTRANLIB)
+		message(FATAL_ERROR "gfortran library is required, but cannot be found. Please either locate the library to a searchable path or set a proper environment variable for the path.")
+	endif(GFORTRANLIB)
 	set(GFORTRANLIB "")
 else()
 	set(GFORTRANLIB "")
 endif()
 
+<<<<<<< HEAD
 find_library(SCIPLIB scip PATHS ${SCIPOPT_LIB_DIR})
 find_library(MA27LIB  ma27  PATHS ${MA27LIB_DIR})
 find_library(CPLEXLIB cplex PATHS ${CPLEX_LIB_DIR})
 find_library(GUROBILIB gurobi${GUROBI_VERSION} PATHS ${GUROBI_LIB_DIR})
 
+=======
+>>>>>>> upstream/dev/rm-cpx
 # if(APPLE)
 # 	set(CMAKE_MACOSX_RPATH OFF)
 # endif()

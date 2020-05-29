@@ -46,11 +46,12 @@ DSP_RTN_CODE DdMWSync::init()
 		case IPM_Feasible:
 			master_ = new DdMasterTr(model_, par_, message_);
 			break;
-// #ifdef DSP_HAS_OOQP
-// 		case DSBM:
-// 			master_ = new DdMasterDsb(model_, par_, message_);
-// 			break;
-// #endif
+		case DSBM:
+			//master_ = new DdMasterDsb(model_, par_, message_);
+			char msg[128];
+			sprintf(msg, "DD/MASTER_ALGO = %d is not currently supported.", DSBM);
+			throw CoinError(msg, "init", "DdMWSync");
+			break;
 		case Subgradient:
 			master_ = new DdMasterSubgrad(model_, par_, message_);
 			break;

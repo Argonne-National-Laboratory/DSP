@@ -105,6 +105,7 @@ DSP_RTN_CODE DeDriver::run()
 		}
 	}
 
+<<<<<<< HEAD
 	switch(par_->getIntParam("SOLVER/MIP")) {
 	case OsiCpx: {
 #ifdef DSP_HAS_CPX
@@ -138,6 +139,14 @@ DSP_RTN_CODE DeDriver::run()
 		throw CoinError("Invalid value for SOLVER/MIP parameter", "run", "DeDriver");
 		break;
 	}
+=======
+	/** create DspOsi */
+	osi_ = createDspOsi();
+	if (!osi_) throw CoinError("Failed to create DspOsi", "run", "DeDriver");
+
+	/** set display */
+	osi_->setLogLevel(par_->getIntParam("DE/SOLVER/LOG_LEVEL"));
+>>>>>>> upstream/dev/rm-cpx
 
 	/** set number of cores */
 	osi_->setNumCores(par_->getIntParam("NUM_CORES"));
@@ -242,6 +251,7 @@ void DeDriver::writeExtMps(const char * name)
 	/** get DE model */
 	DSP_RTN_CHECK_THROW(model_->getFullModel(mat, clbd, cubd, ctype, obj, rlbd, rubd));
 
+<<<<<<< HEAD
 	switch(par_->getIntParam("SOLVER/MIP")) {
 	case OsiCpx:
 #ifdef DSP_HAS_CPX
@@ -268,6 +278,11 @@ void DeDriver::writeExtMps(const char * name)
 		throw CoinError("Invalid value for SOLVER/MIP parameter", "run", "DeDriver");
 		break;
 	}
+=======
+	/** create DspOsi */
+	osi = createDspOsi();
+	if (!osi) throw CoinError("Failed to create DspOsi", "writeExtMps", "DeDriver");
+>>>>>>> upstream/dev/rm-cpx
 
 	/** load problem */
 	osi->si_->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
@@ -285,4 +300,32 @@ void DeDriver::writeExtMps(const char * name)
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,;)
 #undef FREE_MEMORY
+}
+
+DspOsi * DeDriver::createDspOsi() {
+	DspOsi * osi = NULL;
+	BGN_TRY_CATCH
+
+	switch(par_->getIntParam("DE/SOLVER")) {
+	case OsiCpx:
+#ifdef DSP_HAS_CPX
+		osi = new DspOsiCpx();
+#else
+		throw CoinError("Cplex is not available.", "createDspOsi", "DeDriver");
+#endif
+		break;
+	case OsiScip:
+#ifdef DSP_HAS_SCIP
+		osi = new DspOsiScip();
+#else
+		throw CoinError("Scip is not available.", "createDspOsi", "DeDriver");
+#endif
+		break;
+	default:
+		throw CoinError("Invalid paramter value", "createDspOsi", "DeDriver");
+		break;
+	}
+
+	END_TRY_CATCH_RTN(;,osi)
+	return osi;
 }

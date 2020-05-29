@@ -50,6 +50,12 @@ public:
 	/** finalize */
 	virtual DSP_RTN_CODE finalize() {return DSP_RTN_OK;}
 
+	virtual void warning_relaxation() {
+		message_->print(0, "************************************************************************\n");
+		message_->print(0, "* WARNING: Integer variables are detected but relaxed in the recourse. *\n");
+		message_->print(0, "************************************************************************\n");
+	}
+
 protected:
 
 	/** run master process */

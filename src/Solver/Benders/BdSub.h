@@ -76,6 +76,8 @@ public:
 
 private:
 
+	static DspOsi * createDspOsi(int solver);
+
 	/** solve one subproblem. this is a body of loop in gutsOfGenerateCuts */
 	static void solveOneSubproblem(
 			BdSub *     cgl,
@@ -124,6 +126,10 @@ protected:
 	double *              objvals_;    /**< subproblem objective values */
 	double **             solutions_;  /**< subproblem solutions */
 	DSP_RTN_CODE *        status_;     /**< subproblem solution status */
+
+public:
+
+	bool recourse_has_integer_;
 };
 
 #endif /* SRC_SOLVER_BENDERS_BDSUB_H_ */

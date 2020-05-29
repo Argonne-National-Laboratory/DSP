@@ -275,18 +275,11 @@ DSP_RTN_CODE DwMaster::createProblem() {
 	std::copy(rubd_orig_.begin(), rubd_orig_.end(), rubd.begin() + nrows_conv_);
 
 	/** create solver */
-	if (useBarrier_) {
-		/** TODO: replace this by PIPS */
-		//si_ = new OoqpEps();
-	} else {
-#ifdef DSP_HAS_CPX
-		osi_ = new DspOsiCpx();
-#else
-		osi_ = new DspOsiClp();
-#endif
-	}
+	osi_ = createDspOsi();
+	if (!osi_) throw CoinError("Failed to create DspOsi", "createProblem", "DwMaster");
 
-	osi_->setLogLevel(5);
+	/** set log level */
+	osi_->setLogLevel(par_->getIntParam("DW/MASTER/SOLVER/LOG_LEVEL"));
 
 	/** load problem data */
 	getSiPtr()->loadProblem(*(mat.get()), NULL, NULL, NULL, &rlbd[0], &rubd[0]);
@@ -1403,4 +1396,30 @@ DSP_RTN_CODE DwMaster::switchToPhase2() {
 	}
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	return DSP_RTN_OK;
+}
+
+DspOsi * DwMaster::createDspOsi() {
+	DspOsi* osi = NULL;
+
+	BGN_TRY_CATCH
+
+	switch(par_->getIntParam("DW/MASTER/SOLVER")) {
+		case OsiCpx:
+#ifdef DSP_HAS_CPX
+			osi = new DspOsiCpx();
+#else
+			throw CoinError("Cplex is not available.", "createDspOsi", "DwMaster");
+#endif
+			break;
+		case OsiClp:
+			osi = new DspOsiClp();
+			break;
+		default:
+			throw CoinError("Invalid parameter value", "initDualSolver", "DwMaster");
+			break;
+	}
+
+	END_TRY_CATCH_RTN(;,osi)
+	
+	return osi;
 }

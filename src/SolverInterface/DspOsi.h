@@ -35,10 +35,20 @@ public:
 	}
 
 	/** load quadratic objective */
-	virtual void loadQuadraticObjective(const CoinPackedMatrix &mat) {}
+	virtual void loadQuadraticObjective(const CoinPackedMatrix &mat) {
+		throw CoinError("Quadratic objective is not supported.", "loadQuadraticObjective", "DspOsi");
+	}
 
 	/** solve problem */
 	virtual void solve() = 0;
+
+	virtual void use_simplex() {
+		throw CoinError("Simplex is not supported.", "use_simplex", "DspOsi");
+	}
+
+	virtual void use_barrier() {
+		throw CoinError("Barrier is not supported.", "use_barrier", "DspOsi");
+	}
 
 	/** solution statue */
 	virtual int status() {

@@ -8,6 +8,9 @@
 #include "CoinHelperFunctions.hpp"
 #include "Model/DecTssModel.h"
 #include "Solver/DualDecomp/DdMaster.h"
+#include "SolverInterface/DspOsiClp.h"
+#include "SolverInterface/DspOsiCpx.h"
+#include "SolverInterface/DspOsiScip.h"
 
 DdMaster::DdMaster(DecModel* model, DspParams* par, DspMessage* message) :
 		DecSolver(model, par, message),
@@ -84,4 +87,43 @@ DSP_RTN_CODE DdMaster::setInitSolution(const double * sol) {
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
+}
+
+DspOsi * DdMaster::createDspOsi() {
+	DspOsi * osi = NULL;
+	BGN_TRY_CATCH
+
+	switch (par_->getIntParam("DD/MASTER/SOLVER")) {
+	case OsiCpx:
+#ifdef DSP_HAS_CPX
+		osi = new DspOsiCpx();
+#else
+		throw CoinError("Cplex is not available.", "createDspOsi", "DdMaster");
+#endif
+		break;
+	case OsiScip:
+#ifdef DSP_HAS_SCIP
+		osi = new DspOsiScip();
+#else
+		throw CoinError("Scip is not available.", "createDspOsi", "DdMaster");
+#endif
+		break;
+	case OsiOoqp:
+#ifdef DSP_HAS_OOQP
+		osi = new DspOsiOoqp();
+#else
+		throw CoinError("OOQP is not available.", "createDspOsi", "DdMaster");
+#endif
+		break;
+	case OsiClp:
+		osi = new DspOsiClp();
+		break;
+	default:
+		throw CoinError("Invalid parameter value", "createDspOsi", "DdMaster");
+		break;
+	}
+
+	END_TRY_CATCH(;)
+	
+	return osi;
 }
