@@ -8,7 +8,7 @@
 //#define DSP_DEBUG
 
 #include "Solver/DualDecomp/DdMasterAtr.h"
-#include "SolverInterface/DspOsi.h"
+#include "SolverInterface/DspOsiOoqpEps.h"
 
 DdMasterAtr::DdMasterAtr(
 		DecModel *   model,   /**< model pointer */
@@ -267,15 +267,15 @@ DSP_RTN_CODE DdMasterAtr::updateProblem(
 	}
 
 #ifdef DSP_HAS_OOQP
-	OoqpEps * ooqp = dynamic_cast<OoqpEps*>(getSiPtr());
+	DspOsiOoqpEps * ooqp = dynamic_cast<DspOsiOoqpEps*>(osi_);
 	if (ooqp)
 	{
-		if (ooqp->hasOoqpStatus_ && isSolved_)
+		if (ooqp->ooqp_->hasOoqpStatus_ && isSolved_)
 		{
 			DSPdebugMessage("bestprimobj %+e bestdualobj %+e\n", bestprimobj_, bestdualobj_);
-			double epsilon = (getSiPtr()->getObjValue() - newdual + ooqp->getDualityGap()) / (1. + fabs(getSiPtr()->getObjValue()));
+			double epsilon = (getSiPtr()->getObjValue() - newdual + ooqp->ooqp_->getDualityGap()) / (1. + fabs(getSiPtr()->getObjValue()));
 			if (epsilon > 1.) epsilon = 1.;
-			ooqp->setOoqpStatus(epsilon, -bestprimobj_, -bestdualobj_);
+			ooqp->ooqp_->setOoqpStatus(epsilon, -bestprimobj_, -bestdualobj_);
 		}
 	}
 #endif
@@ -321,6 +321,8 @@ DSP_RTN_CODE DdMasterAtr::updateTrustRegion(const double * primsol)
 
 DSP_RTN_CODE DdMasterAtr::terminationTest()
 {
+	int signal = status_;
+
 	BGN_TRY_CATCH
 
 #if 0
@@ -338,14 +340,14 @@ DSP_RTN_CODE DdMasterAtr::terminationTest()
 	double absgap = primobj_ - bestdualobj_;
 	double relgap = fabs(absgap) / (1.e-10 + fabs(primobj_));
 	if (relgap <= par_->getDblParam("DD/STOP_TOL") + par_->getDblParam("MIP/GAP_TOL")) {
-		status_ = DSP_STAT_MW_STOP;
+		signal = DSP_STAT_MW_STOP;
+		status_ = DSP_STAT_OPTIMAL;
 		message_->print(0, "TR  STOP with gap tolerance %+e (%.2f%%).\n", absgap, relgap*100);
 	}
 
-
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return status_;
+	return signal;
 }
 
 int DdMasterAtr::addCuts(bool possiblyDel)

@@ -60,8 +60,6 @@ DSP_RTN_CODE DeDriver::run()
 
 	BGN_TRY_CATCH
 
-	double stime;
-
 	/** get DE model */
 	DSP_RTN_CHECK_THROW(model_->getFullModel(mat, clbd, cubd, ctype, obj, rlbd, rubd));
 

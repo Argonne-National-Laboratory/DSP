@@ -362,7 +362,7 @@ DSP_RTN_CODE StoModel::readDro(const char * filename)
 		 * 4. wass_dist_ (size of nrefs by nscen)
 		 */
 		int contents_num = 1;
-		size_t found, startpos;
+		size_t found;
 		string elem;
 		while(getline(myfile, line)) {
 			// std::cout << line << "," << contents_num << std::endl;

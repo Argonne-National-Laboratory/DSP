@@ -18,7 +18,6 @@ int DwRounding::solution(double &objective, std::vector<double> &solution) {
 	std::shared_ptr<DspBranchObj> branch(new DspBranchObj);
 
 	int found = 0;
-	double stime = CoinGetTimeOfDay();
 	std::shared_ptr<DwMaster> master(dynamic_cast<DwMaster*>(model_->getSolver()->clone()));
 	//printf("Time to copy DwMaster: %.10f seconds\n", CoinGetTimeOfDay() - stime);
 	DspMessage* message = master->getMessagePtr();
@@ -100,7 +99,6 @@ int DwSmip::solution(double &objective, std::vector<double> &solution) {
 	DwMaster* m = dynamic_cast<DwMaster*>(solver);
 	DecModel* model = solver->getModelPtr();
 	DspMessage* message = solver->getMessagePtr();
-	DspParams* par = solver->getParPtr();
 
 	/** get stochastic model pointer */
 	if (model->isStochastic()) {

@@ -11,11 +11,6 @@
 #include "Utility/DspRtnCodes.h"
 #include "OsiSolverInterface.hpp"
 
-#ifdef DSP_HAS_OOQP
-#include "SolverInterface/OsiOoqpSolverInterface.hpp"
-#include "SolverInterface/OoqpEps.h"
-#endif
-
 class DspOsi {
 public:
 

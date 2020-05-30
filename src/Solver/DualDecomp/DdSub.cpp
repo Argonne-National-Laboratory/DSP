@@ -133,7 +133,9 @@ DSP_RTN_CODE DdSub::solve()
 				}
 			}
 			if (dualinfeas) {
-				getSiPtr()->writeMps("dual_infeas_sub");
+				char submps[64];
+				sprintf(submps, "dual_infeas_sub%d", sind_);
+				getSiPtr()->writeMps(submps);
 				dualinfeas = false;
 			} else {
 				dualinfeas = true;

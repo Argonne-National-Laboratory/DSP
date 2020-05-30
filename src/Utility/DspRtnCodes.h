@@ -36,6 +36,7 @@ typedef int DSP_RTN_CODE;
 #define DSP_STAT_FEASIBLE           3016
 #define DSP_STAT_RUN_HEURISTICS     3017
 #define DSP_STAT_LIM_INFEAS         3018
+#define DSP_STAT_STOPPED_NUMERICS   3019
 #define DSP_STAT_MW_STOP            3100 /**< stop signal for master-worker framework */
 #define DSP_STAT_MW_CONTINUE        3101 /**< continue signal for master-worker framework */
 #define DSP_STAT_MW_EXACT           3102 /**< force to evaluate exactly */

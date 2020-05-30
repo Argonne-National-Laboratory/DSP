@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+// #define DSP_DEBUG
 #include "DdDriverMpi.h"
 #include "Solver/DualDecomp/DdMWSync.h"
 #include "Solver/DualDecomp/DdMWAsync.h"
@@ -33,8 +33,8 @@ DdDriverMpi::~DdDriverMpi() {}
 DdDriverMpi::DdDriverMpi(const DdDriverMpi& rhs) :
 DdDriver(rhs),
 comm_(rhs.comm_),
-comm_size_(rhs.comm_size_),
-comm_rank_(rhs.comm_rank_) {}
+comm_rank_(rhs.comm_rank_),
+comm_size_(rhs.comm_size_) {}
 
 DSP_RTN_CODE DdDriverMpi::init()
 {

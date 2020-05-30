@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
 		char* solnfile = NULL;
 		char* paramfile = NULL;
 		char* testvalue = NULL;
-		for (int i = 1; i < argc; ++i) {
+		for (int i = 1; i < argc; i += 2) {
 			if (i + 1 != argc) {
 				if (string(argv[i]) == "--algo") {
 					algotype = argv[i+1];
@@ -87,7 +87,6 @@ int main(int argc, char* argv[]) {
 					EXIT_WITH_MSG
 				}
 			}
-			i++;
 		}
 
 		// algotype is required.
@@ -343,8 +342,6 @@ void readMpsDec(DspApiEnv* env, char* mpsfile, char* decfile) {
 	p.readMps(mpsfile);
 	const CoinPackedMatrix* mps_matrix = p.getMatrixByRow();
 	int ncols = p.getNumCols();
-	const double* clbd = p.getColLower();
-	const double* cubd = p.getColUpper();
 	const double* obj = p.getObjCoefficients();
 	vector<double> zeros(ncols, 0.0);
 	string ctype;

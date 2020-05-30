@@ -980,7 +980,6 @@ DSP_RTN_CODE MPIscatterOsiCuts(
 	FREE_ARRAY_PTR(rhs)
 
 	int comm_rank;
-	MPI_Status status;
 	int ncuts;
 	vector<CoinPackedVector*> rows_in, rows_out;
 	double * lhs = NULL;
@@ -1068,7 +1067,6 @@ DSP_RTN_CODE MPIbcastOsiCuts(
 	FREE_ARRAY_PTR(rhs)
 
 	int comm_rank;
-	MPI_Status status;
 	int ncuts;
 	vector<CoinPackedVector*> rows;
 	double * lhs = NULL;

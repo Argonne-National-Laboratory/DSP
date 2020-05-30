@@ -10,6 +10,8 @@
 #include "CoinWarmStartBasis.hpp"
 #include "SolverInterface/DspOsiClp.h"
 #include "SolverInterface/DspOsiCpx.h"
+#include "SolverInterface/DspOsiOoqp.h"
+#include "SolverInterface/DspOsiOoqpEps.h"
 #include "Solver/DualDecomp/DdMasterTr.h"
 #include "Model/TssModel.h"
 
@@ -653,15 +655,15 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 	}
 
 #ifdef DSP_HAS_OOQP
-	OoqpEps * ooqp = dynamic_cast<OoqpEps*>(getSiPtr());
+	DspOsiOoqpEps * ooqp = dynamic_cast<DspOsiOoqpEps*>(osi_);
 	if (ooqp)
 	{
-		if (ooqp->hasOoqpStatus_ && isSolved_)
+		if (ooqp->ooqp_->hasOoqpStatus_ && isSolved_)
 		{
 			DSPdebugMessage("bestprimobj %+e bestdualobj %+e\n", bestprimobj_, bestdualobj_);
-			double epsilon = (osi_->getPrimObjValue() - newprimal + ooqp->getDualityGap()) / (1. + fabs(osi_->getPrimObjValue()));
+			double epsilon = (osi_->getPrimObjValue() - newprimal + ooqp->ooqp_->getDualityGap()) / (1. + fabs(osi_->getPrimObjValue()));
 			if (epsilon > 1.) epsilon = 1.;
-			ooqp->setOoqpStatus(epsilon, -bestprimobj_, -bestdualobj_);
+			ooqp->ooqp_->setOoqpStatus(epsilon, -bestprimobj_, -bestdualobj_);
 		}
 	}
 #endif
@@ -972,82 +974,6 @@ DSP_RTN_CODE DdMasterTr::possiblyDeleteCutsOsi(
 	return DSP_RTN_OK;
 }
 
-/** possibly delete cuts */
-DSP_RTN_CODE DdMasterTr::possiblyDeleteCutsOoqp(
-		double subobjval /**< sum of subproblem objective values */)
-{
-#ifdef DSP_HAS_OOQP
-	OsiCuts cuts;
-	int nrows = model_->nonanticipativity() ? model_->getNumSubproblemCouplingCols(0) : 0;
-	int ncuts = getSiPtr()->getNumRows() - nrows;
-	if (ncuts == 0)
-		return DSP_RTN_OK;
-
-	BGN_TRY_CATCH
-
-	const double * price = getSiPtr()->getRowPrice();
-	int pos = getSiPtr()->getNumRows() - 1;
-	for (int i = cuts_->sizeCuts() - 1; i >= 0; --i)
-	{
-		/** do not consider inactive cuts */
-		if (cuts_age_[i] < 0) continue;
-
-		/** consider only old cuts */
-		if (cuts_age_[i] < 100)
-		{
-			possiblyDelete_[i] = false;
-			continue;
-		}
-
-		if (fabs(price[pos--]) < 1.0e-10)
-			possiblyDelete_[i] = false;
-		/** do not delete cuts generated at minor iterations such that the following condition holds. */
-		else if (i >= cuts_->sizeCuts() - ncuts_minor_ &&
-				(getSiPtr()->getObjValue() - subobjval) > cutdel_param_ * (masterobjsAtCutAdd_[i] - subobjval))
-			possiblyDelete_[i] = false;
-	}
-
-	vector<char> aStat; /**< status of artificial variables */
-
-	/** mark as deleted; and construct temporary cut pool to be added */
-	for (int i = 0, i2 = nrows; i < cuts_->sizeCuts(); ++i)
-	{
-		/** do not consider inactive cuts */
-		if (cuts_age_[i] < 0) continue;
-
-		if (possiblyDelete_[i])
-			cuts_age_[i] = -1;
-		else
-		{
-			OsiRowCut * rc = cuts_->rowCutPtr(i);
-			if (rc)
-			{
-				rc->setEffectiveness(1.0);
-				cuts.insert(*rc);
-			}
-		}
-
-		i2++;
-	}
-
-	/** number of cuts to delete */
-	int nCutsToDelete = ncuts - cuts.sizeCuts();
-
-	/** exit if no cut to delete */
-	if (nCutsToDelete == 0)
-		return DSP_RTN_OK;
-
-	/** remove all cuts from solver interface */
-	removeAllCuts();
-
-	/** apply cuts */
-	getSiPtr()->applyCuts(cuts);
-
-	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
-#endif
-	return DSP_RTN_OK;
-}
-
 /** recruite cuts */
 int DdMasterTr::recruiteCuts()
 {
@@ -1172,31 +1098,33 @@ DSP_RTN_CODE DdMasterTr::terminationTest()
 	if (status_ == DSP_STAT_MW_STOP)
 		return status_;
 
+	int signal = status_;
+
 	BGN_TRY_CATCH
 
 #ifdef DSP_HAS_OOQP
-	OoqpEps * ooqp = dynamic_cast<OoqpEps*>(getSiPtr());
+	DspOsiOoqpEps * ooqp = dynamic_cast<DspOsiOoqpEps*>(osi_);
 	/** is the solution suboptimal? */
-	if (ooqp != NULL && ooqp->isSuboptimal())
+	if (ooqp != NULL && ooqp->ooqp_->isSuboptimal())
 		return status_;
 #endif
 
-	double time_elapsed = CoinGetTimeOfDay() - walltime_elapsed_;
 	double absgap = getAbsApproxGap();
 	double relgap = getRelApproxGap();
 	DSPdebugMessage("absgap %+e relgap %+e\n", absgap, relgap);
 	double gaptol = par_->getDblParam("DD/STOP_TOL");
 	if (getSiPtr()->getNumIntegers() > 0) gaptol += par_->getDblParam("MIP/GAP_TOL");
 	if (relgap <= gaptol) {
-		status_ = DSP_STAT_MW_STOP;
+		signal = DSP_STAT_MW_STOP;
+		status_ = DSP_STAT_OPTIMAL;
 		message_->print(1, "Tr  STOP with gap tolerance %+e (%.2f%%).\n", absgap, relgap*100);
-	}
-	else if (nstalls_ >= 3 && getSiPtr()->getObjValue() < bestdualobj_) {
-		status_ = DSP_STAT_MW_STOP;
+	} else if (nstalls_ >= 3 && getSiPtr()->getObjValue() < bestdualobj_) {
+		signal = DSP_STAT_MW_STOP;
+		status_ = DSP_STAT_STOPPED_NUMERICS;
 		message_->print(1, "Tr  STOP with stalling (%d).\n", nstalls_);
 	}
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-	return status_;
+	return signal;
 }

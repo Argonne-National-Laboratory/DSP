@@ -36,8 +36,6 @@ void DspParams::readParamFile(const char * param_file)
 	ifstream myfile(param_file);
 	if (myfile.is_open())
 	{
-		int pos = 0;
-		int col = 0;
 		string param_element[3];
 		size_t startpos, found;
 		while(getline(myfile, line))
@@ -212,16 +210,6 @@ void DspParams::initIntParams()
 	/** minimum number of processes to wait at the master */
 	IntParams_.createParam("DD/MIN_PROCS", 1);
 
-	IntParams_.createParam("DD/MASTER/SOLVER", OsiClp);
-	IntParams_.createParam("DW/MASTER/SOLVER", OsiClp);
-	IntParams_.createParam("BD/SUB/SOLVER", OsiClp);
-
-#ifdef DSP_HAS_SCIP
-	IntParams_.createParam("DD/SUB/SOLVER", OsiScip);
-	IntParams_.createParam("DE/SOLVER", OsiScip);
-	IntParams_.createParam("DW/SUB/SOLVER", OsiScip);
-#endif
-
 #ifdef DSP_HAS_CPX
 	IntParams_.createParam("BD/SUB/SOLVER", OsiCpx);
 	IntParams_.createParam("DD/MASTER/SOLVER", OsiCpx);
@@ -229,6 +217,15 @@ void DspParams::initIntParams()
 	//IntParams_.createParam("DE/SOLVER", OsiCpx);
 	IntParams_.createParam("DW/MASTER/SOLVER", OsiCpx);
 	IntParams_.createParam("DW/SUB/SOLVER", OsiCpx);
+#else
+	IntParams_.createParam("BD/SUB/SOLVER", OsiClp);
+	IntParams_.createParam("DD/MASTER/SOLVER", OsiClp);
+	IntParams_.createParam("DW/MASTER/SOLVER", OsiClp);
+#ifdef DSP_HAS_SCIP
+	IntParams_.createParam("DD/SUB/SOLVER", OsiScip);
+	IntParams_.createParam("DE/SOLVER", OsiScip);
+	IntParams_.createParam("DW/SUB/SOLVER", OsiScip);
+#endif
 #endif
 
 #ifdef DSP_HAS_GRB

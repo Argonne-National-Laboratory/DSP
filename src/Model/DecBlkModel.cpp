@@ -63,8 +63,6 @@ char DecBlkModel::getSenseCouplingRow(int row) {
 	/** row index w.r.t. the master */
 	int i = block->getCouplingRows()[row];
 	DSPdebugMessage("row index %d -> %d\n", row, i);
-	/** retrieve the master matrix */
-	const CoinPackedMatrix* mat = block->getConstraintMatrix();
 	char sense = 'R';
 	if (block->getRowLower()[i] < -1e+20)
 		sense = 'L';
@@ -83,7 +81,6 @@ double DecBlkModel::getRhsCouplingRow(int row) {
 	/** row index w.r.t. the master */
 	int i = block->getCouplingRows()[row];
 	/** retrieve the master matrix */
-	const CoinPackedMatrix* mat = block->getConstraintMatrix();
 	double rhs = 0.0;
 	if (block->getRowLower()[i] < -1e+20)
 		rhs = block->getRowUpper()[i];

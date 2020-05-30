@@ -376,8 +376,6 @@ DSP_RTN_CODE DdMWAsync::runMasterInit()
 	double *** subsolution = NULL;
 
 	/** to send solutions to workers */
-	MPI_Status status;
-
 	Solutions solutions;
 
 	int dummy;
@@ -502,7 +500,6 @@ DSP_RTN_CODE DdMWAsync::runMasterInit()
 	}
 
 	/** update problem */
-	//master->updateProblem();
 	master->addCuts();
 
 	/** solve problem */
@@ -596,7 +593,6 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 
 	/** MPI_Iprobe */
 	int recv_message; /**< indicate if there exists a message to receive */
-	int local_count; /**< local counter */
 
 	int * numCutsAdded = NULL; /**< number of cuts added to each LB worker */
 
@@ -1007,7 +1003,6 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 		solutions.clear();
 
 	/** sending stop signals to all the worker processes */
-	double garbage = -1;
 	message_->print(1, "The master is sending STOP signal to %d LB processors.\n", numLbWorkers);
 	while (numLbWorkers > 0)
 	{
@@ -1357,11 +1352,23 @@ DSP_RTN_CODE DdMWAsync::runWorkerCore()
 }
 
 DSP_RTN_CODE DdMWAsync::setWorkerLb(DdWorkerLB* workerlb, int nsubprobs, int* subindex, double* buf, double bestprimobj) {
+
+	TssModel* tss = NULL;
+
 	BGN_TRY_CATCH
+
+	if (model_->isStochastic()) {
+		try {
+			tss = dynamic_cast<TssModel*>(model_);
+		} catch (const std::bad_cast &e) {
+			printf("Error: Model claims to be stochastic when it is not\n");
+            return DSP_RTN_ERR;
+		}
+	}
 
 	for (int s = 0, pos = 0; s < nsubprobs; ++s) {
 		workerlb->subprobs_[s]->theta_ = buf[pos++];
-		workerlb->subprobs_[s]->updateProblem(buf + pos, bestprimobj);
+		workerlb->subprobs_[s]->updateProblem(buf + pos, tss->getProbability()[workerlb->subprobs_[s]->sind_], bestprimobj);
 		/** apply Benders cuts */
 		if (cutsToAdd_->sizeCuts() > 0 && (parFeasCuts_ >= 0 || parOptCuts_ >= 0)) {
 			workerlb->subprobs_[s]->pushCuts(cutsToAdd_);
