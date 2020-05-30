@@ -32,6 +32,7 @@ endif()
 find_library(SCIPLIB scip PATHS ${SCIPOPT_LIB_DIR})
 find_library(MA27LIB  ma27  PATHS ${MA27LIB_DIR})
 find_library(CPLEXLIB cplex PATHS ${CPLEX_LIB_DIR})
+find_library(GUROBILIB gurobi${GUROBI_VERSION} PATHS ${GUROBI_LIB_DIR})
 
 if(SCIPLIB)
 	if(APPLE)
@@ -52,14 +53,6 @@ else()
 	set(GFORTRANLIB "")
 endif()
 
-<<<<<<< HEAD
-find_library(SCIPLIB scip PATHS ${SCIPOPT_LIB_DIR})
-find_library(MA27LIB  ma27  PATHS ${MA27LIB_DIR})
-find_library(CPLEXLIB cplex PATHS ${CPLEX_LIB_DIR})
-find_library(GUROBILIB gurobi${GUROBI_VERSION} PATHS ${GUROBI_LIB_DIR})
-
-=======
->>>>>>> upstream/dev/rm-cpx
 # if(APPLE)
 # 	set(CMAKE_MACOSX_RPATH OFF)
 # endif()

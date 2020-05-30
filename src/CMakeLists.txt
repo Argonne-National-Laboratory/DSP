@@ -93,7 +93,7 @@ if(GUROBILIB)
     set(DSP_LIBS
         ${DSP_LIBS}
         ${DEPEND_DIR}/lib/libOsiGrb.a
-        ${GUROBI_LIB_DIR}/libgurobi90.dylib)
+        ${GUROBI_LIB_DIR}/libgurobi${GUROBI_VERSION}.dylib)
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDSP_HAS_GRB")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DDSP_HAS_GRB")
 endif(GUROBILIB)
@@ -179,12 +179,6 @@ if (MPI_CXX_FOUND)
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${MPI_CXX_COMPILE_FLAGS} -DDSP_HAS_MPI -DOMPI_IGNORE_CXX_SEEK")
 endif(MPI_CXX_FOUND)
 
-<<<<<<< HEAD
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wno-absolute-value")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wno-absolute-value")
-
-=======
->>>>>>> upstream/master
 if(APPLE)
     set(DSP_LIBS ${DSP_LIBS}
         ${GFORTRANLIB}

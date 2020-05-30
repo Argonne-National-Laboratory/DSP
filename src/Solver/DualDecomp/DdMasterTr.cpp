@@ -475,50 +475,17 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 	case Simplex:
 		osi_->use_simplex();
 		break;
-<<<<<<< HEAD
-	case IPM: {
-		switch (par_->getIntParam("SOLVER/QP")) {
-		case OsiOoqp:
-//#ifdef DSP_HAS_OOQP
-//			osi_ = new DspOsiOoqp();
-//			break;
-//#else
-//			printf("OOQP is not available for QP solve.\n");
-//#endif
-		case OsiCpx: {
-#ifdef DSP_HAS_CPX
-			osi_ = new DspOsiCpx();
-			OsiCpxSolverInterface* cpx = dynamic_cast<DspOsiCpx*>(osi_)->cpx_;
-			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_LPMETHOD,          CPX_ALG_BARRIER);
-			CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_BARCROSSALG,       -1);
-			//CPXsetintparam(cpx->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, 1);
-			CPXsetdblparam(cpx->getEnvironmentPtr(), CPX_PARAM_BAREPCOMP, 1e-5);
-			break;
-#else
-			printf("CPLEX is not available for QP solve.\n");
-#endif
-		}
-		default:
-			osi_ = new DspOsiClp();
-			break;
-		}
-=======
 	case IPM:
 		osi_->use_barrier();
->>>>>>> upstream/dev/rm-cpx
 		break;
 	case IPM_Feasible:
-	/*
+
 #ifdef DSP_HAS_OOQP
 		osi_ = new DspOsiOoqpEps();
 #else
 		throw CoinError("DspOsiOoqpEps is not available.", "createProblem", "DdMasterTr");
 #endif
-<<<<<<< HEAD
-*/
-=======
 		break;
->>>>>>> upstream/dev/rm-cpx
 	default:
 		throw CoinError("Invalid parameter value", "createProblem", "DdMasterTr");
 		break;

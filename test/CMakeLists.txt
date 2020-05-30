@@ -11,6 +11,12 @@ if(CPLEXLIB)
     add_test(NAME dw_cpx_farmer COMMAND $ENV{PWD}/src/runDsp --algo dw --smps ${CMAKE_SOURCE_DIR}/examples/smps/farmer --param ${CMAKE_SOURCE_DIR}/test/params_cpx.txt --test -108389.9994043)
 endif(CPLEXLIB)
 
+if(GUROBILIB)
+    add_test(NAME de_grb_farmer COMMAND $ENV{PWD}/src/runDsp --algo de --smps ${CMAKE_SOURCE_DIR}/examples/smps/farmer --param ${CMAKE_SOURCE_DIR}/test/params_grb.txt --test -108389.9994043)
+    #add_test(NAME dd_grb_farmer COMMAND $ENV{PWD}/src/runDsp --algo dd --smps ${CMAKE_SOURCE_DIR}/examples/smps/farmer --param ${CMAKE_SOURCE_DIR}/test/params_cpx.txt --test -108389.9994043)
+    #add_test(NAME dw_grb_farmer COMMAND $ENV{PWD}/src/runDsp --algo dw --smps ${CMAKE_SOURCE_DIR}/examples/smps/farmer --param ${CMAKE_SOURCE_DIR}/test/params_cpx.txt --test -108389.9994043)
+endif(GUROBILIB)
+
 if (MPI_CXX_FOUND)
     if(SCIPLIB)
         add_test(NAME dd_scip_mpi_farmer COMMAND mpiexec -np 3 $ENV{PWD}/src/runDsp --algo dd --smps ${CMAKE_SOURCE_DIR}/examples/smps/farmer --param ${CMAKE_SOURCE_DIR}/test/params_scip.txt --test -108389.9994043)

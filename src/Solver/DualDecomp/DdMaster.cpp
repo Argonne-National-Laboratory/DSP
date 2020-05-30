@@ -11,6 +11,7 @@
 #include "SolverInterface/DspOsiClp.h"
 #include "SolverInterface/DspOsiCpx.h"
 #include "SolverInterface/DspOsiScip.h"
+#include "SolverInterface/DspOsiOoqp.h"
 
 DdMaster::DdMaster(DecModel* model, DspParams* par, DspMessage* message) :
 		DecSolver(model, par, message),

@@ -105,48 +105,12 @@ DSP_RTN_CODE DeDriver::run()
 		}
 	}
 
-<<<<<<< HEAD
-	switch(par_->getIntParam("SOLVER/MIP")) {
-	case OsiCpx: {
-#ifdef DSP_HAS_CPX
-		osi_ = new DspOsiCpx();
-		osi_->setLogLevel(par_->getIntParam("LOG_LEVEL"));
-#else
-		throw CoinError("OsiCpx is not available.", "run", "DeDriver");
-#endif
-		break;
-	}
-	case OsiGrb: {
-#ifdef DSP_HAS_GRB
-		printf("DspHasGrb=%d/n", DSP_HAS_GRB);
-		osi_ = new DspOsiGrb();
-		osi_->setLogLevel(par_->getIntParam("LOG_LEVEL"));
-#else
-		throw CoinError("OsiGrb is not available.", "run", "DeDriver");
-#endif
-		break;
-	}
-	case OsiScip: {
-#ifdef DSP_HAS_SCIP
-		osi_ = new DspOsiScip();
-		osi_->setLogLevel(CoinMin(par_->getIntParam("LOG_LEVEL") + 2, 5));
-#else
-		throw CoinError("OsiScip is not available.", "run", "DeDriver");
-#endif
-		break;
-	}
-	default:
-		throw CoinError("Invalid value for SOLVER/MIP parameter", "run", "DeDriver");
-		break;
-	}
-=======
 	/** create DspOsi */
 	osi_ = createDspOsi();
 	if (!osi_) throw CoinError("Failed to create DspOsi", "run", "DeDriver");
 
 	/** set display */
 	osi_->setLogLevel(par_->getIntParam("DE/SOLVER/LOG_LEVEL"));
->>>>>>> upstream/dev/rm-cpx
 
 	/** set number of cores */
 	osi_->setNumCores(par_->getIntParam("NUM_CORES"));
@@ -251,38 +215,9 @@ void DeDriver::writeExtMps(const char * name)
 	/** get DE model */
 	DSP_RTN_CHECK_THROW(model_->getFullModel(mat, clbd, cubd, ctype, obj, rlbd, rubd));
 
-<<<<<<< HEAD
-	switch(par_->getIntParam("SOLVER/MIP")) {
-	case OsiCpx:
-#ifdef DSP_HAS_CPX
-		osi = new DspOsiCpx();
-#else
-		throw CoinError("OsiCpx is not available.", "writeExtMps", "DeDriver");
-#endif
-		break;
-	case OsiGrb:
-#ifdef DSP_HAS_GRB
-		osi = new DspOsiGrb();
-#else
-		throw CoinError("OsiGrb is not available.", "writeExtMps", "DeDriver");
-#endif
-		break;
-	case OsiScip:
-#ifdef DSP_HAS_SCIP
-		osi = new DspOsiScip();
-#else
-		throw CoinError("OsiScip is not available.", "writeExtMps", "DeDriver");
-#endif
-		break;
-	default:
-		throw CoinError("Invalid value for SOLVER/MIP parameter", "run", "DeDriver");
-		break;
-	}
-=======
 	/** create DspOsi */
 	osi = createDspOsi();
 	if (!osi) throw CoinError("Failed to create DspOsi", "writeExtMps", "DeDriver");
->>>>>>> upstream/dev/rm-cpx
 
 	/** load problem */
 	osi->si_->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
@@ -312,6 +247,13 @@ DspOsi * DeDriver::createDspOsi() {
 		osi = new DspOsiCpx();
 #else
 		throw CoinError("Cplex is not available.", "createDspOsi", "DeDriver");
+#endif
+		break;
+	case OsiGrb:
+#ifdef DSP_HAS_GRB
+		osi = new DspOsiGrb();
+#else
+		throw CoinError("Gurobi is not available.", "createDspOsi", "DeDriver");
 #endif
 		break;
 	case OsiScip:
