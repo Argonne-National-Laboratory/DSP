@@ -14,7 +14,7 @@ matrix:
             - liblapack-dev
             - libtbb-dev
             - lcov
-            - gcov
+            - llvm-cov
     - os: linux
       dist: bionic
       compiler: gcc
@@ -73,8 +73,8 @@ script:
 
 after_success:
 # Create lcov report
-- if [ $TRAVIS_COMPILER == clang ]; then lcov --capture --directory . --gcov-tool $TRAVIS_BUILD_DIR/llvm-gcov.sh --output-file coverage.info; fi
-- if [ $TRAVIS_COMPILER == gcc ]; then lcov --capture --directory . --output-file coverage.info; fi
+- if [ $TRAVIS_OS_NAME == linux && $TRAVIS_COMPILER == clang ]; then lcov --capture --directory . --gcov-tool $TRAVIS_BUILD_DIR/llvm-gcov.sh --output-file coverage.info; fi
+- if [ $TRAVIS_OS_NAME == osx || $TRAVIS_COMPILER == gcc ]; then lcov --capture --directory . --output-file coverage.info; fi
 - lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
 - lcov --list coverage.info # debug info
 # Uploading report to CodeCov
