@@ -13,8 +13,6 @@ matrix:
             - libblas-dev
             - liblapack-dev
             - libtbb-dev
-            - lcov
-            - llvm-cov
     - os: linux
       dist: bionic
       compiler: gcc
@@ -27,6 +25,13 @@ matrix:
             - liblapack-dev
             - libtbb-dev
             - lcov
+      after_success:
+        # Create lcov report
+        - lcov --capture --directory . --output-file coverage.info
+        - lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
+        - lcov --list coverage.info # debug info
+        # Uploading report to CodeCov
+        - bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"
     - os: osx
       osx_image: xcode11.4
       compiler: clang
@@ -36,7 +41,6 @@ matrix:
           packages:
             - git-lfs
             - tbb
-            - lcov
           update: true
     - os: osx
       osx_image: xcode11.4
@@ -47,7 +51,6 @@ matrix:
           packages:
             - git-lfs
             - tbb
-            - lcov
           update: true
 
 before_install:
@@ -70,12 +73,3 @@ install:
 
 script:
   - ctest --verbose
-
-after_success:
-# Create lcov report
-- if [ $TRAVIS_OS_NAME == linux && $TRAVIS_COMPILER == clang ]; then lcov --capture --directory . --gcov-tool $TRAVIS_BUILD_DIR/llvm-gcov.sh --output-file coverage.info; fi
-- if [ $TRAVIS_OS_NAME == osx || $TRAVIS_COMPILER == gcc ]; then lcov --capture --directory . --output-file coverage.info; fi
-- lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
-- lcov --list coverage.info # debug info
-# Uploading report to CodeCov
-- bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"
