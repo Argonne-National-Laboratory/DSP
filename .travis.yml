@@ -1,6 +1,4 @@
 language: cpp
-codecov: true
-coveralls: true
 
 matrix:
   include:
