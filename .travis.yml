@@ -72,7 +72,7 @@ script:
 
 after_success:
 # Create lcov report
-- if [ $TRAVIS_COMPILER == clang ]; then echo "#!/bin/bash\nexec llvm-cov gcov \"$@\"" > llvm-gcov.sh; fi
+- if [ $TRAVIS_COMPILER == clang ]; then echo "#\!/bin/bash\nexec llvm-cov gcov \"\$@\"" > llvm-gcov.sh; fi
 - if [ $TRAVIS_COMPILER == clang ]; then chmod +x llvm-gcov.sh; fi
 - if [ $TRAVIS_COMPILER == clang ]; then lcov --capture --directory . --gcov-tool llvm-gcov.sh --output-file coverage.info; fi
 - if [ $TRAVIS_COMPILER == gcc ]; then lcov --capture --directory . --output-file coverage.info; fi
