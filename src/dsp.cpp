@@ -27,8 +27,8 @@ const char* gDspUsage =
 
 void setBlockIds(DspApiEnv* env, int nsubprobs, bool master_has_subblocks);
 int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* paramfile, char* testvalue);
-void readMpsDec(DspApiEnv* env, char* mpsfile, char* decfile);
-void parseDecFile(char* decfile, vector<vector<string> >& rows_in_blocks);
+int readMpsDec(DspApiEnv* env, char* mpsfile, char* decfile);
+int parseDecFile(char* decfile, vector<vector<string> >& rows_in_blocks);
 void createBlockModel(DspApiEnv* env, CoinMpsIO& p, const CoinPackedMatrix* mat, 
 	int blockid, vector<string>& rows_in_block, map<string,int>& rowname2index, 
 	const char* ctype, const double* obj);
@@ -129,7 +129,7 @@ int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* s
 	// Read problem instance from file(s)
 	if (smpsfile != NULL) {
 		if (isroot) cout << "Reading SMPS files: " << smpsfile << endl;
-		int ret = readSmps(env, smpsfile);
+		ret = readSmps(env, smpsfile);
 		if (ret != 0) return ret;
 		if (isroot) {
 			cout << "First stage: " << getNumRows(env,0) << " rows, " << getNumCols(env,0) << " cols, " << getNumIntegers(env,0) << " integers" << endl;
@@ -142,7 +142,8 @@ int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* s
 			cout << "Reading MPS file: " << mpsfile << endl;
 			cout << "Reading DEC file: " << decfile << endl;
 		}
-		readMpsDec(env, mpsfile, decfile);
+		ret = readMpsDec(env, mpsfile, decfile);
+		if (ret != 0) return ret;
 		isstochastic = false;
 	}
 
@@ -336,7 +337,8 @@ void setBlockIds(DspApiEnv* env, int nsubprobs, bool master_has_subblocks) {
 	setIntPtrParam(env, "ARR_PROC_IDX", (int) proc_idx_set.size(), &proc_idx_set[0]);
 }
 
-void readMpsDec(DspApiEnv* env, char* mpsfile, char* decfile) {
+int readMpsDec(DspApiEnv* env, char* mpsfile, char* decfile) {
+	int ret = 0;
 	// Read .mps file
 	CoinMpsIO p;
 	p.readMps(mpsfile);
@@ -361,8 +363,8 @@ void readMpsDec(DspApiEnv* env, char* mpsfile, char* decfile) {
 	// For each block, the following vector stores the corresponding rows.
 	//cout << "Parsing .dec file ... ";
 	vector<vector<string> > rows_in_blocks;
-	parseDecFile(decfile, rows_in_blocks);
-	//cout << "done!" << endl;
+	ret = parseDecFile(decfile, rows_in_blocks);
+	if (ret != 0) return ret;
 
 	// Assign block(s) to each process
 	setBlockIds(env, rows_in_blocks.size() - 1, true);
@@ -383,9 +385,11 @@ void readMpsDec(DspApiEnv* env, char* mpsfile, char* decfile) {
 	}
 
 	updateBlocks(env);
+
+	return ret;
 }
 
-void parseDecFile(char* decfile, vector<vector<string> >& rows_in_blocks) {
+int parseDecFile(char* decfile, vector<vector<string> >& rows_in_blocks) {
 	// Cards defined in .dec file
 	enum DecCard {
 		PRESOLVED = 0,
@@ -423,6 +427,9 @@ void parseDecFile(char* decfile, vector<vector<string> >& rows_in_blocks) {
 					rows_in_blocks[0].push_back(line);
 			}
 		}
+	} else {
+		printf("Cannot open file: %s\n", decfile);
+		return 1;
 	}
 #if 0
 	cout << "Number of blocks: " << rows_in_blocks.size() << endl;
@@ -432,6 +439,7 @@ void parseDecFile(char* decfile, vector<vector<string> >& rows_in_blocks) {
 			cout << rows_in_blocks[i][j] << endl;
 	}
 #endif
+	return 0;
 }
 
 void createBlockModel(DspApiEnv* env, CoinMpsIO& p, const CoinPackedMatrix* mat, 
