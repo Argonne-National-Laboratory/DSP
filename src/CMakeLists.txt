@@ -93,7 +93,7 @@ if(GUROBILIB)
     set(DSP_LIBS
         ${DSP_LIBS}
         ${DEPEND_DIR}/lib/libOsiGrb.a
-        ${GUROBI_LIB_DIR}/libgurobi${GUROBI_VERSION}.dylib)
+        ${GUROBI_LIB_DIR}/libgurobi90.dylib)
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDSP_HAS_GRB")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DDSP_HAS_GRB")
 endif(GUROBILIB)

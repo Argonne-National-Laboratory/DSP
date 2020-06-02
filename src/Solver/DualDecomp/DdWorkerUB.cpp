@@ -9,6 +9,7 @@
 #include "Model/TssModel.h"
 #include "Solver/DualDecomp/DdWorkerUB.h"
 #include "SolverInterface/DspOsiCpx.h"
+#include "SolverInterface/DspOsiGrb.h"
 #include "SolverInterface/DspOsiScip.h"
 
 #ifdef DSP_HAS_SCIP
@@ -439,6 +440,13 @@ DspOsi * DdWorkerUB::createDspOsi() {
 		CPXsetintparam(dynamic_cast<DspOsiCpx*>(osi)->cpx_->getEnvironmentPtr(), CPX_PARAM_SCRIND, CPX_OFF);
 #else
 		throw CoinError("Cplex is not available.", "createDspOsi", "DdWorkerUB");
+#endif
+		break;
+	case OsiGrb:
+#ifdef DSP_HAS_GRB
+		osi = new DspOsiGrb();
+#else
+		throw CoinError("Gurobi is not available.", "createDspOsi", "DdWorkerUB");
 #endif
 		break;
 	case OsiScip:

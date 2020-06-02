@@ -10,6 +10,7 @@
 #include "CoinWarmStartBasis.hpp"
 #include "SolverInterface/DspOsiClp.h"
 #include "SolverInterface/DspOsiCpx.h"
+#include "SolverInterface/DspOsiGrb.h"
 #include "SolverInterface/DspOsiOoqp.h"
 #include "SolverInterface/DspOsiOoqpEps.h"
 #include "Solver/DualDecomp/DdMasterTr.h"

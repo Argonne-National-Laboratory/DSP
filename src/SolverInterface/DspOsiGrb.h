@@ -108,6 +108,25 @@ public:
 		}
     }
 	
+	virtual void use_simplex() {
+		try{
+			GUROBI_CALL("use simplex", GRBsetintparam(grb_->getEnvironmentPtr(), GRB_INT_PAR_METHOD, 1));
+		}
+		catch(const CoinError& e){
+        	e.print();
+		}
+	}
+
+	virtual void use_barrier() {
+		try{
+			GUROBI_CALL("use barrier", GRBsetintparam(grb_->getEnvironmentPtr(), GRB_INT_PAR_METHOD, 2));
+			GUROBI_CALL("use barrier", GRBsetintparam(grb_->getEnvironmentPtr(), GRB_INT_PAR_CROSSOVER, 0)); //disabled
+			GUROBI_CALL("use barrier", GRBsetintparam(grb_->getEnvironmentPtr(), GRB_DBL_PAR_BARCONVTOL, 1e-5));
+		}
+		catch(const CoinError& e){
+        	e.print();
+		}
+	}
 
 	/** solution statue */
 	virtual int status() {
@@ -115,8 +134,8 @@ public:
 		int status = DSP_STAT_UNKNOWN;
 		int stat;
 		try{
-        GUROBI_CALL("status", GRBupdatemodel(grb_->getLpPtr()));
-        GUROBI_CALL("status", GRBgetintattr(grb_->getLpPtr(), "Status", &stat));
+        	GUROBI_CALL("status", GRBupdatemodel(grb_->getLpPtr()));
+        	GUROBI_CALL("status", GRBgetintattr(grb_->getLpPtr(), "Status", &stat));
 		}
 		catch(const CoinError& e){
         	e.print();

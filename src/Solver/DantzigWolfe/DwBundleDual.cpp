@@ -9,6 +9,7 @@
 
 #include "SolverInterface/DspOsiScip.h"
 #include "SolverInterface/DspOsiCpx.h"
+#include "SolverInterface/DspOsiGrb.h"
 #include "Solver/DantzigWolfe/DwBundleDual.h"
 #include "Utility/DspUtility.h"
 
@@ -314,6 +315,7 @@ DSP_RTN_CODE DwBundleDual::updateCenter(double penalty) {
 }
 
 DSP_RTN_CODE DwBundleDual::callMasterSolver() {
+	
 	if (par_->getIntParam("DW/MASTER/SOLVER") == OsiCpx) {
 #ifdef DSP_HAS_CPX
 
@@ -418,7 +420,8 @@ DSP_RTN_CODE DwBundleDual::solveMaster() {
 
 	/** call solver */
 	status_ = callMasterSolver();
-
+	printf("master solver suffccessully called");
+	printf("master status_ = %d", status_);
 	/** status_ must be set at this point. */
 	DSPdebugMessage("master status_ %d\n", status_);
 
