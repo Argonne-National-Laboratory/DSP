@@ -1,6 +1,5 @@
 # DSP
 ![GitHub tag (latest SemVer)](https://img.shields.io/github/v/tag/Argonne-National-Laboratory/DSP?label=release&sort=semver)
-[![Documentation Status](https://readthedocs.org/projects/dsp/badge/?version=master)](https://dsp.readthedocs.io/?badge=master)
 [![Build Status](https://travis-ci.org/Argonne-National-Laboratory/DSP.svg?branch=master)](https://travis-ci.org/Argonne-National-Laboratory/DSP)
 
 [![DOI](https://zenodo.org/badge/26612881.svg)](https://zenodo.org/badge/latestdoi/26612881)
@@ -20,14 +19,18 @@ where x and y_s are decision variable vectors with dimensions n_1 and n_2, respe
 * Serial/parallel Dantzig-Wolfe decomposition (global solver)
 * Serial/parallel Benders decomposition
 
+**Problem Types:**
+* Two-stage stochastic mixed-integer linear programs
+* Distributionally robust stochastic mixed-integer linear programs
+* Structured mixed-integer linear programs
+
 **Problem Input Formats:**
 * SMPS file format for stochastic programs
 * MPS and DEC files for generic block-structured optimization problems
 * Julia modeling package [Dsp.jl](https://github.com/kibaekkim/Dsp.jl)
 
-## Documentation
-
-The package documentation is available in [Readthedocs](https://dsp.readthedocs.io/?badge=master).
+**Documentation:**
+[![Documentation Status](https://readthedocs.org/projects/dsp/badge/?version=master)](https://dsp.readthedocs.io/?badge=master)
 
 ## Credits
 
