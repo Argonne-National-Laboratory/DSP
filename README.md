@@ -1,7 +1,9 @@
 # DSP
-[![DOI](https://zenodo.org/badge/26612881.svg)](https://zenodo.org/badge/latestdoi/26612881)
-[![Build Status](https://travis-ci.org/Argonne-National-Laboratory/DSP.svg?branch=master)](https://travis-ci.org/Argonne-National-Laboratory/DSP)
+![GitHub tag (latest SemVer)](https://img.shields.io/github/v/tag/Argonne-National-Laboratory/DSP?label=release&sort=semver)
 [![Documentation Status](https://readthedocs.org/projects/dsp/badge/?version=master)](https://dsp.readthedocs.io/?badge=master)
+[![Build Status](https://travis-ci.org/Argonne-National-Laboratory/DSP.svg?branch=master)](https://travis-ci.org/Argonne-National-Laboratory/DSP)
+
+[![DOI](https://zenodo.org/badge/26612881.svg)](https://zenodo.org/badge/latestdoi/26612881)
 
 DSP is an open-source and parallel package that implements decomposition methods for **structured mixed-integer programming** problems. These are structured optimization problems in the following form:
 
@@ -44,6 +46,3 @@ DSP has been developed and is maintained by:
 ## Acknowledgements
 
 This material is based upon work supported by the U.S. Department of Energy, Office of Science, under contract number DE-AC02-06CH11357. We gratefully acknowledge the computing resources provided on *Blues*, a high-performance computing cluster operated by the Laboratory Computing Resource Center at Argonne National Laboratory. We thank E. Michael Gertz and Stephen Wright for providing the [OOQP](http://pages.cs.wisc.edu/~swright/ooqp/) software package.
-
-
-[![Analytics](https://ga-beacon.appspot.com/UA-64449559-2/DSP/README.md)](https://github.com/igrigorik/ga-beacon)
