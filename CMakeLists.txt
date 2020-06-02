@@ -55,6 +55,8 @@ endif()
 # 	set(CMAKE_MACOSX_RPATH OFF)
 # endif()
 
+option(CODE_COVERAGE "Enable coverage reporting" OFF)
+
 add_subdirectory(extra)
 add_subdirectory(src)
 
