@@ -1,7 +1,7 @@
 # DSP
-[![DOI](https://zenodo.org/badge/26612881.svg)](https://zenodo.org/badge/latestdoi/26612881)
+![GitHub tag (latest SemVer)](https://img.shields.io/github/v/tag/Argonne-National-Laboratory/DSP?label=release&sort=semver)
 [![Build Status](https://travis-ci.org/Argonne-National-Laboratory/DSP.svg?branch=master)](https://travis-ci.org/Argonne-National-Laboratory/DSP)
-[![Documentation Status](https://readthedocs.org/projects/dsp/badge/?version=master)](https://dsp.readthedocs.io/?badge=master)
+[![DOI](https://zenodo.org/badge/26612881.svg)](https://zenodo.org/badge/latestdoi/26612881)
 
 DSP is an open-source and parallel package that implements decomposition methods for **structured mixed-integer programming** problems. These are structured optimization problems in the following form:
 
@@ -18,14 +18,18 @@ where x and y_s are decision variable vectors with dimensions n_1 and n_2, respe
 * Serial/parallel Dantzig-Wolfe decomposition (global solver)
 * Serial/parallel Benders decomposition
 
+**Problem Types:**
+* Two-stage stochastic mixed-integer linear programs
+* Distributionally robust stochastic mixed-integer linear programs
+* Structured mixed-integer linear programs
+
 **Problem Input Formats:**
 * SMPS file format for stochastic programs
 * MPS and DEC files for generic block-structured optimization problems
 * Julia modeling package [Dsp.jl](https://github.com/kibaekkim/Dsp.jl)
 
-## Documentation
-
-The package documentation is available in [Readthedocs](https://dsp.readthedocs.io/?badge=master).
+**Documentation:**
+[![Documentation Status](https://readthedocs.org/projects/dsp/badge/?version=master)](https://dsp.readthedocs.io/?badge=master)
 
 ## Credits
 
@@ -44,6 +48,3 @@ DSP has been developed and is maintained by:
 ## Acknowledgements
 
 This material is based upon work supported by the U.S. Department of Energy, Office of Science, under contract number DE-AC02-06CH11357. We gratefully acknowledge the computing resources provided on *Blues*, a high-performance computing cluster operated by the Laboratory Computing Resource Center at Argonne National Laboratory. We thank E. Michael Gertz and Stephen Wright for providing the [OOQP](http://pages.cs.wisc.edu/~swright/ooqp/) software package.
-
-
-[![Analytics](https://ga-beacon.appspot.com/UA-64449559-2/DSP/README.md)](https://github.com/igrigorik/ga-beacon)

@@ -182,6 +182,11 @@ endif(MPI_CXX_FOUND)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wno-absolute-value")
 
+if(CODE_COVERAGE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -coverage")
+endif(CODE_COVERAGE)
+message(STATUS "Code coverage: ${CODE_COVERAGE}")
+
 if(APPLE)
     set(DSP_LIBS ${DSP_LIBS}
         ${GFORTRANLIB}
