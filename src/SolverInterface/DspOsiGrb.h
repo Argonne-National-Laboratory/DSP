@@ -29,7 +29,7 @@
       } else                                                                         \
         sprintf(s, "Error <%d> from GUROBI function call (no license?).", _retcode); \
       debugMessage("%s:%d: %s", __FILE__, __LINE__, s);                              \
-      throw CoinError(s, m, "OsiGrbSolverInterface", __FILE__, __LINE__);            \
+      throw CoinError(s, m, "DspOsiGrb", __FILE__, __LINE__);            \
     }                                                                                \
   } while (false)
 
@@ -102,6 +102,7 @@ public:
 				si_->branchAndBound();
 			else
 				si_->initialSolve();
+			
 		}
 		catch(const CoinError& e){
         	e.print();
@@ -121,7 +122,7 @@ public:
 		try{
 			GUROBI_CALL("use barrier", GRBsetintparam(grb_->getEnvironmentPtr(), GRB_INT_PAR_METHOD, 2));
 			GUROBI_CALL("use barrier", GRBsetintparam(grb_->getEnvironmentPtr(), GRB_INT_PAR_CROSSOVER, 0)); //disabled
-			GUROBI_CALL("use barrier", GRBsetintparam(grb_->getEnvironmentPtr(), GRB_DBL_PAR_BARCONVTOL, 1e-5));
+			GUROBI_CALL("use barrier", GRBsetdblparam(grb_->getEnvironmentPtr(), GRB_DBL_PAR_BARCONVTOL, 1e-5));
 		}
 		catch(const CoinError& e){
         	e.print();
@@ -151,9 +152,7 @@ public:
             status = DSP_STAT_PRIM_INFEASIBLE;
             break;
         case GRB_INF_OR_UNBD:
-            status = DSP_STAT_DUAL_INFEASIBLE;
-            break;
-        case GRB_UNBOUNDED:
+		case GRB_UNBOUNDED:
             status = DSP_STAT_DUAL_INFEASIBLE;
             break;
         case GRB_USER_OBJ_LIMIT:
@@ -190,7 +189,7 @@ public:
 		try{
 			double val;
         	GUROBI_CALL("getDualObjVal", GRBupdatemodel(grb_->getLpPtr()));
-			GUROBI_CALL("getDualObjVal", GRBgetdblattr(grb_->getLpPtr(), GRB_DBL_ATTR_OBJBOUND, &val));
+			GUROBI_CALL("getDualObjVal", GRBgetdblattr(grb_->getLpPtr(), GRB_DBL_ATTR_OBJVAL, &val));
 			return val * grb_->getObjSense();
 		}
 		catch(const CoinError& e){
