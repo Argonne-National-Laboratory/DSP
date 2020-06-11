@@ -42,4 +42,11 @@ if (MPI_CXX_FOUND)
         add_test(NAME cpx_farmer_dw_mpi COMMAND mpiexec -np 3 $ENV{PWD}/src/runDsp --algo dw --smps ${CMAKE_SOURCE_DIR}/examples/smps/farmer --param ${CMAKE_SOURCE_DIR}/test/params_cpx.txt --test -108389.9994043)
         add_test(NAME cpx_noswot_dw_mpi COMMAND mpiexec -np 3 $ENV{PWD}/src/runDsp --algo dw --mps ${CMAKE_SOURCE_DIR}/examples/mps-dec/noswot.mps --dec ${CMAKE_SOURCE_DIR}/examples/mps-dec/noswot.dec --param ${CMAKE_SOURCE_DIR}/test/params_cpx.txt --test -42)
     endif(CPLEXLIB)
+
+    if(GUROBILIB)
+        add_test(NAME grb_farmer_dd_mpi COMMAND mpiexec -np 3 $ENV{PWD}/src/runDsp --algo dd --smps ${CMAKE_SOURCE_DIR}/examples/smps/farmer --param ${CMAKE_SOURCE_DIR}/test/params_grb.txt --test -108389.9994043)
+        add_test(NAME grb_farmer_dw_mpi COMMAND mpiexec -np 3 $ENV{PWD}/src/runDsp --algo dw --smps ${CMAKE_SOURCE_DIR}/examples/smps/farmer --param ${CMAKE_SOURCE_DIR}/test/params_grb.txt --test -108389.9994043)
+        add_test(NAME grb_noswot_dw_mpi COMMAND mpiexec -np 3 $ENV{PWD}/src/runDsp --algo dw --mps ${CMAKE_SOURCE_DIR}/examples/mps-dec/noswot.mps --dec ${CMAKE_SOURCE_DIR}/examples/mps-dec/noswot.dec --param ${CMAKE_SOURCE_DIR}/test/params_grb.txt --test -42)
+    endif(GUROBILIB)
+    
 endif(MPI_CXX_FOUND)
