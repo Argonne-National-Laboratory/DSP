@@ -1,8 +1,6 @@
 /**
  * DspOsiGrb.h
  *
- * 12/12/2019
- * Kibaek Kim
  */
  
 #ifndef SRC_SOLVERINTERFACE_DSPOSIGRB_H_
@@ -61,6 +59,8 @@ public:
 	/** load quadratic objective */
 	virtual void loadQuadraticObjective(const CoinPackedMatrix &mat) {
 		try{
+			// need to delete previous coefficient first, otherwise, the value in mat is added to current model
+			GUROBI_CALL("loadQuadraticObjective", GRBdelq(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
 			if (mat.isColOrdered()) {
 				for (int j = 0; j < mat.getMajorDim(); ++j) {
 					for (int k = 0; k < mat.getVectorSize(j); ++k) {
@@ -68,23 +68,24 @@ public:
 						double v = mat.getElements()[mat.getVectorStarts()[j] + k];
 						int row[1]={i};
 						int col[1]={j};
-						double element[1]={v};
+						double element[1]={0.5*v};
                     	GUROBI_CALL("loadQuadraticObjective", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
                     	GUROBI_CALL("loadQuadraticObjective", GRBaddqpterms(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL),
                     	1, row, col, element));
 					}
 				}
 			} else {
+				GUROBI_CALL("loadQuadraticObjective", GRBdelq(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
 				for (int i = 0; i < mat.getMajorDim(); ++i) {
 					for (int k = 0; k < mat.getVectorSize(i); ++k) {
 						int j = mat.getIndices()[mat.getVectorStarts()[i] + k];
 						double v = mat.getElements()[mat.getVectorStarts()[i] + k];
 						int row[1]={i};
 						int col[1]={j};
-						double element[1]={v};
+						double element[1]={0.5*v};
 						GUROBI_CALL("loadQuadraticObjective", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
                     	GUROBI_CALL("loadQuadraticObjective", GRBaddqpterms(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL),
-                    	1, row, col, element));
+                    	1, row, col, element));	
 					}
 				}
 			}
@@ -140,6 +141,7 @@ public:
 		}
 		catch(const CoinError& e){
         	e.print();
+			return status;
 		}
 
         switch(stat) {
@@ -190,10 +192,11 @@ public:
 			double val;
         	GUROBI_CALL("getDualObjVal", GRBupdatemodel(grb_->getLpPtr()));
 			GUROBI_CALL("getDualObjVal", GRBgetdblattr(grb_->getLpPtr(), GRB_DBL_ATTR_OBJVAL, &val));
-			return val * grb_->getObjSense();
+			return val;
 		}
 		catch(const CoinError& e){
         	e.print();
+			exit(1);
     	}
 	}
 
@@ -207,6 +210,7 @@ public:
 		}
 		catch(const CoinError& e){
         	e.print();
+			exit(1);
     	}
 	}
 
@@ -259,4 +263,4 @@ public:
 
 #endif
 
-#endif /* SRC_SOLVERINTERFACE_DSPOSICPX_H_ */
+#endif /* SRC_SOLVERINTERFACE_DSPOSIGRB_H_ */
