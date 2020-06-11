@@ -6,6 +6,7 @@
 
 #include "SolverInterface/DspOsiClp.h"
 #include "SolverInterface/DspOsiCpx.h"
+#include "SolverInterface/DspOsiGrb.h"
 #include "Model/TssModel.h"
 //#include "SolverInterface/OoqpEps.h"
 #include "Solver/DantzigWolfe/DwMaster.h"
@@ -553,10 +554,10 @@ DSP_RTN_CODE DwMaster::gutsOfSolve() {
 		printIterInfo();
 		itercnt_++;
 
-#ifdef DSP_DEBUG_CPX
+#ifdef DSP_DEBUG
 		char fname[128];
 		sprintf(fname, "master%d", itercnt_);
-		si_->writeMps(fname);
+		osi_->si_->writeMps(fname);
 #endif
 	}
 
@@ -1409,6 +1410,13 @@ DspOsi * DwMaster::createDspOsi() {
 			osi = new DspOsiCpx();
 #else
 			throw CoinError("Cplex is not available.", "createDspOsi", "DwMaster");
+#endif
+			break;
+		case OsiGrb:
+#ifdef DSP_HAS_GRB
+			osi = new DspOsiGrb();
+#else
+			throw CoinError("Gurobi is not available.", "createDspOsi", "DwMaster");
 #endif
 			break;
 		case OsiClp:

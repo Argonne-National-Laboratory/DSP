@@ -8,6 +8,7 @@
 #include "Model/TssModel.h"
 #include "Solver/Deterministic/DeDriver.h"
 #include "SolverInterface/DspOsiCpx.h"
+#include "SolverInterface/DspOsiGrb.h"
 #include "SolverInterface/DspOsiScip.h"
 
 DeDriver::DeDriver(
@@ -244,6 +245,13 @@ DspOsi * DeDriver::createDspOsi() {
 		osi = new DspOsiCpx();
 #else
 		throw CoinError("Cplex is not available.", "createDspOsi", "DeDriver");
+#endif
+		break;
+	case OsiGrb:
+#ifdef DSP_HAS_GRB
+		osi = new DspOsiGrb();
+#else
+		throw CoinError("Gurobi is not available.", "createDspOsi", "DeDriver");
 #endif
 		break;
 	case OsiScip:

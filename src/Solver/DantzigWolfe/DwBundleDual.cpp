@@ -5,10 +5,11 @@
  *      Author: kibaekkim
  */
 
-// #define DSP_DEBUG
+//#define DSP_DEBUG
 
 #include "SolverInterface/DspOsiScip.h"
 #include "SolverInterface/DspOsiCpx.h"
+#include "SolverInterface/DspOsiGrb.h"
 #include "Solver/DantzigWolfe/DwBundleDual.h"
 #include "Utility/DspUtility.h"
 
@@ -314,6 +315,7 @@ DSP_RTN_CODE DwBundleDual::updateCenter(double penalty) {
 }
 
 DSP_RTN_CODE DwBundleDual::callMasterSolver() {
+
 	if (par_->getIntParam("DW/MASTER/SOLVER") == OsiCpx) {
 #ifdef DSP_HAS_CPX
 

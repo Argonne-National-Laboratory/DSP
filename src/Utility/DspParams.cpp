@@ -210,6 +210,11 @@ void DspParams::initIntParams()
 	/** minimum number of processes to wait at the master */
 	IntParams_.createParam("DD/MIN_PROCS", 1);
 
+//#ifdef DSP_HAS_GRB
+//	IntParams_.createParam("DE/SOLVER", OsiGrb);
+	
+//#endif
+
 #ifdef DSP_HAS_CPX
 	IntParams_.createParam("BD/SUB/SOLVER", OsiCpx);
 	IntParams_.createParam("DD/MASTER/SOLVER", OsiCpx);
@@ -218,15 +223,25 @@ void DspParams::initIntParams()
 	IntParams_.createParam("DW/MASTER/SOLVER", OsiCpx);
 	IntParams_.createParam("DW/SUB/SOLVER", OsiCpx);
 #else
+#ifdef DSP_HAS_GRB
+	IntParams_.createParam("BD/SUB/SOLVER", OsiGrb);
+	IntParams_.createParam("DE/SOLVER", OsiGrb);
+	IntParams_.createParam("DD/MASTER/SOLVER", OsiGrb);
+	IntParams_.createParam("DD/SUB/SOLVER", OsiGrb);
+	IntParams_.createParam("DW/MASTER/SOLVER", OsiGrb);
+	IntParams_.createParam("DW/SUB/SOLVER", OsiGrb);
+#else
+	IntParams_.createParam("DW/MASTER/SOLVER", OsiClp);
 	IntParams_.createParam("BD/SUB/SOLVER", OsiClp);
 	IntParams_.createParam("DD/MASTER/SOLVER", OsiClp);
-	IntParams_.createParam("DW/MASTER/SOLVER", OsiClp);
 #ifdef DSP_HAS_SCIP
 	IntParams_.createParam("DD/SUB/SOLVER", OsiScip);
 	IntParams_.createParam("DE/SOLVER", OsiScip);
 	IntParams_.createParam("DW/SUB/SOLVER", OsiScip);
 #endif
 #endif
+#endif
+
 
 	IntParams_.createParam("DE/SOLVER/LOG_LEVEL", 0);
 	IntParams_.createParam("DD/SUB/SOLVER/LOG_LEVEL", 0);

@@ -32,6 +32,7 @@ endif()
 find_library(SCIPLIB scip PATHS ${SCIPOPT_LIB_DIR})
 find_library(MA27LIB  ma27  PATHS ${MA27LIB_DIR})
 find_library(CPLEXLIB cplex PATHS ${CPLEX_LIB_DIR})
+find_library(GUROBILIB NAMES gurobi gurobi81 gurobi90 PATHS ${GUROBI_LIB_DIR})
 
 if(SCIPLIB OR MA27LIB)
 	if(APPLE)
