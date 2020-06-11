@@ -223,14 +223,14 @@ void DspParams::initIntParams()
 	IntParams_.createParam("DW/MASTER/SOLVER", OsiCpx);
 	IntParams_.createParam("DW/SUB/SOLVER", OsiCpx);
 #else
-	IntParams_.createParam("DW/MASTER/SOLVER", OsiClp);
 #ifdef DSP_HAS_GRB
 	IntParams_.createParam("DE/SOLVER", OsiGrb);
 	IntParams_.createParam("DD/MASTER/SOLVER", OsiGrb);
 	IntParams_.createParam("DD/SUB/SOLVER", OsiGrb);
-	//IntParams_.createParam("DW/MASTER/SOLVER", OsiGrb);
+	IntParams_.createParam("DW/MASTER/SOLVER", OsiGrb);
 	IntParams_.createParam("DW/SUB/SOLVER", OsiGrb);
 #else
+	IntParams_.createParam("DW/MASTER/SOLVER", OsiClp);
 	IntParams_.createParam("BD/SUB/SOLVER", OsiClp);
 	IntParams_.createParam("DD/MASTER/SOLVER", OsiClp);
 #ifdef DSP_HAS_SCIP
