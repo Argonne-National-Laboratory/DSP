@@ -36,6 +36,7 @@ where x and y_s are decision variable vectors with dimensions n_1 and n_2, respe
 * [Kibaek Kim](http://mcs.anl.gov/~kibaekkim/), Mathematics and Computer Science Division, Argonne National Laboratory.
 * [Victor M. Zavala](http://zavalab.engr.wisc.edu/), Department of Chemical and Biological Engineering, University of Wisconsin-Madison.
 * Christian Tjandraatmadja, Google Research.
+* Yingqiu Zhang, Industrial and Systems Engineering, Virginia Tech.
 
 ## Key Publications
 
