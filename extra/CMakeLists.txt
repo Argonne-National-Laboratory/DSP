@@ -74,7 +74,7 @@ endif()
 
 if(GUROBILIB)
 	get_filename_component(LIBGRB ${GUROBILIB} NAME_WE)
-	string(SUBSTRING ${LIBGRB} 3 8 GRB)
+	string(SUBSTRING ${LIBGRB} 3 10 GRB)
 	set(GUROBI_LIB "-L${GUROBI_LIB_DIR} -l${GRB} -lm -lpthread")
 	set(WITH_GUROBI_LIB "--with-gurobi-lib=${GUROBI_LIB}")
 	set(WITH_GUROBI_INCDIR "--with-gurobi-incdir=${GUROBI_INC_DIR}")
