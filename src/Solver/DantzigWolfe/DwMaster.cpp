@@ -554,10 +554,10 @@ DSP_RTN_CODE DwMaster::gutsOfSolve() {
 		printIterInfo();
 		itercnt_++;
 
-#ifdef DSP_DEBUG_CPX
+#ifdef DSP_DEBUG
 		char fname[128];
 		sprintf(fname, "master%d", itercnt_);
-		si_->writeMps(fname);
+		osi_->si_->writeMps(fname);
 #endif
 	}
 

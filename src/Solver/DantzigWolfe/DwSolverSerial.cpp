@@ -95,7 +95,7 @@ DSP_RTN_CODE DwSolverSerial::solve() {
 	AlpsKnowledgeBrokerSerial alpsBroker(0, NULL, *alps_);
     alpsBroker.search(alps_);
 	//alpsBroker.printBestSolution();
-	printf("I am here 1\n");
+	
 	AlpsExitStatus alpsstatus = alpsBroker.getSolStatus();
 	switch(alpsstatus) {
 	case AlpsExitStatusOptimal:
@@ -128,13 +128,11 @@ DSP_RTN_CODE DwSolverSerial::solve() {
 	DspNodeSolution* solution = NULL;
 	if (alpsBroker.hasKnowledge(AlpsKnowledgeTypeSolution)) {
 		solution = dynamic_cast<DspNodeSolution*>(alpsBroker.getBestKnowledge(AlpsKnowledgeTypeSolution).first);
-		printf("I am here 3\n");
 		if (solution) {
 			bestprimsol_ = solution->solution_;
 			if (model_->isStochastic() && bestprimsol_.size() > 0) {
 				TssModel* tss = dynamic_cast<TssModel*>(model_);
 				if (bestprimsol_.size() > 0)
-					printf("I am here 2\n");
 					bestprimsol_.erase(bestprimsol_.begin(), bestprimsol_.begin() + tss->getNumCols(0) * (tss->getNumScenarios() - 1));
 			}
 		}
