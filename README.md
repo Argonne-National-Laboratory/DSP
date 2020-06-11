@@ -31,12 +31,11 @@ where x and y_s are decision variable vectors with dimensions n_1 and n_2, respe
 **Documentation:**
 [![Documentation Status](https://readthedocs.org/projects/dsp/badge/?version=master)](https://dsp.readthedocs.io/?badge=master)
 
-## Credits
+## Contributors
 
-DSP has been developed and is maintained by:
 * [Kibaek Kim](http://mcs.anl.gov/~kibaekkim/), Mathematics and Computer Science Division, Argonne National Laboratory.
 * [Victor M. Zavala](http://zavalab.engr.wisc.edu/), Department of Chemical and Biological Engineering, University of Wisconsin-Madison.
-
+* Christian Tjandraatmadja, Google Research.
 
 ## Key Publications
 
@@ -47,4 +46,4 @@ DSP has been developed and is maintained by:
 
 ## Acknowledgements
 
-This material is based upon work supported by the U.S. Department of Energy, Office of Science, under contract number DE-AC02-06CH11357. We gratefully acknowledge the computing resources provided on *Blues*, a high-performance computing cluster operated by the Laboratory Computing Resource Center at Argonne National Laboratory. We thank E. Michael Gertz and Stephen Wright for providing the [OOQP](http://pages.cs.wisc.edu/~swright/ooqp/) software package.
+This material is based upon work supported by the U.S. Department of Energy, Office of Science, under contract number DE-AC02-06CH11357.
