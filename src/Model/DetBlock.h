@@ -48,7 +48,7 @@ public:
 			const CoinPackedMatrix * qobj,/**< quadratic objective coefficients */
 			const double * rlbd,          /**< row lower bounds */
 			const double * rubd           /**< row upper bounds */) :
-				DetModel(mat,clbd,cubd,ctype,obj,qobj, rlbd,rubd),
+				DetModel(mat,clbd,cubd,ctype,obj,qobj,rlbd,rubd),
 				num_coupling_cols_(0),
 				num_coupling_rows_(0),
 				coupling_cols_(NULL),
@@ -94,7 +94,7 @@ public:
 			const int	   qobjnumels,	/**< number of elements in qobj index and value */
 			const double * rlbd,        /**< row lower bounds */
 			const double * rubd         /**< row upper bounds */) :
-				DetModel(start,index,value,numels,ncols,nrows,clbd,cubd,ctype,obj, qobjstart, qobjindex, qobjvalue, qobjnumels, rlbd,rubd),
+				DetModel(start,index,value,numels,ncols,nrows,clbd,cubd,ctype,obj,qobjstart,qobjindex,qobjvalue,qobjnumels,rlbd,rubd),
 				num_coupling_cols_(0),
 				num_coupling_rows_(0),
 				coupling_cols_(NULL),
