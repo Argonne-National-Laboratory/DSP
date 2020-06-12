@@ -31,6 +31,12 @@ where x and y_s are decision variable vectors with dimensions n_1 and n_2, respe
 **Documentation:**
 [![Documentation Status](https://readthedocs.org/projects/dsp/badge/?version=master)](https://dsp.readthedocs.io/?badge=master)
 
+## Installation
+
+```
+git clone --recursive https://github.com/Argonne-National-Laboratory/DSP.git
+```
+
 ## Contributors
 
 * [Kibaek Kim](http://mcs.anl.gov/~kibaekkim/), Mathematics and Computer Science Division, Argonne National Laboratory.
