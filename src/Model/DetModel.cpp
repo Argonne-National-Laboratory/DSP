@@ -128,6 +128,8 @@ void DetModel::createModel(
 	CoinCopyN(rlbd, nrows, rlbd_);
 	CoinCopyN(rubd, nrows, rubd_);
 
+	//TODO: leave qmat_ to NULL or set it to a 0 matrix
+
 	nints_ = 0;
 	for (int j = 0; j < ncols; j++) {
 		if (ctype_[j] != 'C')
@@ -215,6 +217,8 @@ void DetModel::createModel(
 		if (ctype_[j] != 'C')
 			nints_++;
 	}
+
+	//TODO: leave qmat_ to NULL or set it to a 0 matrix
 }
 
 void DetModel::createModel(
