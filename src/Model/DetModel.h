@@ -162,6 +162,9 @@ public:
 	/** get objective function coefficients */
 	const double * getObj() {return obj_;}
 
+	/** get full quadratic objective matrix */
+	const CoinPackedMatrix * getQuadraticObjectiveMatrix() {return qobj_;}
+
 	/** get row lower bounds */
 	const double * getRowLower() {return rlbd_;}
 
