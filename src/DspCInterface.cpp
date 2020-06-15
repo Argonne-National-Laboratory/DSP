@@ -581,7 +581,7 @@ int getNumCouplingRows(DspApiEnv * env)
 int getTotalNumRows(DspApiEnv * env)
 {
 	DSP_API_CHECK_MODEL(-1);
-	return getNumRows(env,0)+getNumRows(env,1);
+	return getModelPtr(env)->getFullModelNumRows();
 }
 
 /** get total number of columns */
