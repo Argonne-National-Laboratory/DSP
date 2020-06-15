@@ -9,6 +9,7 @@
 
 #include "SolverInterface/DspOsiScip.h"
 #include "SolverInterface/DspOsiCpx.h"
+#include "SolverInterface/DspOsiGrb.h"
 #include "Solver/DantzigWolfe/DwWorker.h"
 #include "Model/TssModel.h"
 #include "Utility/DspUtility.h"
@@ -45,6 +46,14 @@ DwWorker::DwWorker(DecModel * model, DspParams * par, DspMessage * message) :
 			osi_[i] = new DspOsiCpx();
 #else
 		throw CoinError("Cplex is not available.", "DwWorker", "DwWorker.cpp");
+#endif
+		break;
+	case OsiGrb:
+#ifdef DSP_HAS_GRB
+		for (int i = 0; i < parProcIdxSize_; ++i)
+			osi_[i] = new DspOsiGrb();
+#else
+		throw CoinError("Gurobi is not available.", "DwWorker", "DwWorker.cpp");
 #endif
 		break;
 	case OsiScip:

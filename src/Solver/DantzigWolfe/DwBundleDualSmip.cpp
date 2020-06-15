@@ -8,6 +8,7 @@
 //#define DSP_DEBUG
 #include "SolverInterface/DspOsiClp.h"
 #include "SolverInterface/DspOsiCpx.h"
+#include "SolverInterface/DspOsiGrb.h"
 #include "Solver/DantzigWolfe/DwBundleDualSmip.h"
 #include "Utility/DspUtility.h"
 
