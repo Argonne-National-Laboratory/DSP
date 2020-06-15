@@ -13,6 +13,7 @@
 #include "Solver/DualDecomp/DdSub.h"
 #include "SolverInterface/DspOsiClp.h"
 #include "SolverInterface/DspOsiCpx.h"
+#include "SolverInterface/DspOsiGrb.h"
 #include "SolverInterface/DspOsiScip.h"
 
 #ifdef DSP_HAS_SCIP
@@ -281,6 +282,13 @@ DSP_RTN_CODE DdSub::createProblem() {
 		osi_ = new DspOsiCpx();
 #else
 		throw CoinError("Cplex is not available.", "createProblem", "DdSub");
+#endif
+		break;
+	case OsiGrb:
+#ifdef DSP_HAS_GRB
+		osi_ = new DspOsiGrb();
+#else
+		throw CoinError("Gurobi is not available.", "createProblem", "DdSub");
 #endif
 		break;
 	case OsiScip:
