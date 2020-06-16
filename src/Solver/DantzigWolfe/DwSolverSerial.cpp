@@ -95,7 +95,7 @@ DSP_RTN_CODE DwSolverSerial::solve() {
 	AlpsKnowledgeBrokerSerial alpsBroker(0, NULL, *alps_);
     alpsBroker.search(alps_);
 	//alpsBroker.printBestSolution();
-
+	
 	AlpsExitStatus alpsstatus = alpsBroker.getSolStatus();
 	switch(alpsstatus) {
 	case AlpsExitStatusOptimal:

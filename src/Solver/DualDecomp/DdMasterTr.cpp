@@ -10,6 +10,7 @@
 #include "CoinWarmStartBasis.hpp"
 #include "SolverInterface/DspOsiClp.h"
 #include "SolverInterface/DspOsiCpx.h"
+#include "SolverInterface/DspOsiGrb.h"
 #include "SolverInterface/DspOsiOoqp.h"
 #include "SolverInterface/DspOsiOoqpEps.h"
 #include "Solver/DualDecomp/DdMasterTr.h"
@@ -481,6 +482,7 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 		osi_->use_barrier();
 		break;
 	case IPM_Feasible:
+
 #ifdef DSP_HAS_OOQP
 		osi_ = new DspOsiOoqpEps();
 #else

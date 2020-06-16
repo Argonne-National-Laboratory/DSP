@@ -26,16 +26,23 @@ where x and y_s are decision variable vectors with dimensions n_1 and n_2, respe
 **Problem Input Formats:**
 * SMPS file format for stochastic programs
 * MPS and DEC files for generic block-structured optimization problems
-* Julia modeling package [Dsp.jl](https://github.com/kibaekkim/Dsp.jl)
+* Julia modeling package [DSP.jl](https://github.com/kibaekkim/DSP.jl)
 
 **Documentation:**
 [![Documentation Status](https://readthedocs.org/projects/dsp/badge/?version=master)](https://dsp.readthedocs.io/?badge=master)
 
+## Installation
+
+```
+git clone --recursive https://github.com/Argonne-National-Laboratory/DSP.git
+```
+
 ## Contributors
 
-* [Kibaek Kim](http://mcs.anl.gov/~kibaekkim/), Mathematics and Computer Science Division, Argonne National Laboratory.
+* [Kibaek Kim](https://kibaekkim.github.io/), Mathematics and Computer Science Division, Argonne National Laboratory.
 * [Victor M. Zavala](http://zavalab.engr.wisc.edu/), Department of Chemical and Biological Engineering, University of Wisconsin-Madison.
 * Christian Tjandraatmadja, Google Research.
+* Yingqiu Zhang, Industrial and Systems Engineering, Virginia Tech.
 
 ## Key Publications
 
