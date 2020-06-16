@@ -77,6 +77,11 @@ public:
 
 	const CoinPackedVector * getObjScenario(int scenario) {return obj_scen_[scenario];}
 
+	/** get quadratic objective function coefficients for a given stage */
+	const CoinPackedMatrix * getQuadraticObjCore(int stage) {return qobj_core_[stage];}
+
+	const CoinPackedMatrix * getQuadraticObjScenario(int scenario) {return qobj_scen_[scenario];}
+
 	/** get column type for a given stage */
 	const char * getCtypeCore(int stage) {return ctype_core_[stage];}
 
@@ -109,6 +114,9 @@ public:
 	/** copy core objective coefficients */
 	void copyCoreObjective(double * obj, int stg);
 
+	/** copy core quadratic objective coefficients */
+	void copyCoreQuadrativeObjective(CoinPackedMatrix *qobj, int stg);
+
 	/** copy core column types */
 	void copyCoreColType(char * ctype, int stg);
 
@@ -139,6 +147,9 @@ public:
 
 	/** combine random objective coefficients */
 	void combineRandObjective(double * obj, int stg, int scen, bool adjustProbability = true);
+
+	/** combine random quadratic objective coefficients */
+	void combineRandQuadraticObjective(CoinPackedMatrix qobj, int stg, int scen, bool adjustProbability = true);
 
 	/** combine random row lower bounds */
 	void combineRandRowLower(double * rlbd, int stg, int scen);
@@ -188,6 +199,7 @@ protected:
 	double ** clbd_core_;           /**< column lower bounds for each stage */
 	double ** cubd_core_;           /**< column upper bounds for each stage */
 	double ** obj_core_;            /**< objective coefficients for each stage */
+	CoinPackedMatrix ** qobj_core_; /**< quadratic objecitve coefficients for each stage */
 	double ** rlbd_core_;           /**< row lower bounds for each stage */
 	double ** rubd_core_;           /**< row upper bounds for each stage */
 	char **   ctype_core_;          /**< column types for each stage */
@@ -200,6 +212,7 @@ protected:
 	CoinPackedVector ** clbd_scen_; /**< column lower bounds for each scenario */
 	CoinPackedVector ** cubd_scen_; /**< column upper bounds for each scenario */
 	CoinPackedVector ** obj_scen_;  /**< objective coefficients for each scenario */
+	CoinPackedMatrix ** qobj_scen_; /**< quadratic objective coefficients for each scenario */
 	CoinPackedVector ** rlbd_scen_; /**< row lower bounds for each scenario */
 	CoinPackedVector ** rubd_scen_; /**< row upper bounds for each scenario */
 

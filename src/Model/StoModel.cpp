@@ -23,6 +23,7 @@ StoModel::StoModel() :
 		clbd_core_(NULL),
 		cubd_core_(NULL),
 		obj_core_(NULL),
+		qobj_core_(NULL),
 		rlbd_core_(NULL),
 		rubd_core_(NULL),
 		ctype_core_(NULL),
@@ -31,6 +32,7 @@ StoModel::StoModel() :
 		clbd_scen_(NULL),
 		cubd_scen_(NULL),
 		obj_scen_(NULL),
+		qobj_scen_(NULL),
 		rlbd_scen_(NULL),
 		rubd_scen_(NULL),
 		fromSMPS_(false),
@@ -67,6 +69,7 @@ StoModel::StoModel(const StoModel & rhs) :
 	clbd_core_  = new double * [nstgs_];
 	cubd_core_  = new double * [nstgs_];
 	obj_core_   = new double * [nstgs_];
+	qobj_core_  = new CoinPackedMatrix * [nstgs_];
 	rlbd_core_  = new double * [nstgs_];
 	rubd_core_  = new double * [nstgs_];
 	ctype_core_ = new char * [nstgs_];
@@ -75,6 +78,7 @@ StoModel::StoModel(const StoModel & rhs) :
 	clbd_scen_  = new CoinPackedVector * [nscen_];
 	cubd_scen_  = new CoinPackedVector * [nscen_];
 	obj_scen_   = new CoinPackedVector * [nscen_];
+	qobj_scen_  = new CoinPackedMatrix * [nscen_];
 	rlbd_scen_  = new CoinPackedVector * [nscen_];
 	rubd_scen_  = new CoinPackedVector * [nscen_];
 
@@ -96,6 +100,8 @@ StoModel::StoModel(const StoModel & rhs) :
 		clbd_core_[i] = new double [ncols_[i]];
 		cubd_core_[i] = new double [ncols_[i]];
 		obj_core_[i] = new double [ncols_[i]];
+		/** copy quadratic objective information */
+		qobj_core_[i] = new CoinPackedMatrix(*(rhs.qobj_core_[i]));
 		ctype_core_[i] = new char [ncols_[i]];
 		rlbd_core_[i] = new double [nrows_[i]];
 		rubd_core_[i] = new double [nrows_[i]];
@@ -125,6 +131,10 @@ StoModel::StoModel(const StoModel & rhs) :
 			obj_scen_[i] = new CoinPackedVector(*(rhs.obj_scen_[i]));
 		else
 			obj_scen_[i] = new CoinPackedVector;
+		if (rhs.qobj_scen_[i])
+			qobj_scen_[i] = new CoinPackedMatrix(*(rhs.qobj_scen_[i]));
+		else
+			qobj_scen_[i] = new CoinPackedMatrix;
 		if (rhs.rlbd_scen_[i])
 			rlbd_scen_[i] = new CoinPackedVector(*(rhs.rlbd_scen_[i]));
 		else
@@ -153,6 +163,7 @@ StoModel::~StoModel()
 	FREE_2D_ARRAY_PTR(nstgs_, clbd_core_);
 	FREE_2D_ARRAY_PTR(nstgs_, cubd_core_);
 	FREE_2D_ARRAY_PTR(nstgs_, obj_core_);
+	FREE_2D_PTR(nstgs_, qobj_core_);
 	FREE_2D_ARRAY_PTR(nstgs_, rlbd_core_);
 	FREE_2D_ARRAY_PTR(nstgs_, rubd_core_);
 	FREE_2D_ARRAY_PTR(nstgs_, ctype_core_);
@@ -161,6 +172,7 @@ StoModel::~StoModel()
 	FREE_2D_PTR(nscen_, clbd_scen_);
 	FREE_2D_PTR(nscen_, cubd_scen_);
 	FREE_2D_PTR(nscen_, obj_scen_);
+	FREE_2D_PTR(nscen_, qobj_scen_);
 	FREE_2D_PTR(nscen_, rlbd_scen_);
 	FREE_2D_PTR(nscen_, rubd_scen_);
 	scen2stg_.clear();
@@ -489,6 +501,11 @@ void StoModel::copyCoreObjective(double * obj, int stg)
 	}
 }
 
+void StoModel::copyCoreQuadrativeObjective(CoinPackedMatrix *qobj, int stg)
+{
+	qobj->copyOf(*qobj_core_[stg]);
+}
+
 /** copy core column types */
 void StoModel::copyCoreColType(char * ctype, int stg)
 {
@@ -606,12 +623,67 @@ void StoModel::combineRandObjective(double * obj, int stg, int scen, bool adjust
 	}
 
 	if (adjustProbability)
-	{
+	{ 
 		for (j = ncols_[stg] - 1; j >= 0; --j)
 		{
 			obj[j] *= prob_[scen];
 		}
 	}
+}
+
+void StoModel::combineRandQuadraticObjective(CoinPackedMatrix qobj, int stg, int scen, bool adjustProbability)
+{
+	int i, j, s;
+	int numelements = qobj_scen_[scen]->getNumElements();
+	const int * colindex=qobj_scen_[scen]->getIndices();
+	const CoinBigIndex * start = qobj_scen_[scen]->getVectorStarts();
+	const int dim=qobj_scen_[scen]->getMajorDim();
+	const double * elements=qobj_scen_[scen]->getElements();
+
+	int * rowindex;
+	rowindex=new int [numelements];
+	
+	std::vector<int> newrowindex, newcolindex;
+	std::vector<double> newelements;
+
+	int * newrowindex;
+	
+	int idx=0;
+	/** convert start into row index */
+	for (int k=0; k<dim; k++){
+		for (i=0; i<start[k+1]-start[k];i++){
+			rowindex[idx]=k;
+			idx++;
+		}
+	}
+
+	for (i = 0; i < numelements; ++i)
+	{
+		j = colindex[i] - cstart_[stg];
+		s = rowindex[i] - cstart_[stg];
+		if (j >= 0 && j < ncols_[stg] && s >= 0 && s < ncols_[stg])
+		{
+			newcolindex.push_back(j);
+			newrowindex.push_back(s);
+			newelements.push_back(elements[i]);
+		}
+	}
+
+	if (adjustProbability)
+	{ 
+		for (j = 0; j<newelements.size(); j++)
+		{
+			newelements[j] *= prob_[scen];
+		}
+	}
+	int *cindex=&newcolindex[0];
+	int *rindex=&newrowindex[0];
+	double *ele=&newelements[0];
+
+	CoinPackedMatrix *temp;
+	temp=new CoinPackedMatrix(false, cindex, rindex, ele, newelements.size());
+	qobj.copyOf(*temp);
+	delete[] rowindex, temp;
 }
 
 /** combine random row lower bounds */
@@ -710,6 +782,17 @@ void StoModel::__printData()
 		PRINT_ARRAY_MSG(ncols_[t], ctype_core_[t], "ctype_core_")
 		PRINT_ARRAY_MSG(nrows_[t], rlbd_core_[t], "rlbd_core_")
 		PRINT_ARRAY_MSG(nrows_[t], rubd_core_[t], "rubd_core_")
+		printf("\n### quadratic objective coefficient ###\n\n");
+		if (qobj_core_[t])
+		{
+			printf("isColOrdered %d\n", qobj_core_[t]->isColOrdered());
+			PRINT_ARRAY_MSG(qobj_core_[t]->getMajorDim(), qobj_core_[t]->getVectorStarts(), "VectorStarts")
+			PRINT_SPARSE_ARRAY_MSG(
+					qobj_core_[t]->getNumElements(),
+					qobj_core_[t]->getIndices(),
+					qobj_core_[t]->getElements(),
+					"Elements")
+		}
 	}
 
 	for (int s = 0; s < nscen_; ++s)
@@ -730,6 +813,19 @@ void StoModel::__printData()
 					"Elements")
 		}
 		printf("=== END of CoinPackedMatrix mat_scen_[%d] ===\n", s);
+
+		printf("=== BEGINNING of CoinPackedMatrix qobj_scen_[%d] ===\n", s);
+		if (mat_scen_[s])
+		{
+			printf("isColOrdered %d\n", qobj_scen_[s]->isColOrdered());
+			PRINT_ARRAY_MSG(qobj_scen_[s]->getMajorDim(), qobj_scen_[s]->getVectorStarts(), "VectorStarts")
+			PRINT_SPARSE_ARRAY_MSG(
+					qobj_scen_[s]->getNumElements(),
+					qobj_scen_[s]->getIndices(),
+					qobj_scen_[s]->getElements(),
+					"Elements")
+		}
+		printf("=== END of CoinPackedMatrix qobj_scen_[%d] ===\n", s);
 #endif
 //		PRINT_COIN_PACKED_VECTOR_MSG((*clbd_scen_[s]), "clbd_scen_")
 //		PRINT_COIN_PACKED_VECTOR_MSG((*cubd_scen_[s]), "cubd_scen_")
