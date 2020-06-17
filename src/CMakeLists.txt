@@ -82,8 +82,7 @@ if(CPLEXLIB)
         ${DEPEND_DIR}/lib/libOsiCpx.a
         ${CPLEX_LIB_DIR}/libcplex.a
         -lm -lpthread -ldl)
-	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDSP_HAS_CPX")
-	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DDSP_HAS_CPX")
+    add_compile_options(-DDSP_HAS_CPX)
 endif(CPLEXLIB)
 
 if(GUROBILIB)
@@ -94,8 +93,7 @@ if(GUROBILIB)
         ${DSP_LIBS}
         ${DEPEND_DIR}/lib/libOsiGrb.a
         ${GUROBILIB})
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDSP_HAS_GRB")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DDSP_HAS_GRB")
+    add_compile_options(-DDSP_HAS_GRB)
 endif(GUROBILIB)
 
 
@@ -120,9 +118,8 @@ if(SCIPLIB)
         ${SCIPOPT_INC_DIR})
     set(DSP_LIBS 
         ${DSP_LIBS}
-		${SCIPLIB} -lreadline)
-	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDSP_HAS_SCIP")
-	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DDSP_HAS_SCIP")
+        ${SCIPLIB} -lreadline)
+    add_compile_options(-DDSP_HAS_SCIP)
 else(SCIPLIB)
     message(STATUS ${Blue} "SCIP is required for Benders decomposition. Benders decomposition is disabled with SCIP library.${ColourReset}")
 endif(SCIPLIB)
@@ -148,8 +145,7 @@ if(MA27LIB)
 		${DEPEND_DIR}/lib/libooqpbase.a
         ${MA27LIB}
     )
-	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDSP_HAS_OOQP")
-	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DDSP_HAS_OOQP")
+    add_compile_options(-DDSP_HAS_OOQP)
 endif(MA27LIB)
 
 if (MPI_CXX_FOUND)
@@ -175,15 +171,17 @@ if (MPI_CXX_FOUND)
     set(DSP_INC_DIR 
         ${DSP_INC_DIR} 
         ${MPI_CXX_INCLUDE_PATH})
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${MPI_CXX_COMPILE_FLAGS} -DDSP_HAS_MPI -DOMPI_IGNORE_CXX_SEEK")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${MPI_CXX_COMPILE_FLAGS} -DDSP_HAS_MPI -DOMPI_IGNORE_CXX_SEEK")
+    add_compile_options(${MPI_CXX_COMPILE_FLAGS} -DDSP_HAS_MPI -DOMPI_IGNORE_CXX_SEEK)
 endif(MPI_CXX_FOUND)
 
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wno-absolute-value")
+if(CMAKE_BUILD_TYPE EQUAL "DEBUG")
+    add_compile_options(-Wall)
+else()
+    add_compile_options(-Wno-absolute-value)
+endif()
 
 if(CODE_COVERAGE)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -coverage")
+    add_compile_options(-coverage)
 endif(CODE_COVERAGE)
 message(STATUS "Code coverage: ${CODE_COVERAGE}")
 
