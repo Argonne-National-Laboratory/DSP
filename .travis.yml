@@ -67,9 +67,10 @@ before_install:
   - cd ..
 
 install:
-  - mkdir build && cd build && cmake .. -DCODE_COVERAGE=ON -DCMAKE_BUILD_TYPE=DEBUG
-  - make -j VERBOSE=1
+  - mkdir build && cd build && cmake .. -DUNIT_TESTING=ON -DCODE_COVERAGE=ON -DCMAKE_BUILD_TYPE=DEBUG
+  - make -j
   - make install
 
 script:
   - ctest --verbose
+  - ./src/test/UnitTests
