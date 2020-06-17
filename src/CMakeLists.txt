@@ -228,6 +228,13 @@ target_link_libraries(Dsp ${DSP_LIBS})
 target_link_libraries(runDsp ${DSP_LIBS})
 
 ##################################################
+# UNIT TEST
+##################################################
+if(UNIT_TESTING)
+    add_subdirectory(test)
+endif(UNIT_TESTING)
+
+##################################################
 # INSTALL
 ##################################################
 install(TARGETS Dsp LIBRARY DESTINATION $ENV{PWD}/lib)
