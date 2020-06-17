@@ -82,7 +82,7 @@ if(CPLEXLIB)
         ${DEPEND_DIR}/lib/libOsiCpx.a
         ${CPLEX_LIB_DIR}/libcplex.a
         -lm -lpthread -ldl)
-    add_compile_options(-DDSP_HAS_CPX)
+    add_definitions(-DDSP_HAS_CPX)
 endif(CPLEXLIB)
 
 if(GUROBILIB)
@@ -93,7 +93,7 @@ if(GUROBILIB)
         ${DSP_LIBS}
         ${DEPEND_DIR}/lib/libOsiGrb.a
         ${GUROBILIB})
-    add_compile_options(-DDSP_HAS_GRB)
+    add_definitions(-DDSP_HAS_GRB)
 endif(GUROBILIB)
 
 
@@ -119,7 +119,7 @@ if(SCIPLIB)
     set(DSP_LIBS 
         ${DSP_LIBS}
         ${SCIPLIB} -lreadline)
-    add_compile_options(-DDSP_HAS_SCIP)
+    add_definitions(-DDSP_HAS_SCIP)
 else(SCIPLIB)
     message(STATUS ${Blue} "SCIP is required for Benders decomposition. Benders decomposition is disabled with SCIP library.${ColourReset}")
 endif(SCIPLIB)
@@ -145,7 +145,7 @@ if(MA27LIB)
 		${DEPEND_DIR}/lib/libooqpbase.a
         ${MA27LIB}
     )
-    add_compile_options(-DDSP_HAS_OOQP)
+    add_definitions(-DDSP_HAS_OOQP)
 endif(MA27LIB)
 
 if (MPI_CXX_FOUND)
@@ -171,7 +171,8 @@ if (MPI_CXX_FOUND)
     set(DSP_INC_DIR 
         ${DSP_INC_DIR} 
         ${MPI_CXX_INCLUDE_PATH})
-    add_compile_options(${MPI_CXX_COMPILE_FLAGS} -DDSP_HAS_MPI -DOMPI_IGNORE_CXX_SEEK)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MPI_CXX_COMPILE_FLAGS}")
+    add_definitions(-DDSP_HAS_MPI -DOMPI_IGNORE_CXX_SEEK)
 endif(MPI_CXX_FOUND)
 
 if(CMAKE_BUILD_TYPE EQUAL "DEBUG")
@@ -181,7 +182,7 @@ else()
 endif()
 
 if(CODE_COVERAGE)
-    add_compile_options(-coverage)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -coverage")
 endif(CODE_COVERAGE)
 message(STATUS "Code coverage: ${CODE_COVERAGE}")
 
