@@ -129,8 +129,8 @@ void DetModel::createModel(
 	CoinCopyN(rubd, nrows, rubd_);
 
 	//TODO: leave qmat_ to NULL or set it to a 0 matrix
-
-	qobj_ = NULL;
+	qobj_ = new CoinPackedMatrix(); //allocate memory
+	qobj_ = NULL; //initilize memory
 
 	nints_ = 0;
 	for (int j = 0; j < ncols; j++) {
@@ -215,7 +215,8 @@ void DetModel::createModel(
 	CoinCopyN(rubd, nrows, rubd_);
 
 	//TODO: leave qmat_ to NULL or set it to a 0 matrix
-	qobj_ = NULL;
+	qobj_ = new CoinPackedMatrix(); //allocate memory
+	qobj_ = NULL; //initialize memory
 	nints_ = 0;
 	for (int j = 0; j < ncols; j++) {
 		if (ctype_[j] != 'C')
