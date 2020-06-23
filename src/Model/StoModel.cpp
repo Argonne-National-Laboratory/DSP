@@ -631,7 +631,7 @@ void StoModel::combineRandObjective(double * obj, int stg, int scen, bool adjust
 	}
 }
 
-void StoModel::combineRandQuadraticObjective(CoinPackedMatrix qobj, int stg, int scen, bool adjustProbability)
+void StoModel::combineRandQuadraticObjective(CoinPackedMatrix * qobj, int stg, int scen, bool adjustProbability)
 {
 	int i, j, s;
 	int numelements = qobj_scen_[scen]->getNumElements();
@@ -641,7 +641,7 @@ void StoModel::combineRandQuadraticObjective(CoinPackedMatrix qobj, int stg, int
 	const double * elements=qobj_scen_[scen]->getElements();
 
 	int * rowindex;
-	rowindex=new int [numelements];
+	rowindex = new int [numelements];
 	
 	std::vector<int> newrowindex, newcolindex;
 	std::vector<double> newelements;
@@ -668,6 +668,11 @@ void StoModel::combineRandQuadraticObjective(CoinPackedMatrix qobj, int stg, int
 			newelements.push_back(elements[i]);
 		}
 	}
+	
+	//check
+	assert(newcolindex.size()==newrowindex.size());
+	assert(newcolindex.size()==newelements.size());
+	assert(newrowindex.size()==newelements.size());
 
 	if (adjustProbability)
 	{ 
@@ -682,7 +687,7 @@ void StoModel::combineRandQuadraticObjective(CoinPackedMatrix qobj, int stg, int
 
 	CoinPackedMatrix *temp;
 	temp=new CoinPackedMatrix(false, cindex, rindex, ele, newelements.size());
-	qobj.copyOf(*temp);
+	qobj->copyOf(*temp);
 	delete[] rowindex, temp;
 }
 
@@ -815,7 +820,7 @@ void StoModel::__printData()
 		printf("=== END of CoinPackedMatrix mat_scen_[%d] ===\n", s);
 
 		printf("=== BEGINNING of CoinPackedMatrix qobj_scen_[%d] ===\n", s);
-		if (mat_scen_[s])
+		if (qobj_scen_[s])
 		{
 			printf("isColOrdered %d\n", qobj_scen_[s]->isColOrdered());
 			PRINT_ARRAY_MSG(qobj_scen_[s]->getMajorDim(), qobj_scen_[s]->getVectorStarts(), "VectorStarts")

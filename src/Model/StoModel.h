@@ -149,7 +149,7 @@ public:
 	void combineRandObjective(double * obj, int stg, int scen, bool adjustProbability = true);
 
 	/** combine random quadratic objective coefficients */
-	void combineRandQuadraticObjective(CoinPackedMatrix qobj, int stg, int scen, bool adjustProbability = true);
+	void combineRandQuadraticObjective(CoinPackedMatrix * qobj, int stg, int scen, bool adjustProbability = true);
 
 	/** combine random row lower bounds */
 	void combineRandRowLower(double * rlbd, int stg, int scen);
