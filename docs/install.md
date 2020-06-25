@@ -35,24 +35,3 @@ cmake ..
 
 A shared object is installed in ``./lib`` directory. 
 Once the installation has been successfully done, you need to set environment variable ``(DY)LD_LIBRARY_PATH``.
-
-## Outputs
-
-### Binary file
-
-A binary file ``runDsp`` is installed in ``./bin`` directory.
-
-### Shared object
-
-A shared object is installed in ``./lib`` directory. Once the installation has been successfully done, you need to set environment variable ``(DY)LD_LIBRARY_PATH``.
-For Linux::
-
-```shell
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<DSP_SRC_PATH>/lib
-```
-
-For Mac
-
-```shell
-export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:<DSP_SRC_PATH>/lib
-```

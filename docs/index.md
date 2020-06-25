@@ -45,19 +45,13 @@ For more technical details, please refer the following papers.
 
 This solves the Benders decomposition of stochastic programming problems with the lower bound initialized by the dual decomposition.
 
-```text
-Note: Any second-stage integer variables will be relaxed.
-```
+> Note: Any second-stage integer variables will be relaxed.
 
-```text
-Note: This algorithm requires SCIP and is available only for stochastic programs.
-```
+> Note: This algorithm requires SCIP and is available only for stochastic programs.
 
 ### Extensive Form Solver
 
 This reformulates the problem into one large optimization problem and uses available external solver.
 Parallel computing is available only through the external solver (i.e., multi-threading).
 
-```text
-Note: There is no MPI parallelism for this algorithm.
-```
+> Note: There is no MPI parallelism for this algorithm.
