@@ -6,3 +6,5 @@ nav:
   - How to Use: examples.md
   - Parameters: parameters.md
   - API: api.md
+theme: 
+  name: material
