@@ -86,12 +86,10 @@ public:
 	 */
 	int getNumIntegers() {return TssModel::getNumIntegers(0) + getNumScenarios() * TssModel::getNumIntegers(1);}
 
+	/**
+	 * Returns the number of coupling integer variables.
+	 */
 	int getNumCouplingIntegers() {return TssModel::getNumIntegers(0) * getNumScenarios();}
-
-	double evalLhsCouplingRow(int row, double ** solutions);
-
-	/**@name Functions specific for the Dual Decomposition */
-	//@{
 
 	/**
 	 * This considers a dual decomposition and returns the number of non-anticipativity constraints.
@@ -102,14 +100,6 @@ public:
 	 * This considers a dual decomposition and returns the number of first-stage variables copied for each scenario s.
 	 */
 	int getNumSubproblemCouplingRows(int s) {return getNumCols(0);}
-
-	/**
-	 * This returns the row-th element of vector lambda_j^T x_j.
-	 * @param row is in [0, getNumCouplingRows()].
-	 * @param subprob is a scenario index (j) ranged in [0, getNumSubproblems()].
-	 * @param subprobSolution is the first-stage solution (x) of the size getNumCouplingCols().
-	 */
-	double evalLhsCouplingRowSubprob(int row, int subprob, double * subprobSolution);
 
 	/**
 	 * Retruns the coupling column objective coefficients
@@ -136,20 +126,36 @@ public:
 	 */
 	double getRhsCouplingRow(int row) {return 0;}
 
-	//@}
+	/**
+	 * Returns the left-hand side value of the coupling constraint at a given solution.
+	 * @param row is the index of coupling contraint
+	 * @param solutions is the first-stage solution for each scenario
+	 */
+	double evalLhsCouplingRow(int row, double ** solutions);
+
+	/**
+	 * This returns the row-th element of vector lambda_j^T x_j.
+	 * @param row is in [0, getNumCouplingRows()].
+	 * @param subprob is a scenario index (j) ranged in [0, getNumSubproblems()].
+	 * @param subprobSolution is the first-stage solution (x) of the size getNumCouplingCols().
+	 */
+	double evalLhsCouplingRowSubprob(int row, int subprob, double * subprobSolution);
 
 	bool nonanticipativity() {return true;}
 
 	bool isStochastic() {return true;}
-	bool isDro() {return TssModel::isDro();}
-	int getNumReferences() {return TssModel::getNumReferences();}
-	double getWassersteinSize() {return TssModel::getWassersteinSize();}
-	double getWassersteinDist(int i, int j) {return TssModel::getWassersteinDist(i,j);}
-	double getReferenceProbability(int i) {return TssModel::getReferenceProbability(i);}
+
+	// The following functions are for distributionally robust variant.
+	// TODO: Better to create a new inhereted class?
+	virtual bool isDro() {return TssModel::isDro();}
+	virtual int getNumReferences() {return TssModel::getNumReferences();}
+	virtual double getWassersteinSize() {return TssModel::getWassersteinSize();}
+	virtual double getWassersteinDist(int i, int j) {return TssModel::getWassersteinDist(i,j);}
+	virtual double getReferenceProbability(int i) {return TssModel::getReferenceProbability(i);}
 
 	DSP_RTN_CODE decompose(
 		int size,                    /**< [in] size of subproblem subset */
-		int * subprobs,              /**< [in] subset of subproblems */
+		int * scen,                  /**< [in] subset of scenarios */
 		int naux,                    /**< [in] number of auxiliary columns */
 		double * clbd_aux,           /**< [in] lower bounds for auxiliary columns */
 		double * cubd_aux,           /**< [in] upper bounds for auxiliary columns */
@@ -160,11 +166,7 @@ public:
 		char   *& ctype,             /**< [out] column types */
 		double *& obj,               /**< [out] objective coefficients */
 		double *& rlbd,              /**< [out] row lower bounds */
-		double *& rubd               /**< [out] row upper bounds */)
-	{
-		return TssModel::decompose(size, subprobs, naux, clbd_aux, cubd_aux, obj_aux, mat,
-			clbd, cubd, ctype, obj, rlbd, rubd);
-	}
+		double *& rubd               /**< [out] row upper bounds */);
 
 	DSP_RTN_CODE decomposeCoupling(
 		int size,                    /**< [in] size of subproblem subset */
@@ -217,7 +219,7 @@ public:
 
 	void __printData() {return TssModel::__printData();}
 
-private:
+protected:
 
 	int* master_col_indices_; /**< master column indices */
 };
