@@ -128,7 +128,7 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 	for (int s = 0; s < nsubprobs; ++s) {
 
 		/** copy recourse problem */
-		DSP_RTN_CHECK_THROW(tss->copyRecoProb(par_->getIntPtrParam("ARR_PROC_IDX")[s],
+		DSP_RTN_CHECK_THROW(model_->copyRecoProb(par_->getIntPtrParam("ARR_PROC_IDX")[s],
 				mat_mp_[s], mat_reco, clbd_reco, cubd_reco, ctype_reco,
 				obj_reco, rlbd_org_[s], rubd_org_[s]));
 
