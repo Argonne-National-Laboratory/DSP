@@ -30,3 +30,8 @@ Similarly for the other parameters.
 
 This will be available soon.
 Meanwhile, please refer `./src/Utility/DspParams.cpp` for the parameters available.
+
+| Type | Name | Default value | Description |
+|------|------|---------------|-------------|
+| int  | LOG_LEVEL | 1 | Display level to screen |
+| int  | LOG_LEVEL | 1 | Display level to screen |
