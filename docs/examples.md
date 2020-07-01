@@ -57,4 +57,4 @@ The shared library provides access to C API functions.
 The library needs to be placed in the searchable path (e.g., `LD_LIBRARY_PATH` for linux or `DYLD_LIBRARY_PATH` for Mac).
 
 Using the library can be useful to interface with other (high-level) langauges such as Julia.
-We strongly recomment to check our Julia interface [DSP.jl](https://github.com/kibaekkim/DSP.jl).
+We strongly recomment to check our Julia interface [DSPopt.jl](https://github.com/kibaekkim/DSPopt.jl).
