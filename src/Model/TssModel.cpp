@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+#define DSP_DEBUG
 
 #include "Utility/DspMessage.h"
 #include "Model/TssModel.h"
@@ -44,6 +44,7 @@ DSP_RTN_CODE TssModel::setNumberOfScenarios(int nscen)
 	clbd_core_  = new double * [nstgs_];
 	cubd_core_  = new double * [nstgs_];
 	obj_core_   = new double * [nstgs_];
+	qobj_core_  = new CoinPackedMatrix * [nstgs_];
 	rlbd_core_  = new double * [nstgs_];
 	rubd_core_  = new double * [nstgs_];
 	ctype_core_ = new char * [nstgs_];
@@ -52,6 +53,7 @@ DSP_RTN_CODE TssModel::setNumberOfScenarios(int nscen)
 	clbd_scen_  = new CoinPackedVector * [nscen_];
 	cubd_scen_  = new CoinPackedVector * [nscen_];
 	obj_scen_   = new CoinPackedVector * [nscen_];
+	qobj_scen_  = new CoinPackedMatrix * [nscen_];
 	rlbd_scen_  = new CoinPackedVector * [nscen_];
 	rubd_scen_  = new CoinPackedVector * [nscen_];
 
@@ -62,6 +64,7 @@ DSP_RTN_CODE TssModel::setNumberOfScenarios(int nscen)
 		cubd_core_[s]  = NULL;
 		ctype_core_[s] = NULL;
 		obj_core_[s]   = NULL;
+		qobj_core_[s]  = NULL;
 		rlbd_core_[s]  = NULL;
 		rubd_core_[s]  = NULL;
 	}
@@ -71,6 +74,7 @@ DSP_RTN_CODE TssModel::setNumberOfScenarios(int nscen)
 		clbd_scen_[s] = NULL;
 		cubd_scen_[s] = NULL;
 		obj_scen_[s]  = NULL;
+		qobj_scen_[s] = NULL;
 		rlbd_scen_[s] = NULL;
 		rubd_scen_[s] = NULL;
 	}
@@ -184,7 +188,36 @@ DSP_RTN_CODE TssModel::loadFirstStage(
 	return DSP_RTN_OK;
 }
 
-/** load first-stage problem */
+DSP_RTN_CODE TssModel::loadFirstStage(
+		const CoinBigIndex * start, /**< start index for each row */
+		const int *          index, /**< column indices */
+		const double *       value, /**< constraint elements */
+		const double *       clbd,  /**< column lower bounds */
+		const double *       cubd,  /**< column upper bounds */
+		const char *         ctype, /**< column types */
+		const double *       obj,   /**< objective coefficients */
+		const int * 		 qobjrowindex, /**< quadratic objective row indices */
+		const int *			 qobjcolindex, /**< quadratic objective column indices */
+		const double *		 qobjvalue, /**< quadratic objective constraint elements value */
+		const int 			 numq,  /**< number of quadratic terms */
+		const double *       rlbd,  /**< row lower bounds */
+		const double *       rubd   /**< row upper bounds */)
+{
+	BGN_TRY_CATCH
+
+	/** load linear part */
+	loadFirstStage(start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
+
+
+	/** load quadratic objective */
+	qobj_core_[0] = new CoinPackedMatrix(false, qobjrowindex, qobjcolindex, qobjvalue, numq);
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
+}
+
+/** load second-stage problem */
 DSP_RTN_CODE TssModel::loadSecondStage(
         const int s,               /**< scenario index */
         const double prob,         /**< probability */
@@ -297,6 +330,36 @@ DSP_RTN_CODE TssModel::loadSecondStage(
     return DSP_RTN_OK;
 }
 
+DSP_RTN_CODE TssModel::loadSecondStage(
+        const int s,               /**< scenario index */
+        const double prob,         /**< probability */
+        const CoinBigIndex *start, /**< start index for each row */
+        const int *index,          /**< column indices */
+        const double *value,       /**< constraint elements */
+        const double *clbd,        /**< column lower bounds */
+        const double *cubd,        /**< column upper bounds */
+        const char *ctype,         /**< column types */
+        const double *obj,         /**< objective coefficients */
+		const int * qobjrowindex,  /**< quadratic objective row indices */
+		const int *	qobjcolindex,  /**< quadratic objective column indices */
+		const double * qobjvalue,  /**< quadratic objective constraint elements value */
+        const int numq,			   /**< number of quadratic terms */
+		const double *rlbd,        /**< row lower bounds */
+        const double *rubd         /**< row upper bounds */) {
+	
+	loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
+
+	BGN_TRY_CATCH
+	
+	//not sure
+	qobj_core_[1] = new CoinPackedMatrix(false, qobjrowindex, qobjcolindex, qobjvalue, numq);
+	qobj_scen_[s] = new CoinPackedMatrix(false, qobjrowindex, qobjcolindex, qobjvalue, numq);
+	DSPdebug(qobj_scen_[s]->verifyMtx(4));
+
+	END_TRY_CATCH_RTN(;, DSP_RTN_ERR)
+	return DSP_RTN_OK;
+}
+
 /**
  * This constructs a deterministic equivalent form.
  */
@@ -306,6 +369,7 @@ DSP_RTN_CODE TssModel::copyDeterministicEquivalent(
 		double *& cubd,          /**< [out] column upper bounds */
 		char   *& ctype,         /**< [out] column types */
 		double *& obj,           /**< [out] objective coefficients */
+		CoinPackedMatrix *&qobj, /**< [out] quadratic objective coefficients */
 		double *& rlbd,          /**< [out] row lower bounds */
 		double *& rubd           /**< [out] row upper bounds */)
 {
@@ -313,7 +377,7 @@ DSP_RTN_CODE TssModel::copyDeterministicEquivalent(
 	CoinIotaN(scen, nscen_, 0);
 
 	DSP_RTN_CODE rtn = decompose(nscen_, scen, 0, NULL, NULL, NULL,
-			mat, clbd, cubd, ctype, obj, rlbd, rubd);
+			mat, clbd, cubd, ctype, obj, qobj, rlbd, rubd);
 
 	/** free array */
 	FREE_ARRAY_PTR(scen);
@@ -332,11 +396,12 @@ DSP_RTN_CODE TssModel::copyDeterministicEquivalent(
 	double * cubd = NULL;
 	char   * ctype = NULL;
 	double * obj = NULL;
+	CoinPackedMatrix * qobj = NULL;
 	double * rlbd = NULL;
 	double * rubd = NULL;
 
-	DSP_RTN_CODE rtn = copyDeterministicEquivalent(mat, clbd, cubd, ctype, obj, rlbd, rubd);
-	det = new DetModel(mat, clbd, cubd, ctype, obj, rlbd, rubd);
+	DSP_RTN_CODE rtn = copyDeterministicEquivalent(mat, clbd, cubd, ctype, obj, qobj, rlbd, rubd);
+	det = new DetModel(mat, clbd, cubd, ctype, obj, qobj, rlbd, rubd);
 
 	return rtn;
 }
@@ -402,7 +467,7 @@ DSP_RTN_CODE TssModel::decompose(
 	/** # of nonzeros in the first-stage matrix A */
 	for (i = 0; i < nrows_[0]; ++i) {
 		for (j = 0; j < rows_core_[i]->getNumElements(); ++j) {
-			if (fabs(rows_core_[i]->getElements()[j]) > 1.e-10)
+			if (fabs(rows_core_[i]->getElements()[j]) > 1.e-10) //why doing this?
 				nzcnt++;
 		}
 	}
@@ -428,11 +493,12 @@ DSP_RTN_CODE TssModel::decompose(
 	// colIndices = new int [nzcnt];
 	// elements = new double [nzcnt];
 	if (fromSMPS_)
-		denserow = new double [ncols_core_];
+		denserow = new double [ncols_core_]; //why define the dense row?
 
 	/** construction */
 	int pos = 0;
 	int rownum = 0;
+	/** for matrix A */
 	for (i = 0; i < nrows_[0]; ++i)
 	{
 		for (j = 0; j < rows_core_[i]->getNumElements(); ++j) {
@@ -476,7 +542,6 @@ DSP_RTN_CODE TssModel::decompose(
 			}
 			else /** from Julia */
 			{
-				length = mat_scen_[scen[s]]->getVectorSize(i - nrows_[0]);
 				for (j = 0; j < length; ++j) {
 					rowIndices.push_back(rownum);
 					colIndices.push_back(mat_scen_[scen[s]]->getIndices()[start + j]);
@@ -568,6 +633,83 @@ DSP_RTN_CODE TssModel::decompose(
 	return DSP_RTN_OK;
 }
 
+DSP_RTN_CODE TssModel::decompose(
+		int size,                /**< [in] size of scenario subset */
+		int * scen,              /**< [in] subset of scenarios */
+		int naux,                /**< [in] number of auxiliary columns */
+		double * clbd_aux,       /**< [in] lower bounds for auxiliary columns */
+		double * cubd_aux,       /**< [in] upper bounds for auxiliary columns */
+		double * obj_aux,        /**< [in] objective coefficients for auxiliary columns */
+		//CoinPackedMatrix * qobj_aux, /**< [in] quadratic objective coefficients for auxiliary columns */
+		CoinPackedMatrix *& mat, /**< [out] constraint matrix */
+		double *& clbd,          /**< [out] column lower bounds */
+		double *& cubd,          /**< [out] column upper bounds */
+		char   *& ctype,         /**< [out] column types */
+		double *& obj,           /**< [out] objective coefficients */
+		CoinPackedMatrix * &qobj,/**< [out] quadratic objective coefficients */
+		double *& rlbd,          /**< [out] row lower bounds */
+		double *& rubd           /**< [out] row upper bounds */)
+{
+	decompose(size, scen, naux, clbd_aux, cubd_aux, obj_aux, mat, clbd, cubd, ctype, obj, rlbd, rubd);
+	
+	assert(qobj == NULL);
+	int s;
+
+	BGN_TRY_CATCH
+
+	for (s = 0; s < size; ++s)
+		if (qobj_scen_[scen[s]] == NULL)
+			throw "Invalid model data (qobj_scen_)";
+	
+	/** # of quadratic objective elements in the first stage */
+	int nzcnt = qobj_core_[0]->getNumElements();
+	int nqrow = qobj_core_[0]->getMajorDim();
+
+	/** # of quadratic terms in the second stage */
+	/*
+	for (s=0; s < size; s++){
+		//TODO: from SMPS?
+
+	}
+	*/
+
+	vector<int> rowIndices;
+	vector<int> colIndices;
+	vector<double> elements;
+	int pos = 0;
+	int rownum = 0;
+	for (s=0; s<size; ++s){
+		for (int i = 0; i<qobj_scen_[scen[s]]->getMajorDim() ;++i){
+			CoinBigIndex start = qobj_scen_[scen[s]]->getVectorStarts()[i];
+			int length = qobj_scen_[scen[s]]->getVectorSize(i);
+			for (int j=0; j<length; ++j){
+				rowIndices.push_back(rownum);
+				colIndices.push_back(qobj_scen_[scen[s]]->getIndices()[start + j]);
+				elements.push_back(qobj_scen_[scen[s]]->getElements()[start + j]);
+			}
+			shiftVecIndices(length, &colIndices[0] + pos, s * ncols_[1], cstart_[1]);
+			DSPdebugMessage("shift vector in qobj indices from %d by %d from %d\n", pos, s * ncols_[1], cstart_[1]);
+			pos += length;
+			rownum++;
+		}
+	}
+	nzcnt = rowIndices.size();
+	DSPdebugMessage("qobj rownum %d nzcnt %d pos %d\n", rownum, nzcnt, pos);
+	assert(nzcnt == pos);
+	qobj = new CoinPackedMatrix(false, &rowIndices[0], &colIndices[0], &elements[0], nzcnt);
+	//qobj->setDimensions(nrows, ncols);
+	DSPdebug(qobj->verifyMtx(4));
+
+	/** free memory */
+	rowIndices.clear();
+	colIndices.clear();
+	elements.clear();
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
+}
+
 /**
  * This copies recourse problem structure for a given scenario index.
  */
@@ -652,6 +794,29 @@ DSP_RTN_CODE TssModel::copyRecoProb(
 	return DSP_RTN_OK;
 }
 
+DSP_RTN_CODE TssModel::copyRecoProb(
+		int scen,                     /**< [in] scenario index */
+		CoinPackedMatrix *& mat_tech, /**< [out] technology matrix */
+		CoinPackedMatrix *& mat_reco, /**< [out] recourse matrix */
+		double *& clbd_reco,          /**< [out] column lower bounds */
+		double *& cubd_reco,          /**< [out] column upper bounds */
+		char   *& ctype_reco,         /**< [out] column types */
+		double *& obj_reco,           /**< [out] objective coefficients */
+		CoinPackedMatrix *&qobj_reco, /**< [out] quadratic objective coefficients */
+		double *& rlbd_reco,          /**< [out] row lower bounds */
+		double *& rubd_reco           /**< [out] row upper bounds */)
+{
+	copyRecoProb(scen, mat_tech, mat_reco, clbd_reco, cubd_reco, ctype_reco, obj_reco, rlbd_reco, rubd_reco);
+
+	BGN_TRY_CATCH
+
+	copyRecoQuadraticObj(scen, qobj_reco, true);
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
+}
+
 DSP_RTN_CODE TssModel::copyRecoObj(int scen, double *& obj_reco, bool adjustProbability) {
 
 	assert(ncols_[1] >= 0);
@@ -664,6 +829,19 @@ DSP_RTN_CODE TssModel::copyRecoObj(int scen, double *& obj_reco, bool adjustProb
 	/** objective coefficients */
 	copyCoreObjective(obj_reco, 1);
 	combineRandObjective(obj_reco, 1, scen, adjustProbability);
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
+
+}
+
+DSP_RTN_CODE TssModel::copyRecoQuadraticObj(int scen, CoinPackedMatrix *& qobj_reco, bool adjustProbability) {
+
+	BGN_TRY_CATCH
+
+	copyCoreQuadrativeObjective(qobj_reco, 1);
+	combineRandQuadraticObjective(qobj_reco, 1, scen, adjustProbability);
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 

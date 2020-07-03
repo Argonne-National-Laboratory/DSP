@@ -646,7 +646,6 @@ void StoModel::combineRandQuadraticObjective(CoinPackedMatrix * qobj, int stg, i
 	std::vector<int> newrowindex, newcolindex;
 	std::vector<double> newelements;
 
-	int * newrowindex;
 	
 	int idx=0;
 	/** convert start into row index */
