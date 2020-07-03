@@ -1,6 +1,7 @@
 # DSP
 ![GitHub tag (latest SemVer)](https://img.shields.io/github/v/tag/Argonne-National-Laboratory/DSP?label=release&sort=semver)
 [![Build Status](https://travis-ci.org/Argonne-National-Laboratory/DSP.svg?branch=master)](https://travis-ci.org/Argonne-National-Laboratory/DSP)
+[![codecov](https://codecov.io/gh/Argonne-National-Laboratory/DSP/branch/master/graph/badge.svg)](https://codecov.io/gh/Argonne-National-Laboratory/DSP)
 [![DOI](https://zenodo.org/badge/26612881.svg)](https://zenodo.org/badge/latestdoi/26612881)
 
 DSP is an open-source and parallel package that implements decomposition methods for **structured mixed-integer programming** problems. These are structured optimization problems in the following form:
@@ -26,7 +27,7 @@ where x and y_s are decision variable vectors with dimensions n_1 and n_2, respe
 **Problem Input Formats:**
 * SMPS file format for stochastic programs
 * MPS and DEC files for generic block-structured optimization problems
-* Julia modeling package [DSP.jl](https://github.com/kibaekkim/DSP.jl)
+* Julia modeling package [DSPopt.jl](https://github.com/kibaekkim/DSPopt.jl)
 
 **Documentation:**
 [![Documentation Status](https://readthedocs.org/projects/dsp/badge/?version=master)](https://dsp.readthedocs.io/?badge=master)

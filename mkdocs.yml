@@ -1,0 +1,10 @@
+site_name: DSP
+nav:
+  - Home: index.md
+  - Requirement: requirement.md
+  - How to Install: install.md
+  - How to Use: examples.md
+  - Parameters: parameters.md
+  - API: api.md
+theme: 
+  name: material

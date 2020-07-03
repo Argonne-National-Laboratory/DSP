@@ -170,11 +170,13 @@ public:
 			int offset,   /**< offset by which indices are shifted */
 			int start = 0 /**< index only after which indices are shifted */);
 
-	bool isDro() {return isdro_;}
-	int getNumReferences() {return nrefs_;}
-	double getWassersteinSize() {return wass_eps_;}
-	double getWassersteinDist(int i, int j);
-	double getReferenceProbability(int i);
+	// The following functions are for distributionally robust variant.
+	// TODO: Better to create a new inhereted class?
+	virtual bool isDro() {return isdro_;}
+	virtual int getNumReferences() {return nrefs_;}
+	virtual double getWassersteinSize() {return wass_eps_;}
+	virtual double getWassersteinDist(int i, int j);
+	virtual double getReferenceProbability(int i);
 
 protected:
 
@@ -206,6 +208,7 @@ protected:
 
 	/*
 	 * Random data only (no core data)
+	 * TODO: This must assume two-stage programs.
 	 */
 	double * prob_;                 /**< array of scenario probability */
 	CoinPackedMatrix ** mat_scen_;  /**< scenario matrix */
