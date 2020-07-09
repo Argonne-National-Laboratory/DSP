@@ -619,6 +619,7 @@ DSP_RTN_CODE DwBundleDual::addRows(
 	/** allocate memory */
 	std::vector<double> Ax(nrows_orig_, 0.0);
 	cutvec.reserve(nrows_);
+	assert(mat_orig_->getNumRows() == Ax.size());
 
 	/** reset counter */
 	ngenerated_ = 0;
@@ -637,6 +638,10 @@ DSP_RTN_CODE DwBundleDual::addRows(
 
 		/** retrieve subproblem solution */
 		const CoinPackedVector* x = sols[s];
+#ifdef DSP_DEBUG
+		DSPdebugMessage("sol[%d] =\n", s);
+		DspMessage::printArray(x);
+#endif
 #if 0
 		for (int i = 0; i < x->getNumElements(); ++i) {
 			int j = x->getIndices()[i];
@@ -659,6 +664,7 @@ DSP_RTN_CODE DwBundleDual::addRows(
 			cutvec.insert(sind, 1.0);
 		for (int i = 0; i < nrows_orig_; ++i) {
 			cutcoef = Ax[i];
+			assert(fabs(cutcoef) < 1e+20);
 			linerr_ -= cutcoef * d_[i];
 			if (fabs(cutcoef) > 1.0e-10)
 				cutvec.insert(nrows_conv_+i, cutcoef);
@@ -681,10 +687,12 @@ DSP_RTN_CODE DwBundleDual::addRows(
 			double* dx = x->denseVector(ncols_orig_);
 			for (int i = 0; i < nrows_branch_; ++i) {
 				cutcoef = branch_row_to_vec_[nrows_core_+i].dotProduct(dx);
+				assert(fabs(cutcoef) < 1e+20);
 				linerr_ -= cutcoef * d_[nrows_orig_+i];
 				if (fabs(cutcoef) > 1.0e-10)
 					cutvec.insert(nrows_core_+i, cutcoef);
 			}
+			// free dense vector
 			FREE_ARRAY_PTR(dx);
 		}
 #endif
@@ -713,6 +721,9 @@ DSP_RTN_CODE DwBundleDual::addRows(
 			/** store columns */
 			cols_generated_.push_back(new DwCol(sind, -1, *x, cutvec, cutrhs, 0.0, COIN_DBL_MAX, false));
 		}
+
+		// free dense vector
+		// FREE_ARRAY_PTR(dx);
 	}
 	DSPdebugMessage("Number of columns in the pool: %lu\n", cols_generated_.size());
 
