@@ -11,7 +11,6 @@
 #include "Solver/Benders/BdSub.h"
 #include "SolverInterface/DspOsiClp.h"
 #include "SolverInterface/DspOsiCpx.h"
-#include "SolverInterface/DspOsiScip.h"
 #include "SolverInterface/DspOsiGrb.h"
 
 BdSub::BdSub(DspParams* par):
@@ -545,13 +544,6 @@ DspOsi * BdSub::createDspOsi(int solver) {
 			osi = new DspOsiCpx();
 #else
 			throw CoinError("Cplex is not available.", "createDspOsi", "BdSub");
-#endif
-			break;
-		case OsiScip:
-#ifdef DSP_HAS_SCIP
-			osi = new DspOsiScip();
-#else
-			throw CoinError("Scip is not available.", "createDspOsi", "BdSub");
 #endif
 			break;
 		case OsiGrb:
