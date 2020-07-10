@@ -136,8 +136,8 @@ public:
 		int status = DSP_STAT_UNKNOWN;
 		int stat;
 		try{
-        	GUROBI_CALL("status", GRBupdatemodel(grb_->getLpPtr()));
-        	GUROBI_CALL("status", GRBgetintattr(grb_->getLpPtr(), "Status", &stat));
+        	GUROBI_CALL("status", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
+        	GUROBI_CALL("status", GRBgetintattr(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), "Status", &stat));
 		}
 		catch(const CoinError& e){
         	e.print();
@@ -190,8 +190,8 @@ public:
 	virtual double getDualObjValue() {
 		try{
 			double val;
-        	GUROBI_CALL("getDualObjVal", GRBupdatemodel(grb_->getLpPtr()));
-			GUROBI_CALL("getDualObjVal", GRBgetdblattr(grb_->getLpPtr(), GRB_DBL_ATTR_OBJVAL, &val));
+        	GUROBI_CALL("getDualObjVal", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
+			GUROBI_CALL("getDualObjVal", GRBgetdblattr(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), GRB_DBL_ATTR_OBJVAL, &val));
 			return val;
 		}
 		catch(const CoinError& e){
@@ -204,8 +204,8 @@ public:
 	virtual int getNumNodes() {
 		try{
 			double node;
-        	GUROBI_CALL("getNumNodes", GRBupdatemodel(grb_->getLpPtr()));
-        	GUROBI_CALL("getNumNodes", GRBgetdblattr(grb_->getLpPtr(), GRB_DBL_ATTR_NODECOUNT, &node));
+        	GUROBI_CALL("getNumNodes", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
+        	GUROBI_CALL("getNumNodes", GRBgetdblattr(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), GRB_DBL_ATTR_NODECOUNT, &node));
         	return (int)node;
 		}
 		catch(const CoinError& e){
@@ -217,7 +217,7 @@ public:
 	/** set number of cores */
 	virtual void setNumCores(int num) {
 		try{
-        	GUROBI_CALL("setNumCores", GRBupdatemodel(grb_->getLpPtr()));
+        	GUROBI_CALL("setNumCores", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
 			GUROBI_CALL("setNumCores", GRBsetintparam(grb_->getEnvironmentPtr(), GRB_INT_PAR_THREADS, num));
 		}
 		catch(const CoinError& e){
@@ -228,7 +228,7 @@ public:
 	/** set time limit */
 	virtual void setTimeLimit(double time) {
 		try{
-        	GUROBI_CALL("setTimeLimit", GRBupdatemodel(grb_->getLpPtr()));
+        	GUROBI_CALL("setTimeLimit", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
 			GUROBI_CALL("setTimeLimit", GRBsetdblparam(grb_->getEnvironmentPtr(), GRB_DBL_PAR_TIMELIMIT, time));
 		}
 		catch(const CoinError& e){
@@ -239,7 +239,7 @@ public:
 	/** set node limit */
 	virtual void setNodeLimit(double num) {
 		try{
-        	GUROBI_CALL("setNodeLimit", GRBupdatemodel(grb_->getLpPtr()));
+        	GUROBI_CALL("setNodeLimit", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
 			GUROBI_CALL("setNodeLimit", GRBsetdblparam(grb_->getEnvironmentPtr(), GRB_DBL_PAR_NODELIMIT, num));
 		}
 		catch(const CoinError& e){
@@ -250,7 +250,7 @@ public:
 	/** set relative MIP gap */
 	virtual void setRelMipGap(double tol) {
 		try{
-        	GUROBI_CALL("setRelMipGap", GRBupdatemodel(grb_->getLpPtr()));
+        	GUROBI_CALL("setRelMipGap", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
 			GUROBI_CALL("setRelMipGap", GRBsetdblparam(grb_->getEnvironmentPtr(), GRB_DBL_PAR_MIPGAP, tol));
 		}
 		catch(const CoinError& e){

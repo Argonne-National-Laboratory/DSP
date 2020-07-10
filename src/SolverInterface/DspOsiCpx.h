@@ -83,8 +83,8 @@ public:
 	/** solution statue */
 	virtual int status() {
 		int status = DSP_STAT_UNKNOWN;
-		int probtype = CPXgetprobtype(cpx_->getEnvironmentPtr(), cpx_->getLpPtr());
-		int stat = CPXgetstat(cpx_->getEnvironmentPtr(), cpx_->getLpPtr());
+		int probtype = CPXgetprobtype(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
+		int stat = CPXgetstat(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
 
 		if (probtype == CPXPROB_LP) {
 			switch(stat) {
@@ -166,7 +166,7 @@ public:
 	virtual double getDualObjValue() {
 		double val;
 		if (si_->getNumIntegers() > 0) {
-			CPXgetbestobjval(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(), &val);
+			CPXgetbestobjval(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), &val);
 			val *= cpx_->getObjSense();
 		} else {
 			val = si_->getObjValue();
@@ -176,7 +176,7 @@ public:
 
 	/** get number of branch-and-bound nodes explored */
 	virtual int getNumNodes() {
-		return CPXgetnodecnt(cpx_->getEnvironmentPtr(), cpx_->getLpPtr());
+		return CPXgetnodecnt(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
 	}
 
 	/** set number of cores */
