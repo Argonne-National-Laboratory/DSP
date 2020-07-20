@@ -11,6 +11,7 @@
 #include "Solver/Benders/BdSub.h"
 #include "SolverInterface/DspOsiClp.h"
 #include "SolverInterface/DspOsiCpx.h"
+#include "SolverInterface/DspOsiGrb.h"
 
 BdSub::BdSub(DspParams* par):
 par_(par),
@@ -545,11 +546,20 @@ DspOsi * BdSub::createDspOsi(int solver) {
 			throw CoinError("Cplex is not available.", "createDspOsi", "BdSub");
 #endif
 			break;
+		case OsiGrb:
+#ifdef DSP_HAS_GRB
+			osi = new DspOsiGrb();
+#else
+			throw CoinError("Gurobi is not available.", "createDspOsi", "BdSub");
+#endif
+			break;
 		case OsiClp:
 			osi = new DspOsiClp();
 			break;
 		default:
-			throw CoinError("Invalid parameter value", "createDspOsi", "BdSub");
+			char coinmsg[128];
+			sprintf(coinmsg, "Invalid parameter value (solver = %d)", solver);
+			throw CoinError(coinmsg, "createDspOsi", "BdSub");
 			break;
 	}
 

@@ -128,7 +128,7 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 	for (int s = 0; s < nsubprobs; ++s) {
 
 		/** copy recourse problem */
-		DSP_RTN_CHECK_THROW(tss->copyRecoProb(par_->getIntPtrParam("ARR_PROC_IDX")[s],
+		DSP_RTN_CHECK_THROW(model_->copyRecoProb(par_->getIntPtrParam("ARR_PROC_IDX")[s],
 				mat_mp_[s], mat_reco, clbd_reco, cubd_reco, ctype_reco,
 				obj_reco, rlbd_org_[s], rubd_org_[s]));
 
@@ -357,7 +357,7 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 		/** set time limit */
 		osi_[s]->setTimeLimit(
 				CoinMin(CoinMax(0.01, time_remains_),
-				par_->getDblParam("MIP/TIME_LIM")));
+				par_->getDblParam("DD/SUB/TIME_LIM")));
 
 		/** solve */
 		osi_[s]->solve();
