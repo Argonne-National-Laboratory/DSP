@@ -61,6 +61,7 @@ public:
 		try{
 			// need to delete previous coefficient first, otherwise, the value in mat is added to current model
 			GUROBI_CALL("loadQuadraticObjective", GRBdelq(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
+			
 			if (mat.isColOrdered()) {
 				for (int j = 0; j < mat.getMajorDim(); ++j) {
 					for (int k = 0; k < mat.getVectorSize(j); ++k) {
@@ -109,7 +110,33 @@ public:
         	e.print();
 		}
     }
-	
+
+	virtual void writeMps(const char *filename){
+		try{
+			std::string f(filename);
+  			std::string e("mps");
+			std::string fullname = f + "." + e;
+			GUROBI_CALL("writeMPS", GRBwrite(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), const_cast< char * >(fullname.c_str())));
+		}
+		catch(const CoinError& e){
+        	e.print();
+		}
+	}
+
+	//#############################################################################
+	// Methods to input a problem
+	//#############################################################################
+	/*
+	virtual void loadProblem(const CoinPackedMatrix &matrix,
+  		const double *collb, const double *colub,
+  		const double *obj, const CoinPackedMatrix &qobj,
+  		const double *rowlb, const double *rowub)
+	{
+		debugMessage("OsiGrbSolverInterface::loadProblem(1)(%p, %p, %p, %p, %p, %p)\n", (void *)&matrix, (void *)collb, (void *)colub, (void *)obj, (void *)& qobj, (void *)rowlb, (void *)rowub);
+		si_->loadProblem(matrix, collb, colub, obj, rowlb, rowub);
+		loadQuadraticObjective(qobj);
+	}
+	*/
 	virtual void use_simplex() {
 		try{
 			GUROBI_CALL("use simplex", GRBsetintparam(grb_->getEnvironmentPtr(), GRB_INT_PAR_METHOD, 1));
