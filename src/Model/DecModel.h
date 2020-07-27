@@ -221,6 +221,8 @@ public:
 		double *& rlbd,              /**< [out] row lower bounds */
 		double *& rubd               /**< [out] row upper bounds */) = 0;
 
+	
+
 	/**
 	 * Produces the coupling constraints for the given subproblems. The coupling constraint matrix
 	 * includes only what will be sent to a subproblem. More precisely, it contains the coupling
@@ -276,7 +278,15 @@ public:
 		double *& obj,           /**< [out] objective coefficients */
 		double *& rlbd,          /**< [out] row lower bounds */
 		double *& rubd           /**< [out] row upper bounds */) = 0;
-
+	virtual DSP_RTN_CODE getFullModel(
+		CoinPackedMatrix *& mat, /**< [out] constraint matrix */
+		double *& clbd,          /**< [out] column lower bounds */
+		double *& cubd,          /**< [out] column upper bounds */
+		char   *& ctype,         /**< [out] column types */
+		double *& obj,           /**< [out] objective coefficients */
+		CoinPackedMatrix *& qobj,/**< [out] quadratic objective coefficients */
+		double *& rlbd,          /**< [out] row lower bounds */
+		double *& rubd           /**< [out] row upper bounds */) = 0;
 	/**
 	 * Print model nicely.
 	 */
