@@ -501,9 +501,9 @@ void StoModel::copyCoreObjective(double * obj, int stg)
 	}
 }
 
-void StoModel::copyCoreQuadrativeObjective(CoinPackedMatrix *qobj, int stg)
+void StoModel::copyCoreQuadrativeObjective(CoinPackedMatrix * qobj, int stg)
 {
-	qobj->copyOf(*qobj_core_[stg]);
+	qobj=new CoinPackedMatrix(false, qobj_core_[stg]->getNumCols(), qobj_core_[stg]->getNumRows(), qobj_core_[stg]->getNumElements(), qobj_core_[stg]->getElements(), qobj_core_[stg]->getIndices(), qobj_core_[stg]->getVectorStarts(), qobj_core_[stg]->getVectorLengths(), NULL, NULL);
 }
 
 /** copy core column types */
