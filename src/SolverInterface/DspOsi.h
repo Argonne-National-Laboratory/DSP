@@ -34,6 +34,17 @@ public:
 		throw CoinError("Quadratic objective is not supported.", "loadQuadraticObjective", "DspOsi");
 	}
 
+	virtual void writeMps(const char *filename){
+		si_->writeMps(filename);
+	}
+	/*virtual void loadProblem(const CoinPackedMatrix &matrix,
+  		const double *collb, const double *colub,
+  		const double *obj, const CoinPackedMatrix &qobj,
+  		const double *rowlb, const double *rowub)
+	{
+		throw CoinError("loadProblem for quadratic objective is not supported.", "loadProblem", "DspOsi");
+	}*/
+	
 	/** solve problem */
 	virtual void solve() = 0;
 
