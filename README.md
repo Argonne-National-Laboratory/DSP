@@ -47,7 +47,7 @@ git clone --recursive https://github.com/Argonne-National-Laboratory/DSP.git
 
 ## Key Publications
 
-* Kibaek Kim and Briand Dandurand. "[Scalable Branching on Dual Decomposition of Stochastic Mixed-Integer Programming Problems](http://www.optimization-online.org/DB_HTML/2018/10/6867.html)" Optimization Online, 2018
+* Kibaek Kim and Briand Dandurand. "[Scalable Branching on Dual Decomposition of Stochastic Mixed-Integer Programming Problems](http://www.optimization-online.org/DB_HTML/2018/10/6867.html)" Mathematical Programming Computation (to appear), 2020
 * Kibaek Kim, Cosmin Petra, and Victor Zavala. "[An Asynchronous Bundle-Trust-Region Method for Dual Decomposition of Stochastic Mixed-Integer Programming](https://epubs.siam.org/doi/abs/10.1137/17M1148189)" SIAM Journal on Optimization 29(1), 2019
 * Kibaek Kim and Victor M. Zavala. "[Algorithmic innovations and software for the dual decomposition method applied to stochastic mixed-integer programs](https://link.springer.com/article/10.1007/s12532-017-0128-z)" Mathematical Programming Computation 10(2), 2017
 

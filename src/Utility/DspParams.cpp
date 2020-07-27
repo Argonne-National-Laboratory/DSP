@@ -154,8 +154,6 @@ void DspParams::initIntParams()
 {
 	/** print level */
 	IntParams_.createParam("LOG_LEVEL", 1);
-	IntParams_.createParam("DD/SUB/LOG_LEVEL", 0);
-	IntParams_.createParam("DW/SUB/LOG_LEVEL", 0);
 
 	/** branch-and-cut node limit */
 	IntParams_.createParam("NODE_LIM", MAX_INT_NUM);
@@ -295,10 +293,7 @@ void DspParams::initDblParams()
 	DblParams_.createParam("DW/SUB/GAPTOL", 1.0e-4);
 
 	/** time limit */
-	DblParams_.createParam("MIP/TIME_LIM", 1e+20);
-	/** TODO: Is this option duplicate? */
-	DblParams_.createParam("SCIP/TIME_LIM", 1e+20);
-	/** TODO: Is this option duplicate? */
+	DblParams_.createParam("DD/SUB/TIME_LIM", 1e+20);
 	DblParams_.createParam("DW/SUB/TIME_LIM", 1e+20);
 
 	/** LB-UB worker ratio */

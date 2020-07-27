@@ -29,8 +29,8 @@ For more technical details, please refer the following papers.
 This solves the Lagrangian relaxation of the constraints that couple blocks of the structure.
 Hence, the algorithm finds a Lagrangian dual bound that can be strictly lower than the optimal objective value for nonconvex problems (e.g., mixed-integer programs).
 For two-stage stochastic programs, each block is represented by a scenario subproblem.
-Stochastic programs can be read from [SMPS](https://ieeexplore.ieee.org/abstract/document/8142546) files or our C API functions (or Julia package [DSP.jl](https://github.com/kibaekkim/DSP.jl)).
-For generic optimization problems, each block can be specified by [mps-dec](https://gcg.or.rwth-aachen.de/doc/reader__dec_8h.html) files or our C API functions (or Julia package DSP.jl).
+Stochastic programs can be read from [SMPS](https://ieeexplore.ieee.org/abstract/document/8142546) files or our C API functions (or Julia package [DSPopt.jl](https://github.com/kibaekkim/DSPopt.jl)).
+For generic optimization problems, each block can be specified by [mps-dec](https://gcg.or.rwth-aachen.de/doc/reader__dec_8h.html) files or our C API functions (or Julia package DSPopt.jl).
 
 > NOTE: A **distributionally robust** variant of dual decomposition is available for the problems given in SMPS files and `.dro` file.
 

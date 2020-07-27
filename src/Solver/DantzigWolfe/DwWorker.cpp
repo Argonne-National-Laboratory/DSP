@@ -312,6 +312,7 @@ DSP_RTN_CODE DwWorker::generateCols(
 				/** subproblem coupling solution */
 				for (int j = 0; j < osi_[s]->si_->getNumCols(); ++j) {
 					double xval = x[j];
+					assert(fabs(xval) < 1e+20);
 					//if (sub_clbd_[s][j] == sub_cubd_[s][j])
 					//	printf("sind %d j %d [%e, %e, %e]\n", sind, j, sub_clbd_[s][j], xval, sub_cubd_[s][j]);
 					if (fabs(xval) > 1.0e-8) {
@@ -418,7 +419,7 @@ DSP_RTN_CODE DwWorker::generateColsByFix(
 			sol->reserve(osi_[s]->si_->getNumCols());
 
 			if (!osi_[s]->si_->isProvenDualInfeasible()) {
-				const double* x = osi_[s]->si_->getColSolution();
+				const double* xs = osi_[s]->si_->getColSolution();
 
 				/** subproblem objective value */
 				if (osi_[s]->si_->getNumIntegers())
@@ -429,7 +430,7 @@ DSP_RTN_CODE DwWorker::generateColsByFix(
 
 				/** subproblem coupling solution */
 				for (int j = 0; j < osi_[s]->si_->getNumCols(); ++j) {
-					double xval = x[j];
+					double xval = xs[j];
 					//if (sub_clbd_[s][j] == sub_cubd_[s][j])
 					//	printf("sind %d j %d [%e, %e, %e]\n", sind, j, sub_clbd_[s][j], xval, sub_cubd_[s][j]);
 					if (fabs(xval) > 1.0e-8) {

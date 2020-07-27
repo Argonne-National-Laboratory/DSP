@@ -307,7 +307,7 @@ DSP_RTN_CODE DdSub::createProblem() {
 	osi_->setNumCores(1);
 
     /** set display */
-    osi_->setLogLevel(par_->getIntParam("DD/SUB/LOG_LEVEL"));
+    osi_->setLogLevel(par_->getIntParam("DD/SUB/SOLVER/LOG_LEVEL"));
 
     /** load problem */
 #ifdef DSP_DEBUG

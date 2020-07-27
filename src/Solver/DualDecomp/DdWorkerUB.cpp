@@ -357,7 +357,7 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 		/** set time limit */
 		osi_[s]->setTimeLimit(
 				CoinMin(CoinMax(0.01, time_remains_),
-				par_->getDblParam("MIP/TIME_LIM")));
+				par_->getDblParam("DD/SUB/TIME_LIM")));
 
 		/** solve */
 		osi_[s]->solve();
