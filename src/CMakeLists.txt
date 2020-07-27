@@ -240,6 +240,7 @@ endif(UNIT_TESTING)
 ##################################################
 install(TARGETS Dsp LIBRARY DESTINATION $ENV{PWD}/lib)
 install(TARGETS runDsp DESTINATION $ENV{PWD}/bin)
+install(FILES DspCInterface.h DESTINATION $ENV{PWD}/include)
 
 install(CODE "message(\"\")")
 install(CODE "message(\"${Blue}** Standalone binary file was installed in $ENV{PWD}/bin${ColourReset}\")")
