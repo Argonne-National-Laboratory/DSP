@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-// #define DSP_DEBUG
+ #define DSP_DEBUG
 
 #include "Utility/DspMessage.h"
 #include "Model/TssModel.h"
@@ -206,12 +206,19 @@ DSP_RTN_CODE TssModel::loadFirstStage(
 	BGN_TRY_CATCH
 
 	/** load linear part */
-	loadFirstStage(start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
-
-
-	/** load quadratic objective */
-	qobj_core_[0] = new CoinPackedMatrix(false, qobjrowindex, qobjcolindex, qobjvalue, numq);
-
+	if (qobjrowindex == NULL||qobjcolindex == NULL||qobjvalue == NULL || numq == 0){
+		loadFirstStage(start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
+		return DSP_RTN_OK;
+	}
+	else{
+		loadFirstStage(start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
+		/** load quadratic objective */
+		qobj_core_[0] = new CoinPackedMatrix(false, qobjrowindex, qobjcolindex, qobjvalue, numq);
+		qobj_core_[0]->setDimensions(ncols_[0], ncols_[0]);
+		DSPdebugMessage("get number of elements in qobjcore_[0] = %d\n", qobj_core_[0]->getNumElements());
+		PRINT_ARRAY_MSG(3, qobj_core_[0]->getVector(0), "the first row of qobj_core_[0]");
+		PRINT_ARRAY_MSG(3, qobj_core_[0]->getVector(1), "the second row of qobj_core_[0]");
+	}
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
@@ -260,7 +267,7 @@ DSP_RTN_CODE TssModel::loadSecondStage(
             printf("Error: invalid scenario index.\n");
             return DSP_RTN_ERR;
         }
-
+		
         /** allocate values */
         prob_[s] = prob;
         CoinCopyN(clbd, ncols_[1], clbd_core_[1]);
@@ -270,7 +277,7 @@ DSP_RTN_CODE TssModel::loadSecondStage(
         CoinCopyN(rlbd, nrows_[1], rlbd_core_[1]);
         CoinCopyN(rubd, nrows_[1], rubd_core_[1]);
         //PRINT_ARRAY_MSG(ncols_[1], ctype_core_[1], "ctype_core_[1]");
-
+		
         /** count number of integer variables */
         if (s == 0) {
             for (int j = 0; j < ncols_[1]; ++j) {
@@ -280,7 +287,7 @@ DSP_RTN_CODE TssModel::loadSecondStage(
                 }
             }
         }
-
+		DSPdebugMessage("ncols_[1] = %d\n", ncols_[1]);
         /** construct core matrix rows */
         for (int i = 0; i < nrows_[1]; ++i) {
             if (rows_core_[rstart_[1] + i] == NULL) {
@@ -291,7 +298,7 @@ DSP_RTN_CODE TssModel::loadSecondStage(
                 for (int j = start[i]; j < start[i + 1]; ++j) {
                     bool added = false;
                     if (rows_core_[rstart_[1] + i]->findIndex(index[j]) < 0) {
-                        //printf(" added index %d element %e to rows_core_[%d]\n", index[j], value[j], rstart_[1]+i);
+                        printf(" added index %d element %e to rows_core_[%d]\n", index[j], value[j], rstart_[1]+i);
                         rows_core_[rstart_[1] + i]->insert(index[j], 0.);
                         added = true;
                     }
@@ -315,11 +322,13 @@ DSP_RTN_CODE TssModel::loadSecondStage(
         /** allocate memory */
         mat_scen_[s] = new CoinPackedMatrix(false, ncols_[0] + ncols_[1], nrows_[1], start[nrows_[1]], value, index,
                                             start, len);
+		DSPdebugMessage("nrows_[1] = %d, start[nrows_[1]] = %d\n", nrows_[1], start[nrows_[1]]);
         clbd_scen_[s] = new CoinPackedVector(ncols_[1], cind, clbd);
         cubd_scen_[s] = new CoinPackedVector(ncols_[1], cind, cubd);
         obj_scen_[s] = new CoinPackedVector(ncols_[1], cind, obj);
         rlbd_scen_[s] = new CoinPackedVector(nrows_[1], rind, rlbd);
         rubd_scen_[s] = new CoinPackedVector(nrows_[1], rind, rubd);
+		DSPdebugMessage("s = %d\n", s);
         DSPdebug(DspMessage::printArray(start[nrows_[1]], value));
         DSPdebug(mat_scen_[s]->verifyMtx(4));
 
@@ -343,18 +352,27 @@ DSP_RTN_CODE TssModel::loadSecondStage(
 			const int * 		 qobjrowindex, /**< quadratic objective row indices */
 			const int *			 qobjcolindex, /**< quadratic objective column indices */
 			const double *		 qobjvalue, /**< quadratic objective constraint elements value */
-			const CoinBigIndex 	 numq,  /**< number of quadratic terms */
+			const CoinBigIndex 	 qnum,  /**< number of quadratic terms */
 			const double *       rlbd,  /**< row lower bounds */
 			const double *       rubd   /**< row upper bounds */)
 {
 	BGN_TRY_CATCH
+	if (qobjrowindex == NULL||qobjcolindex == NULL||qobjvalue == NULL || qnum == 0){
+		loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
+	}
+	else{
+		loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
 
-	loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
+		/** allocate memory for qobj_core_[1] */
+		qobj_core_[1] = new CoinPackedMatrix(false, qobjrowindex, qobjcolindex, qobjvalue, qnum);
+		qobj_core_[1]->setDimensions(ncols_[0] + ncols_[1], ncols_[0] + ncols_[1]);
 
-	/** allocate memory for qobj_scen_ */
-	qobj_scen_[s] = new CoinPackedMatrix(false, qobjrowindex, qobjcolindex, qobjvalue, numq);
-	DSPdebug(qobj_scen_[s]->verifyMtx(4));
-
+		/** allocate memory for qobj_scen_ */
+		qobj_scen_[s] = new CoinPackedMatrix(false, qobjrowindex, qobjcolindex, qobjvalue, qnum);
+		qobj_scen_[s]->setDimensions(ncols_[0] + ncols_[1], ncols_[0] + ncols_[1]);
+		DSPdebug(qobj_scen_[s]->verifyMtx(4));
+	}
+	DSPdebugMessage("load second stage with quadratic objective\n");
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
