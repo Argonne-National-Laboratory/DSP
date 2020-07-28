@@ -118,7 +118,9 @@ DSP_RTN_CODE DeDriver::run()
 
 	/** load problem */
 	osi_->si_->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
-	osi_->loadQuadraticObjective(*qobj);
+	if (qobj != NULL){
+		osi_->loadQuadraticObjective(*qobj);
+	}
 	//osi_->writeMPS("farmer");
 	for (int j = 0; j < mat->getNumCols(); j++)
 	{

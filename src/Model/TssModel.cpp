@@ -328,7 +328,6 @@ DSP_RTN_CODE TssModel::loadSecondStage(
         obj_scen_[s] = new CoinPackedVector(ncols_[1], cind, obj);
         rlbd_scen_[s] = new CoinPackedVector(nrows_[1], rind, rlbd);
         rubd_scen_[s] = new CoinPackedVector(nrows_[1], rind, rubd);
-		DSPdebugMessage("s = %d\n", s);
         DSPdebug(DspMessage::printArray(start[nrows_[1]], value));
         DSPdebug(mat_scen_[s]->verifyMtx(4));
 
