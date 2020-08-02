@@ -639,16 +639,20 @@ DSP_RTN_CODE DecBlkModel::getFullModel(
 
 	/** master quadratic objective */
 	CoinPackedMatrix *qmaster=NULL;
-	qmaster = new CoinPackedMatrix(*master->getQuadraticObjectiveMatrix());
-	if (qmaster->isColOrdered()) qmaster->reverseOrdering();
-
+	if (master->getQuadraticObjectiveMatrix() != NULL){
+		qmaster = new CoinPackedMatrix(*(master->getQuadraticObjectiveMatrix()));
+		if (qmaster->isColOrdered()) qmaster->reverseOrdering();
+		cout << "master qobj is not empty" <<endl;
+	}
+	
+			
 	vector<int> qrowIndices;
 	vector<int> qcolIndices;
 	vector<double> qelements;
 
 	int rownum=0;
 	int pos=0;
-
+	cout << "debug" <<endl;
 	if (qmaster !=NULL){
 		const CoinBigIndex * qstarts=qmaster->getVectorStarts();
 		for (int i = 0; i < qmaster->getNumRows(); ++i)
@@ -670,7 +674,7 @@ DSP_RTN_CODE DecBlkModel::getFullModel(
 			rownum++;
 		}
 	}
-
+	
 	/** the subproblem part */
 	int coloffset = 0;
 	for (int i = 1; i < blk_->getNumBlocks(); ++i) {
@@ -686,7 +690,11 @@ DSP_RTN_CODE DecBlkModel::getFullModel(
 		const double* values = submat->getElements();
 
 		/** quadratic objective */
-		const CoinPackedMatrix* subqobj = sub->getQuadraticObjectiveMatrix();
+		const CoinPackedMatrix* subqobj = NULL;
+		if (sub->getQuadraticObjectiveMatrix() != NULL){
+			subqobj=new CoinPackedMatrix(*(sub->getQuadraticObjectiveMatrix()));
+		}
+		
 
 		/** add rows with column indices adjusted */
 		for (int k = 0; k < submat->getNumRows(); ++k) {

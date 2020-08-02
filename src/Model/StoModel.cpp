@@ -228,6 +228,7 @@ DSP_RTN_CODE StoModel::readSmps(const char * filename)
 	clbd_core_  = new double * [nstgs_];
 	cubd_core_  = new double * [nstgs_];
 	obj_core_   = new double * [nstgs_];
+	qobj_core_  = new CoinPackedMatrix * [nstgs_];
 	rlbd_core_  = new double * [nstgs_];
 	rubd_core_  = new double * [nstgs_];
 	ctype_core_ = new char * [nstgs_];
@@ -236,9 +237,17 @@ DSP_RTN_CODE StoModel::readSmps(const char * filename)
 	clbd_scen_  = new CoinPackedVector * [nscen_];
 	cubd_scen_  = new CoinPackedVector * [nscen_];
 	obj_scen_   = new CoinPackedVector * [nscen_];
+	qobj_scen_  = new CoinPackedMatrix * [nscen_];
 	rlbd_scen_  = new CoinPackedVector * [nscen_];
 	rubd_scen_  = new CoinPackedVector * [nscen_];
 
+	for (i=0; i<nstgs_;i++){
+		qobj_core_[i]=NULL;
+	}
+
+	for (i=0; i<nscen_; i++){
+		qobj_scen_[i]=NULL;
+	}
 	/** stage information */
 	nrows_core_ = 0;
 	ncols_core_ = 0;

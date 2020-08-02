@@ -439,11 +439,12 @@ DSP_RTN_CODE DecTssModel::decompose(
 	pos = 0;
 	rownum = 0;
 	
-	DSPdebugMessage("number of rows in qobj_core_[0] = %d\n", qobj_core_[0]->getNumRows());
-	DSPdebugMessage("number of cols in qobj_core_[0] = %d\n", qobj_core_[0]->getNumCols());
-	DSPdebugMessage("number of elements in qobj_core_[0] = %d\n", qobj_core_[0]->getNumElements());
+	//DSPdebugMessage("number of rows in qobj_core_[0] = %d\n", qobj_core_[0]->getNumRows());
+	//DSPdebugMessage("number of cols in qobj_core_[0] = %d\n", qobj_core_[0]->getNumCols());
+	//DSPdebugMessage("number of elements in qobj_core_[0] = %d\n", qobj_core_[0]->getNumElements());
 	//PRINT_ARRAY(qobj_core_[0]->getNumElements()+1, qstarts);
 	//PRINT_ARRAY_MSG(qobj_core_[0]->getNumElements(), qobj_core_[0]->getIndices(), "qobj_core[0] column indices")
+
 	if (qobj_core_[0] != NULL){
 		const CoinBigIndex * qstarts=qobj_core_[0]->getVectorStarts();
 		for (i = 0; i < qobj_core_[0]->getNumRows(); ++i)
@@ -469,8 +470,8 @@ DSP_RTN_CODE DecTssModel::decompose(
 	//PRINT_ARRAY_MSG(3, qrowIndices, "row indices of qobj");
 	//PRINT_ARRAY_MSG(3, qcolIndices, "col indices of qobj");
 	//PRINT_ARRAY_MSG(3, qelements, "elements of qobj");
-	
-	DSPdebugMessage("qobj_scen_[0]->getNumRows() = %d \n", qobj_scen_[0]->getNumRows());
+
+	//DSPdebugMessage("qobj_scen_[0]->getNumRows() = %d \n", qobj_scen_[0]->getNumRows());
 
 	for (s=0; s<size; s++)
 	{	
