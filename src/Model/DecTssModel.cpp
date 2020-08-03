@@ -508,12 +508,26 @@ DSP_RTN_CODE DecTssModel::decompose(
 	nzcnt = qrowIndices.size();
 	DSPdebugMessage("rownum %d nzcnt %d pos %d\n", rownum, nzcnt, pos);
 	assert(nzcnt == pos);
+
+	int flag=1;
+	if (qobj_core_[0]==NULL){
+		for (s=0; s<size; s++){
+			if (qobj_scen_[scen[s]] == NULL){
+				flag=0;
+			}
+		}
+	}
+	if (flag==0){
+		qobj=NULL;
+	}
+	else{
+		qobj = new CoinPackedMatrix(false, &qrowIndices[0], &qcolIndices[0], &qelements[0], nzcnt);
+		qobj->setDimensions(ncols, ncols);
+
+		DSPdebug(qobj->verifyMtx(4));
+
+	}
 	
-	qobj = new CoinPackedMatrix(false, &qrowIndices[0], &qcolIndices[0], &qelements[0], nzcnt);
-	qobj->setDimensions(ncols, ncols);
-
-	DSPdebug(qobj->verifyMtx(4));
-
 	
 	qrowIndices.clear();
 	qcolIndices.clear();
