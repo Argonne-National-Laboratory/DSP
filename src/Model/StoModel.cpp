@@ -101,7 +101,9 @@ StoModel::StoModel(const StoModel & rhs) :
 		cubd_core_[i] = new double [ncols_[i]];
 		obj_core_[i] = new double [ncols_[i]];
 		/** copy quadratic objective information */
-		qobj_core_[i] = new CoinPackedMatrix(*(rhs.qobj_core_[i]));
+		if (rhs.qobj_core_[i]!=NULL){
+			qobj_core_[i] = new CoinPackedMatrix(*(rhs.qobj_core_[i]));
+		}
 		ctype_core_[i] = new char [ncols_[i]];
 		rlbd_core_[i] = new double [nrows_[i]];
 		rubd_core_[i] = new double [nrows_[i]];

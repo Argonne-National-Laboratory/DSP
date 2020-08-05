@@ -370,9 +370,7 @@ void solveBd(DspApiEnv * env)
 		return;
 	}
 
-	//BdDriverSerial * bd = new BdDriverSerial(new DecTssModel(*getTssModel(env)), env->par_, env->message_); //this line cause segment fault
-	BdDriverSerial * bd = new BdDriverSerial(env->model_, env->par_, env->message_);
-	printf("debug\n");
+	BdDriverSerial * bd = new BdDriverSerial(new DecTssModel(*getTssModel(env)), env->par_, env->message_);
 	env->solver_ = bd;
 	DSPdebugMessage("Created a serial Benders object\n");
 
