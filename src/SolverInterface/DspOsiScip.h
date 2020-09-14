@@ -110,7 +110,7 @@ public:
 
     /** set time limit */
     virtual void setTimeLimit(double time) {
-        SCIPsetRealParam(scip_->getScip(), "limits/time", time);
+        SCIPsetRealParam(scip_->getScip(), "limits/time", CoinMin(time,1.0e+20));
     }
 
     /** set node limit */
