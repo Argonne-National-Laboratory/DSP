@@ -114,6 +114,8 @@ void SCIPconshdlrBendersWorker::generateCuts(
 	MPIgatherOsiCuts(comm_, *cuts, cuts_collected);
 	DSPdebugMessage("[%d]: Collected %d cuts\n", comm_rank_, cuts_collected.sizeCuts());
 
+	/** TODO: Collect integer feasibility status to the master */
+
 	/** allocate memory */
 	cutval = new double * [nsubprobs];
 	cutrhs = new double [nsubprobs];

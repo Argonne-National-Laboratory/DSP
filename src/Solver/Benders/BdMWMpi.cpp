@@ -238,6 +238,8 @@ DSP_RTN_CODE BdMWMpi::runWorker()
 		/** Send cuts to the master */
 		MPIgatherOsiCuts(comm_, cuts, tempcuts);
 
+		/** TODO: Send integer feasibility status to the master */
+
 		/** cleanup cuts */
 		for (int i = 0; i < cuts.sizeCuts(); ++i)
 		{
