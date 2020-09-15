@@ -236,12 +236,14 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 			/** release the row */
 			SCIP_CALL(SCIPreleaseRow(scip, &row));
 		}
-		else if (isEfficacious &&
-					where != from_scip_sepalp &&
-					where != from_scip_sepasol &&
-					where != from_scip_enfolp)
-			*result = SCIP_INFEASIBLE;
+		else if (where != from_scip_sepalp &&
+				 where != from_scip_sepasol &&
+				 where != from_scip_enfolp) {
+			if (isEfficacious || integer_feasible_ == false)
+				*result = SCIP_INFEASIBLE;
+		}
 	}
+	DSPdebugMessage("sepaBenders: where %d result %d\n", where, *result);
 
 	/** free memory */
 	SCIPfreeMemoryArray(scip, &vals);
@@ -329,6 +331,18 @@ void SCIPconshdlrBenders::generateCuts(
 	// printf("x:\n");
 	// DspMessage::printArray(nvars_, x);
 	bdsub_->generateCuts(size, x, cutval, cutrhs);
+
+	/** Check integer feasibility status to the master */
+	integer_feasible_ = true;
+	if (bdsub_->has_integer()) {
+		for (int s= 0; s < bdsub_->getNumSubprobs(); ++s) {
+			if (bdsub_->is_integer_feasible(s) == false) {
+				integer_feasible_ = false;
+				break;
+			}
+		}
+	}
+	DSPdebugMessage("is the recourse integrality feasible? %s\n", integer_feasible_ ? "yes" : "no");
 
 	/** aggregate cuts */
 	aggregateCuts(cutval, cutrhs, cuts);

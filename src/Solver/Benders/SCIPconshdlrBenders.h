@@ -53,7 +53,8 @@ public:
 	bdsub_(NULL),
 	nvars_(0),
 	vars_(NULL),
-	naux_(0)
+	naux_(0),
+	integer_feasible_(true)
 	{
 		/** nothing to do */
 	}
@@ -149,11 +150,12 @@ protected:
 
 protected:
 
-	DecModel *  model_;     /**< DecModel object */
-	BdSub *     bdsub_;     /**< pointer to cut generator */
-	int         nvars_;     /**< number of original variables */
-	SCIP_Var ** vars_;      /**< pointer array to original variables */
-	int         naux_;      /**< number of auxiliary variables */
+	DecModel *  model_;            /**< DecModel object */
+	BdSub *     bdsub_;            /**< pointer to cut generator */
+	int         nvars_;            /**< number of original variables */
+	SCIP_Var ** vars_;             /**< pointer array to original variables */
+	int         naux_;             /**< number of auxiliary variables */
+	bool        integer_feasible_; /**< indicate whether integrality is satisfied at the cut generation */
 };
 
 /** creates and captures a Benders constraint */
