@@ -124,56 +124,11 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 	OsiCuts cs; /**< Benders cut placeholder */
 	SCIP_Real * vals = NULL; /**< current solution */
 
-#if 0
-	if (scip_checkpriority_ < 0)
-	{
-		/** consider incumbent solutions only */
-		double primObj = SCIPgetPrimalbound(scip);
-		double currObj = SCIPgetSolOrigObj(scip, sol);
-		if (SCIPisLT(scip, primObj, currObj))
-		{
-			DSPdebugMessage(" -> primObj %e currObj %e\n", primObj, currObj);
-			if (where != from_scip_check)
-				*result = SCIP_DIDNOTRUN;
-			return SCIP_OKAY;
-		}
-	}
-#endif
-
 	/** allocate memory */
 	SCIP_CALL(SCIPallocMemoryArray(scip, &vals, nvars_));
 
 	/** get current solution */
 	SCIP_CALL(SCIPgetSolVals(scip, sol, nvars_, vars_, vals));
-
-	/** TODO Does this work? */
-#if 0
-	if (where != from_scip_check &&
-		where != from_scip_enfolp &&
-		where != from_scip_enfops)
-	{
-		double maxviol = 1.e-10;
-		for (int j = 0; j < nvars_ - naux_; ++j)
-		{
-			SCIP_VARTYPE vartype = SCIPvarGetType(vars_[j]);
-			if (vartype == SCIP_VARTYPE_CONTINUOUS) continue;
-
-			double viol = 0.5 - fabs(vals[j] - floor(vals[j]) - 0.5);
-			//DSPdebugMessage("var[%d] %e\n", j, vals[j]);
-			if (viol > maxviol)
-				maxviol = viol;
-		}
-		DSPdebugMessage("where %d maxviol %e\n", where, maxviol);
-
-		if (maxviol > 1.e-7)
-		{
-			*result = SCIP_DIDNOTRUN;
-			/** free memory */
-			SCIPfreeMemoryArray(scip, &vals);
-			return SCIP_OKAY;
-		}
-	}
-#endif
 
 #ifdef DSP_DEBUG2
 	double minvals = COIN_DBL_MAX;
@@ -192,63 +147,6 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 	}
 	DSPdebugMessage("solution: min %e max %e avg %e sum %e two-norm %e\n",
 			minvals, maxvals, sumvals / nvars_, sumvals, sqrt(ssvals));
-#endif
-
-#if 0
-	if (SCIPgetStage(scip) == SCIP_STAGE_SOLVING ||
-		SCIPgetStage(scip) == SCIP_STAGE_SOLVED ||
-		SCIPgetStage(scip) == SCIP_STAGE_EXITSOLVE)
-	{
-		bool addedPoolCut = false;
-		int numPoolCuts = SCIPgetNPoolCuts(scip);
-		int numCutsToScan = 100;
-		SCIP_CUT ** poolcuts = SCIPgetPoolCuts(scip);
-		for (int i = numPoolCuts - 1; i >= 0; --i)
-		{
-			if (i < 0) break;
-			if (numCutsToScan == 0) break;
-
-			/** retrieve row */
-			SCIP_ROW * poolcutrow = SCIPcutGetRow(poolcuts[i]);
-
-			/** benders? */
-			if (strcmp(SCIProwGetName(poolcutrow), "benders") != 0)
-				continue;
-
-			/** counter */
-			numCutsToScan--;
-
-			if (SCIPgetCutEfficacy(scip, sol, poolcutrow) > 1.e-6)
-			{
-				if (where == from_scip_sepalp ||
-					where == from_scip_sepasol ||
-					where == from_scip_enfolp)
-				{
-					/** add cut */
-					SCIP_Bool infeasible;
-					SCIP_CALL(SCIPaddCut(scip, sol, poolcutrow,
-							FALSE, /**< force cut */
-							&infeasible));
-
-					if (infeasible)
-						*result = SCIP_CUTOFF;
-					else
-						*result = SCIP_SEPARATED;
-				}
-				else
-					*result = SCIP_INFEASIBLE;
-				addedPoolCut = true;
-				break;
-			}
-		}
-		if (addedPoolCut)
-		{
-			DSPdebugMessage("Added pool cut\n");
-			/** free memory */
-			SCIPfreeMemoryArray(scip, &vals);
-			return SCIP_OKAY;
-		}
-	}
 #endif
 
 	/** generate Benders cuts */
