@@ -48,7 +48,7 @@ DSP_RTN_CODE BdMWMpi::init()
 		/** create and initialize worker */
 		worker_ = new BdWorker(model_, par_, message_);
 
-		if (comm_rank_ == 1 && worker_->getBdSubPtr()->recourse_has_integer_)
+		if (comm_rank_ == 1 && worker_->getBdSubPtr()->has_integer())
 			warning_relaxation();
 	}
 #ifdef DSP_DEBUG

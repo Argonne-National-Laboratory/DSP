@@ -7,7 +7,7 @@
 
 // #define DSP_DEBUG
 
-#include "Utility/DspMessage.h"
+#include "Utility/DspUtility.h"
 #include "Solver/Benders/BdSub.h"
 #include "SolverInterface/DspOsiClp.h"
 #include "SolverInterface/DspOsiCpx.h"
@@ -23,6 +23,7 @@ warm_start_(NULL),
 objvals_(NULL), 
 solutions_(NULL),
 status_(NULL),
+integer_feasible_(NULL),
 recourse_has_integer_(false) {}
 
 BdSub::BdSub(const BdSub& rhs) :
@@ -37,6 +38,7 @@ recourse_has_integer_(rhs.recourse_has_integer_) {
 	objvals_    = new double [nsubprobs_];
 	solutions_  = new double * [nsubprobs_];
 	status_     = new int [nsubprobs_];
+	integer_feasible_ = new bool [nsubprobs_];
 	for (int i = 0; i < nsubprobs_; ++i) {
 		mat_mp_[i] = new CoinPackedMatrix(*(rhs.mat_mp_[i]));
 		cglp_[i] = rhs.cglp_[i]->clone();
@@ -45,6 +47,7 @@ recourse_has_integer_(rhs.recourse_has_integer_) {
 		solutions_[i] = new double [cglp_[i]->si_->getNumCols()];
 		CoinCopyN(rhs.solutions_[i], cglp_[i]->si_->getNumCols(), solutions_[i]);
 		status_[i] = rhs.status_[i];
+		integer_feasible_[i] = rhs.integer_feasible_[i];
 	}
 }
 
@@ -58,6 +61,7 @@ BdSub::~BdSub()
 	FREE_2D_PTR(nsubprobs_, solutions_);
 	FREE_2D_PTR(nsubprobs_, warm_start_);
 	FREE_ARRAY_PTR(status_);
+	FREE_ARRAY_PTR(integer_feasible_);
 }
 
 DSP_RTN_CODE BdSub::setSubIndices(int size, const int* indices)
@@ -107,6 +111,7 @@ DSP_RTN_CODE BdSub::loadProblem(DecModel* model)
 	objvals_    = new double [nsubprobs_];
 	solutions_  = new double * [nsubprobs_];
 	status_     = new int [nsubprobs_];
+	integer_feasible_ = new bool [nsubprobs_];
 
 	for (int i = 0; i < nsubprobs_; ++i)
 	{
@@ -131,6 +136,7 @@ DSP_RTN_CODE BdSub::loadProblem(DecModel* model)
 			if (ctype_reco[j] != 'C') {
 				cglp_[i]->si_->setInteger(j);
 				recourse_has_integer_ = true;
+				integer_feasible_[i] = false;
 			}
 		}
 		cglp_[i]->setLogLevel(0);
@@ -226,6 +232,7 @@ void BdSub::solveOneSubproblem(
 	const double * cubd = cgl->cglp_[s]->si_->getColUpper();
 	const double * pi   = NULL; /** dual variables */
 	const double * rc   = NULL; /** reduced costs */
+	const char * ctype = cgl->cglp_[s]->si_->getColType();
 
 	/** clone CGLP */
 	cglp = createDspOsi(cgl->par_->getIntParam("BD/SUB/SOLVER"));
@@ -339,6 +346,18 @@ void BdSub::solveOneSubproblem(
 			printf("  y[%d] = %E, rc[%d] = %E\n", j, cglp->si_->getColSolution()[j], j, rc[j]);
 		}
 #endif
+
+		/** check integrality */
+		if (cgl->has_integer()) {
+			for (int j = 0; j < cglp->si_->getNumCols(); ++j) {
+				if (ctype[j] != 'C' && is_integer(cgl->solutions_[s][j], 1.0e-8) == false) {
+					cgl->integer_feasible_[s] = false;
+					break;
+				}
+			}
+		} else {
+			cgl->integer_feasible_[s] = true;
+		}
 
 		/** calculate cut elements */
 		calculateCutElements(cglp->si_->getNumRows(), cglp->si_->getNumCols(),
