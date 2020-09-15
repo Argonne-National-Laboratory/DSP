@@ -108,6 +108,7 @@ if(SCIPLIB)
         Solver/Benders/BdSub.cpp
         Solver/Benders/BdWorker.cpp
         Solver/Benders/SCIPconshdlrBenders.cpp
+        Solver/Benders/SCIPheurIntBenders.cpp
         Solver/DualDecomp/DdWorkerCGBd.cpp
         Solver/DualDecomp/SCIPconshdlrBendersDd.cpp
 		SolverInterface/SCIPbranchruleLB.cpp

@@ -35,6 +35,9 @@ protected:
 
 	/** constraint handler */
 	virtual SCIPconshdlrBenders * constraintHandler();
+
+	/** heuristic handler */
+	virtual SCIPheurIntBenders * heuristicHandler();
 };
 
 #endif /* SRC_SOLVER_BENDERS_BDMWSERIAL_H_ */
