@@ -170,6 +170,12 @@ DSP_RTN_CODE TssModel::loadFirstStage(
 		{
 			nints_[0]++;
 			nints_core_++;
+
+			/** set bounds for binary variables */
+			if (ctype_core_[0][j] == 'B') {
+				clbd_core_[0][j] = 0.0;
+				cubd_core_[0][j] = 1.0;
+			}
 		}
 	}
 
@@ -244,6 +250,12 @@ DSP_RTN_CODE TssModel::loadSecondStage(
                 if (ctype_core_[1][j] != 'C') {
                     nints_[1]++;
                     nints_core_++;
+
+					/** set bounds for binary variables */
+					if (ctype_core_[1][j] == 'B') {
+						clbd_core_[1][j] = 0.0;
+						cubd_core_[1][j] = 1.0;
+					}
                 }
             }
         }
@@ -282,11 +294,11 @@ DSP_RTN_CODE TssModel::loadSecondStage(
         /** allocate memory */
         mat_scen_[s] = new CoinPackedMatrix(false, ncols_[0] + ncols_[1], nrows_[1], start[nrows_[1]], value, index,
                                             start, len);
-        clbd_scen_[s] = new CoinPackedVector(ncols_[1], cind, clbd);
-        cubd_scen_[s] = new CoinPackedVector(ncols_[1], cind, cubd);
-        obj_scen_[s] = new CoinPackedVector(ncols_[1], cind, obj);
-        rlbd_scen_[s] = new CoinPackedVector(nrows_[1], rind, rlbd);
-        rubd_scen_[s] = new CoinPackedVector(nrows_[1], rind, rubd);
+        clbd_scen_[s] = new CoinPackedVector(ncols_[1], cind, clbd_core_[1]);
+        cubd_scen_[s] = new CoinPackedVector(ncols_[1], cind, cubd_core_[1]);
+        obj_scen_[s] = new CoinPackedVector(ncols_[1], cind, obj_core_[1]);
+        rlbd_scen_[s] = new CoinPackedVector(nrows_[1], rind, rlbd_core_[1]);
+        rubd_scen_[s] = new CoinPackedVector(nrows_[1], rind, rubd_core_[1]);
         DSPdebug(DspMessage::printArray(start[nrows_[1]], value));
         DSPdebug(mat_scen_[s]->verifyMtx(4));
 
