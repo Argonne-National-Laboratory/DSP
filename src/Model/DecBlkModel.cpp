@@ -249,7 +249,8 @@ DSP_RTN_CODE DecBlkModel::copyRecoProb(
 		char   *& ctype_reco,         /**< [out] column types of y */
 		double *& obj_reco,           /**< [out] objective coefficients for y */
 		double *& rlbd_reco,          /**< [out] row lower bounds */
-		double *& rubd_reco           /**< [out] row upper bounds */) {
+		double *& rubd_reco,          /**< [out] row upper bounds */
+		bool adjust_probability       /**< not used */) {
 
 	BGN_TRY_CATCH
 

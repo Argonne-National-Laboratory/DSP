@@ -440,7 +440,8 @@ DSP_RTN_CODE DecTssModel::copyRecoProb(
 		char   *& ctype_reco,         /**< [out] column types of y */
 		double *& obj_reco,           /**< [out] objective coefficients for y */
 		double *& rlbd_reco,          /**< [out] row lower bounds */
-		double *& rubd_reco           /**< [out] row upper bounds */)
+		double *& rubd_reco,          /**< [out] row upper bounds */
+		bool adjust_probability       /**< [in] adjust probability */)
 {
 	assert(scen >= 0 && scen < nscen_);
 	assert(nstgs_ > 1);
@@ -497,7 +498,7 @@ DSP_RTN_CODE DecTssModel::copyRecoProb(
 	copyCoreColType(ctype_reco, 1);
 
 	/** objective coefficients */
-	copyRecoObj(scen, obj_reco, true);
+	copyRecoObj(scen, obj_reco, adjust_probability);
 
 	/** row lower bounds */
 	copyCoreRowLower(rlbd_reco, 1);

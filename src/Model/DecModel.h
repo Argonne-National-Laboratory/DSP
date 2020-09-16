@@ -263,7 +263,8 @@ public:
 		char   *& ctype_reco,         /**< [out] column types of y */
 		double *& obj_reco,           /**< [out] objective coefficients for y */
 		double *& rlbd_reco,          /**< [out] row lower bounds */
-		double *& rubd_reco           /**< [out] row upper bounds */) = 0;
+		double *& rubd_reco,          /**< [out] row upper bounds */
+		bool adjust_probability       /**< [in] adjust probability (only for stochastic)*/) = 0;
 
 	/**
 	 * Returns the full model in matrix form, including coupling constraints.
