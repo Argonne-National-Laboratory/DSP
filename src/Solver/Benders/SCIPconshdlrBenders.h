@@ -34,7 +34,7 @@ public:
 				sepapriority, /**< priority of the constraint handler for separation */
 				sepapriority, /**< priority of the constraint handler for constraint enforcing */
 				sepapriority, /**< priority of the constraint handler for checking infeasibility (and propagation) */
-				1,        /**< always call separator */
+				-1,       /**< never call separator */
 				-1,       /**< disable constraint propagation */
 				1,        /**< always use all constraints (no aging) */
 				0,        /**< disable the preprocessing callback of the constraint handler */
@@ -70,12 +70,6 @@ public:
 
 	/** transforms constraint data into data belonging to the transformed problem */
 	virtual SCIP_DECL_CONSTRANS(scip_trans);
-
-	/** separation method of constraint handler for LP solution */
-	virtual SCIP_DECL_CONSSEPALP(scip_sepalp);
-
-	/** separation method of constraint handler for arbitrary primal solution */
-	virtual SCIP_DECL_CONSSEPASOL(scip_sepasol);
 
 	/** constraint enforcing method of constraint handler for LP solutions */
 	virtual SCIP_DECL_CONSENFOLP(scip_enfolp);

@@ -58,24 +58,6 @@ SCIP_DECL_CONSTRANS(SCIPconshdlrBenders::scip_trans)
 	return SCIP_OKAY;
 }
 
-/** separation method of constraint handler for LP solution */
-SCIP_DECL_CONSSEPALP(SCIPconshdlrBenders::scip_sepalp)
-{
-	*result = SCIP_DIDNOTFIND;
-	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, from_scip_sepalp, result));
-	DSPdebugMessage("scip_sepalp results in %d stage(%d)\n", *result, SCIPgetStage(scip));
-	return SCIP_OKAY;
-}
-
-/** separation method of constraint handler for LP solution */
-SCIP_DECL_CONSSEPASOL(SCIPconshdlrBenders::scip_sepasol)
-{
-	*result = SCIP_DIDNOTFIND;
-	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, from_scip_sepasol, result));
-	DSPdebugMessage("scip_sepasol results in %d stage(%d)\n", *result, SCIPgetStage(scip));
-	return SCIP_OKAY;
-}
-
 /** constraint enforcing method of constraint handler for LP solutions */
 SCIP_DECL_CONSENFOLP(SCIPconshdlrBenders::scip_enfolp)
 {
@@ -129,25 +111,6 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 
 	/** get current solution */
 	SCIP_CALL(SCIPgetSolVals(scip, sol, nvars_, vars_, vals));
-
-#ifdef DSP_DEBUG2
-	double minvals = COIN_DBL_MAX;
-	double maxvals = -COIN_DBL_MAX;
-	double sumvals = 0.;
-	double ssvals  = 0.;
-	//printf("nvars_ %d naux_ %d nAuxvars_ %d\n", nvars_, naux_, tss_->nAuxvars_);
-	for (int j = 0; j < nvars_ - naux_; ++j)
-	{
-//		if (vals[j] < 0 || vals[j] > 1)
-//			printf("solution %d has value %e.\n", j, vals[j]);
-		sumvals += vals[j];
-		ssvals  += vals[j] * vals[j];
-		minvals = minvals > vals[j] ? vals[j] : minvals;
-		maxvals = maxvals < vals[j] ? vals[j] : maxvals;
-	}
-	DSPdebugMessage("solution: min %e max %e avg %e sum %e two-norm %e\n",
-			minvals, maxvals, sumvals / nvars_, sumvals, sqrt(ssvals));
-#endif
 
 	/** generate Benders cuts */
 	generateCuts(nvars_, vals, where, &cs);
@@ -210,9 +173,7 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 
 			if (isEfficacious)
 			{
-				if (where == from_scip_sepalp ||
-					where == from_scip_sepasol ||
-					where == from_scip_enfolp)
+				if (where == from_scip_enfolp)
 				{
 					/** add cut */
 					SCIP_Bool infeasible;
@@ -220,7 +181,7 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 							FALSE, /**< force cut */
 							&infeasible));
 
-					if (infeasible)
+					if (infeasible || *result == SCIP_CUTOFF)
 						*result = SCIP_CUTOFF;
 					else
 						*result = SCIP_SEPARATED;
@@ -236,9 +197,7 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 			/** release the row */
 			SCIP_CALL(SCIPreleaseRow(scip, &row));
 		}
-		else if (where != from_scip_sepalp &&
-				 where != from_scip_sepasol &&
-				 where != from_scip_enfolp) {
+		else if (where != from_scip_enfolp) {
 			if (isEfficacious || integer_feasible_ == false)
 				*result = SCIP_INFEASIBLE;
 		}
@@ -352,7 +311,6 @@ void SCIPconshdlrBenders::generateCuts(
 	DspMessage::printArray(size, x);
 #endif
 	DSPdebug(cuts->printCuts());
-	// cuts->printCuts();
 
 	END_TRY_CATCH(FREE_MEMORY)
 
