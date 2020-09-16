@@ -125,6 +125,7 @@ protected:
 
 	int   nsubprobs_;  /**< number of subproblems */
 	int * subindices_; /**< subproblem indices indices for cut generation */
+	double* probability_; /**< probability; 1.0 for non-stochastic model */
 
 	CoinPackedMatrix   ** mat_mp_;     /**< array of matrix corresponding to master problem part */
 	DspOsi ** cglp_;                   /**< array of Cut Generation LP */

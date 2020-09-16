@@ -8,6 +8,7 @@
 // #define DSP_DEBUG
 
 #include "Utility/DspUtility.h"
+#include "Model/TssModel.h"
 #include "Solver/Benders/BdSub.h"
 #include "SolverInterface/DspOsiClp.h"
 #include "SolverInterface/DspOsiCpx.h"
@@ -17,6 +18,7 @@ BdSub::BdSub(DspParams* par):
 par_(par),
 nsubprobs_(0), 
 subindices_(NULL),
+probability_(NULL),
 mat_mp_(NULL), 
 cglp_(NULL),
 warm_start_(NULL), 
@@ -32,6 +34,7 @@ nsubprobs_(rhs.nsubprobs_),
 recourse_has_integer_(rhs.recourse_has_integer_) {
 	/** copy things ... */
 	setSubIndices(rhs.nsubprobs_, rhs.subindices_);
+	probability_ = new double [nsubprobs_];
 	mat_mp_     = new CoinPackedMatrix * [nsubprobs_];
 	cglp_       = new DspOsi * [nsubprobs_];
 	warm_start_ = new CoinWarmStart * [nsubprobs_];
@@ -40,6 +43,7 @@ recourse_has_integer_(rhs.recourse_has_integer_) {
 	status_     = new int [nsubprobs_];
 	integer_feasible_ = new bool [nsubprobs_];
 	for (int i = 0; i < nsubprobs_; ++i) {
+		probability_[i] = rhs.probability_[i];
 		mat_mp_[i] = new CoinPackedMatrix(*(rhs.mat_mp_[i]));
 		cglp_[i] = rhs.cglp_[i]->clone();
 		warm_start_[i] = rhs.warm_start_[i]->clone();
@@ -55,6 +59,7 @@ recourse_has_integer_(rhs.recourse_has_integer_) {
 BdSub::~BdSub()
 {
 	FREE_ARRAY_PTR(subindices_);
+	FREE_ARRAY_PTR(probability_);
 	FREE_2D_PTR(nsubprobs_, mat_mp_);
 	FREE_2D_PTR(nsubprobs_, cglp_);
 	FREE_ARRAY_PTR(objvals_);
@@ -105,6 +110,7 @@ DSP_RTN_CODE BdSub::loadProblem(DecModel* model)
 	BGN_TRY_CATCH
 
 	/** allocate memory */
+	probability_ = new double [nsubprobs_];
 	mat_mp_     = new CoinPackedMatrix * [nsubprobs_];
 	cglp_       = new DspOsi * [nsubprobs_];
 	warm_start_ = new CoinWarmStart * [nsubprobs_];
@@ -123,7 +129,10 @@ DSP_RTN_CODE BdSub::loadProblem(DecModel* model)
 		/** copy recourse problem */
 		DSP_RTN_CHECK_THROW(model->copyRecoProb(subindices_[i],
 				mat_mp_[i], mat_reco, clbd_reco, cubd_reco, ctype_reco,
-				obj_reco, rlbd_reco, rubd_reco));
+				obj_reco, rlbd_reco, rubd_reco, false));
+		
+		/** get probability; 1.0 for non-stochastic */
+		probability_[i] = model->isStochastic() ? dynamic_cast<TssModel*>(model)->getProbability()[i] : 1.0;
 
 		/** creating solver interface */
 		cglp_[i] = createDspOsi(par_->getIntParam("BD/SUB/SOLVER"));
@@ -327,7 +336,7 @@ void BdSub::solveOneSubproblem(
 		/** TODO: add parametric cuts */
 
 		/** get objective value */
-		cgl->objvals_[s] = cglp->getPrimObjValue();
+		cgl->objvals_[s] = cglp->getPrimObjValue() * cgl->probability_[s];
 
 		/** get primal solution */
 		CoinCopyN(cglp->si_->getColSolution(), cglp->si_->getNumCols(), cgl->solutions_[s]);

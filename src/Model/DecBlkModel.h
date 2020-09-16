@@ -114,16 +114,16 @@ public:
 		double *& rubd           /**< [out] row upper bounds */);
 
 	DSP_RTN_CODE copyRecoProb(
-		int scen,                     /**< [in] scenario index */
-		CoinPackedMatrix *& mat_tech, /**< [out] technology matrix (A matrix) */
-		CoinPackedMatrix *& mat_reco, /**< [out] recourse matrix (B matrix) */
-		double *& clbd_reco,          /**< [out] column lower bounds of y */
-		double *& cubd_reco,          /**< [out] column upper bounds of y */
-		char   *& ctype_reco,         /**< [out] column types of y */
-		double *& obj_reco,           /**< [out] objective coefficients for y */
-		double *& rlbd_reco,          /**< [out] row lower bounds */
-		double *& rubd_reco,          /**< [out] row upper bounds */
-		bool adjust_probability       /**< not used */);
+		int scen,                      /**< [in] scenario index */
+		CoinPackedMatrix *& mat_tech,  /**< [out] technology matrix (A matrix) */
+		CoinPackedMatrix *& mat_reco,  /**< [out] recourse matrix (B matrix) */
+		double *& clbd_reco,           /**< [out] column lower bounds of y */
+		double *& cubd_reco,           /**< [out] column upper bounds of y */
+		char   *& ctype_reco,          /**< [out] column types of y */
+		double *& obj_reco,            /**< [out] objective coefficients for y */
+		double *& rlbd_reco,           /**< [out] row lower bounds */
+		double *& rubd_reco,           /**< [out] row upper bounds */
+		bool adjust_probability = true /**< not used */);
 
 	DSP_RTN_CODE getFullModel(
 		CoinPackedMatrix *& mat, /**< [out] constraint matrix */
