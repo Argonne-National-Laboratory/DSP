@@ -257,7 +257,7 @@ DSP_RTN_CODE DdSub::createProblem() {
 		const double * elements = qobj->getElements();
 		vector<double> adjelements;
 
-		PRINT_ARRAY_MSG(qobj->getNumElements(), qobj->getElements(), "in subproblem qobj coef");
+		//PRINT_ARRAY_MSG(qobj->getNumElements(), qobj->getElements(), "in subproblem qobj coef");
 
 		int rowcount=0;
 		for (int j=0; j<startsize-1; j++){
