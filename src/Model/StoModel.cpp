@@ -512,9 +512,69 @@ void StoModel::copyCoreObjective(double * obj, int stg)
 	}
 }
 
-void StoModel::copyCoreQuadrativeObjective(CoinPackedMatrix * qobj, int stg)
+void StoModel::copyCoreQuadrativeObjective(CoinPackedMatrix * &qobj_coupling, CoinPackedMatrix * &qobj_ncoupling, int stg)
 {
-	qobj=new CoinPackedMatrix(false, qobj_core_[stg]->getNumCols(), qobj_core_[stg]->getNumRows(), qobj_core_[stg]->getNumElements(), qobj_core_[stg]->getElements(), qobj_core_[stg]->getIndices(), qobj_core_[stg]->getVectorStarts(), qobj_core_[stg]->getVectorLengths(), NULL, NULL);
+	vector<int> colidx;
+	vector<int> rowidx;
+	vector<double> elements;
+	int numq=qobj_core_[stg]->getNumElements();
+	const CoinBigIndex * start = qobj_core_[stg]->getVectorStarts();
+	vector<int> colidx_coupling;
+	vector<int> rowidx_coupling;
+	vector<double> elements_coupling;
+	int numq_coupling = 0;
+	vector<int> colidx_ncoupling;
+	vector<int> rowidx_ncoupling;
+	vector<double> elements_ncoupling;
+	int numq_ncoupling = 0;
+
+	int rowcount=0;
+	for (int i=0; i<qobj_core_[stg]->getMajorDim();i++){
+		if (start[i+1]-start[i]>0){
+				for (int k=0; k<start[i+1]-start[i]; k++){
+					rowidx.push_back(rowcount);
+				}
+		}
+		rowcount++;
+	}
+
+	for (int i=0; i<numq; i++){
+		colidx.push_back(qobj_core_[stg]->getIndices()[i]);
+		elements.push_back(qobj_core_[stg]->getElements()[i]);
+	}
+
+	// security check
+	assert(numq==rowidx.size());
+	assert(numq==colidx.size());
+	assert(numq==elements.size());
+	for (int i=0; i<numq; i++){
+		if (rowidx[i]>=ncols_[stg-1] && colidx[i]>=ncols_[stg-1]){
+			rowidx_ncoupling.push_back(rowidx[i]-ncols_[stg-1]);
+			colidx_ncoupling.push_back(colidx[i]-ncols_[stg-1]);
+			elements_ncoupling.push_back(elements[i]);
+			numq_ncoupling++;
+		}
+		else{
+			rowidx_coupling.push_back(rowidx[i]);
+			colidx_coupling.push_back(colidx[i]);
+			elements_coupling.push_back(elements[i]);
+			numq_coupling++;
+		}
+	}
+
+	if(numq_ncoupling!=0){
+		qobj_ncoupling = new CoinPackedMatrix(false, &rowidx_ncoupling[0], &colidx_ncoupling[0], &elements_ncoupling[0], numq_ncoupling);
+	}
+	else{
+		qobj_ncoupling = NULL;
+	}
+	
+	if(numq_coupling!=0){
+		qobj_coupling = new CoinPackedMatrix(false, &rowidx_coupling[0], &colidx_coupling[0], &elements_coupling[0], numq_coupling);
+	}
+	else{
+		qobj_coupling = NULL;
+	}
 }
 
 /** copy core column types */
@@ -592,7 +652,7 @@ void StoModel::combineRandRowVec(
 			}
 		}
 	}
-}
+}	
 
 /** combine random column lower bounds */
 void StoModel::combineRandColLower(double * clbd, int stg, int scen)
@@ -642,7 +702,7 @@ void StoModel::combineRandObjective(double * obj, int stg, int scen, bool adjust
 	}
 }
 
-void StoModel::combineRandQuadraticObjective(CoinPackedMatrix * qobj, int stg, int scen, bool adjustProbability)
+void StoModel::combineRandQuadraticObjective(CoinPackedMatrix * &qobj_coupling, CoinPackedMatrix * &qobj_ncoupling, int stg, int scen, bool adjustProbability)
 {
 	int i, j, s;
 	int numelements = qobj_scen_[scen]->getNumElements();
@@ -654,8 +714,11 @@ void StoModel::combineRandQuadraticObjective(CoinPackedMatrix * qobj, int stg, i
 	int * rowindex;
 	rowindex = new int [numelements];
 	
-	std::vector<int> newrowindex, newcolindex;
-	std::vector<double> newelements;
+	std::vector<int> newrowindex_coupling, newcolindex_coupling;
+	std::vector<double> newelements_coupling;
+
+	std::vector<int> newrowindex_ncoupling, newcolindex_ncoupling;
+	std::vector<double> newelements_ncoupling;
 
 	
 	int idx=0;
@@ -667,38 +730,41 @@ void StoModel::combineRandQuadraticObjective(CoinPackedMatrix * qobj, int stg, i
 		}
 	}
 
+	int sidx=stg-1;
+	if (sidx<0) sidx=0;
 	for (i = 0; i < numelements; ++i)
 	{
-		j = colindex[i] - cstart_[stg];
-		s = rowindex[i] - cstart_[stg];
-		if (j >= 0 && j < ncols_[stg] && s >= 0 && s < ncols_[stg])
-		{
-			newcolindex.push_back(j);
-			newrowindex.push_back(s);
-			newelements.push_back(elements[i]);
+		if (colindex[i]>=ncols_[sidx] && rowindex[i]>=ncols_[sidx]){
+			newrowindex_ncoupling.push_back(rowindex[i]-ncols_[sidx]);
+			newcolindex_ncoupling.push_back(colindex[i]-ncols_[sidx]);
+			if (adjustProbability){
+				newelements_ncoupling.push_back(elements[i]*prob_[scen]);
+			}
+			else{
+				newelements_ncoupling.push_back(elements[i]);
+			}
+		}
+		else{
+			newrowindex_coupling.push_back(rowindex[i]);
+			newcolindex_coupling.push_back(colindex[i]);
+			if (adjustProbability){
+				newelements_coupling.push_back(elements[i]*prob_[scen]);
+			}
+			else{
+				newelements_coupling.push_back(elements[i]);
+			}
 		}
 	}
-	
-	//check
-	assert(newcolindex.size()==newrowindex.size());
-	assert(newcolindex.size()==newelements.size());
-	assert(newrowindex.size()==newelements.size());
+	//printf("newcolindex_ncoupling.size() = %d\n", newcolindex_ncoupling.size());
+	//for (int m=0; m<newcolindex_ncoupling.size(); m++){
+	//	printf("newcolindex_ncoupling[%d]=%d\n", m, newcolindex_ncoupling[m]);
+	//}
+	qobj_coupling=new CoinPackedMatrix(false, &newcolindex_coupling[0], &newrowindex_coupling[0], &newelements_coupling[0], newelements_coupling.size());
+	qobj_ncoupling=new CoinPackedMatrix(false, &newcolindex_ncoupling[0], &newrowindex_ncoupling[0], &newelements_ncoupling[0], newelements_ncoupling.size());
+	//PRINT_ARRAY_MSG(newcolindex_ncoupling.size(), &newcolindex_ncoupling[0], "elements in newcolindex_ncoupling");
+	//PRINT_ARRAY_MSG(qobj_ncoupling->getNumElements(), qobj_ncoupling->getElements(), "elements in qobj_ncoupling");
 
-	if (adjustProbability)
-	{ 
-		for (j = 0; j<newelements.size(); j++)
-		{
-			newelements[j] *= prob_[scen];
-		}
-	}
-	int *cindex=&newcolindex[0];
-	int *rindex=&newrowindex[0];
-	double *ele=&newelements[0];
-
-	CoinPackedMatrix *temp;
-	temp=new CoinPackedMatrix(false, cindex, rindex, ele, newelements.size());
-	qobj->copyOf(*temp);
-	delete[] rowindex, temp;
+	delete[] rowindex;
 }
 
 /** combine random row lower bounds */

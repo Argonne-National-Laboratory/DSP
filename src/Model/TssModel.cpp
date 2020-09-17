@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
- #define DSP_DEBUG
+// #define DSP_DEBUG
 
 #include "Utility/DspMessage.h"
 #include "Model/TssModel.h"
@@ -211,13 +211,14 @@ DSP_RTN_CODE TssModel::loadFirstStage(
 		return DSP_RTN_OK;
 	}
 	else{
+		isQCQP_=1;
 		loadFirstStage(start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
 		/** load quadratic objective */
 		qobj_core_[0] = new CoinPackedMatrix(false, qobjrowindex, qobjcolindex, qobjvalue, numq);
 		qobj_core_[0]->setDimensions(ncols_[0], ncols_[0]);
 		DSPdebugMessage("get number of elements in qobjcore_[0] = %d\n", qobj_core_[0]->getNumElements());
-		PRINT_ARRAY_MSG(3, qobj_core_[0]->getVector(0), "the first row of qobj_core_[0]");
-		PRINT_ARRAY_MSG(3, qobj_core_[0]->getVector(1), "the second row of qobj_core_[0]");
+		//PRINT_ARRAY_MSG(3, qobj_core_[0]->getVector(0), "the first row of qobj_core_[0]");
+		//PRINT_ARRAY_MSG(3, qobj_core_[0]->getVector(1), "the second row of qobj_core_[0]");
 	}
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -360,6 +361,7 @@ DSP_RTN_CODE TssModel::loadSecondStage(
 		loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
 	}
 	else{
+		isQCQP_=1;
 		loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
 
 		/** allocate memory for qobj_core_[1] */
@@ -388,23 +390,29 @@ DSP_RTN_CODE TssModel::copyRecoObj(int scen, double *& obj_reco, bool adjustProb
 
 	/** objective coefficients */
 	copyCoreObjective(obj_reco, 1);
+	//PRINT_ARRAY_MSG(ncols_[1],obj_reco,"obj_reco");
 	combineRandObjective(obj_reco, 1, scen, adjustProbability);
-
+	//PRINT_ARRAY_MSG(ncols_[1],obj_reco,"obj_reco");
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
-
+ 
 	return DSP_RTN_OK;
 
 }
 
-DSP_RTN_CODE TssModel::copyRecoObj(int scen, double *& obj_reco, CoinPackedMatrix *& qobj_reco, bool adjustProbability) {
+DSP_RTN_CODE TssModel::copyRecoObj(int scen, double *& obj_reco, CoinPackedMatrix *& qobj_reco_coupling, CoinPackedMatrix *& qobj_reco_ncoupling, bool adjustProbability) {
 
 	BGN_TRY_CATCH
 
 	copyRecoObj(scen, obj_reco, adjustProbability);
 
+	qobj_reco_coupling=new CoinPackedMatrix(false, 0, 0);
+	qobj_reco_ncoupling=new CoinPackedMatrix(false, 0, 0);
+
 	/** copy quadratic objective coefficience to qobj_reco */
-	copyCoreQuadrativeObjective(qobj_reco, 1);
-	combineRandQuadraticObjective(qobj_reco, 1, scen, adjustProbability);
+	copyCoreQuadrativeObjective(qobj_reco_coupling, qobj_reco_ncoupling, 1);
+	//PRINT_ARRAY_MSG(qobj_reco_ncoupling->getNumElements(), qobj_reco_ncoupling->getElements(), "elements in qobj_reco_ncoupling11");
+	combineRandQuadraticObjective(qobj_reco_coupling, qobj_reco_ncoupling, 1, scen, adjustProbability);
+	//PRINT_ARRAY_MSG(qobj_reco_ncoupling->getNumElements(), qobj_reco_ncoupling->getElements(), "elements in qobj_reco_ncoupling");
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
