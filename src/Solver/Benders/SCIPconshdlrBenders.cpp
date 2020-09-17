@@ -61,10 +61,70 @@ SCIP_DECL_CONSTRANS(SCIPconshdlrBenders::scip_trans)
 /** constraint enforcing method of constraint handler for LP solutions */
 SCIP_DECL_CONSENFOLP(SCIPconshdlrBenders::scip_enfolp)
 {
+#define FREE_MEMORY                 \
+	FREE_ARRAY_PTR(new_probability) \
+	FREE_ARRAY_PTR(recourse_values)
+
+	double* new_probability = NULL;
+	double* recourse_values = NULL;
+	double weighted_sum_of_recourse = 0.0; // weighted sum of the recourse values
+	double approx_recourse = 0.0;
+	double weighted_recourse;
+
+	/**
+	 * TODO 1: Can we try primal feasible solutions here?
+	 * TODO 2: DRO may adjust the probability here.
+	*/
+	if (isIntegralRecourse() && SCIPgetStage(scip) == SCIP_STAGE_SOLVING) {
+		SCIP_Bool stored;
+		SCIP_Sol* sol;
+
+		recourse_values = new double [naux_];
+		new_probability = new double [naux_];
+
+		SCIP_CALL(SCIPcreateCurrentSol(scip, &sol, NULL));
+
+		// evaluate the recourse value
+		SCIP_CALL(evaluateRecourse(scip, sol, recourse_values));
+		for (int j = 0; j < naux_; ++j) {
+			printf("----- exact recourse value [%d] %e\n", j, recourse_values[j]);
+		}
+
+		// compute weighted sum for DRO; otherwise, returns the current recourse
+		computeProbability(recourse_values, new_probability);
+
+		// set a feasible value of the auxiliary variable
+		for (int j = 0; j < naux_; ++j) {
+			approx_recourse += SCIPgetSolVal(scip, sol, vars_[nvars_ - naux_ + j]);
+			weighted_recourse = recourse_values[j] * new_probability[j];
+			SCIP_CALL(SCIPsetSolVal(scip, sol, vars_[nvars_ - naux_ + j], weighted_recourse));
+			weighted_sum_of_recourse += weighted_recourse;
+		}
+
+		// set the solution as a primal feasible solution
+		SCIP_CALL(SCIPtrySol(scip, sol, TRUE, FALSE, TRUE, TRUE, FALSE, &stored));
+		printf("-- is solution (obj: %e) stored? %s\n", SCIPsolGetOrigObj(sol), stored ? "yes" : "no");
+		SCIP_CALL(SCIPfreeSol(scip, &sol));
+	}
+
+	// TODO: pass new_probability to sepaBenders for DRO
 	*result = SCIP_FEASIBLE;
 	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, from_scip_enfolp, result));
 	DSPdebugMessage("scip_enfolp results in %d stage(%d)\n", *result, SCIPgetStage(scip));
+
+	if (isIntegralRecourse() && SCIPgetStage(scip) == SCIP_STAGE_SOLVING) {
+		printf("--------------- recourse approximation error: %e\n", weighted_sum_of_recourse - approx_recourse);
+		if (*result == SCIP_FEASIBLE && approx_recourse < weighted_sum_of_recourse) {
+			/**
+			 * TODO: add a local cut w.r.t. the auxiliary variables at the exact recourse value
+			 */
+		}
+	}
+
+	FREE_MEMORY;
+
 	return SCIP_OKAY;
+#undef FREE_MEMORY
 }
 
 /** constraint enforcing method of constraint handler for pseudo solutions */
@@ -83,6 +143,21 @@ SCIP_DECL_CONSCHECK(SCIPconshdlrBenders::scip_check)
 	*result = SCIP_FEASIBLE;
 	SCIP_CALL(sepaBenders(scip, conshdlr, sol, from_scip_check, result));
 	DSPdebugMessage("scip_check results in %d stage(%d)\n", *result, SCIPgetStage(scip));
+
+	if (bdsub_ != NULL && 
+		bdsub_->has_integer() &&
+		SCIPgetStage(scip) == SCIP_STAGE_SOLVING && 
+		*result == SCIP_FEASIBLE) 
+	{
+		/** TODO: 
+		 * Check if the approximate recourse is valid w.r.t. the exact value.
+		 */
+		// double approx_recourse = 0.0;
+		// for (int s = 0; s < naux_; ++s)
+		// 	approx_recourse += vals[nvars_ - naux_ + s];
+		// printf("--------------- approximate recourse value: %e\n", approx_recourse);
+	}
+
 	return SCIP_OKAY;
 }
 
@@ -203,6 +278,23 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 		}
 	}
 	DSPdebugMessage("sepaBenders: where %d result %d\n", where, *result);
+
+	if (where == from_scip_enfolp || where == from_scip_check) {
+		/* TODO: When no Benders cut is generated, 
+			we need to compare the approximation gap of the recourse function value. */
+		// printf("where %d result %d integer? %s\n", where, *result, has_recourse_integer_ ? "yes" : "no");
+		if (bdsub_ != NULL && bdsub_->has_integer() && *result == SCIP_FEASIBLE) {
+			/** TODO:
+			 * 1. Evaluate the exact recourse value at the given solution.
+			 * 2. If a positive approximation gap exists, 
+			 * 	add a local cut w.r.t. the auxiliary variables at the exact recourse value.
+			 */
+			double approx_recourse = 0.0;
+			for (int s = 0; s < naux_; ++s)
+				approx_recourse += vals[nvars_ - naux_ + s];
+			printf("--------------- approximate recourse value: %e\n", approx_recourse);
+		}
+	}
 
 	/** free memory */
 	SCIPfreeMemoryArray(scip, &vals);
@@ -431,4 +523,49 @@ void SCIPconshdlrBenders::aggregateCuts(
 	FREE_MEMORY
 
 #undef FREE_MEMORY
+}
+
+SCIP_RETCODE SCIPconshdlrBenders::evaluateRecourse(
+		SCIP * scip,    /**< [in] scip pointer */
+		SCIP_SOL * sol, /**< [in] solution to evaluate */
+		double * values /**< [out] evaluated recourse values */) {
+	/**< current solution */
+	SCIP_Real * vals = NULL;
+
+	/** allocate memory */
+	SCIP_CALL(SCIPallocMemoryArray(scip, &vals, nvars_));
+
+	/** get current solution */
+	SCIP_CALL(SCIPgetSolVals(scip, sol, nvars_, vars_, vals));
+
+	/** evaluate recourse */
+	DSP_RTN_CODE ret = bdsub_->evaluateRecourse(vals, values);
+	if (ret != DSP_RTN_OK) return SCIP_ERROR;
+
+	/**
+	 * TODO: the recourse values need to be de-scaled by the reference probability (for DRO).
+	*/
+
+	/** free memory */
+	SCIPfreeMemoryArray(scip, &vals);
+
+	return SCIP_OKAY;
+}
+
+void SCIPconshdlrBenders::computeProbability(
+		const double* recourse, /**< [in] recourse values */
+		double* probability     /**< [out] new probability found and used in the sum */) {
+	// If not DRO, do nothing.
+	if (model_->isStochastic()) {
+		// extract stochastic model
+		TssModel* tss = dynamic_cast<TssModel*>(model_);
+
+		// TODO: find new probability distribution
+		for (int s = 0; s < naux_; ++s)
+			probability[s] = tss->getProbability()[s];
+	} else {
+		for (int s = 0; s < naux_; ++s)
+			probability[s] = 1.0;
+	}
+
 }

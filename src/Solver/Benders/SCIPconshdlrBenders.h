@@ -142,6 +142,24 @@ protected:
 			double *  cutrhs, /**< [in] cut right-hand side */
 			OsiCuts * cuts    /**< [out] cuts generated */);
 
+	/** Has integer variables in the recouse? */
+	virtual bool isIntegralRecourse() {
+		return (bdsub_ != NULL && bdsub_->has_integer());
+	}
+
+	/** evaluate recourse: 
+	 * This function is called only when the recourse has integer variables.
+	*/
+	virtual SCIP_RETCODE evaluateRecourse(
+			SCIP * scip,    /**< [in] scip pointer */
+			SCIP_SOL * sol, /**< [in] solution to evaluate */
+			double * values /**< [out] evaluated recourse values */);
+
+	/** compuate probability (used for DRO) */
+	virtual void computeProbability(
+			const double* recourse, /**< [in] recourse values */
+			double* probability     /**< [out] new probability found and used in the sum */);
+
 protected:
 
 	DecModel *  model_;            /**< DecModel object */
