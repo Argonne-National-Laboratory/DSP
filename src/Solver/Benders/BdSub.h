@@ -106,7 +106,7 @@ private:
 			int            s,     /**< scenario index */
 			const double * x,     /**< first-stage solution */
 			double *       Tx,    /**< Tx */
-			double &       objval /**< objective value */);
+			double *       objval /**< objective value */);
 
 	/** solve feasibility problem */
 	static DSP_RTN_CODE solveFeasProblem(

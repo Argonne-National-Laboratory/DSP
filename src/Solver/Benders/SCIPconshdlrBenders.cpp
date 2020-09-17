@@ -70,6 +70,7 @@ SCIP_DECL_CONSENFOLP(SCIPconshdlrBenders::scip_enfolp)
 	double weighted_sum_of_recourse = 0.0; // weighted sum of the recourse values
 	double approx_recourse = 0.0;
 	double weighted_recourse;
+	int nsubs = 0;
 
 	/**
 	 * TODO 1: Can we try primal feasible solutions here?
@@ -78,32 +79,38 @@ SCIP_DECL_CONSENFOLP(SCIPconshdlrBenders::scip_enfolp)
 	if (isIntegralRecourse() && SCIPgetStage(scip) == SCIP_STAGE_SOLVING) {
 		SCIP_Bool stored;
 		SCIP_Sol* sol;
+		nsubs = bdsub_->getNumSubprobs();
 
-		recourse_values = new double [naux_];
-		new_probability = new double [naux_];
+		recourse_values = new double [nsubs];
+		new_probability = new double [nsubs];
 
 		SCIP_CALL(SCIPcreateCurrentSol(scip, &sol, NULL));
 
 		// evaluate the recourse value
 		SCIP_CALL(evaluateRecourse(scip, sol, recourse_values));
-		for (int j = 0; j < naux_; ++j) {
-			printf("----- exact recourse value [%d] %e\n", j, recourse_values[j]);
-		}
 
 		// compute weighted sum for DRO; otherwise, returns the current recourse
 		computeProbability(recourse_values, new_probability);
+		for (int j = 0; j < nsubs; ++j) {
+			printf("----- exact recourse value [%d] %e with probability %e\n", 
+				j, recourse_values[j], new_probability[j]);
+			weighted_sum_of_recourse += recourse_values[j] * new_probability[j];
+		}
 
 		// set a feasible value of the auxiliary variable
 		for (int j = 0; j < naux_; ++j) {
 			approx_recourse += SCIPgetSolVal(scip, sol, vars_[nvars_ - naux_ + j]);
-			weighted_recourse = recourse_values[j] * new_probability[j];
+			weighted_recourse = 0.0;
+			for (int k = j; k < nsubs; k += naux_)
+				weighted_recourse += recourse_values[k] * new_probability[k];
+			printf("----- set variable[%d] from %e to %e\n",
+				nvars_ - naux_ + j, SCIPgetSolVal(scip, sol, vars_[nvars_ - naux_ + j]), weighted_recourse);
 			SCIP_CALL(SCIPsetSolVal(scip, sol, vars_[nvars_ - naux_ + j], weighted_recourse));
-			weighted_sum_of_recourse += weighted_recourse;
 		}
 
 		// set the solution as a primal feasible solution
 		SCIP_CALL(SCIPtrySol(scip, sol, TRUE, FALSE, TRUE, TRUE, FALSE, &stored));
-		printf("-- is solution (obj: %e) stored? %s\n", SCIPsolGetOrigObj(sol), stored ? "yes" : "no");
+		printf("----- is solution (obj: %e) stored? %s\n", SCIPsolGetOrigObj(sol), stored ? "yes" : "no");
 		SCIP_CALL(SCIPfreeSol(scip, &sol));
 	}
 
@@ -555,17 +562,12 @@ SCIP_RETCODE SCIPconshdlrBenders::evaluateRecourse(
 void SCIPconshdlrBenders::computeProbability(
 		const double* recourse, /**< [in] recourse values */
 		double* probability     /**< [out] new probability found and used in the sum */) {
-	// If not DRO, do nothing.
-	if (model_->isStochastic()) {
-		// extract stochastic model
-		TssModel* tss = dynamic_cast<TssModel*>(model_);
+	assert(model_->isStochastic());
 
-		// TODO: find new probability distribution
-		for (int s = 0; s < naux_; ++s)
-			probability[s] = tss->getProbability()[s];
-	} else {
-		for (int s = 0; s < naux_; ++s)
-			probability[s] = 1.0;
-	}
+	// extract stochastic model
+	TssModel* tss = dynamic_cast<TssModel*>(model_);
 
+	// TODO: find new probability distribution
+	for (int s = 0; s < bdsub_->getNumSubprobs(); ++s)
+		probability[s] = tss->getProbability()[s];
 }

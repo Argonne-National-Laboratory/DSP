@@ -227,7 +227,7 @@ DSP_RTN_CODE BdSub::evaluateRecourse(
 		// calculate Tx
 		mat_mp_[s]->times(x, Tx);
 		// evaluate intege recourse
-		DSP_RTN_CHECK_RTN_CODE(solveOneIntegerSubproblem(this, s, x, Tx, objvals[s]));
+		DSP_RTN_CHECK_RTN_CODE(solveOneIntegerSubproblem(this, s, x, Tx, objvals));
 		// free Tx
 		FREE_ARRAY_PTR(Tx);
 	}
@@ -404,7 +404,7 @@ DSP_RTN_CODE BdSub::solveOneIntegerSubproblem(
 			int            s,     /**< scenario index */
 			const double * x,     /**< first-stage solution */
 			double *       Tx,    /**< Tx */
-			double &       objval /**< objective value */)
+			double *       objval /**< objective value */)
 {
 #define FREE_MEMORY \
 	FREE_PTR(cglp)
@@ -455,10 +455,10 @@ DSP_RTN_CODE BdSub::solveOneIntegerSubproblem(
 
 	if (cgl->status_[s] == DSP_STAT_OPTIMAL) {
 		/** get objective value */
-		objval = cglp->getPrimObjValue();
+		objval[s] = cglp->getPrimObjValue();
 	} else {
 		printf("Unexpected solution status: s %d status %d\n", s, cgl->status_[s]);
-		objval = 1.0e+20;
+		objval[s] = 1.0e+20;
 
 		cglp->si_->writeMps("int_subprob");
 		ret = DSP_RTN_ERR;
