@@ -118,7 +118,7 @@ DSP_RTN_CODE DeDriver::run()
 
 	/** load problem */
 	osi_->si_->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
-	PRINT_ARRAY_MSG(qobj->getNumElements(), qobj->getElements(), "elements in qobj");
+	//PRINT_ARRAY_MSG(qobj->getNumElements(), qobj->getElements(), "elements in qobj");
 	if (qobj != NULL){
 		osi_->loadQuadraticObjective(*qobj);
 	}
