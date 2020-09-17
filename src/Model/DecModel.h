@@ -177,6 +177,11 @@ public:
 	virtual bool isStochastic() = 0;
 
 	/**
+	 * If true, this models contains quadratic terms in the objectives or constraints
+	 **/
+	virtual bool isQCQP() = 0;
+	
+	/**
 	 * If true, this is a distributionally robust variant.
 	 */
 	virtual bool isDro() = 0;
@@ -221,7 +226,21 @@ public:
 		double *& rlbd,              /**< [out] row lower bounds */
 		double *& rubd               /**< [out] row upper bounds */) = 0;
 
-	
+	virtual DSP_RTN_CODE decompose(
+		int size,                    /**< [in] size of subproblem subset */
+		int * subprobs,              /**< [in] subset of subproblems */
+		int naux,                    /**< [in] number of auxiliary columns */
+		double * clbd_aux,           /**< [in] lower bounds for auxiliary columns */
+		double * cubd_aux,           /**< [in] upper bounds for auxiliary columns */
+		double * obj_aux,            /**< [in] objective coefficients for auxiliary columns */
+		CoinPackedMatrix *& mat,     /**< [out] constraint matrix */
+		double *& clbd,              /**< [out] column lower bounds */
+		double *& cubd,              /**< [out] column upper bounds */
+		char   *& ctype,             /**< [out] column types */
+		double *& obj,               /**< [out] objective coefficients */
+		CoinPackedMatrix *& qobj,     /**< [out] quadratic objective */
+		double *& rlbd,              /**< [out] row lower bounds */
+		double *& rubd               /**< [out] row upper bounds */) = 0;
 
 	/**
 	 * Produces the coupling constraints for the given subproblems. The coupling constraint matrix
@@ -264,6 +283,19 @@ public:
 		double *& cubd_reco,          /**< [out] column upper bounds of y */
 		char   *& ctype_reco,         /**< [out] column types of y */
 		double *& obj_reco,           /**< [out] objective coefficients for y */
+		double *& rlbd_reco,          /**< [out] row lower bounds */
+		double *& rubd_reco           /**< [out] row upper bounds */) = 0;
+
+		virtual DSP_RTN_CODE copyRecoProb(
+		int scen,                     /**< [in] scenario index */
+		CoinPackedMatrix *& mat_tech, /**< [out] technology matrix (A matrix) */
+		CoinPackedMatrix *& mat_reco, /**< [out] recourse matrix (B matrix) */
+		double *& clbd_reco,          /**< [out] column lower bounds of y */
+		double *& cubd_reco,          /**< [out] column upper bounds of y */
+		char   *& ctype_reco,         /**< [out] column types of y */
+		double *& obj_reco,           /**< [out] objective coefficients for y */
+		CoinPackedMatrix *& qobj_reco_coupling,/**< [out] coupling quadratric coefficients (y^2}*/
+		CoinPackedMatrix *& qobj_reco_ncoupling, /**< [out] non-coupling quadratic coefficients (xy) */
 		double *& rlbd_reco,          /**< [out] row lower bounds */
 		double *& rubd_reco           /**< [out] row upper bounds */) = 0;
 

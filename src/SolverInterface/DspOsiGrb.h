@@ -69,7 +69,13 @@ public:
 						double v = mat.getElements()[mat.getVectorStarts()[j] + k];
 						int row[1]={i};
 						int col[1]={j};
-						double element[1]={0.5*v};
+						double element[1];
+						// if (i!=j){
+						// 	element[0]=2*v;
+						// }
+						// else{
+							element[0]=v;
+						//}
                     	GUROBI_CALL("loadQuadraticObjective", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
                     	GUROBI_CALL("loadQuadraticObjective", GRBaddqpterms(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL),
                     	1, row, col, element));
@@ -83,7 +89,14 @@ public:
 						double v = mat.getElements()[mat.getVectorStarts()[i] + k];
 						int row[1]={i};
 						int col[1]={j};
-						double element[1]={0.5*v};
+						double element[1];
+						// if (i!=j){
+						// 	element[0]=2*v;
+						// }
+						// else{
+							element[0]=v;
+						//}
+						
 						GUROBI_CALL("loadQuadraticObjective", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
                     	GUROBI_CALL("loadQuadraticObjective", GRBaddqpterms(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL),
                     	1, row, col, element));	

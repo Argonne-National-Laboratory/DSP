@@ -71,6 +71,8 @@ private:
 	CoinPackedMatrix ** mat_mp_;
 	double** rlbd_org_; /**< original row lower bounds for each subproblem */
 	double** rubd_org_; /**< original row upper bounds for each subproblem */
+	CoinPackedMatrix ** qobj_reco_coupling_;
+	CoinPackedMatrix ** qobj_reco_ncoupling_;
 
 	DspOsi ** osi_;    /**< solver interface for each subproblem */
 	DspOsi * osi_dro_; /**< solver interface for DRO upper bound */

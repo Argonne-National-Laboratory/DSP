@@ -114,8 +114,15 @@ public:
 	/** copy core objective coefficients */
 	void copyCoreObjective(double * obj, int stg);
 
-	/** copy core quadratic objective coefficients */
-	void copyCoreQuadrativeObjective(CoinPackedMatrix *qobj, int stg);
+	/** copy core quadratic objective coefficients 
+	 *  for coupling terms, do not shift indices, start from x,
+	 *  for non-coupling terms, shift indices, start from y,
+	 *  only for two-stage problem
+	*/
+	void copyCoreQuadrativeObjective(
+		CoinPackedMatrix *&qobj_coupling, 
+		CoinPackedMatrix *&qobj_ncoupling, 
+		int stg);
 
 	/** copy core column types */
 	void copyCoreColType(char * ctype, int stg);
@@ -149,7 +156,7 @@ public:
 	void combineRandObjective(double * obj, int stg, int scen, bool adjustProbability = true);
 
 	/** combine random quadratic objective coefficients */
-	void combineRandQuadraticObjective(CoinPackedMatrix * qobj, int stg, int scen, bool adjustProbability = true);
+	void combineRandQuadraticObjective(CoinPackedMatrix * &qobj_coupling, CoinPackedMatrix * &qobj_ncoupling, int stg, int scen, bool adjustProbability = true);
 
 	/** combine random row lower bounds */
 	void combineRandRowLower(double * rlbd, int stg, int scen);
@@ -169,6 +176,8 @@ public:
 			int * vecind, /**< vector indices to shift */
 			int offset,   /**< offset by which indices are shifted */
 			int start = 0 /**< index only after which indices are shifted */);
+
+	virtual bool isQCQP() {return isQCQP_;}
 
 	// The following functions are for distributionally robust variant.
 	// TODO: Better to create a new inhereted class?
@@ -226,6 +235,7 @@ protected:
 	bool fromSMPS_; /**< problem was read from SMPS files? */
 
 	bool isdro_;                /**< is this distributionally robust? */
+	bool isQCQP_ = 0;			/**< quadratic terms in the problem? */
 	int nrefs_;                 /**< number of reference scenarios for DRO */
 	double wass_eps_;           /**< size of the Wasserstein ball */
 	double ** wass_dist_;       /**< Wasserstein distances between two realizations */

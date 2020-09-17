@@ -175,7 +175,7 @@ DSP_RTN_CODE DecTssModel::decompose(
 			{
 				if (fabs(elements[pos+l]) < 1.0e-10) continue;
 				if (k > 0 && k % 4 == 0) printf("\n");
-				printf("  [%5d,%4d,%4d] %+e", i, rowIndices[pos+l], mat_scen_[scen[s]]->getIndices()[start+l], mat_scen_[scen[s]]->getElements()[start+l]);
+				//printf("  [%5d,%4d,%4d] %+e", i, rowIndices[pos+l], mat_scen_[scen[s]]->getIndices()[start+l], mat_scen_[scen[s]]->getElements()[start+l]);
 				//printf("  [%5d,%4d,%4d] %+e", i, rowIndices[pos+l], colIndices[pos+l], elements[pos+l]);
 				k++;
 			}
@@ -454,12 +454,12 @@ DSP_RTN_CODE DecTssModel::decompose(
 			for (j = 0; j < qlength; ++j) {
 					qrowIndices.push_back(rownum);
 					qcolIndices.push_back(qobj_core_[0]->getIndices()[qstarts[i]+j]);
-					if (rownum!=qobj_core_[0]->getIndices()[qstarts[i]+j]){
-						qelements.push_back(2*qobj_core_[0]->getElements()[qstarts[i]+j]);
-					}
-					else{
+					//if (rownum!=qobj_core_[0]->getIndices()[qstarts[i]+j]){
+					//	qelements.push_back(2*qobj_core_[0]->getElements()[qstarts[i]+j]);
+					//}
+					//else{
 						qelements.push_back(qobj_core_[0]->getElements()[qstarts[i]+j]);
-					}
+					//}
 
 					pos++;
 			}	
@@ -486,19 +486,19 @@ DSP_RTN_CODE DecTssModel::decompose(
 			{
 					qrowIndices.push_back(rownum);
 					qcolIndices.push_back(qobj_scen_[scen[s]]->getIndices()[start + j]);
-					if (rownum!=qobj_scen_[scen[s]]->getIndices()[start+j]){
-						qelements.push_back(2* (prob_[scen[s]] * (qobj_scen_[scen[s]]->getElements()[start + j])));
-					}
-					else{
+					//if (rownum!=qobj_scen_[scen[s]]->getIndices()[start+j]){
+					//	qelements.push_back(2* (prob_[scen[s]] * (qobj_scen_[scen[s]]->getElements()[start + j])));
+					//}
+					//else{
 						qelements.push_back(prob_[scen[s]] * (qobj_scen_[scen[s]]->getElements()[start + j]));
-					}
+					//}
 			}
 			shiftVecIndices(length, &qcolIndices[0] + pos, s * ncols_[1], cstart_[1]);
 			shiftVecIndices(length, &qrowIndices[0] + pos, s * ncols_[1], cstart_[1]);
 			pos += length;
 			rownum++;
 		}
-		PRINT_ARRAY_MSG(qobj_scen_[scen[s]]->getNumElements(), qobj_scen_[scen[s]]->getIndices(), "col induces of qobj_scen_[scen[s]]");
+		//PRINT_ARRAY_MSG(qobj_scen_[scen[s]]->getNumElements(), qobj_scen_[scen[s]]->getIndices(), "col induces of qobj_scen_[scen[s]]");
 		}
 	}
 	//PRINT_ARRAY_MSG(qrowIndices.size(), qrowIndices, "row indices of qobj");
@@ -811,13 +811,14 @@ DSP_RTN_CODE DecTssModel::copySubprob(
 	double* clbd_reco = NULL;
 	double* cubd_reco = NULL;
 	double* obj_reco = NULL;
-	CoinPackedMatrix *qobj_reco = NULL;
+	CoinPackedMatrix *qobj_reco_coupling = NULL;
+	CoinPackedMatrix *qobj_reco_ncoupling = NULL;
 
 	BGN_TRY_CATCH
 
 	/** copy recourse problem */
 	DSP_RTN_CHECK_RTN_CODE(copyRecoProb(subprob, mat,
-				mat_reco, clbd_reco, cubd_reco, ctype, obj_reco, qobj_reco, rlbd, rubd));
+				mat_reco, clbd_reco, cubd_reco, ctype, obj_reco, qobj_reco_coupling, qobj_reco_ncoupling, rlbd, rubd));
 
 	/** merge matrix */
 	mat->rightAppendPackedMatrix(*mat_reco);
@@ -933,7 +934,8 @@ DSP_RTN_CODE DecTssModel::copyRecoProb(
 		double *& cubd_reco,          /**< [out] column upper bounds of y */
 		char   *& ctype_reco,         /**< [out] column types of y */
 		double *& obj_reco,           /**< [out] objective coefficients for y */
-		CoinPackedMatrix *& qobj_reco,/**< [out] quadratric coefficients for y^2 and xy */
+		CoinPackedMatrix *& qobj_reco_coupling,/**< [out] coupling quadratric coefficients (y^2}*/
+		CoinPackedMatrix *& qobj_reco_ncoupling, /**< [out] non-coupling quadratic coefficients (xy) */
 		double *& rlbd_reco,          /**< [out] row lower bounds */
 		double *& rubd_reco           /**< [out] row upper bounds */)
 {
@@ -969,7 +971,7 @@ DSP_RTN_CODE DecTssModel::copyRecoProb(
 		row = this->splitCoreRowVec(i, 0);
 		combineRandRowVec(row, i - rstart_[1], 0, scen);
 		mat_tech->appendRow(*row);
-//		PRINT_COIN_PACKED_VECTOR_MSG((*row),"row_tech")
+		//PRINT_COIN_PACKED_VECTOR_MSG((*row),"row_tech")
 		FREE_PTR(row)
 
 		/** add row to reco */
@@ -992,7 +994,7 @@ DSP_RTN_CODE DecTssModel::copyRecoProb(
 	copyCoreColType(ctype_reco, 1);
 
 	/** objective coefficients */
-	copyRecoObj(scen, obj_reco, qobj_reco, true);
+	copyRecoObj(scen, obj_reco, qobj_reco_coupling, qobj_reco_ncoupling, true);
 
 	/** row lower bounds */
 	copyCoreRowLower(rlbd_reco, 1);

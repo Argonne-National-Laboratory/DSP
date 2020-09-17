@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-// #define DSP_DEBUG
+//#define DSP_DEBUG
 
 #include "Utility/DspMacros.h"
 #include "Utility/DspMessage.h"
@@ -113,7 +113,8 @@ DSP_RTN_CODE DdSub::solve()
 #ifdef DSP_DEBUG
 			char submps[64];
 			sprintf(submps, "sub%d", sind_);
-			getSiPtr()->writeMps(submps);
+			osi_->writeMps(submps);
+			//getSiPtr()->writeMps(submps);
 #endif
 			break;
 		case DSP_STAT_LIM_INFEAS:
@@ -172,6 +173,7 @@ DSP_RTN_CODE DdSub::createProblem() {
     double *rlbd = NULL;
     double *rubd = NULL;
 	double *obj = NULL;
+	CoinPackedMatrix *qobj = NULL;
     int augs[1];
     double clbd_aux[1];
     double cubd_aux[1];
@@ -195,7 +197,7 @@ DSP_RTN_CODE DdSub::createProblem() {
     /** decompose model */
     DSP_RTN_CHECK_THROW(
             model_->decompose(1, augs, 1, clbd_aux, cubd_aux, obj_aux,
-                              mat, clbd, cubd, ctype, obj, rlbd, rubd));
+                              mat, clbd, cubd, ctype, obj, qobj, rlbd, rubd));
 
     DSP_RTN_CHECK_THROW(
             model_->decomposeCoupling(1, augs, cpl_mat_, cpl_cols_, cpl_ncols));
@@ -245,6 +247,46 @@ DSP_RTN_CODE DdSub::createProblem() {
 		}
 		for (int j = 0; j < tssModel->getNumCols(1); ++j)
 			obj_[tssModel->getNumCols(0)+j] /= probability;
+
+		/** adjust quadratic objectives */
+		int numqobjelements = qobj->getNumElements();
+		const CoinBigIndex * start = qobj->getVectorStarts();
+		const int * colindice = qobj->getIndices();
+		int startsize = qobj->getSizeVectorStarts();
+		vector <int> rowindice;
+		const double * elements = qobj->getElements();
+		vector<double> adjelements;
+
+		PRINT_ARRAY_MSG(qobj->getNumElements(), qobj->getElements(), "in subproblem qobj coef");
+
+		int rowcount=0;
+		for (int j=0; j<startsize-1; j++){
+			if (start[j+1]-start[j]>0){
+				for (int k=0; k<start[j+1]-start[j]; k++){
+					rowindice.push_back(rowcount);
+				}
+			}
+			rowcount++;
+		}
+
+		// security check
+		assert(rowindice.size()==numqobjelements);
+
+		for (int j = 0; j < numqobjelements; j++){
+			if (colindice[j] < tssModel->getNumCols(0) && rowindice[j] <tssModel->getNumCols(0)){
+				adjelements.push_back(elements[j]*probability);
+			}
+			else{
+				//adjelements.push_back(elements[j]/probability);
+				adjelements.push_back(elements[j]);
+			}
+		}
+
+		//security check
+		assert(adjelements.size()==numqobjelements);
+
+		qobj=new CoinPackedMatrix(NULL, &rowindice[0], colindice, &adjelements[0], numqobjelements);
+		PRINT_ARRAY_MSG(qobj->getNumElements(), qobj->getElements(), "in subproblem qobj coef");
 
 #ifdef DSP_DEBUG
 		DSPdebugMessage("sind_ = %d, probability = %e, lambdas = \n", sind_, model_->isDro() ? tssModel->getReferenceProbability(sind_) : probability);
@@ -315,6 +357,9 @@ DSP_RTN_CODE DdSub::createProblem() {
 	DspMessage::printArray(mat->getNumCols(), obj);
 #endif
     getSiPtr()->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
+	if (qobj != NULL){
+		osi_->loadQuadraticObjective(*qobj);
+	}
 	for (int j = 0; j < mat->getNumCols(); ++j) {
 		if (ctype[j] != 'C')
 			getSiPtr()->setInteger(j);

@@ -38,7 +38,8 @@ public:
 	DSP_RTN_CODE copyRecoObj(
 			int scen,                     /**< [in] scenario index */
 			double *& obj_reco,           /**< [out] objective coefficients */
-			CoinPackedMatrix *& qobj_reco,/**< [out] quadratic objective coefficients */
+			CoinPackedMatrix *& qobj_reco_coupling,/**< [out] coupling quadratric coefficients (y^2}*/
+			CoinPackedMatrix *& qobj_reco_ncoupling, /**< [out] non-coupling quadratic coefficients (xy) */
 			bool adjustProbability = true);
 	/** for C API functions */
 

@@ -94,6 +94,8 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 	double * clbd_reco   = NULL;
 	double * cubd_reco   = NULL;
 	double * obj_reco    = NULL;
+	//CoinPackedMatrix * qobj_reco_coupling = NULL;
+	//CoinPackedMatrix * qobj_reco_ncoupling = NULL;
 	char *   ctype_reco  = NULL;
 
 	/** DRO UB problem */
@@ -122,15 +124,28 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 	mat_mp_    = new CoinPackedMatrix * [nsubprobs];
 	rlbd_org_  = new double * [nsubprobs];
 	rubd_org_  = new double * [nsubprobs];
+
+	qobj_reco_coupling_ = new CoinPackedMatrix * [nsubprobs];
+	qobj_reco_ncoupling_ = new CoinPackedMatrix * [nsubprobs];
 	osi_       = new DspOsi * [nsubprobs];
 	primsols_.resize(nsubprobs);
 
 	for (int s = 0; s < nsubprobs; ++s) {
 
 		/** copy recourse problem */
-		DSP_RTN_CHECK_THROW(model_->copyRecoProb(par_->getIntPtrParam("ARR_PROC_IDX")[s],
+		
+		if (model_->isQCQP() == false){
+			DSP_RTN_CHECK_THROW(model_->copyRecoProb(par_->getIntPtrParam("ARR_PROC_IDX")[s],
 				mat_mp_[s], mat_reco, clbd_reco, cubd_reco, ctype_reco,
 				obj_reco, rlbd_org_[s], rubd_org_[s]));
+		}
+		else{
+			DSP_RTN_CHECK_THROW(model_->copyRecoProb(par_->getIntPtrParam("ARR_PROC_IDX")[s],
+				mat_mp_[s], mat_reco, clbd_reco, cubd_reco, ctype_reco,
+				obj_reco, qobj_reco_coupling_[s], qobj_reco_ncoupling_[s], rlbd_org_[s], rubd_org_[s]));
+		}
+		//printf("number of elements in qobj_reco_coupling = %d\n", qobj_reco_coupling_[s]->getNumElements());
+		//PRINT_ARRAY_MSG(qobj_reco_ncoupling->getNumElements(), qobj_reco_ncoupling->getElements(), "elements in qobj_reco_ncoupling");
 
 		if (model_->isDro()) {
 			for (int j = 0; j < tss->getNumCols(1); ++j) {
@@ -154,6 +169,8 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 
 	    /** load problem */
 	    osi_[s]->si_->loadProblem(*mat_reco, clbd_reco, cubd_reco, obj_reco, rlbd_org_[s], rubd_org_[s]);
+		osi_[s]->loadQuadraticObjective(*qobj_reco_ncoupling_[s]);
+		osi_[s]->writeMps("farmerinUB");
 		for (int j = 0; j < mat_reco->getNumCols(); ++j) {
 			if (ctype_reco[j] != 'C')
 				osi_[s]->si_->setInteger(j);
@@ -268,10 +285,18 @@ double DdWorkerUB::evaluate(int n, double* solution) {
 double DdWorkerUB::evaluate(CoinPackedVector* solution) {
 #define FREE_MEMORY \
 	FREE_ARRAY_PTR(Tx) \
-	FREE_ARRAY_PTR(x)
+	FREE_ARRAY_PTR(x) \
+	FREE_ARRAY_PTR(xq) \
+	FREE_ARRAY_PTR(xy) \
+	FREE_ARRAY_PTR(qxy) \
+	FREE_ARRAY_PTR(xyq) 
 
 	double * Tx = NULL;
 	double* x = NULL;
+	double * xy = NULL;
+	double * qxy = NULL;
+	double * xyq = NULL;
+	double *xq = NULL;
 	TssModel* tss = NULL;
 
 	BGN_TRY_CATCH
@@ -288,7 +313,25 @@ double DdWorkerUB::evaluate(CoinPackedVector* solution) {
 
 	/** allocate memory */
 	x = solution->denseVector(tss->getNumCols(0));
-	for (int s = nsubprobs - 1; s >= 0; --s) {
+
+	//PRINT_ARRAY_MSG(tss->getNumCols(0), x, "first stage solution");
+
+	/** if qcqp, add quadratic part */
+	if (tss->isQCQP()){
+		if (tss->getQuadraticObjCore(0)->getNumElements()!=0){
+			xq = new double [tss->getNumCols(0)];
+			//PRINT_ARRAY_MSG(tss->getQuadraticObjCore(0)->getNumElements(), tss->getQuadraticObjCore(0)->getElements(), "elements of x^2");
+			tss->getQuadraticObjCore(0)->transposeTimes(x, xq);
+			double xqx=0;
+			for (int i=0; i<tss->getNumCols(0);i++){
+				xqx+=x[i]*xq[i];
+			}
+			cx+=xqx;
+			}
+		
+	}
+
+	for (int s = nsubprobs - 1; s >= 0; --s) { //why from the last subprob?
 		/** calculate Tx */
 		Tx = new double [mat_mp_[s]->getNumRows()];
 		mat_mp_[s]->times(x, Tx);
@@ -302,6 +345,41 @@ double DdWorkerUB::evaluate(CoinPackedVector* solution) {
 			if (rubd_org_[s][i] < COIN_DBL_MAX)
 				osi_[s]->si_->setRowUpper(i, rubd[i] - Tx[i]);
 		}
+
+		assert(tss->getNumCols(1)==osi_[s]->si_->getNumCols());
+		DSPdebugMessage("number of variables in the subproblem = %d\n", osi_[s]->si_->getNumCols());
+
+		/** if QCQP, change second stage objective (coupling) if existing*/
+		if (qobj_reco_coupling_[s]->getNumElements()!=0){
+			if (tss->isQCQP()){
+				xy=new double [tss->getNumCols(0)+tss->getNumCols(1)];
+				for (int i=0; i<tss->getNumCols(0)+tss->getNumCols(1);i++){
+					if (i<tss->getNumCols(0)){
+						xy[i]=x[i];
+					}
+					else{
+						xy[i]=0;
+					}
+				}
+			
+				xyq = new double [tss->getNumCols(0)+tss->getNumCols(1)];
+				qxy = new double [tss->getNumCols(0)+tss->getNumCols(1)];
+				//PRINT_ARRAY_MSG(qobj_reco_coupling_[s]->getNumElements(), qobj_reco_coupling_[s]->getElements(), "elements in qobj_coupling");
+				qobj_reco_coupling_[s]->transposeTimes(xy, xyq);
+				qobj_reco_coupling_[s]->times(xy, qxy);
+				vector <double> xqy;
+				vector <double> ycoef;
+				//PRINT_ARRAY_MSG(osi_[s]->si_->getNumCols(), osi_[s]->si_->getObjCoefficients(), "original coef of y = %f");
+				for (int i=0; i< tss->getNumCols(1); i++){
+					xqy.push_back(xyq[tss->getNumCols(0)+i]+qxy[tss->getNumCols(0)+i]);
+					DSPdebugMessage("xqy = %f\n", xqy[i]);
+					ycoef.push_back(xqy[i]+osi_[s]->si_->getObjCoefficients()[i]);
+					DSPdebugMessage("coefficient of y = %f\n", ycoef[i]);
+				}
+				osi_[s]->si_->setObjective(&ycoef[0]);
+			}
+		}
+		
 
 		/** first-stage objective value */
 		cx_weighted += cx * tss->getProbability()[par_->getIntPtrParam("ARR_PROC_IDX")[s]];
