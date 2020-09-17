@@ -10,6 +10,7 @@
 #include "Utility/DspUtility.h"
 #include "Model/TssModel.h"
 #include "Solver/Benders/BdSub.h"
+#include "SolverInterface/DspOsiScip.h"
 #include "SolverInterface/DspOsiClp.h"
 #include "SolverInterface/DspOsiCpx.h"
 #include "SolverInterface/DspOsiGrb.h"
@@ -216,6 +217,23 @@ int BdSub::generateCuts(
 #undef FREE_MEMORY
 }
 
+DSP_RTN_CODE BdSub::evaluateRecourse(
+		const double * x, /**< [in] first-stage solution */
+		double * objvals  /**< [out] objective values */) {
+	double* Tx = NULL;
+
+	for (int s = 0; s < nsubprobs_; ++s) {
+		Tx = new double [mat_mp_[s]->getNumRows()];
+		// calculate Tx
+		mat_mp_[s]->times(x, Tx);
+		// evaluate intege recourse
+		DSP_RTN_CHECK_RTN_CODE(solveOneIntegerSubproblem(this, s, x, Tx, objvals[s]));
+		// free Tx
+		FREE_ARRAY_PTR(Tx);
+	}
+	return DSP_RTN_OK;
+}
+
 void BdSub::solveOneSubproblem(
 		BdSub *     cgl,
 		int            s,            /**< scenario index */
@@ -378,6 +396,79 @@ void BdSub::solveOneSubproblem(
 	END_TRY_CATCH(FREE_MEMORY)
 
 	FREE_MEMORY
+#undef FREE_MEMORY
+}
+
+DSP_RTN_CODE BdSub::solveOneIntegerSubproblem(
+			BdSub *     cgl,
+			int            s,     /**< scenario index */
+			const double * x,     /**< first-stage solution */
+			double *       Tx,    /**< Tx */
+			double &       objval /**< objective value */)
+{
+#define FREE_MEMORY \
+	FREE_PTR(cglp)
+
+	DspOsi * cglp = NULL;
+	DSP_RTN_CODE ret = DSP_RTN_OK;
+
+	BGN_TRY_CATCH
+
+	printf("Scenario %d\n", s);
+
+	/** local variables */
+	const double * rlbd = cgl->cglp_[s]->si_->getRowLower();
+	const double * rubd = cgl->cglp_[s]->si_->getRowUpper();
+	const char * ctype = cgl->cglp_[s]->si_->getColType();
+
+	/** clone CGLP */
+	cglp = createDspOsi(OsiScip);
+	cglp->setLogLevel(0); // quiet.
+	if (!cglp) throw CoinError("Failed to create DspOsi", "solveOneIntegerSubproblem", "BdSub");
+	cglp->si_->loadProblem(*(cgl->cglp_[s]->si_->getMatrixByCol()),
+			cgl->cglp_[s]->si_->getColLower(), cgl->cglp_[s]->si_->getColUpper(),
+			cgl->cglp_[s]->si_->getObjCoefficients(),
+			cgl->cglp_[s]->si_->getRowLower(), cgl->cglp_[s]->si_->getRowUpper());
+
+	/** mark integer variables */
+	for (int j = 0; j < cglp->si_->getNumCols(); ++j) {
+		if (ctype[j] != 'C')
+			cglp->si_->setInteger(j);
+	}
+
+	/** loop over CGLP rows to update row bounds */
+	for (int i = 0; i < cglp->si_->getNumRows(); ++i)
+	{
+		if (rlbd[i] > -1.0e+20)
+			cglp->si_->setRowLower(i, rlbd[i] - Tx[i]);
+		if (rubd[i] < 1.0e+20)
+			cglp->si_->setRowUpper(i, rubd[i] - Tx[i]);
+	}
+
+	/** solve */
+	cglp->solve();
+	printf("  objective value %E\n", cglp->getPrimObjValue());
+
+	/** solution status */
+	cgl->status_[s] = cglp->status();
+	printf("  solution status: %d\n", cgl->status_[s]);
+
+	if (cgl->status_[s] == DSP_STAT_OPTIMAL) {
+		/** get objective value */
+		objval = cglp->getPrimObjValue();
+	} else {
+		printf("Unexpected solution status: s %d status %d\n", s, cgl->status_[s]);
+		objval = 1.0e+20;
+
+		cglp->si_->writeMps("int_subprob");
+		ret = DSP_RTN_ERR;
+	}
+
+	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
+
+	FREE_MEMORY
+
+	return ret;
 #undef FREE_MEMORY
 }
 
@@ -567,6 +658,9 @@ DspOsi * BdSub::createDspOsi(int solver) {
 	BGN_TRY_CATCH
 
 	switch (solver) {
+		case OsiScip:
+			osi = new DspOsiScip();
+			break;
 		case OsiCpx:
 #ifdef DSP_HAS_CPX
 			osi = new DspOsiCpx();

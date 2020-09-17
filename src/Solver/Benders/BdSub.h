@@ -48,6 +48,12 @@ public:
 			double **      cutval, /** dense cut coefficients for each subproblem */
 			double *       cutrhs  /** cut rhs for each subproblem */);
 
+	/** evaluate recourse function */
+	DSP_RTN_CODE evaluateRecourse(
+		const double * x, /**< [in] first-stage solution */
+		double * objvals  /**< [out] objective values */
+	);
+
 public:
 
 	/** get objective value */
@@ -93,6 +99,14 @@ private:
 			double **      cutval,           /**< Benders cut body */
 			double *       cutrhs,           /**< Benders cut RHS */
 			int            enableOptCuts = 1 /**< whether to generate optimality cuts or not */);
+
+	/** solve one integer subproblem */
+	static DSP_RTN_CODE solveOneIntegerSubproblem(
+			BdSub *     cgl,
+			int            s,     /**< scenario index */
+			const double * x,     /**< first-stage solution */
+			double *       Tx,    /**< Tx */
+			double &       objval /**< objective value */);
 
 	/** solve feasibility problem */
 	static DSP_RTN_CODE solveFeasProblem(
