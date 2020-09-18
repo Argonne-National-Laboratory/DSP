@@ -96,8 +96,13 @@ void DetModel::createModel(
 
 	nints_ = 0;
 	for (int j = 0; j < ncols; j++) {
-		if (ctype_[j] != 'C')
+		if (ctype_[j] != 'C') {
+			if (ctype_[j] == 'B') {
+				clbd_[j] = 0.0;
+				cubd_[j] = 1.0;
+			}
 			nints_++;
+		}
 	}
 }
 
@@ -138,8 +143,13 @@ void DetModel::createModel(
 
 	nints_ = 0;
 	for (int j = 0; j < ncols; j++) {
-		if (ctype_[j] != 'C')
+		if (ctype_[j] != 'C') {
+			if (ctype_[j] == 'B') {
+				clbd_[j] = 0.0;
+				cubd_[j] = 1.0;
+			}
 			nints_++;
+		}
 	}
 }
 

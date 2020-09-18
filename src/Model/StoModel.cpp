@@ -264,6 +264,8 @@ DSP_RTN_CODE StoModel::readSmps(const char * filename)
 				core->getBinaryIndices()[j] >= cstart_[i] + ncols_[i])
 				continue;
 			ctype_core_[i][core->getBinaryIndices()[j] - cstart_[i]] = 'B';
+			clbd_core_[i][core->getBinaryIndices()[j] - cstart_[i]] = 0.0;
+			cubd_core_[i][core->getBinaryIndices()[j] - cstart_[i]] = 1.0;
 			nints_core_++;
 		}
 		for (j = 0; j < core->getIntegerLength(); ++j)

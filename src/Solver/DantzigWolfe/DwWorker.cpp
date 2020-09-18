@@ -183,7 +183,7 @@ DSP_RTN_CODE DwWorker::createSubproblems() {
 		if (s >= 0) {
 			/** write MPS */
 			char ofname[128];
-			sprintf(ofname, "sub%d", parProcIdx_[s]);
+			sprintf(ofname, "sub%d.mps", parProcIdx_[s]);
 			DSPdebugMessage("Writing MPS file: %s\n", ofname);
 			osi_[s]->si_->writeMps(ofname);
 		}
@@ -447,7 +447,7 @@ DSP_RTN_CODE DwWorker::generateColsByFix(
 			sols.push_back(sol);
 			sol = NULL;
 		} else {
-			message_->print(1, "Unexpected subproblem status (block: %d, status: %d)\n", sind, status);
+			message_->print(5, "generateColsByFix: Unexpected subproblem status (block: %d, status: %d)\n", sind, status);
 			/** store dummies */
 			objs.push_back(0.0);
 			sols.push_back(new CoinPackedVector);
@@ -586,7 +586,7 @@ DSP_RTN_CODE DwWorker::solveSubproblems() {
 		if (s >= 0) {
 			/** write MPS */
 			char ofname[128];
-			sprintf(ofname, "sub%d", s);
+			sprintf(ofname, "sub%d.mps", s);
 			DSPdebugMessage("Writing MPS file: %s\n", ofname);
 			osi_[s]->si_->writeMps(ofname);
 		}
