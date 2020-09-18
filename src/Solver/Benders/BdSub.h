@@ -83,9 +83,6 @@ public:
 	/** does recourse have integer variables? */
 	bool has_integer() {return recourse_has_integer_;}
 
-	/** get integer feasibility of subproblem i */
-	bool is_integer_feasible(int i) {return integer_feasible_[i];}
-
 private:
 
 	static DspOsi * createDspOsi(int solver);
@@ -148,7 +145,6 @@ protected:
 	double **             solutions_;  /**< subproblem solutions */
 	DSP_RTN_CODE *        status_;     /**< subproblem solution status */
 	bool recourse_has_integer_;        /**< whether the recourse has integer variables */
-	bool * integer_feasible_;          /**< indicate whether integrality is satisfied at cut generation problem solution */
 
 };
 
