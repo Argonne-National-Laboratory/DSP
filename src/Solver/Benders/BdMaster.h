@@ -11,7 +11,6 @@
 /** DSP */
 #include "Solver/DecSolver.h"
 #include "Solver/Benders/SCIPconshdlrBenders.h"
-#include "Solver/Benders/SCIPheurIntBenders.h"
 #include "Solver/Benders/BdWorker.h"
 
 /** A class for implementing the Benders master solver */
@@ -56,9 +55,6 @@ public:
 
 	/** set constraint handler for Benders cut generation */
 	virtual DSP_RTN_CODE setConshdlr(SCIPconshdlrBenders * conshdlr);
-
-	/** set heuristic handler for integer Benders method */
-	virtual DSP_RTN_CODE setHeurhdlr(SCIPheurIntBenders * heur);
 
 	/** set auxiliary column data */
 	virtual DSP_RTN_CODE setAuxVarData(int size, double * obj, double * clbd, double * cubd);

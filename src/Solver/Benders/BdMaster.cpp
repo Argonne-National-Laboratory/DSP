@@ -153,19 +153,6 @@ DSP_RTN_CODE BdMaster::setConshdlr(SCIPconshdlrBenders* conshdlr)
 	return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE BdMaster::setHeurhdlr(SCIPheurIntBenders* heur) {
-	BGN_TRY_CATCH
-
-	/** retrieve solver interface for SCIP */
-	OsiScipSolverInterface * scip = dynamic_cast<DspOsiScip*>(osi_)->scip_;
-
-	/** include heuristic handler */
-	SCIP_CALL_ABORT(SCIPincludeObjHeur(scip->getScip(), heur, false));
-
-	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
-	return DSP_RTN_OK;
-}
-
 DSP_RTN_CODE BdMaster::createProblem() {
 #define FREE_MEMORY       \
 	FREE_PTR(mat)         \

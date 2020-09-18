@@ -57,9 +57,6 @@ DSP_RTN_CODE BdMWSerial::run()
 	DSPdebugMessage("setConshdlr\n");
 	master_->setConshdlr(constraintHandler());
 
-	/** set heuristic handler */
-	master_->setHeurhdlr(heuristicHandler());
-
 	/** solve */
 	DSPdebugMessage("solve\n");
 	master_->solve();
@@ -104,22 +101,4 @@ SCIPconshdlrBenders* BdMWSerial::constraintHandler()
 	END_TRY_CATCH_RTN(;,NULL)
 
 	return conshdlr;
-}
-
-SCIPheurIntBenders* BdMWSerial::heuristicHandler() {
-	SCIPheurIntBenders* heur = NULL;
-
-	BGN_TRY_CATCH
-
-	/** get solver interface */
-	OsiScipSolverInterface * si = dynamic_cast<OsiScipSolverInterface*>(master_->getSiPtr());
-
-	/** Benders constraint handler */
-	heur = new SCIPheurIntBenders(si->getScip(), "Integer Benders");
-
-	// TODO
-
-	END_TRY_CATCH_RTN(;,NULL)
-
-	return heur;
 }
