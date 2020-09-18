@@ -64,6 +64,8 @@ public:
 
 	//@}
 
+	virtual int getNumAuxVars() {return naux_;}
+
 protected:
 
 	/** create problem */
