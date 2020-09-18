@@ -84,10 +84,7 @@ public:
 	virtual SCIP_DECL_CONSLOCK(scip_lock);
 
 	/** returns whether the objective plugin is copyable */
-	virtual SCIP_DECL_CONSHDLRISCLONEABLE(iscloneable) {return true;}
-
-	/** clone method which will be used to copy constraint handler and variable pricer objects */
-	virtual SCIP_DECL_CONSHDLRCLONE(ObjProbCloneable* clone);
+	virtual SCIP_DECL_CONSHDLRISCLONEABLE(iscloneable) {return false;}
 
 public:
 

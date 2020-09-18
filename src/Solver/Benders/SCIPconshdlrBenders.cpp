@@ -405,16 +405,6 @@ SCIP_RETCODE SCIPconshdlrBenders::setOriginalVariables(
 	return SCIP_OKAY;
 }
 
-/** clone method which will be used to copy constraint handler and variable pricer objects */
-SCIP_DECL_CONSHDLRCLONE(scip::ObjProbCloneable* SCIPconshdlrBenders::clone)
-{
-	*valid = true;
-	SCIPconshdlrBenders * conshdlrclone = new SCIPconshdlrBenders(scip, "Benders", scip_sepapriority_);
-	conshdlrclone->setBdSub(bdsub_);
-	conshdlrclone->setOriginalVariables(nvars_, vars_, naux_);
-	return conshdlrclone;
-}
-
 /** creates and captures a Benders constraint */
 SCIP_RETCODE SCIPcreateConsBenders(
 		SCIP * scip,
