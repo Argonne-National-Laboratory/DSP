@@ -54,6 +54,7 @@ public:
 	nvars_(0),
 	vars_(NULL),
 	naux_(0),
+	probability_(NULL)
 	{
 		/** nothing to do */
 	}
@@ -108,10 +109,7 @@ public:
 	virtual void setDecModel(DecModel * model) {model_ = model;}
 
 	/** set pointer to cut generator */
-	virtual void setBdSub(BdSub * bdsub)
-	{
-		bdsub_ = bdsub;
-	}
+	virtual void setBdSub(BdSub * bdsub);
 
 	/** set original variable pointers */
 	virtual SCIP_RETCODE setOriginalVariables(
@@ -156,8 +154,19 @@ protected:
 
 	/** compuate probability (used for DRO) */
 	virtual void computeProbability(
-			const double* recourse, /**< [in] recourse values */
-			double* probability     /**< [out] new probability found and used in the sum */);
+			const double* recourse /**< [in] recourse values */);
+
+	virtual SCIP_RETCODE addNoGoodCut(
+			SCIP * scip,             /**< [in] scip pointer */
+   			SCIP_CONSHDLR* conshdlr, /**< [in] constraint handler that creates the row */
+			SCIP_RESULT * result     /**< [out] result */);
+
+	virtual SCIP_RETCODE addIntOptimalityCut(
+			SCIP * scip,             /**< [in] scip pointer */
+   			SCIP_CONSHDLR* conshdlr, /**< [in] constraint handler that creates the row */
+			double exact_recourse,   /**< [in] exact recourse value */
+			double recourse_lb,      /**< [in] lower bound of recourse value */
+			SCIP_RESULT * result     /**< [out] result */);
 
 protected:
 
@@ -166,6 +175,7 @@ protected:
 	int         nvars_;            /**< number of original variables */
 	SCIP_Var ** vars_;             /**< pointer array to original variables */
 	int         naux_;             /**< number of auxiliary variables */
+	double*     probability_;      /**< array of probability */
 };
 
 /** creates and captures a Benders constraint */

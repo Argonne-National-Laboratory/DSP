@@ -348,7 +348,7 @@ void BdSub::solveOneSubproblem(
 		/** TODO: add parametric cuts */
 
 		/** get objective value */
-		cgl->objvals_[s] = cglp->getPrimObjValue() * cgl->probability_[s];
+		cgl->objvals_[s] = cglp->getPrimObjValue();
 
 		/** get primal solution */
 		CoinCopyN(cglp->si_->getColSolution(), cglp->si_->getNumCols(), cgl->solutions_[s]);

@@ -14,6 +14,13 @@
 #include "Model/TssModel.h"
 #include "Solver/Benders/SCIPconshdlrBenders.h"
 
+#define BENDERS_CUT_REMOVABLE TRUE
+#define BENDERS_CUT_FORCE FALSE
+#define INTOPT_CUT_REMOVABLE TRUE
+#define INTOPT_CUT_FORCE FALSE
+#define NOGOOD_CUT_REMOVABLE TRUE
+#define NOGOOD_CUT_FORCE FALSE
+
 /** constraint data for Benders cuts */
 struct SCIP_ConsData
 {
@@ -28,6 +35,7 @@ SCIP_DECL_CONSFREE(SCIPconshdlrBenders::scip_free)
 	SCIPfreeMemoryArray(scip_, &vars_);
 	nvars_ = 0;
 	naux_ = 0;
+	FREE_ARRAY_PTR(probability_);
 
 	return SCIP_OKAY;
 }
@@ -62,10 +70,8 @@ SCIP_DECL_CONSTRANS(SCIPconshdlrBenders::scip_trans)
 SCIP_DECL_CONSENFOLP(SCIPconshdlrBenders::scip_enfolp)
 {
 #define FREE_MEMORY                 \
-	FREE_ARRAY_PTR(new_probability) \
 	FREE_ARRAY_PTR(recourse_values)
 
-	double* new_probability = NULL;
 	double* recourse_values = NULL;
 	double weighted_sum_of_recourse = 0.0; // weighted sum of the recourse values
 	double approx_recourse = 0.0;
@@ -73,8 +79,11 @@ SCIP_DECL_CONSENFOLP(SCIPconshdlrBenders::scip_enfolp)
 	int nsubs = 0;
 
 	/**
-	 * TODO 1: Can we try primal feasible solutions here?
-	 * TODO 2: DRO may adjust the probability here.
+	 * This part computes the exact recourse function value at the current solution,
+	 * 	adjusts the auxiliary variable values of the solution,
+	 * 	and send it to SCIP as a primal solution.
+	 * 
+	 * TODO: For DRO, it finds a probability distribution.
 	*/
 	if (isIntegralRecourse() && SCIPgetStage(scip) == SCIP_STAGE_SOLVING) {
 		SCIP_Bool stored;
@@ -82,19 +91,18 @@ SCIP_DECL_CONSENFOLP(SCIPconshdlrBenders::scip_enfolp)
 		nsubs = bdsub_->getNumSubprobs();
 
 		recourse_values = new double [nsubs];
-		new_probability = new double [nsubs];
 
+		// get the current solution
 		SCIP_CALL(SCIPcreateCurrentSol(scip, &sol, NULL));
 
 		// evaluate the recourse value
 		SCIP_CALL(evaluateRecourse(scip, sol, recourse_values));
 
 		// compute weighted sum for DRO; otherwise, returns the current recourse
-		computeProbability(recourse_values, new_probability);
+		computeProbability(recourse_values);
 		for (int j = 0; j < nsubs; ++j) {
-			printf("----- exact recourse value [%d] %e with probability %e\n", 
-				j, recourse_values[j], new_probability[j]);
-			weighted_sum_of_recourse += recourse_values[j] * new_probability[j];
+			DSPdebugMessage("----- scip_enfolp: exact recourse value [%d] %e with probability %e\n", j, recourse_values[j], probability_[j]);
+			weighted_sum_of_recourse += recourse_values[j] * probability_[j];
 		}
 
 		// set a feasible value of the auxiliary variable
@@ -102,30 +110,90 @@ SCIP_DECL_CONSENFOLP(SCIPconshdlrBenders::scip_enfolp)
 			approx_recourse += SCIPgetSolVal(scip, sol, vars_[nvars_ - naux_ + j]);
 			weighted_recourse = 0.0;
 			for (int k = j; k < nsubs; k += naux_)
-				weighted_recourse += recourse_values[k] * new_probability[k];
-			printf("----- set variable[%d] from %e to %e\n",
-				nvars_ - naux_ + j, SCIPgetSolVal(scip, sol, vars_[nvars_ - naux_ + j]), weighted_recourse);
+				weighted_recourse += recourse_values[k] * probability_[k];
+			DSPdebugMessage("----- scip_enfolp: set variable[%d] from %e to %e (bounds [%e,%e])\n",
+				nvars_ - naux_ + j, SCIPgetSolVal(scip, sol, vars_[nvars_ - naux_ + j]), weighted_recourse,
+				SCIPvarGetLbLocal(vars_[nvars_ - naux_ + j]), 
+				SCIPvarGetUbLocal(vars_[nvars_ - naux_ + j]));
 			SCIP_CALL(SCIPsetSolVal(scip, sol, vars_[nvars_ - naux_ + j], weighted_recourse));
 		}
 
 		// set the solution as a primal feasible solution
-		SCIP_CALL(SCIPtrySol(scip, sol, TRUE, FALSE, TRUE, TRUE, FALSE, &stored));
-		printf("----- is solution (obj: %e) stored? %s\n", SCIPsolGetOrigObj(sol), stored ? "yes" : "no");
+		double sense = SCIPgetObjsense(scip) == SCIP_OBJSENSE_MINIMIZE ? 1.0 : -1.0;
+		if (SCIPisLT(scip, (SCIPsolGetOrigObj(sol) - SCIPgetPrimalbound(scip)) * sense, 0.0)) {
+			SCIP_CALL(SCIPtrySol(scip, sol, FALSE, TRUE, TRUE, TRUE, TRUE, &stored));
+			DSPdebugMessage("----- scip_enfolp: is solution (obj: %e) stored? %s\n", SCIPsolGetOrigObj(sol), stored ? "yes" : "no");
+		}
 		SCIP_CALL(SCIPfreeSol(scip, &sol));
 	}
 
-	// TODO: pass new_probability to sepaBenders for DRO
 	*result = SCIP_FEASIBLE;
+	/**
+	 * TODO: DRO needs to pass probability_ to sepaBenders
+	 */
 	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, from_scip_enfolp, result));
-	DSPdebugMessage("scip_enfolp results in %d stage(%d)\n", *result, SCIPgetStage(scip));
+	DSPdebugMessage("scip_enfolp results in %d stage %d\n", *result, SCIPgetStage(scip));
 
 	if (isIntegralRecourse() && SCIPgetStage(scip) == SCIP_STAGE_SOLVING) {
-		printf("--------------- recourse approximation error: %e\n", weighted_sum_of_recourse - approx_recourse);
-		if (*result == SCIP_FEASIBLE && approx_recourse < weighted_sum_of_recourse) {
-			/**
-			 * TODO: add a local cut w.r.t. the auxiliary variables at the exact recourse value
-			 */
+		if (approx_recourse < weighted_sum_of_recourse) {
+			// printf("----- scip_enfolp: recourse approx %e < exact %e\n", approx_recourse, weighted_sum_of_recourse);
+			if (nvars_ - naux_ == SCIPgetNOrigBinVars(scip)) {
+				/** integer Benders cut */
+				double recourse_lb = SCIPgetDualbound(scip);
+				for (int j = 0; j < nvars_-naux_; ++j) {
+					recourse_lb -= CoinMax(0.0, SCIPvarGetObj(vars_[j]));
+				}
+				addIntOptimalityCut(scip, conshdlr, weighted_sum_of_recourse, recourse_lb, result);
+				DSPdebugMessage("----- scip_enfolp: integer optimality cut result %d\n", *result);
+			}
+			// } else {
+			// 	for (int j = 0; j < nvars_-naux_; ++j) {
+			// 		if (SCIPvarIsIntegral(vars_[j]) && SCIPvarGetLbLocal(vars_[j]) < SCIPvarGetUbLocal(vars_[j])) {
+			// 			SCIPbranchVar(scip, vars_[j], NULL, NULL, NULL);
+			// 			printf("----- scip_enfolp: branched on local bounds: [%e, %e]\n", SCIPvarGetLbLocal(vars_[j]), SCIPvarGetUbLocal(vars_[j]));
+			// 			*result = SCIP_BRANCHED;
+			// 			break;
+			// 		}
+			// 	}
+			// }
+
+			// if (*result == SCIP_FEASIBLE) {
+			// 	printf("----- scip_enfolp: no branch can be performed.\n");
+			// 	/** create empty row */
+			// 	SCIP_ROW * row = NULL;
+			// 	SCIP_CALL(SCIPcreateEmptyRowConshdlr(scip, &row, conshdlr, "Benders objective cut", weighted_sum_of_recourse, SCIPinfinity(scip),
+			// 			TRUE, /**< is row local? */
+			// 			FALSE, /**< is row modifiable? */
+			// 			FALSE  /**< is row removable? can this be TRUE? */));
+
+			// 	/** cache the row extension and only flush them if the cut gets added */
+			// 	SCIP_CALL(SCIPcacheRowExtensions(scip, row));
+
+			// 	/** collect all non-zero coefficients */
+			// 	for (int j = 0; j < naux_; ++j)
+			// 		SCIP_CALL(SCIPaddVarToRow(scip, row, vars_[nvars_-naux_+j], 1.0));
+
+			// 	/** flush all changes before adding cut */
+			// 	SCIP_CALL(SCIPflushRowExtensions(scip, row));
+
+			// 	SCIPprintRow(scip, row, NULL);
+			// 	/** add cut */
+			// 	SCIP_Bool infeasible;
+			// 	SCIP_CALL(SCIPaddRow(scip, row, FALSE, &infeasible));
+
+			// 	*result = infeasible ? SCIP_CUTOFF : SCIP_SEPARATED;
+			// 	printf("----- scip_enfolp: Benders objective cut result %d\n", *result);
+
+			// 	/** release the row */
+			// 	SCIP_CALL(SCIPreleaseRow(scip, &row));
+			// }
 		}
+	}
+
+	// Add no-good cut for pure binary
+	if (nvars_ - naux_ == SCIPgetNOrigBinVars(scip)) {
+		addNoGoodCut(scip, conshdlr, result);
+		DSPdebugMessage("----- scip_enfolp: No-good cut result %d\n", *result);
 	}
 
 	FREE_MEMORY;
@@ -140,7 +208,6 @@ SCIP_DECL_CONSENFOPS(SCIPconshdlrBenders::scip_enfops)
 	*result = SCIP_FEASIBLE;
 	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, from_scip_enfops, result));
 	if (*result == SCIP_SEPARATED) *result = SCIP_INFEASIBLE;
-	DSPdebugMessage("scip_enfops results in %d stage(%d)\n", *result, SCIPgetStage(scip));
 	return SCIP_OKAY;
 }
 
@@ -151,18 +218,37 @@ SCIP_DECL_CONSCHECK(SCIPconshdlrBenders::scip_check)
 	SCIP_CALL(sepaBenders(scip, conshdlr, sol, from_scip_check, result));
 	DSPdebugMessage("scip_check results in %d stage(%d)\n", *result, SCIPgetStage(scip));
 
-	if (bdsub_ != NULL && 
-		bdsub_->has_integer() &&
-		SCIPgetStage(scip) == SCIP_STAGE_SOLVING && 
-		*result == SCIP_FEASIBLE) 
+	if (isIntegralRecourse() && 
+		SCIPgetStage(scip) == SCIP_STAGE_SOLVING &&
+		*result == SCIP_FEASIBLE)
 	{
-		/** TODO: 
-		 * Check if the approximate recourse is valid w.r.t. the exact value.
-		 */
-		// double approx_recourse = 0.0;
-		// for (int s = 0; s < naux_; ++s)
-		// 	approx_recourse += vals[nvars_ - naux_ + s];
-		// printf("--------------- approximate recourse value: %e\n", approx_recourse);
+		int nsubs = bdsub_->getNumSubprobs();
+		double weighted_sum_of_recourse = 0.0;
+		double approx_recourse = 0.0;
+
+		double* recourse_values = new double [nsubs];
+
+		// evaluate the recourse value
+		SCIP_CALL(evaluateRecourse(scip, sol, recourse_values));
+
+		// compute weighted sum for DRO; otherwise, returns the current recourse
+		computeProbability(recourse_values);
+		for (int j = 0; j < nsubs; ++j) {
+			DSPdebugMessage("----- scip_check: exact recourse value [%d] %e with probability %e\n", j, recourse_values[j], probability_[j]);
+			weighted_sum_of_recourse += recourse_values[j] * probability_[j];
+		}
+
+		// set a feasible value of the auxiliary variable
+		for (int j = 0; j < naux_; ++j) {
+			approx_recourse += SCIPgetSolVal(scip, sol, vars_[nvars_ - naux_ + j]);
+		}
+
+		if (approx_recourse < weighted_sum_of_recourse) {
+			*result = SCIP_INFEASIBLE;
+			DSPdebugMessage("----- scip_check: rejects solution (approx %e, exact %e)\n", approx_recourse, weighted_sum_of_recourse);
+		}
+
+		FREE_ARRAY_PTR(recourse_values);
 	}
 
 	return SCIP_OKAY;
@@ -231,7 +317,7 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 			SCIP_CALL(SCIPcreateEmptyRowConshdlr(scip, &row, conshdlr, "benders", rc->lb(), SCIPinfinity(scip),
 					FALSE, /**< is row local? */
 					FALSE, /**< is row modifiable? */
-					FALSE  /**< is row removable? can this be TRUE? */));
+					BENDERS_CUT_REMOVABLE  /**< is row removable? can this be TRUE? */));
 
 			/** cache the row extension and only flush them if the cut gets added */
 			SCIP_CALL(SCIPcacheRowExtensions(scip, row));
@@ -260,7 +346,7 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 					/** add cut */
 					SCIP_Bool infeasible;
 					SCIP_CALL(SCIPaddRow(scip, row,
-							FALSE, /**< force cut */
+							BENDERS_CUT_FORCE, /**< force cut */
 							&infeasible));
 
 					if (infeasible || *result == SCIP_CUTOFF)
@@ -279,34 +365,30 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 			/** release the row */
 			SCIP_CALL(SCIPreleaseRow(scip, &row));
 		}
-		else if (where != from_scip_enfolp) {
-			if (isEfficacious || integer_feasible_ == false)
-				*result = SCIP_INFEASIBLE;
+		else if (where != from_scip_enfolp && isEfficacious) {
+			*result = SCIP_INFEASIBLE;
 		}
 	}
 	DSPdebugMessage("sepaBenders: where %d result %d\n", where, *result);
-
-	if (where == from_scip_enfolp || where == from_scip_check) {
-		/* TODO: When no Benders cut is generated, 
-			we need to compare the approximation gap of the recourse function value. */
-		// printf("where %d result %d integer? %s\n", where, *result, has_recourse_integer_ ? "yes" : "no");
-		if (bdsub_ != NULL && bdsub_->has_integer() && *result == SCIP_FEASIBLE) {
-			/** TODO:
-			 * 1. Evaluate the exact recourse value at the given solution.
-			 * 2. If a positive approximation gap exists, 
-			 * 	add a local cut w.r.t. the auxiliary variables at the exact recourse value.
-			 */
-			double approx_recourse = 0.0;
-			for (int s = 0; s < naux_; ++s)
-				approx_recourse += vals[nvars_ - naux_ + s];
-			printf("--------------- approximate recourse value: %e\n", approx_recourse);
-		}
-	}
 
 	/** free memory */
 	SCIPfreeMemoryArray(scip, &vals);
 
 	return SCIP_OKAY;
+}
+
+void SCIPconshdlrBenders::setBdSub(BdSub * bdsub) {
+	bdsub_ = bdsub;
+	FREE_ARRAY_PTR(probability_);
+	probability_ = new double [bdsub_->getNumSubprobs()];
+
+	if (model_->isStochastic()) {
+		// extract stochastic model
+		TssModel* tss = dynamic_cast<TssModel*>(model_);
+		CoinCopyN(tss->getProbability(), tss->getNumScenarios(), probability_);
+	} else {
+		CoinFillN(probability_, bdsub_->getNumSubprobs(), 1.0);
+	}
 }
 
 /** set original variable pointers */
@@ -480,8 +562,8 @@ void SCIPconshdlrBenders::aggregateCuts(
 
 		/** calculate weighted aggregation of cuts */
 		for (int j = 0; j < nvars_; ++j)
-			aggval[ind_aux][j] += cutvec[i][j];
-		aggrhs[ind_aux] += cutrhs[i];
+			aggval[ind_aux][j] += cutvec[i][j] * probability_[s];
+		aggrhs[ind_aux] += cutrhs[i] * probability_[s];
 	}
 
 	/** We generate optimality cuts only if there is no feasibility cut generated. */
@@ -548,14 +630,106 @@ SCIP_RETCODE SCIPconshdlrBenders::evaluateRecourse(
 }
 
 void SCIPconshdlrBenders::computeProbability(
-		const double* recourse, /**< [in] recourse values */
-		double* probability     /**< [out] new probability found and used in the sum */) {
+		const double* recourse /**< [in] recourse values */) {
 	assert(model_->isStochastic());
-
-	// extract stochastic model
-	TssModel* tss = dynamic_cast<TssModel*>(model_);
-
 	// TODO: find new probability distribution
-	for (int s = 0; s < bdsub_->getNumSubprobs(); ++s)
-		probability[s] = tss->getProbability()[s];
+}
+
+SCIP_RETCODE SCIPconshdlrBenders::addNoGoodCut(
+		SCIP * scip,             /**< [in] scip pointer */
+		SCIP_CONSHDLR* conshdlr, /**< [in] constraint handler that creates the row */
+		SCIP_RESULT * result     /**< [out] result */) {
+	double rhs = 1.0;
+	for (int j = 0; j < nvars_ - naux_; ++j) {
+		rhs -= SCIPgetVarSol(scip, vars_[j]);
+	}
+	/** create empty row */
+	SCIP_ROW * row = NULL;
+	SCIP_CALL(SCIPcreateEmptyRowConshdlr(scip, &row, conshdlr, "No-good cut", rhs, SCIPinfinity(scip),
+			FALSE, /**< is row local? */
+			FALSE, /**< is row modifiable? */
+			NOGOOD_CUT_REMOVABLE  /**< is row removable? can this be TRUE? */));
+
+	/** cache the row extension and only flush them if the cut gets added */
+	SCIP_CALL(SCIPcacheRowExtensions(scip, row));
+
+	/** collect all non-zero coefficients */
+	for (int j = 0; j < nvars_ - naux_; ++j) {
+		if (SCIPisFeasZero(scip, SCIPgetVarSol(scip, vars_[j])))
+			SCIP_CALL(SCIPaddVarToRow(scip, row, vars_[j], 1.0));
+		else
+			SCIP_CALL(SCIPaddVarToRow(scip, row, vars_[j], -1.0));
+	}
+
+	/** flush all changes before adding cut */
+	SCIP_CALL(SCIPflushRowExtensions(scip, row));
+
+	/** add cut */
+	SCIP_Bool infeasible;
+	SCIP_CALL(SCIPaddRow(scip, row, NOGOOD_CUT_FORCE, &infeasible));
+
+	if (*result != SCIP_CUTOFF)
+		*result = infeasible ? SCIP_CUTOFF : SCIP_SEPARATED;
+
+	/** add cut to global pool */
+	SCIP_CALL(SCIPaddPoolCut(scip, row));
+
+	/** release the row */
+	SCIP_CALL(SCIPreleaseRow(scip, &row));
+
+	return SCIP_OKAY;
+}
+
+SCIP_RETCODE SCIPconshdlrBenders::addIntOptimalityCut(
+		SCIP * scip,             /**< [in] scip pointer */
+		SCIP_CONSHDLR* conshdlr, /**< [in] constraint handler that creates the row */
+		double exact_recourse,   /**< [in] exact recourse value */
+		double recourse_lb,  /**< [in] approximate recourse value */
+		SCIP_RESULT * result     /**< [out] result */) {
+
+	// compute right-hand side
+	double ones = 0.0;
+	for (int j = 0; j < nvars_ - naux_; ++j) {
+		ones += SCIPgetVarSol(scip, vars_[j]);
+	}
+	double rhs = -ones*(exact_recourse-recourse_lb)+exact_recourse;
+
+	/** create empty row */
+	SCIP_ROW * row = NULL;
+	SCIP_CALL(SCIPcreateEmptyRowConshdlr(scip, &row, conshdlr, "Integer Optimality cut", rhs, SCIPinfinity(scip),
+			FALSE, /**< is row local? */
+			FALSE, /**< is row modifiable? */
+			INTOPT_CUT_REMOVABLE  /**< is row removable? can this be TRUE? */));
+
+	/** cache the row extension and only flush them if the cut gets added */
+	SCIP_CALL(SCIPcacheRowExtensions(scip, row));
+
+	/** collect all non-zero coefficients */
+	for (int j = 0; j < nvars_ - naux_; ++j) {
+		if (SCIPisFeasZero(scip, SCIPgetVarSol(scip, vars_[j])))
+			SCIP_CALL(SCIPaddVarToRow(scip, row, vars_[j], exact_recourse-recourse_lb));
+		else
+			SCIP_CALL(SCIPaddVarToRow(scip, row, vars_[j], recourse_lb-exact_recourse));
+	}
+	for (int j = 0; j < naux_; ++j) {
+		SCIP_CALL(SCIPaddVarToRow(scip, row, vars_[nvars_-naux_+j], 1.0));
+	}
+
+	/** flush all changes before adding cut */
+	SCIP_CALL(SCIPflushRowExtensions(scip, row));
+
+	/** add cut */
+	SCIP_Bool infeasible;
+	SCIP_CALL(SCIPaddRow(scip, row, INTOPT_CUT_FORCE, &infeasible));
+
+	if (*result != SCIP_CUTOFF)
+		*result = infeasible ? SCIP_CUTOFF : SCIP_SEPARATED;
+
+	/** add cut to global pool */
+	SCIP_CALL(SCIPaddPoolCut(scip, row));
+
+	/** release the row */
+	SCIP_CALL(SCIPreleaseRow(scip, &row));
+
+	return SCIP_OKAY;
 }
