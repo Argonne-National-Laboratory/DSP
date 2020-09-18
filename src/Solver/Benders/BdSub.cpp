@@ -396,7 +396,7 @@ DSP_RTN_CODE BdSub::solveOneIntegerSubproblem(
 
 	BGN_TRY_CATCH
 
-	printf("Scenario %d\n", s);
+	DSPdebugMessage("Scenario %d\n", s);
 
 	/** local variables */
 	const double * rlbd = cgl->cglp_[s]->si_->getRowLower();
@@ -429,11 +429,11 @@ DSP_RTN_CODE BdSub::solveOneIntegerSubproblem(
 
 	/** solve */
 	cglp->solve();
-	printf("  objective value %E\n", cglp->getPrimObjValue());
+	DSPdebugMessage("  objective value %E\n", cglp->getPrimObjValue());
 
 	/** solution status */
 	cgl->status_[s] = cglp->status();
-	printf("  solution status: %d\n", cgl->status_[s]);
+	DSPdebugMessage("  solution status: %d\n", cgl->status_[s]);
 
 	if (cgl->status_[s] == DSP_STAT_OPTIMAL) {
 		/** get objective value */
