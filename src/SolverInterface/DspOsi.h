@@ -78,6 +78,9 @@ public:
 	virtual void setLogLevel(int level) {
 		si_->messageHandler()->setLogLevel(level);
 	}
+	
+	/** set node information display frequency */
+    virtual void setNodeInfoFreq(int level) {}
 
 	/** set number of cores */
 	virtual void setNumCores(int num) {}

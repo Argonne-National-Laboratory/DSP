@@ -105,6 +105,11 @@ public:
 		SCIPsetIntParam(scip_->getScip(), "display/verblevel", CoinMax(0,CoinMin(5,level)));
 	}
 
+    /** set node information display frequency */
+    virtual void setNodeInfoFreq(int level) {
+        SCIPsetIntParam(scip_->getScip(), "display/freq", CoinMax(-1,level));
+    }
+
     /** set number of cores */
     virtual void setNumCores(int num) {}
 

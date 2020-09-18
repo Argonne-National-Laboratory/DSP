@@ -238,7 +238,7 @@ DSP_RTN_CODE BdMaster::createProblem() {
 	if (!osi_) throw CoinError("Failed to create DspOsiScip", "createProblem", "DdMaster");
 	
 	osi_->setLogLevel(CoinMin(par_->getIntParam("LOG_LEVEL"), 5));
-	DSPdebugMessage("Successfully created SCIP interface \n");
+	osi_->setNodeInfoFreq(par_->getIntParam("SCIP/DISPLAY_FREQ"));
 
 	/** load problem data */
 	getSiPtr()->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
