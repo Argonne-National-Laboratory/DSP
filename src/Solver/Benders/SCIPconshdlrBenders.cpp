@@ -99,7 +99,9 @@ SCIP_DECL_CONSENFOLP(SCIPconshdlrBenders::scip_enfolp)
 		SCIP_CALL(evaluateRecourse(scip, sol, recourse_values));
 
 		// compute weighted sum for DRO; otherwise, returns the current recourse
-		computeProbability(recourse_values);
+		if (model_->isDro()) {
+			computeProbability(recourse_values);
+		}
 		for (int j = 0; j < nsubs; ++j) {
 			DSPdebugMessage("----- scip_enfolp: exact recourse value [%d] %e with probability %e\n", j, recourse_values[j], probability_[j]);
 			weighted_sum_of_recourse += recourse_values[j] * probability_[j];
