@@ -83,10 +83,9 @@ SCIP_DECL_CONSENFOLP(SCIPconshdlrBenders::scip_enfolp)
 	 * This part computes the exact recourse function value at the current solution,
 	 * 	adjusts the auxiliary variable values of the solution,
 	 * 	and send it to SCIP as a primal solution.
-	 * 
-	 * TODO: For DRO, it finds a probability distribution.
 	*/
-	if (isIntegralRecourse() && SCIPgetStage(scip) == SCIP_STAGE_SOLVING) {
+	if (SCIPgetStage(scip) == SCIP_STAGE_SOLVING &&
+			(isIntegralRecourse() || model_->isDro())) {
 		SCIP_Bool stored;
 		SCIP_Sol* sol;
 		nsubs = bdsub_->getNumSubprobs();
