@@ -77,6 +77,7 @@ SCIP_DECL_CONSENFOLP(SCIPconshdlrBenders::scip_enfolp)
 	double approx_recourse = 0.0;
 	double weighted_recourse;
 	int nsubs = 0;
+	bool is_pure_binary = (nvars_ - naux_ == SCIPgetNOrigBinVars(scip));
 
 	/**
 	 * This part computes the exact recourse function value at the current solution,
@@ -134,64 +135,20 @@ SCIP_DECL_CONSENFOLP(SCIPconshdlrBenders::scip_enfolp)
 	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, from_scip_enfolp, result));
 	DSPdebugMessage("scip_enfolp results in %d stage %d\n", *result, SCIPgetStage(scip));
 
-	if (isIntegralRecourse() && SCIPgetStage(scip) == SCIP_STAGE_SOLVING) {
-		if (approx_recourse < weighted_sum_of_recourse) {
-			// printf("----- scip_enfolp: recourse approx %e < exact %e\n", approx_recourse, weighted_sum_of_recourse);
-			if (nvars_ - naux_ == SCIPgetNOrigBinVars(scip)) {
-				/** integer Benders cut */
-				double recourse_lb = SCIPgetDualbound(scip);
-				for (int j = 0; j < nvars_-naux_; ++j) {
-					recourse_lb -= CoinMax(0.0, SCIPvarGetObj(vars_[j]));
-				}
-				addIntOptimalityCut(scip, conshdlr, weighted_sum_of_recourse, recourse_lb, result);
-				DSPdebugMessage("----- scip_enfolp: integer optimality cut result %d\n", *result);
+	if (is_pure_binary) {
+		if (isIntegralRecourse() && 
+				SCIPgetStage(scip) == SCIP_STAGE_SOLVING &&
+				approx_recourse < weighted_sum_of_recourse) {
+			/** integer Benders cut */
+			double recourse_lb = SCIPgetDualbound(scip);
+			for (int j = 0; j < nvars_-naux_; ++j) {
+				recourse_lb -= CoinMax(0.0, SCIPvarGetObj(vars_[j]));
 			}
-			// } else {
-			// 	for (int j = 0; j < nvars_-naux_; ++j) {
-			// 		if (SCIPvarIsIntegral(vars_[j]) && SCIPvarGetLbLocal(vars_[j]) < SCIPvarGetUbLocal(vars_[j])) {
-			// 			SCIPbranchVar(scip, vars_[j], NULL, NULL, NULL);
-			// 			printf("----- scip_enfolp: branched on local bounds: [%e, %e]\n", SCIPvarGetLbLocal(vars_[j]), SCIPvarGetUbLocal(vars_[j]));
-			// 			*result = SCIP_BRANCHED;
-			// 			break;
-			// 		}
-			// 	}
-			// }
-
-			// if (*result == SCIP_FEASIBLE) {
-			// 	printf("----- scip_enfolp: no branch can be performed.\n");
-			// 	/** create empty row */
-			// 	SCIP_ROW * row = NULL;
-			// 	SCIP_CALL(SCIPcreateEmptyRowConshdlr(scip, &row, conshdlr, "Benders objective cut", weighted_sum_of_recourse, SCIPinfinity(scip),
-			// 			TRUE, /**< is row local? */
-			// 			FALSE, /**< is row modifiable? */
-			// 			FALSE  /**< is row removable? can this be TRUE? */));
-
-			// 	/** cache the row extension and only flush them if the cut gets added */
-			// 	SCIP_CALL(SCIPcacheRowExtensions(scip, row));
-
-			// 	/** collect all non-zero coefficients */
-			// 	for (int j = 0; j < naux_; ++j)
-			// 		SCIP_CALL(SCIPaddVarToRow(scip, row, vars_[nvars_-naux_+j], 1.0));
-
-			// 	/** flush all changes before adding cut */
-			// 	SCIP_CALL(SCIPflushRowExtensions(scip, row));
-
-			// 	SCIPprintRow(scip, row, NULL);
-			// 	/** add cut */
-			// 	SCIP_Bool infeasible;
-			// 	SCIP_CALL(SCIPaddRow(scip, row, FALSE, &infeasible));
-
-			// 	*result = infeasible ? SCIP_CUTOFF : SCIP_SEPARATED;
-			// 	printf("----- scip_enfolp: Benders objective cut result %d\n", *result);
-
-			// 	/** release the row */
-			// 	SCIP_CALL(SCIPreleaseRow(scip, &row));
-			// }
+			addIntOptimalityCut(scip, conshdlr, weighted_sum_of_recourse, recourse_lb, result);
+			DSPdebugMessage("----- scip_enfolp: integer optimality cut result %d\n", *result);
 		}
-	}
 
-	// Add no-good cut for pure binary
-	if (nvars_ - naux_ == SCIPgetNOrigBinVars(scip)) {
+		// Add no-good cut for pure binary
 		addNoGoodCut(scip, conshdlr, result);
 		DSPdebugMessage("----- scip_enfolp: No-good cut result %d\n", *result);
 	}
