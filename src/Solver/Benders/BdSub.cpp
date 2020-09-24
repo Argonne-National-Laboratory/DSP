@@ -61,7 +61,7 @@ BdSub::~BdSub()
 	FREE_2D_PTR(nsubprobs_, mat_mp_);
 	FREE_2D_PTR(nsubprobs_, cglp_);
 	FREE_ARRAY_PTR(objvals_);
-	FREE_2D_PTR(nsubprobs_, solutions_);
+	FREE_2D_ARRAY_PTR(nsubprobs_, solutions_);
 	FREE_2D_PTR(nsubprobs_, warm_start_);
 	FREE_ARRAY_PTR(status_);
 }

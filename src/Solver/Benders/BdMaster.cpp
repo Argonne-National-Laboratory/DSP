@@ -141,14 +141,14 @@ DSP_RTN_CODE BdMaster::setConshdlr(SCIPconshdlrBenders* conshdlr)
 	OsiScipSolverInterface * scip = dynamic_cast<DspOsiScip*>(osi_)->scip_;
 
 	/** include constraint handler */
-	SCIP_CALL_ABORT(SCIPincludeObjConshdlr(scip->getScip(), conshdlr, false));
+	DSPdebugMessage("Added constraint handler %p\n", conshdlr);
+	SCIP_CALL_ABORT(SCIPincludeObjConshdlr(scip->getScip(), conshdlr, TRUE));
 
 	/** create constraint */
 	SCIP_CONS * cons = NULL;
 	SCIP_CALL_ABORT(SCIPcreateConsBenders(scip->getScip(), &cons, "Benders"));
 	SCIP_CALL_ABORT(SCIPaddCons(scip->getScip(), cons));
 	SCIP_CALL_ABORT(SCIPreleaseCons(scip->getScip(), &cons));
-	DSPdebugMessage("Added constraint handler %p\n", conshdlr);
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
