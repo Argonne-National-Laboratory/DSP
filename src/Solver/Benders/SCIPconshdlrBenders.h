@@ -100,6 +100,16 @@ public:
 	/** get number of auxiliary variables */
 	virtual int getNumAuxVars() {return naux_;}
 
+	virtual bool isStochastic() {
+		if (model_ && model_->isStochastic()) return true;
+		else return false;
+	}
+
+	virtual bool isDro() {
+		if (model_ && model_->isDro()) return true;
+		else return false;
+	}
+
 public:
 
 	/** set model pointer */

@@ -85,7 +85,7 @@ SCIP_DECL_CONSENFOLP(SCIPconshdlrBenders::scip_enfolp)
 	 * 	and send it to SCIP as a primal solution.
 	*/
 	if (SCIPgetStage(scip) == SCIP_STAGE_SOLVING &&
-			(isIntegralRecourse() || model_->isDro())) {
+			(isIntegralRecourse() || isDro())) {
 		SCIP_Bool stored;
 		SCIP_Sol* sol;
 		nsubs = bdsub_->getNumSubprobs();
@@ -99,7 +99,7 @@ SCIP_DECL_CONSENFOLP(SCIPconshdlrBenders::scip_enfolp)
 		SCIP_CALL(evaluateRecourse(scip, sol, recourse_values));
 
 		// compute weighted sum for DRO; otherwise, returns the current recourse
-		if (model_->isDro()) {
+		if (isDro()) {
 			computeProbability(recourse_values);
 		}
 		for (int j = 0; j < nsubs; ++j) {
@@ -137,7 +137,7 @@ SCIP_DECL_CONSENFOLP(SCIPconshdlrBenders::scip_enfolp)
 	DSPdebugMessage("scip_enfolp results in %d stage %d\n", *result, SCIPgetStage(scip));
 
 	if (is_pure_binary) {
-		if (model_->isStochastic() && 
+		if (isStochastic() && 
 				isIntegralRecourse() && 
 				SCIPgetStage(scip) == SCIP_STAGE_SOLVING &&
 				approx_recourse < weighted_sum_of_recourse) {
@@ -341,7 +341,7 @@ void SCIPconshdlrBenders::setBdSub(BdSub * bdsub) {
 	FREE_ARRAY_PTR(probability_);
 	probability_ = new double [bdsub_->getNumSubprobs()];
 
-	if (model_->isStochastic()) {
+	if (isStochastic()) {
 		// extract stochastic model
 		TssModel* tss = dynamic_cast<TssModel*>(model_);
 		CoinCopyN(tss->getProbability(), tss->getNumScenarios(), probability_);
@@ -580,7 +580,7 @@ SCIP_RETCODE SCIPconshdlrBenders::evaluateRecourse(
 
 void SCIPconshdlrBenders::computeProbability(
 		const double* recourse /**< [in] recourse values */) {
-	assert(model_->isStochastic());
+	assert(isStochastic());
 	// TODO: find new probability distribution
 }
 
