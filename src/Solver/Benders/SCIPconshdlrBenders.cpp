@@ -135,7 +135,8 @@ SCIP_DECL_CONSENFOLP(SCIPconshdlrBenders::scip_enfolp)
 	DSPdebugMessage("scip_enfolp results in %d stage %d\n", *result, SCIPgetStage(scip));
 
 	if (is_pure_binary) {
-		if (isIntegralRecourse() && 
+		if (model_->isStochastic() && 
+				isIntegralRecourse() && 
 				SCIPgetStage(scip) == SCIP_STAGE_SOLVING &&
 				approx_recourse < weighted_sum_of_recourse) {
 			/** integer Benders cut */
