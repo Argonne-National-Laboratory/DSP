@@ -41,7 +41,7 @@ DSP_RTN_CODE BdMWSerial::init()
 	/** create Benders worker */
 	worker_ = new BdWorker(model_, par_, message_);
 
-	if (worker_->getBdSubPtr()->has_integer())
+	if (master_->is_binary() == false && worker_->getBdSubPtr()->has_integer())
 		warning_relaxation();
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)

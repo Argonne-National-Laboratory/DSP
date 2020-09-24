@@ -30,11 +30,16 @@ DSP_RTN_CODE BdMWMpi::init()
 {
 	BGN_TRY_CATCH
 
+	int is_binary = -1;
+
 	if (comm_rank_ == 0)
 	{
 		/** create and initialize master */
 		master_ = new BdMaster(model_, par_, message_);
 		DSP_RTN_CHECK_THROW(master_->init());
+
+		is_binary = master_->is_binary() ? 1 : 0;
+		MPI_Bcast(&is_binary, 1, MPI_INT, 0, comm_);
 	}
 	else
 	{
@@ -48,7 +53,8 @@ DSP_RTN_CODE BdMWMpi::init()
 		/** create and initialize worker */
 		worker_ = new BdWorker(model_, par_, message_);
 
-		if (comm_rank_ == 1 && worker_->getBdSubPtr()->has_integer())
+		MPI_Bcast(&is_binary, 1, MPI_INT, 0, comm_);
+		if (comm_rank_ == 1 && is_binary == 0 && worker_->getBdSubPtr()->has_integer())
 			warning_relaxation();
 	}
 #ifdef DSP_DEBUG

@@ -23,7 +23,8 @@ worker_(NULL),
 naux_(1),
 obj_aux_(NULL),
 clbd_aux_(NULL),
-cubd_aux_(NULL) {
+cubd_aux_(NULL),
+is_binary_(false) {
 	obj_aux_ = new double[naux_];
 	clbd_aux_ = new double[naux_];
 	cubd_aux_ = new double[naux_];
@@ -35,7 +36,8 @@ cubd_aux_(NULL) {
 
 BdMaster::BdMaster(const BdMaster& rhs) :
 DecSolver(rhs),
-naux_(rhs.naux_) {
+naux_(rhs.naux_),
+is_binary_(rhs.is_binary_) {
 	obj_aux_ = new double[naux_];
 	clbd_aux_ = new double[naux_];
 	cubd_aux_ = new double[naux_];
@@ -195,6 +197,7 @@ DSP_RTN_CODE BdMaster::createProblem() {
 	DSPdebugMessage("Decomposed the model.\n");
 
 	/** convert column types */
+	is_binary_ = true;
 	if (model_->isStochastic())
 	{
 		TssModel * tssModel;
@@ -206,6 +209,18 @@ DSP_RTN_CODE BdMaster::createProblem() {
 		{
 			printf("Model claims to be stochastic when it is not");
 			return DSP_RTN_ERR;
+		}
+
+		/** is binary program? */
+		for (int j = 0; j < tssModel->getNumCols(0); ++j) {
+			if (ctype[j] == 'C') { 
+				is_binary_ = false;
+				break;
+			}
+			if (ctype[j] == 'I' && (clbd[j] != 0.0 || cubd[j] != 1.0)) {
+				is_binary_ = false;
+				break;
+			}
 		}
 
 		/** relax integrality? */
@@ -222,10 +237,28 @@ DSP_RTN_CODE BdMaster::createProblem() {
 	}
 	else
 	{
+		/** is binary program? */
+		for (int j = 0; j < mat->getNumCols(); ++j) {
+			if (ctype[j] == 'C') { 
+				is_binary_ = false;
+				break;
+			}
+			if (ctype[j] == 'I' && (clbd[j] != 0.0 || cubd[j] != 1.0)) {
+				is_binary_ = false;
+				break;
+			}
+		}
+
 		if (par_->getBoolPtrParam("RELAX_INTEGRALITY")[0])
 		{
 			for (int j = 0; j < mat->getNumCols(); j++)
 			{
+				if (is_binary_) {
+					if (ctype[j] == 'C') 
+						is_binary_ = false;
+					if (ctype[j] == 'I' && (clbd[j] != 0.0 || cubd[j] != 1.0)) 
+						is_binary_ = false;
+				}
 				if (ctype[j] != 'C')
 					nIntegers--;
 				ctype[j] = 'C';
