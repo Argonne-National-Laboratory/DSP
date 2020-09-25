@@ -335,22 +335,7 @@ void BdSub::solveOneSubproblem(
 	DSPdebugMessage("  objective value %E\n", si->getObjValue());
 
 	/** solution status */
-	if (si->isProvenOptimal())
-		cgl->status_[s] = DSP_STAT_OPTIMAL;
-	else if (si->isProvenPrimalInfeasible())
-		cgl->status_[s] = DSP_STAT_PRIM_INFEASIBLE;
-	else if (si->isProvenDualInfeasible())
-		cgl->status_[s] = DSP_STAT_DUAL_INFEASIBLE;
-	else if (si->isPrimalObjectiveLimitReached())
-		cgl->status_[s] = DSP_STAT_LIM_PRIM_OBJ;
-	else if (si->isDualObjectiveLimitReached())
-		cgl->status_[s] = DSP_STAT_LIM_DUAL_OBJ;
-	else if (si->isIterationLimitReached())
-		cgl->status_[s] = DSP_STAT_LIM_ITERorTIME;
-	else if (si->isAbandoned())
-		cgl->status_[s] = DSP_STAT_ABORT;
-	else
-		cgl->status_[s] = DSP_STAT_UNKNOWN;
+	cgl->status_[s] = DspOsi::dsp_status(si);
 	DSPdebugMessage("  solution status: %d\n", cgl->status_[s]);
 
 	if (cgl->status_[s] == DSP_STAT_OPTIMAL)
@@ -399,9 +384,9 @@ DSP_RTN_CODE BdSub::solveOneIntegerSubproblem(
 			double *       objval /**< objective value */)
 {
 #define FREE_MEMORY \
-	FREE_PTR(cglp)
+	FREE_PTR(si)
 
-	DspOsi * cglp = NULL;
+	OsiSolverInterface *si = NULL;
 	DSP_RTN_CODE ret = DSP_RTN_OK;
 
 	BGN_TRY_CATCH
@@ -413,46 +398,43 @@ DSP_RTN_CODE BdSub::solveOneIntegerSubproblem(
 	const double * rubd = cgl->cglp_[s]->si_->getRowUpper();
 	const char * ctype = cgl->cglp_[s]->si_->getColType();
 
-	/** clone CGLP */
-	cglp = createDspOsi(OsiScip);
-	cglp->setLogLevel(0); // quiet.
-	if (!cglp) throw CoinError("Failed to create DspOsi", "solveOneIntegerSubproblem", "BdSub");
-	cglp->si_->loadProblem(*(cgl->cglp_[s]->si_->getMatrixByCol()),
-			cgl->cglp_[s]->si_->getColLower(), cgl->cglp_[s]->si_->getColUpper(),
-			cgl->cglp_[s]->si_->getObjCoefficients(),
-			cgl->cglp_[s]->si_->getRowLower(), cgl->cglp_[s]->si_->getRowUpper());
+	si = cgl->cglp_[s]->si_->clone();
 
 	/** mark integer variables */
-	for (int j = 0; j < cglp->si_->getNumCols(); ++j) {
+	for (int j = 0; j < si->getNumCols(); ++j)
+	{
 		if (ctype[j] != 'C')
-			cglp->si_->setInteger(j);
+			si->setInteger(j);
 	}
 
 	/** loop over CGLP rows to update row bounds */
-	for (int i = 0; i < cglp->si_->getNumRows(); ++i)
+	for (int i = 0; i < si->getNumRows(); ++i)
 	{
 		if (rlbd[i] > -1.0e+20)
-			cglp->si_->setRowLower(i, rlbd[i] - Tx[i]);
+			si->setRowLower(i, rlbd[i] - Tx[i]);
 		if (rubd[i] < 1.0e+20)
-			cglp->si_->setRowUpper(i, rubd[i] - Tx[i]);
+			si->setRowUpper(i, rubd[i] - Tx[i]);
 	}
 
+	/** quite */
+	si->messageHandler()->setLogLevel(0);
 	/** solve */
-	cglp->solve();
-	DSPdebugMessage("  objective value %E\n", cglp->getPrimObjValue());
+	si->initialSolve();
+	if (si->getNumIntegers() > 0)
+		si->branchAndBound();
+	DSPdebugMessage("  objective value %E\n", si->getObjValue());
 
 	/** solution status */
-	cgl->status_[s] = cglp->status();
+	cgl->status_[s] = DspOsi::dsp_status(si);
 	DSPdebugMessage("  solution status: %d\n", cgl->status_[s]);
 
 	if (cgl->status_[s] == DSP_STAT_OPTIMAL) {
 		/** get objective value */
-		objval[s] = cglp->getPrimObjValue();
+		objval[s] = si->getObjValue();
 	} else {
 		printf("Unexpected solution status: s %d status %d\n", s, cgl->status_[s]);
 		objval[s] = 1.0e+20;
-
-		cglp->si_->writeMps("int_subprob");
+		si->writeMps("int_subprob");
 		ret = DSP_RTN_ERR;
 	}
 
