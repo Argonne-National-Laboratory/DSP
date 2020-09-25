@@ -146,6 +146,10 @@ protected:
 	DSP_RTN_CODE *        status_;     /**< subproblem solution status */
 	bool recourse_has_integer_;        /**< whether the recourse has integer variables */
 
+	/** simple statistics */
+	vector<string> names_statistics_;
+	unordered_map<string, int> count_statistics_;
+	unordered_map<string, double> time_statistics_;
 };
 
 #endif /* SRC_SOLVER_BENDERS_BDSUB_H_ */

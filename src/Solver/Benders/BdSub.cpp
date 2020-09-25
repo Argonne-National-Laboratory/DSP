@@ -6,6 +6,7 @@
  */
 
 // #define DSP_DEBUG
+// #define DSP_PROFILE
 
 #include "Utility/DspUtility.h"
 #include "Model/TssModel.h"
@@ -15,23 +16,37 @@
 #include "SolverInterface/DspOsiCpx.h"
 #include "SolverInterface/DspOsiGrb.h"
 
-BdSub::BdSub(DspParams* par):
-par_(par),
-nsubprobs_(0), 
-subindices_(NULL),
-probability_(NULL),
-mat_mp_(NULL), 
-cglp_(NULL),
-warm_start_(NULL), 
-objvals_(NULL), 
-solutions_(NULL),
-status_(NULL),
-recourse_has_integer_(false) {}
+BdSub::BdSub(DspParams *par) : par_(par),
+							   nsubprobs_(0),
+							   subindices_(NULL),
+							   probability_(NULL),
+							   mat_mp_(NULL),
+							   cglp_(NULL),
+							   warm_start_(NULL),
+							   objvals_(NULL),
+							   solutions_(NULL),
+							   status_(NULL),
+							   recourse_has_integer_(false)
+{
+	names_statistics_.push_back("create ipsub");
+	names_statistics_.push_back("create ipsub DspOsi");
+	names_statistics_.push_back("create lpsub");
+	names_statistics_.push_back("solve ipsub");
+	names_statistics_.push_back("solve lpsub");
+	for (unsigned i = 0; i < names_statistics_.size(); ++i)
+	{
+		count_statistics_[names_statistics_[i]] = 0;
+		time_statistics_[names_statistics_[i]] = 0.0;
+	}
+}
 
-BdSub::BdSub(const BdSub& rhs) :
-par_(rhs.par_),
-nsubprobs_(rhs.nsubprobs_),
-recourse_has_integer_(rhs.recourse_has_integer_) {
+BdSub::BdSub(const BdSub &rhs) : par_(rhs.par_),
+								 nsubprobs_(rhs.nsubprobs_),
+								 recourse_has_integer_(rhs.recourse_has_integer_),
+								 names_statistics_(rhs.names_statistics_),
+								 count_statistics_(rhs.count_statistics_),
+								 time_statistics_(rhs.time_statistics_)
+{
 	/** copy things ... */
 	setSubIndices(rhs.nsubprobs_, rhs.subindices_);
 	probability_ = new double [nsubprobs_];
@@ -53,9 +68,20 @@ recourse_has_integer_(rhs.recourse_has_integer_) {
 	}
 }
 
-
 BdSub::~BdSub()
 {
+#ifdef DSP_PROFILE
+	fstream fp;
+	fp.open("BdSub_statistics.txt", ios::out);
+	for (unsigned i = 0; i < names_statistics_.size(); ++i)
+	{
+		fp << names_statistics_[i] << ","
+		   << time_statistics_[names_statistics_[i]] << ","
+		   << count_statistics_[names_statistics_[i]] << endl;
+	}
+	fp.close();
+#endif
+
 	FREE_ARRAY_PTR(subindices_);
 	FREE_ARRAY_PTR(probability_);
 	FREE_2D_PTR(nsubprobs_, mat_mp_);
@@ -255,6 +281,8 @@ void BdSub::solveOneSubproblem(
 	const double * rc   = NULL; /** reduced costs */
 	const char * ctype = cgl->cglp_[s]->si_->getColType();
 
+	double stime = CoinGetTimeOfDay(); // tic
+
 	/** clone CGLP */
 	si = cgl->cglp_[s]->si_->clone();
 	si->setWarmStart(cgl->warm_start_[s]);
@@ -270,6 +298,10 @@ void BdSub::solveOneSubproblem(
 		if (rubd[i] < 1.0e+20)
 			si->setRowUpper(i, rubd[i] - Tx[s][i]);
 	}
+
+	/** collect statistics */
+	cgl->count_statistics_["create lpsub"]++;
+	cgl->time_statistics_["create lpsub"] += CoinGetTimeOfDay() - stime; // toc
 
 	/** solve feasibility problem */
 	int nAddedCols = 0;
@@ -325,8 +357,14 @@ void BdSub::solveOneSubproblem(
 	/** set warmstart */
 	si->setWarmStart(cgl->warm_start_[s]);
 
+	stime = CoinGetTimeOfDay(); // tic
+
 	/** solve */
 	si->initialSolve();
+
+	/** collect statistics */
+	cgl->count_statistics_["solve lpsub"]++;
+	cgl->time_statistics_["solve lpsub"] += CoinGetTimeOfDay() - stime; // toc
 
 	/** update warmstart */
 	FREE_PTR(cgl->warm_start_[s]);
@@ -398,7 +436,14 @@ DSP_RTN_CODE BdSub::solveOneIntegerSubproblem(
 	const double * rubd = cgl->cglp_[s]->si_->getRowUpper();
 	const char * ctype = cgl->cglp_[s]->si_->getColType();
 
+	double stime = CoinGetTimeOfDay(); // tic
+
 	si = cgl->cglp_[s]->si_->clone();
+
+	/** collect statistics */
+	cgl->count_statistics_["create ipsub DspOsi"]++;
+	cgl->time_statistics_["create ipsub DspOsi"] += CoinGetTimeOfDay() - stime; // toc
+	stime = CoinGetTimeOfDay();
 
 	/** mark integer variables */
 	for (int j = 0; j < si->getNumCols(); ++j)
@@ -418,11 +463,21 @@ DSP_RTN_CODE BdSub::solveOneIntegerSubproblem(
 
 	/** quite */
 	si->messageHandler()->setLogLevel(0);
+
+	/** collect statistics */
+	cgl->count_statistics_["create ipsub"]++;
+	cgl->time_statistics_["create ipsub"] += CoinGetTimeOfDay() - stime; // toc
+	stime = CoinGetTimeOfDay();											 // tic
+
 	/** solve */
 	si->initialSolve();
 	if (si->getNumIntegers() > 0)
 		si->branchAndBound();
 	DSPdebugMessage("  objective value %E\n", si->getObjValue());
+
+	/** collect statistics */
+	cgl->count_statistics_["solve ipsub"]++;
+	cgl->time_statistics_["solve ipsub"] += CoinGetTimeOfDay() - stime; // toc
 
 	/** solution status */
 	cgl->status_[s] = DspOsi::dsp_status(si);

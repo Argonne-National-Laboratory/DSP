@@ -6,6 +6,7 @@
  */
 
 // #define DSP_DEBUG
+// #define BENDERS_PROFILE
 
 #include "OsiCuts.hpp"
 
@@ -14,12 +15,64 @@
 #include "Model/TssModel.h"
 #include "Solver/Benders/SCIPconshdlrBenders.h"
 
-#define BENDERS_CUT_REMOVABLE TRUE
-#define BENDERS_CUT_FORCE FALSE
-#define INTOPT_CUT_REMOVABLE TRUE
-#define INTOPT_CUT_FORCE FALSE
-#define NOGOOD_CUT_REMOVABLE TRUE
-#define NOGOOD_CUT_FORCE FALSE
+#define BENDERS_CUT_REMOVABLE FALSE
+#define BENDERS_CUT_FORCE TRUE
+#define INTOPT_CUT_REMOVABLE FALSE
+#define INTOPT_CUT_FORCE TRUE
+#define NOGOOD_CUT_REMOVABLE FALSE
+#define NOGOOD_CUT_FORCE TRUE
+
+/** default constructor */
+SCIPconshdlrBenders::SCIPconshdlrBenders(
+	SCIP *scip,
+	const char *name,
+	int sepapriority)
+	: ObjConshdlr(scip, name, "Benders cuts",
+				  sepapriority, /**< priority of the constraint handler for separation */
+				  sepapriority, /**< priority of the constraint handler for constraint enforcing */
+				  sepapriority, /**< priority of the constraint handler for checking infeasibility (and propagation) */
+				  -1,			/**< never call separator */
+				  -1,			/**< disable constraint propagation */
+				  1,			/**< always use all constraints (no aging) */
+				  0,			/**< disable the preprocessing callback of the constraint handler */
+				  TRUE,			/**< delay separation method */
+				  FALSE,		/**< do not delay propatation method */
+#if SCIP_VERSION < 320
+				  FALSE, /**< do not delay presolving method */
+				  TRUE,	 /**< skip constraint handler even if no constraints are available. */
+				  SCIP_PROPTIMING_BEFORELP /**< propagation method is called before solving LP */),
+#else
+				  TRUE,						/**< skip constraint handler even if no constraints are available. */
+				  SCIP_PROPTIMING_BEFORELP, /**< propagation method is called before solving LP */
+				  SCIP_PRESOLTIMING_FAST),
+#endif
+	  model_(NULL),
+	  bdsub_(NULL),
+	  nvars_(0),
+	  vars_(NULL),
+	  naux_(0),
+	  probability_(NULL)
+{
+#ifdef BENDERS_PROFILE
+	/** initialize statistics */
+	names_statistics_.push_back("sepaBenders");
+	names_statistics_.push_back("addIntOptimalityCut");
+	names_statistics_.push_back("addNoGoodCut");
+	names_statistics_.push_back("evaluateRecourse");
+	for (unsigned i = 0; i < names_statistics_.size(); ++i)
+	{
+		time_statistics_[names_statistics_[i]] = 0.0;
+		count_statistics_[names_statistics_[i]] = 0;
+	}
+#endif
+}
+
+SCIPconshdlrBenders::~SCIPconshdlrBenders()
+{
+#ifdef BENDERS_PROFILE
+	write_statistics();
+#endif
+}
 
 /** constraint data for Benders cuts */
 struct SCIP_ConsData
@@ -230,6 +283,8 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 		whereFrom where,
 		SCIP_RESULT * result)
 {
+	double stime = CoinGetTimeOfDay();
+
 	OsiCuts cs; /**< Benders cut placeholder */
 	SCIP_Real * vals = NULL; /**< current solution */
 
@@ -332,6 +387,11 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 
 	/** free memory */
 	SCIPfreeMemoryArray(scip, &vals);
+
+#ifdef BENDERS_PROFILE
+	time_statistics_["sepaBenders"] += CoinGetTimeOfDay() - stime;
+	count_statistics_["sepaBenders"]++;
+#endif
 
 	return SCIP_OKAY;
 }
@@ -555,6 +615,9 @@ SCIP_RETCODE SCIPconshdlrBenders::evaluateRecourse(
 		SCIP * scip,    /**< [in] scip pointer */
 		SCIP_SOL * sol, /**< [in] solution to evaluate */
 		double * values /**< [out] evaluated recourse values */) {
+
+	double stime = CoinGetTimeOfDay();
+
 	/**< current solution */
 	SCIP_Real * vals = NULL;
 
@@ -571,6 +634,11 @@ SCIP_RETCODE SCIPconshdlrBenders::evaluateRecourse(
 	/** free memory */
 	SCIPfreeMemoryArray(scip, &vals);
 
+#ifdef BENDERS_PROFILE
+	time_statistics_["evaluateRecourse"] += CoinGetTimeOfDay() - stime;
+	count_statistics_["evaluateRecourse"]++;
+#endif
+
 	return SCIP_OKAY;
 }
 
@@ -586,6 +654,9 @@ SCIP_RETCODE SCIPconshdlrBenders::addNoGoodCut(
 		SCIP * scip,             /**< [in] scip pointer */
 		SCIP_CONSHDLR* conshdlr, /**< [in] constraint handler that creates the row */
 		SCIP_RESULT * result     /**< [out] result */) {
+
+	double stime = CoinGetTimeOfDay();
+
 	double rhs = 1.0;
 	for (int j = 0; j < nvars_ - naux_; ++j) {
 		rhs -= SCIPgetVarSol(scip, vars_[j]);
@@ -624,6 +695,11 @@ SCIP_RETCODE SCIPconshdlrBenders::addNoGoodCut(
 	/** release the row */
 	SCIP_CALL(SCIPreleaseRow(scip, &row));
 
+#ifdef BENDERS_PROFILE
+	time_statistics_["addNoGoodCut"] += CoinGetTimeOfDay() - stime;
+	count_statistics_["addNoGoodCut"]++;
+#endif
+
 	return SCIP_OKAY;
 }
 
@@ -633,6 +709,8 @@ SCIP_RETCODE SCIPconshdlrBenders::addIntOptimalityCut(
 		double exact_recourse,   /**< [in] exact recourse value */
 		double recourse_lb,  /**< [in] approximate recourse value */
 		SCIP_RESULT * result     /**< [out] result */) {
+
+	double stime = CoinGetTimeOfDay();
 
 	// compute right-hand side
 	double ones = 0.0;
@@ -678,5 +756,23 @@ SCIP_RETCODE SCIPconshdlrBenders::addIntOptimalityCut(
 	/** release the row */
 	SCIP_CALL(SCIPreleaseRow(scip, &row));
 
+#ifdef BENDERS_PROFILE
+	time_statistics_["addIntOptimalityCut"] += CoinGetTimeOfDay() - stime;
+	count_statistics_["addIntOptimalityCut"]++;
+#endif
+
 	return SCIP_OKAY;
+}
+
+void SCIPconshdlrBenders::write_statistics()
+{
+	fstream fp;
+	fp.open("Benders_statistics.txt", ios::out);
+	for (unsigned i = 0; i < names_statistics_.size(); ++i)
+	{
+		fp << names_statistics_[i] << ","
+		   << time_statistics_[names_statistics_[i]] << ","
+		   << count_statistics_[names_statistics_[i]] << endl;
+	}
+	fp.close();
 }

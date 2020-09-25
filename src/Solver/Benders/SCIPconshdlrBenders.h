@@ -29,41 +29,10 @@ public:
 	};
 
 	/** default constructor */
-	SCIPconshdlrBenders(SCIP * scip, const char * name, int sepapriority) :
-		ObjConshdlr(scip, name, "Benders cuts",
-				sepapriority, /**< priority of the constraint handler for separation */
-				sepapriority, /**< priority of the constraint handler for constraint enforcing */
-				sepapriority, /**< priority of the constraint handler for checking infeasibility (and propagation) */
-				-1,       /**< never call separator */
-				-1,       /**< disable constraint propagation */
-				1,        /**< always use all constraints (no aging) */
-				0,        /**< disable the preprocessing callback of the constraint handler */
-				TRUE,     /**< delay separation method */
-				FALSE,    /**< do not delay propatation method */
-#if SCIP_VERSION < 320
-				FALSE,    /**< do not delay presolving method */
-				TRUE,     /**< skip constraint handler even if no constraints are available. */
-				SCIP_PROPTIMING_BEFORELP /**< propagation method is called before solving LP */),
-#else
-				TRUE,     /**< skip constraint handler even if no constraints are available. */
-				SCIP_PROPTIMING_BEFORELP, /**< propagation method is called before solving LP */
-				SCIP_PRESOLTIMING_FAST),
-#endif
-	model_(NULL),
-	bdsub_(NULL),
-	nvars_(0),
-	vars_(NULL),
-	naux_(0),
-	probability_(NULL)
-	{
-		/** nothing to do */
-	}
+	SCIPconshdlrBenders(SCIP *scip, const char *name, int sepapriority);
 
 	/** default constructor */
-	virtual ~SCIPconshdlrBenders()
-	{
-		/** nothing to do */
-	}
+	virtual ~SCIPconshdlrBenders();
 
 	/** destructor of constraint handler to free user data (called when SCIP is exiting) */
 	virtual SCIP_DECL_CONSFREE(scip_free);
@@ -175,6 +144,8 @@ protected:
 			double recourse_lb,      /**< [in] lower bound of recourse value */
 			SCIP_RESULT * result     /**< [out] result */);
 
+	virtual void write_statistics();
+
 protected:
 
 	DecModel *  model_;            /**< DecModel object */
@@ -183,6 +154,11 @@ protected:
 	SCIP_Var ** vars_;             /**< pointer array to original variables */
 	int         naux_;             /**< number of auxiliary variables */
 	double*     probability_;      /**< array of probability */
+
+	/** simple statistics */
+	vector<string> names_statistics_;
+	unordered_map<string, int> count_statistics_;
+	unordered_map<string, double> time_statistics_;
 };
 
 /** creates and captures a Benders constraint */
