@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+// #define DSP_DEBUG
 #include "Utility/DspMessage.h"
 #include "Solver/Benders/SCIPconshdlrBendersWorker.h"
 #include "Solver/Benders/BdMW.h"
@@ -13,14 +13,17 @@
 SCIPconshdlrBendersWorker::SCIPconshdlrBendersWorker(
 		SCIP * scip,
 		int sepapriority,
+		bool is_integral_recourse,
 		MPI_Comm comm):
 SCIPconshdlrBenders(scip, "Benders", sepapriority),
 comm_(comm),
 recvcounts_(NULL),
 displs_(NULL),
 cut_index_(NULL),
-cut_status_(NULL)
+cut_status_(NULL),
+is_integral_recourse_(is_integral_recourse)
 {
+	DSPdebugMessage("is_integral_recourse_? %s\n", is_integral_recourse_ ? "yes" : "no");
 	MPI_Comm_size(comm_, &comm_size_);
 	MPI_Comm_rank(comm_, &comm_rank_);
 }
@@ -42,15 +45,6 @@ SCIP_DECL_CONSFREE(SCIPconshdlrBendersWorker::scip_free)
 	FREE_ARRAY_PTR(cut_status_);
 
 	return SCIP_OKAY;
-}
-
-/** clone method which will be used to copy constraint handler and variable pricer objects */
-SCIP_DECL_CONSHDLRCLONE(scip::ObjProbCloneable* SCIPconshdlrBendersWorker::clone)
-{
-	*valid = true;
-	SCIPconshdlrBendersWorker * conshdlrclone = new SCIPconshdlrBendersWorker(scip, scip_sepapriority_, comm_);
-	conshdlrclone->setOriginalVariables(nvars_, vars_, naux_);
-	return conshdlrclone;
 }
 
 void SCIPconshdlrBendersWorker::setDecModel(DecModel * model)
@@ -242,4 +236,54 @@ void SCIPconshdlrBendersWorker::aggregateCuts(
 	FREE_MEMORY
 
 #undef FREE_MEMORY
+}
+
+SCIP_RETCODE SCIPconshdlrBendersWorker::evaluateRecourse(
+		SCIP * scip,    /**< [in] scip pointer */
+		SCIP_SOL * sol, /**< [in] solution to evaluate */
+		double * values /**< [out] evaluated recourse values */) {
+	
+	/**< current solution */
+	SCIP_Real * vals = NULL;
+
+	/** recourse values collected from ranks but not sorted */
+	double* recourse = NULL;
+
+	/** Tell workers to evaluate recourse */
+	int message = BdMW::MASTER_EVALUATES_RECOURSE;
+	MPI_Bcast(&message, 1, MPI_INT, 0, comm_);
+
+	/** allocate memory */
+	SCIP_CALL(SCIPallocMemoryArray(scip, &vals, nvars_));
+
+	/** get current solution */
+	SCIP_CALL(SCIPgetSolVals(scip, sol, nvars_, vars_, vals));
+
+	/** Send solutions to the workers */
+	MPI_Bcast(vals, nvars_, MPI_DOUBLE, 0, comm_);
+
+	/** check return value */
+	int ret = 0, allret = 0;
+	MPI_Allreduce(&ret, &allret, 1, MPI_INT, MPI_SUM, comm_);
+	if (allret > 0) return SCIP_ERROR;
+
+	/** receive recourse evaluations */
+	recourse = new double [model_->getNumSubproblems()];
+	MPI_Gatherv(NULL, 0, MPI_DOUBLE, recourse, recvcounts_, displs_, MPI_DOUBLE, 0, comm_);
+
+	/** sort by index */
+	int j = 0;
+	for (int i = 1; i < comm_size_; ++i) {
+		for (int s = i - 1; s < model_->getNumSubproblems(); s += comm_size_-1) {
+			DSPdebugMessage("values[%d] = %e\n", s, recourse[j]);
+			values[s] = recourse[j++];
+		}
+	}
+
+	FREE_ARRAY_PTR(recourse)
+
+	/** free memory */
+	SCIPfreeMemoryArray(scip, &vals);
+
+	return SCIP_OKAY;
 }

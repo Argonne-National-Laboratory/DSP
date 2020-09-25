@@ -84,11 +84,12 @@ SCIP_DECL_CONSENFOLP(SCIPconshdlrBenders::scip_enfolp)
 	 * 	adjusts the auxiliary variable values of the solution,
 	 * 	and send it to SCIP as a primal solution.
 	*/
+	DSPdebugMessage("----- scip_enfolp: is integral recourse? %s\n", isIntegralRecourse() ? "yes" : "no");
 	if (SCIPgetStage(scip) == SCIP_STAGE_SOLVING &&
 			(isIntegralRecourse() || isDro())) {
 		SCIP_Bool stored;
 		SCIP_Sol* sol;
-		nsubs = bdsub_->getNumSubprobs();
+		nsubs = model_->getNumSubproblems();
 
 		recourse_values = new double [nsubs];
 
@@ -99,9 +100,7 @@ SCIP_DECL_CONSENFOLP(SCIPconshdlrBenders::scip_enfolp)
 		SCIP_CALL(evaluateRecourse(scip, sol, recourse_values));
 
 		// compute weighted sum for DRO; otherwise, returns the current recourse
-		if (isDro()) {
-			computeProbability(recourse_values);
-		}
+		computeProbability(recourse_values);
 		for (int j = 0; j < nsubs; ++j) {
 			DSPdebugMessage("----- scip_enfolp: exact recourse value [%d] %e with probability %e\n", j, recourse_values[j], probability_[j]);
 			weighted_sum_of_recourse += recourse_values[j] * probability_[j];
@@ -181,7 +180,8 @@ SCIP_DECL_CONSCHECK(SCIPconshdlrBenders::scip_check)
 		SCIPgetStage(scip) == SCIP_STAGE_SOLVING &&
 		*result == SCIP_FEASIBLE)
 	{
-		int nsubs = bdsub_->getNumSubprobs();
+		DSPdebugMessage("scip_check: is integral recourse? %s\n", isIntegralRecourse() ? "yes" : "no");
+		int nsubs = model_->getNumSubproblems();
 		double weighted_sum_of_recourse = 0.0;
 		double approx_recourse = 0.0;
 
@@ -339,14 +339,14 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 void SCIPconshdlrBenders::setBdSub(BdSub * bdsub) {
 	bdsub_ = bdsub;
 	FREE_ARRAY_PTR(probability_);
-	probability_ = new double [bdsub_->getNumSubprobs()];
+	probability_ = new double[model_->getNumSubproblems()];
 
 	if (isStochastic()) {
 		// extract stochastic model
 		TssModel* tss = dynamic_cast<TssModel*>(model_);
 		CoinCopyN(tss->getProbability(), tss->getNumScenarios(), probability_);
 	} else {
-		CoinFillN(probability_, bdsub_->getNumSubprobs(), 1.0);
+		CoinFillN(probability_, model_->getNumSubproblems(), 1.0);
 	}
 }
 
@@ -568,10 +568,6 @@ SCIP_RETCODE SCIPconshdlrBenders::evaluateRecourse(
 	DSP_RTN_CODE ret = bdsub_->evaluateRecourse(vals, values);
 	if (ret != DSP_RTN_OK) return SCIP_ERROR;
 
-	/**
-	 * TODO: the recourse values need to be de-scaled by the reference probability (for DRO).
-	*/
-
 	/** free memory */
 	SCIPfreeMemoryArray(scip, &vals);
 
@@ -580,6 +576,8 @@ SCIP_RETCODE SCIPconshdlrBenders::evaluateRecourse(
 
 void SCIPconshdlrBenders::computeProbability(
 		const double* recourse /**< [in] recourse values */) {
+	if (isDro() == false)
+		return;
 	assert(isStochastic());
 	// TODO: find new probability distribution
 }

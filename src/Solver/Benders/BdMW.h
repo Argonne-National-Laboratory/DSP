@@ -21,6 +21,7 @@ public:
 	enum
 	{
 		MASTER_NEEDS_CUTS = 0,
+		MASTER_EVALUATES_RECOURSE,
 		MASTER_STOPPED
 	};
 

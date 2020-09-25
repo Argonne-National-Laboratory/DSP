@@ -16,16 +16,13 @@ class SCIPconshdlrBendersWorker: public SCIPconshdlrBenders {
 public:
 
 	/** default constructor */
-	SCIPconshdlrBendersWorker(SCIP * scip, int sepapriority, MPI_Comm comm);
+	SCIPconshdlrBendersWorker(SCIP * scip, int sepapriority, bool is_integral_recourse, MPI_Comm comm);
 
 	/** default destructor */
 	virtual ~SCIPconshdlrBendersWorker();
 
 	/** destructor of constraint handler to free user data (called when SCIP is exiting) */
 	virtual SCIP_DECL_CONSFREE(scip_free);
-
-	/** clone method which will be used to copy constraint handler and variable pricer objects */
-	virtual SCIP_DECL_CONSHDLRCLONE(ObjProbCloneable* clone);
 
 	/** set model pointer */
 	virtual void setDecModel(DecModel * model);
@@ -45,6 +42,19 @@ protected:
 			double *  cutrhs, /**< [in] cut right-hand side */
 			OsiCuts * cuts    /**< [out] cuts generated */);
 
+	/** Has integer variables in the recouse? */
+	virtual bool isIntegralRecourse() {
+		return is_integral_recourse_;
+	}
+
+	/** evaluate recourse: 
+	 * This function is called only when the recourse has integer variables.
+	*/
+	virtual SCIP_RETCODE evaluateRecourse(
+			SCIP * scip,    /**< [in] scip pointer */
+			SCIP_SOL * sol, /**< [in] solution to evaluate */
+			double * values /**< [out] evaluated recourse values */);
+
 private:
 
 	MPI_Comm comm_;
@@ -56,6 +66,8 @@ private:
 	int * displs_;
 	int * cut_index_;  /**< subproblem index for which cut is generated */
 	int * cut_status_; /**< cut generation status from MPI_Gatherv */
+
+	bool is_integral_recourse_;
 };
 
 #endif /* SRC_SOLVERINTERFACE_SCIPCONSHDLRBENDERSWORKER_H_ */
