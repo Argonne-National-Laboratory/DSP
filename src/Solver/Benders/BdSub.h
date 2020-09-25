@@ -107,14 +107,14 @@ private:
 
 	/** solve feasibility problem */
 	static DSP_RTN_CODE solveFeasProblem(
-			DspOsi * osi, /**< [in] subproblem solver interface */
-			int & nAddedCols         /**< [out] number of columns added */);
+		OsiSolverInterface *si, /**< [in] subproblem solver interface */
+		int &nAddedCols /**< [out] number of columns added */);
 
 	/** change feasibility problem to original problem */
 	static DSP_RTN_CODE chgToOrgProblem(
-			DspOsi * osi, /**< [in] subproblem solver interface */
-			const double * obj,      /**< [in] original objective function */
-			int & nAddedCols         /**< [out] number of columns added */);
+		OsiSolverInterface *si, /**< [in] subproblem solver interface */
+		const double *obj,		/**< [in] original objective function */
+		int &nAddedCols /**< [out] number of columns added */);
 
 	/** calculate cut elements and rhs */
 	static int calculateCutElements(
