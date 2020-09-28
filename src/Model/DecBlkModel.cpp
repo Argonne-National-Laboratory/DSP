@@ -482,6 +482,84 @@ DSP_RTN_CODE DecBlkModel::copyRecoProb(
 	return DSP_RTN_OK;
 }
 
+DSP_RTN_CODE DecBlkModel::copyRecoProb(
+		int scen,                     /**< [in] scenario index */
+		CoinPackedMatrix *& mat_tech, /**< [out] technology matrix (A matrix) */
+		CoinPackedMatrix *& mat_reco, /**< [out] recourse matrix (B matrix) */
+		double *& clbd_reco,          /**< [out] column lower bounds of y */
+		double *& cubd_reco,          /**< [out] column upper bounds of y */
+		char   *& ctype_reco,         /**< [out] column types of y */
+		double *& obj_reco,           /**< [out] objective coefficients for y */
+		CoinPackedMatrix *& qobj_reco_coupling,/**< [out] coupling quadratric coefficients (y^2)*/
+		CoinPackedMatrix *& qobj_reco_ncoupling, /**< [out] non-coupling quadratic coefficients (xy) */
+		double *& rlbd_reco,          /**< [out] row lower bounds */
+		double *& rubd_reco           /**< [out] row upper bounds */) {
+
+	BGN_TRY_CATCH
+
+	/** the master problem part */
+	DetBlock* master = blk_->block(0);
+	/** number of rows and columns */
+	int nrows = master->getNumRows();
+	int ncols = master->getNumCols();
+	/** constraint matrix */
+	CoinPackedMatrix* mat = new CoinPackedMatrix(*(master->getConstraintMatrix()));
+
+	/** allocate memory */
+	mat_tech = new CoinPackedMatrix(false, 0, 0);
+	mat_reco = new CoinPackedMatrix(false, 0, 0);
+
+	/** retrieve sub-block */
+	DetBlock* sub = blk_->block(scen+1);
+	/** number of rows and columns */
+	nrows += sub->getNumRows();
+	ncols += sub->getNumCols();
+	/** constraint matrix */
+	const CoinPackedMatrix* submat = sub->getConstraintMatrix();
+	const int* indices = submat->getIndices();
+	const int* start = submat->getVectorStarts();
+	const double* values = submat->getElements();
+	/** resize matrices */
+	mat_tech->setDimensions(0, mat->getNumCols());
+	mat_reco->setDimensions(0, submat->getNumCols());
+	/** add rows with column indices adjusted */
+	for (int k = 0; k < submat->getNumRows(); ++k) {
+		CoinPackedVector row_tech, row_reco;
+		for (int j = 0; j < submat->getVectorSize(k); ++j) {
+			if (indices[start[k]+j] < mat->getNumCols())
+				row_tech.insert(indices[start[k]+j], values[start[k]+j]);
+			else
+				row_reco.insert(indices[start[k]+j] - mat->getNumCols(), values[start[k]+j]);
+		}
+		mat_tech->appendRow(row_tech);
+		mat_reco->appendRow(row_reco);
+	}
+
+	/** allocate memory for the outputs */
+	clbd_reco  = new double [sub->getNumCols()];
+	cubd_reco  = new double [sub->getNumCols()];
+	ctype_reco = new char [sub->getNumCols()];
+	obj_reco   = new double [sub->getNumCols()];
+	rlbd_reco  = new double [sub->getNumRows()];
+	rubd_reco  = new double [sub->getNumRows()];
+
+	/** copy data */
+	CoinCopyN(sub->getColLower(), sub->getNumCols(), clbd_reco);
+	CoinCopyN(sub->getColUpper(), sub->getNumCols(), cubd_reco);
+	CoinCopyN(sub->getCtype(), sub->getNumCols(), ctype_reco);
+	CoinCopyN(sub->getObj(), sub->getNumCols(), obj_reco);
+	CoinCopyN(sub->getRowLower(), sub->getNumRows(), rlbd_reco);
+	CoinCopyN(sub->getRowUpper(), sub->getNumRows(), rubd_reco);
+	CoinPackedMatrix *qobj_reco;
+	qobj_reco->copyOf(*sub->getQuadraticObjectiveMatrix());
+	// TO BE MODIFIED
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
+}
+
+
 DSP_RTN_CODE DecBlkModel::decomposeCoupling(
 		int size,                    /**< [in] size of subproblem subset */
 		int * subprobs,              /**< [in] subset of subproblems */
@@ -652,7 +730,6 @@ DSP_RTN_CODE DecBlkModel::getFullModel(
 
 	int rownum=0;
 	int pos=0;
-	cout << "debug" <<endl;
 	if (qmaster !=NULL){
 		const CoinBigIndex * qstarts=qmaster->getVectorStarts();
 		for (int i = 0; i < qmaster->getNumRows(); ++i)

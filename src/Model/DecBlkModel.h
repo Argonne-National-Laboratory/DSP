@@ -71,6 +71,7 @@ public:
 	bool nonanticipativity() {return false;}
 
 	bool isStochastic() {return false;}
+	bool isQCQP() {return false;}
 	bool isDro() {return false;}
 	int getNumReferences() {return 0;}
 	double getWassersteinSize() {return 0.0;}
@@ -137,6 +138,19 @@ public:
 		double *& cubd_reco,          /**< [out] column upper bounds of y */
 		char   *& ctype_reco,         /**< [out] column types of y */
 		double *& obj_reco,           /**< [out] objective coefficients for y */
+		double *& rlbd_reco,          /**< [out] row lower bounds */
+		double *& rubd_reco           /**< [out] row upper bounds */);
+
+	DSP_RTN_CODE copyRecoProb(
+		int scen,                     /**< [in] scenario index */
+		CoinPackedMatrix *& mat_tech, /**< [out] technology matrix (A matrix) */
+		CoinPackedMatrix *& mat_reco, /**< [out] recourse matrix (B matrix) */
+		double *& clbd_reco,          /**< [out] column lower bounds of y */
+		double *& cubd_reco,          /**< [out] column upper bounds of y */
+		char   *& ctype_reco,         /**< [out] column types of y */
+		double *& obj_reco,           /**< [out] objective coefficients for y */
+		CoinPackedMatrix *& qobj_reco_coupling,/**< [out] coupling quadratric coefficients (y^2}*/
+		CoinPackedMatrix *& qobj_reco_ncoupling, /**< [out] non-coupling quadratic coefficients (xy) */
 		double *& rlbd_reco,          /**< [out] row lower bounds */
 		double *& rubd_reco           /**< [out] row upper bounds */);
 
