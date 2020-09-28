@@ -44,10 +44,10 @@ DSP_RTN_CODE DdDriverSerial::run()
 	/** tic */
 	cputime_  = CoinCpuTime();
 	walltime_ = CoinGetTimeOfDay();
-
+	
 	/** run */
 	DSP_RTN_CHECK_THROW(mw_->run());
-
+	
 	/** toc */
 	cputime_  = CoinCpuTime() - cputime_;
 	walltime_ = CoinGetTimeOfDay() - walltime_;

@@ -70,16 +70,16 @@ DdSub::~DdSub() {
 DSP_RTN_CODE DdSub::init()
 {
 	BGN_TRY_CATCH
-
+	
 	/** create problem */
 	DSP_RTN_CHECK_THROW(createProblem());
-
+	
 	/** add cut generator (lazycuts) */
 	DSP_RTN_CHECK_THROW(addCutGenerator());
-
+	
 	/** allocate memory */
     primsol_.resize(getSiPtr()->getNumCols());
-
+	
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
@@ -163,7 +163,8 @@ DSP_RTN_CODE DdSub::createProblem() {
     FREE_ARRAY_PTR(ctype) \
     FREE_ARRAY_PTR(rlbd)  \
     FREE_ARRAY_PTR(rubd)  \
-    FREE_ARRAY_PTR(obj)
+    FREE_ARRAY_PTR(obj)   \
+	FREE_PTR(qobj)
 
     /** problem data */
     CoinPackedMatrix *mat = NULL;
@@ -195,10 +196,18 @@ DSP_RTN_CODE DdSub::createProblem() {
     obj_aux[0] = 0.0;
 
     /** decompose model */
-    DSP_RTN_CHECK_THROW(
+	if (model_->isQCQP()){
+		DSP_RTN_CHECK_THROW(
             model_->decompose(1, augs, 1, clbd_aux, cubd_aux, obj_aux,
                               mat, clbd, cubd, ctype, obj, qobj, rlbd, rubd));
+	}
+	else{
+		DSP_RTN_CHECK_THROW(
+            model_->decompose(1, augs, 1, clbd_aux, cubd_aux, obj_aux,
+                              mat, clbd, cubd, ctype, obj, rlbd, rubd));
 
+	}
+    
     DSP_RTN_CHECK_THROW(
             model_->decomposeCoupling(1, augs, cpl_mat_, cpl_cols_, cpl_ncols));
 
@@ -247,46 +256,50 @@ DSP_RTN_CODE DdSub::createProblem() {
 		}
 		for (int j = 0; j < tssModel->getNumCols(1); ++j)
 			obj_[tssModel->getNumCols(0)+j] /= probability;
-
+		
 		/** adjust quadratic objectives */
-		int numqobjelements = qobj->getNumElements();
-		const CoinBigIndex * start = qobj->getVectorStarts();
-		const int * colindice = qobj->getIndices();
-		int startsize = qobj->getSizeVectorStarts();
-		vector <int> rowindice;
-		const double * elements = qobj->getElements();
-		vector<double> adjelements;
+		if (qobj!=NULL){
+			int numqobjelements = qobj->getNumElements();
+			const CoinBigIndex * start = qobj->getVectorStarts();
+			const int * colindice = qobj->getIndices();
+			int startsize = qobj->getSizeVectorStarts();
+			vector <int> rowindice;
+			const double * elements = qobj->getElements();
+			vector<double> adjelements;
 
-		//PRINT_ARRAY_MSG(qobj->getNumElements(), qobj->getElements(), "in subproblem qobj coef");
+			//PRINT_ARRAY_MSG(qobj->getNumElements(), qobj->getElements(), "in subproblem qobj coef");
+			
+			int rowcount=0;
+			for (int j=0; j<startsize-1; j++){
+				if (start[j+1]-start[j]>0){
+					for (int k=0; k<start[j+1]-start[j]; k++){
+						rowindice.push_back(rowcount);
+					}
+				}
+				rowcount++;
+			}
 
-		int rowcount=0;
-		for (int j=0; j<startsize-1; j++){
-			if (start[j+1]-start[j]>0){
-				for (int k=0; k<start[j+1]-start[j]; k++){
-					rowindice.push_back(rowcount);
+			// security check
+			assert(rowindice.size()==numqobjelements);
+
+			for (int j = 0; j < numqobjelements; j++){
+				if (colindice[j] < tssModel->getNumCols(0) && rowindice[j] <tssModel->getNumCols(0)){
+					adjelements.push_back(elements[j]*probability);
+				}
+				else{
+					//adjelements.push_back(elements[j]/probability);
+					adjelements.push_back(elements[j]);
 				}
 			}
-			rowcount++;
+
+			//security check
+			assert(adjelements.size()==numqobjelements);
+
+			qobj=new CoinPackedMatrix(false, &rowindice[0], colindice, &adjelements[0], numqobjelements);
+			//PRINT_ARRAY_MSG(qobj->getNumElements(), qobj->getElements(), "in subproblem qobj coef");
 		}
-
-		// security check
-		assert(rowindice.size()==numqobjelements);
-
-		for (int j = 0; j < numqobjelements; j++){
-			if (colindice[j] < tssModel->getNumCols(0) && rowindice[j] <tssModel->getNumCols(0)){
-				adjelements.push_back(elements[j]*probability);
-			}
-			else{
-				//adjelements.push_back(elements[j]/probability);
-				adjelements.push_back(elements[j]);
-			}
-		}
-
-		//security check
-		assert(adjelements.size()==numqobjelements);
-
-		qobj=new CoinPackedMatrix(NULL, &rowindice[0], colindice, &adjelements[0], numqobjelements);
-		PRINT_ARRAY_MSG(qobj->getNumElements(), qobj->getElements(), "in subproblem qobj coef");
+		
+		
 
 #ifdef DSP_DEBUG
 		DSPdebugMessage("sind_ = %d, probability = %e, lambdas = \n", sind_, model_->isDro() ? tssModel->getReferenceProbability(sind_) : probability);

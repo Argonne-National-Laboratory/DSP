@@ -88,10 +88,10 @@ DSP_RTN_CODE DdMW::run()
 
 	/** run master process */
 	runMaster();
-
+	
 	/** run worker processes */
 	runWorker();
-
+	
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;

@@ -65,9 +65,11 @@ DdWorkerUB::~DdWorkerUB() {
 DSP_RTN_CODE DdWorkerUB::init() {
 	BGN_TRY_CATCH
 	/** status */
+	
 	status_ = DSP_STAT_MW_CONTINUE;
 	/** create problem */
 	DSP_RTN_CHECK_THROW(createProblem());
+	
 	END_TRY_CATCH_RTN(;, DSP_RTN_ERR)
 	return DSP_RTN_OK;
 }
@@ -138,6 +140,8 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 			DSP_RTN_CHECK_THROW(model_->copyRecoProb(par_->getIntPtrParam("ARR_PROC_IDX")[s],
 				mat_mp_[s], mat_reco, clbd_reco, cubd_reco, ctype_reco,
 				obj_reco, rlbd_org_[s], rubd_org_[s]));
+				qobj_reco_coupling_[s]=NULL;
+				qobj_reco_ncoupling_[s]=NULL;
 		}
 		else{
 			DSP_RTN_CHECK_THROW(model_->copyRecoProb(par_->getIntPtrParam("ARR_PROC_IDX")[s],
@@ -166,11 +170,13 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 	    /** no display */
 	    osi_[s]->setLogLevel(0);
 		DSPdebug(osi_[s]->setLogLevel(5));
-
+		
 	    /** load problem */
 	    osi_[s]->si_->loadProblem(*mat_reco, clbd_reco, cubd_reco, obj_reco, rlbd_org_[s], rubd_org_[s]);
-		osi_[s]->loadQuadraticObjective(*qobj_reco_ncoupling_[s]);
-		osi_[s]->writeMps("farmerinUB");
+		if (qobj_reco_ncoupling_[s]!=NULL){
+			osi_[s]->loadQuadraticObjective(*qobj_reco_ncoupling_[s]);
+		}
+		
 		for (int j = 0; j < mat_reco->getNumCols(); ++j) {
 			if (ctype_reco[j] != 'C')
 				osi_[s]->si_->setInteger(j);
@@ -296,7 +302,7 @@ double DdWorkerUB::evaluate(CoinPackedVector* solution) {
 	double * xy = NULL;
 	double * qxy = NULL;
 	double * xyq = NULL;
-	double *xq = NULL;
+	double * xq = NULL;
 	TssModel* tss = NULL;
 
 	BGN_TRY_CATCH
@@ -350,8 +356,9 @@ double DdWorkerUB::evaluate(CoinPackedVector* solution) {
 		DSPdebugMessage("number of variables in the subproblem = %d\n", osi_[s]->si_->getNumCols());
 
 		/** if QCQP, change second stage objective (coupling) if existing*/
-		if (qobj_reco_coupling_[s]->getNumElements()!=0){
+		//if (qobj_reco_coupling_[s]->getNumElements()!=0){
 			if (tss->isQCQP()){
+				if (qobj_reco_coupling_[s]!=NULL){
 				xy=new double [tss->getNumCols(0)+tss->getNumCols(1)];
 				for (int i=0; i<tss->getNumCols(0)+tss->getNumCols(1);i++){
 					if (i<tss->getNumCols(0)){
@@ -377,9 +384,10 @@ double DdWorkerUB::evaluate(CoinPackedVector* solution) {
 					DSPdebugMessage("coefficient of y = %f\n", ycoef[i]);
 				}
 				osi_[s]->si_->setObjective(&ycoef[0]);
+				}
+
 			}
-		}
-		
+		//}
 
 		/** first-stage objective value */
 		cx_weighted += cx * tss->getProbability()[par_->getIntPtrParam("ARR_PROC_IDX")[s]];

@@ -171,7 +171,7 @@ DSP_RTN_CODE DecTssModel::decompose(
 			}
 			shiftVecIndices(length, &colIndices[0] + pos, s * ncols_[1], cstart_[1]);
 			DSPdebugMessage("shift vector indices from %d by %d from %d\n", pos, s * ncols_[1], cstart_[1]);
-			for (int k = 0, l = 0; l < length; ++l)
+			/*for (int k = 0, l = 0; l < length; ++l)
 			{
 				if (fabs(elements[pos+l]) < 1.0e-10) continue;
 				if (k > 0 && k % 4 == 0) printf("\n");
@@ -179,7 +179,7 @@ DSP_RTN_CODE DecTssModel::decompose(
 				//printf("  [%5d,%4d,%4d] %+e", i, rowIndices[pos+l], colIndices[pos+l], elements[pos+l]);
 				k++;
 			}
-			printf("\n");
+			printf("\n");*/
 			pos += length;
 			rownum++;
 		}
@@ -242,7 +242,7 @@ DSP_RTN_CODE DecTssModel::decompose(
 		copyCoreRowUpper(rubd + nrows_[0] + s * nrows_[1], 1);
 		combineRandRowUpper(rubd + nrows_[0] + s * nrows_[1], 1, sind);
 	}
-	printf("nrows_core_ = %d, ncols_core_ = %d \n", nrows_core_, ncols_core_);
+	//printf("nrows_core_ = %d, ncols_core_ = %d \n", nrows_core_, ncols_core_);
 	/** auxiliary columns */
 	CoinCopyN(clbd_aux, naux, clbd + ncols - naux);
 	CoinCopyN(cubd_aux, naux, cubd + ncols - naux);
