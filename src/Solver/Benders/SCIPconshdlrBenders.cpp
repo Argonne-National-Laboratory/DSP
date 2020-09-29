@@ -28,21 +28,19 @@ SCIPconshdlrBenders::SCIPconshdlrBenders(
 	const char *name,
 	int sepapriority)
 	: ObjConshdlr(scip, name, "Benders cuts",
-				  sepapriority, /**< priority of the constraint handler for separation */
+				  1, /**< priority of the constraint handler for separation */
 				  sepapriority, /**< priority of the constraint handler for constraint enforcing */
 				  sepapriority, /**< priority of the constraint handler for checking infeasibility (and propagation) */
-				  -1,			/**< never call separator */
-				  -1,			/**< disable constraint propagation */
+				  0,			/**< run separator only at root */
+				  1,			/**< frequency for propagating domains; zero means only preprocessing propagation */
 				  1,			/**< always use all constraints (no aging) */
 				  0,			/**< disable the preprocessing callback of the constraint handler */
 				  TRUE,			/**< delay separation method */
 				  FALSE,		/**< do not delay propatation method */
+				  TRUE,			/**< skip constraint handler even if no constraints are available. */
 #if SCIP_VERSION < 320
-				  FALSE, /**< do not delay presolving method */
-				  TRUE,	 /**< skip constraint handler even if no constraints are available. */
 				  SCIP_PROPTIMING_BEFORELP /**< propagation method is called before solving LP */),
 #else
-				  TRUE,						/**< skip constraint handler even if no constraints are available. */
 				  SCIP_PROPTIMING_BEFORELP, /**< propagation method is called before solving LP */
 				  SCIP_PRESOLTIMING_FAST),
 #endif
@@ -56,6 +54,7 @@ SCIPconshdlrBenders::SCIPconshdlrBenders(
 #ifdef BENDERS_PROFILE
 	/** initialize statistics */
 	names_statistics_.push_back("sepaBenders");
+	names_statistics_.push_back("checkBenders");
 	names_statistics_.push_back("addIntOptimalityCut");
 	names_statistics_.push_back("addNoGoodCut");
 	names_statistics_.push_back("evaluateRecourse");
@@ -190,7 +189,7 @@ SCIP_DECL_CONSENFOLP(SCIPconshdlrBenders::scip_enfolp)
 	/**
 	 * TODO: DRO needs to pass probability_ to sepaBenders
 	 */
-	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, from_scip_enfolp, result));
+	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, result));
 	DSPdebugMessage("scip_enfolp results in %d stage %d\n", *result, SCIPgetStage(scip));
 
 	if (is_pure_binary) {
@@ -222,7 +221,7 @@ SCIP_DECL_CONSENFOLP(SCIPconshdlrBenders::scip_enfolp)
 SCIP_DECL_CONSENFOPS(SCIPconshdlrBenders::scip_enfops)
 {
 	*result = SCIP_FEASIBLE;
-	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, from_scip_enfops, result));
+	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, result));
 	if (*result == SCIP_SEPARATED) *result = SCIP_INFEASIBLE;
 	return SCIP_OKAY;
 }
@@ -232,7 +231,7 @@ SCIP_DECL_CONSCHECK(SCIPconshdlrBenders::scip_check)
 {
 	*result = SCIP_FEASIBLE;
 
-	SCIP_CALL(sepaBenders(scip, conshdlr, sol, from_scip_check, result));
+	SCIP_CALL(checkBenders(scip, conshdlr, sol, result));
 	DSPdebugMessage("scip_check results in %d stage(%d)\n", *result, SCIPgetStage(scip));
 
 	if (isIntegralRecourse() && 
@@ -288,17 +287,29 @@ SCIP_DECL_CONSLOCK(SCIPconshdlrBenders::scip_lock)
 	return SCIP_OKAY;
 }
 
-SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
-		SCIP * scip,
-		SCIP_CONSHDLR * conshdlr,
-		SCIP_SOL * sol,
-		whereFrom where,
-		SCIP_RESULT * result)
+SCIP_DECL_CONSSEPALP(SCIPconshdlrBenders::scip_sepalp)
 {
-	double stime = CoinGetTimeOfDay();
+	*result = SCIP_DIDNOTRUN;
+	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, result));
+	DSPdebugMessage("scip_sepalp results in %d stage %d\n", *result, SCIPgetStage(scip));
+	return SCIP_OKAY;
+}
 
-	OsiCuts cs; /**< Benders cut placeholder */
-	SCIP_Real * vals = NULL; /**< current solution */
+SCIP_DECL_CONSSEPASOL(SCIPconshdlrBenders::scip_sepasol)
+{
+	*result = SCIP_DIDNOTRUN;
+	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, result));
+	DSPdebugMessage("scip_sepasol results in %d stage %d\n", *result, SCIPgetStage(scip));
+	return SCIP_OKAY;
+}
+
+SCIP_RETCODE SCIPconshdlrBenders::generate_Benders(
+	SCIP *scip,
+	SCIP_CONSHDLR *conshdlr,
+	SCIP_SOL *sol,
+	OsiCuts *cs)
+{
+	SCIP_Real *vals = NULL; /**< current solution */
 
 	/** allocate memory */
 	SCIP_CALL(SCIPallocMemoryArray(scip, &vals, nvars_));
@@ -307,7 +318,42 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 	SCIP_CALL(SCIPgetSolVals(scip, sol, nvars_, vars_, vals));
 
 	/** generate Benders cuts */
-	generateCuts(nvars_, vals, where, &cs);
+	generateCuts(nvars_, vals, cs);
+
+	/** If found Benders cuts */
+	for (int i = 0; i < cs->sizeCuts(); ++i)
+	{
+		/** get cut pointer */
+		OsiRowCut *rc = cs->rowCutPtr(i);
+		if (!rc)
+			continue;
+
+		const CoinPackedVector cutrow = rc->row();
+		if (cutrow.getNumElements() == 0)
+			rc->setEffectiveness(0.0);
+		else
+			rc->setEffectiveness(rc->violated(vals) / cutrow.twoNorm());
+	}
+
+	/** free memory */
+	SCIPfreeMemoryArray(scip, &vals);
+
+	return SCIP_OKAY;
+}
+
+SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
+	SCIP *scip,
+	SCIP_CONSHDLR *conshdlr,
+	SCIP_SOL *sol,
+	SCIP_RESULT *result)
+{
+	double stime = CoinGetTimeOfDay();
+
+	/**< Benders cut placeholder */
+	OsiCuts cs;
+
+	/** generate Benders cuts */
+	SCIP_CALL(generate_Benders(scip, conshdlr, sol, &cs));
 
 	/** If found Benders cuts */
 	for (int i = 0; i < cs.sizeCuts(); ++i)
@@ -319,6 +365,7 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 		const CoinPackedVector cutrow = rc->row();
 		if (cutrow.getNumElements() == 0) continue;
 
+#ifdef DSP_DEBUG
 		/** is optimality cut? */
 		bool isOptimalityCut = false;
 		DSPdebugMessage("naux_ %d nvars_ %d\n", naux_, nvars_);
@@ -331,9 +378,7 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 				break;
 			}
 		}
-
-		double efficacy = rc->violated(vals) / cutrow.twoNorm();
-		SCIP_Bool isEfficacious = efficacy > 1.e-6;
+#endif
 
 		if (SCIPgetStage(scip) == SCIP_STAGE_INITSOLVE ||
 			SCIPgetStage(scip) == SCIP_STAGE_SOLVING)
@@ -352,6 +397,7 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 			for (int j = 0; j < cutrow.getNumElements(); ++j)
 				SCIP_CALL(SCIPaddVarToRow(scip, row, vars_[cutrow.getIndices()[j]], cutrow.getElements()[j]));
 
+#ifdef DSP_DEBUG
 			DSPdebugMessage("found Benders (%s) cut: act=%f, lhs=%f, norm=%f, eff=%f, min=%f, max=%f (range=%f)\n",
 				isOptimalityCut ? "opti" : "feas",
 				SCIPgetRowLPActivity(scip, row), SCIProwGetLhs(row), SCIProwGetNorm(row),
@@ -359,29 +405,23 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 				SCIPgetRowMinCoef(scip, row), SCIPgetRowMaxCoef(scip, row),
 				SCIPgetRowMaxCoef(scip, row)/SCIPgetRowMinCoef(scip, row));
 			DSPdebug(rc->print());
+#endif
 
 			/** flush all changes before adding cut */
 			SCIP_CALL(SCIPflushRowExtensions(scip, row));
 
-			DSPdebugMessage("efficacy %e isEfficatious %d\n", efficacy, isEfficacious);
-
-			if (isEfficacious)
+			if (SCIPisGT(scip, rc->effectiveness(), 0.0))
 			{
-				if (where == from_scip_enfolp)
-				{
-					/** add cut */
-					SCIP_Bool infeasible;
-					SCIP_CALL(SCIPaddRow(scip, row,
-							BENDERS_CUT_FORCE, /**< force cut */
-							&infeasible));
+				/** add cut */
+				SCIP_Bool infeasible;
+				SCIP_CALL(SCIPaddRow(scip, row,
+									 BENDERS_CUT_FORCE, /**< force cut */
+									 &infeasible));
 
-					if (infeasible || *result == SCIP_CUTOFF)
-						*result = SCIP_CUTOFF;
-					else
-						*result = SCIP_SEPARATED;
-				}
+				if (infeasible || *result == SCIP_CUTOFF)
+					*result = SCIP_CUTOFF;
 				else
-					*result = SCIP_INFEASIBLE;
+					*result = SCIP_SEPARATED;
 			}
 
 			/** add cut to global pool */
@@ -391,18 +431,52 @@ SCIP_RETCODE SCIPconshdlrBenders::sepaBenders(
 			/** release the row */
 			SCIP_CALL(SCIPreleaseRow(scip, &row));
 		}
-		else if (where != from_scip_enfolp && isEfficacious) {
-			*result = SCIP_INFEASIBLE;
-		}
 	}
-	DSPdebugMessage("sepaBenders: where %d result %d\n", where, *result);
-
-	/** free memory */
-	SCIPfreeMemoryArray(scip, &vals);
 
 #ifdef BENDERS_PROFILE
 	time_statistics_["sepaBenders"] += CoinGetTimeOfDay() - stime;
 	count_statistics_["sepaBenders"]++;
+#endif
+
+	return SCIP_OKAY;
+}
+
+SCIP_RETCODE SCIPconshdlrBenders::checkBenders(
+	SCIP *scip,
+	SCIP_CONSHDLR *conshdlr,
+	SCIP_SOL *sol,
+	SCIP_RESULT *result)
+{
+	double stime = CoinGetTimeOfDay();
+
+	/**< Benders cut placeholder */
+	OsiCuts cs;
+
+	/** generate Benders cuts */
+	SCIP_CALL(generate_Benders(scip, conshdlr, sol, &cs));
+
+	/** If found Benders cuts */
+	for (int i = 0; i < cs.sizeCuts(); ++i)
+	{
+		/** get cut pointer */
+		OsiRowCut *rc = cs.rowCutPtr(i);
+		if (!rc)
+			continue;
+
+		const CoinPackedVector cutrow = rc->row();
+		if (cutrow.getNumElements() == 0)
+			continue;
+
+		if (SCIPisGT(scip, rc->effectiveness(), 0.0))
+		{
+			*result = SCIP_INFEASIBLE;
+			break;
+		}
+	}
+
+#ifdef BENDERS_PROFILE
+	time_statistics_["checkBenders"] += CoinGetTimeOfDay() - stime;
+	count_statistics_["checkBenders"]++;
 #endif
 
 	return SCIP_OKAY;
@@ -467,10 +541,9 @@ SCIP_RETCODE SCIPcreateConsBenders(
 }
 
 void SCIPconshdlrBenders::generateCuts(
-		int size,      /**< [in] size of x */
-		double * x,    /**< [in] master solution */
-		int where,     /**< [in] where to be called */
-		OsiCuts * cuts /**< [out] cuts generated */)
+	int size,  /**< [in] size of x */
+	double *x, /**< [in] master solution */
+	OsiCuts *cuts /**< [out] cuts generated */)
 {
 #define FREE_MEMORY                      \
 	FREE_2D_ARRAY_PTR(nsubprobs, cutval) \

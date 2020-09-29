@@ -31,10 +31,9 @@ protected:
 
 	/** generate Benders cuts */
 	virtual void generateCuts(
-			int size,      /**< [in] size of x */
-			double * x,    /**< [in] master solution */
-			int where,     /**< [in] where to be called */
-			OsiCuts * cuts /**< [out] cuts generated */);
+		int size,  /**< [in] size of x */
+		double *x, /**< [in] master solution */
+		OsiCuts *cuts /**< [out] cuts generated */);
 
 	/** generate Benders cuts */
 	virtual void aggregateCuts(

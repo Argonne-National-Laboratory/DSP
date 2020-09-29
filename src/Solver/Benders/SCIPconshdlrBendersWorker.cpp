@@ -76,10 +76,9 @@ void SCIPconshdlrBendersWorker::setDecModel(DecModel * model)
 }
 
 void SCIPconshdlrBendersWorker::generateCuts(
-		int size,      /**< [in] size of x */
-		double * x,    /**< [in] master solution */
-		int where,     /**< [in] where to be called */
-		OsiCuts * cuts /**< [out] cuts generated */)
+	int size,  /**< [in] size of x */
+	double *x, /**< [in] master solution */
+	OsiCuts *cuts /**< [out] cuts generated */)
 {
 #define FREE_MEMORY                      \
 	FREE_2D_ARRAY_PTR(nsubprobs, cutval) \

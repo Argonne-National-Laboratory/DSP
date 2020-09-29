@@ -18,16 +18,6 @@
 class SCIPconshdlrBenders : public scip::ObjConshdlr
 {
 public:
-
-	enum whereFrom
-	{
-		from_scip_sepalp = 0,
-		from_scip_sepasol,
-		from_scip_enfolp,
-		from_scip_enfops,
-		from_scip_check
-	};
-
 	/** default constructor */
 	SCIPconshdlrBenders(SCIP *scip, const char *name, int sepapriority);
 
@@ -51,6 +41,12 @@ public:
 
 	/** variable rounding lock method of constraint handler */
 	virtual SCIP_DECL_CONSLOCK(scip_lock);
+
+	/** separation method of constraint handler for LP solution */
+	virtual SCIP_DECL_CONSSEPALP(scip_sepalp);
+
+	/** separation method of constraint handler for arbitrary primal solution */
+	virtual SCIP_DECL_CONSSEPASOL(scip_sepasol);
 
 	/** returns whether the objective plugin is copyable */
 	virtual SCIP_DECL_CONSHDLRISCLONEABLE(iscloneable) {return false;}
@@ -94,20 +90,29 @@ public:
 			int         naux  /**< number of auxiliary variables */);
 
 protected:
+	virtual SCIP_RETCODE generate_Benders(
+		SCIP *scip,
+		SCIP_CONSHDLR *conshdlr,
+		SCIP_SOL *sol,
+		OsiCuts *cs);
 
 	virtual SCIP_RETCODE sepaBenders(
-			SCIP * scip,
-			SCIP_CONSHDLR * conshdlr,
-			SCIP_SOL * sol,
-			whereFrom where,
-			SCIP_RESULT * result);
+		SCIP *scip,
+		SCIP_CONSHDLR *conshdlr,
+		SCIP_SOL *sol,
+		SCIP_RESULT *result);
+
+	virtual SCIP_RETCODE checkBenders(
+		SCIP *scip,
+		SCIP_CONSHDLR *conshdlr,
+		SCIP_SOL *sol,
+		SCIP_RESULT *result);
 
 	/** generate Benders cuts */
 	virtual void generateCuts(
-			int size,      /**< [in] size of x */
-			double * x,    /**< [in] master solution */
-			int where,     /**< [in] where to be called */
-			OsiCuts * cuts /**< [out] cuts generated */);
+		int size,  /**< [in] size of x */
+		double *x, /**< [in] master solution */
+		OsiCuts *cuts /**< [out] cuts generated */);
 
 	/** generate Benders cuts */
 	virtual void aggregateCuts(
