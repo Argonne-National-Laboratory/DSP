@@ -54,9 +54,6 @@ public:
 	/** destructor of constraint handler to free user data (called when SCIP is exiting) */
 	virtual SCIP_DECL_CONSFREE(scip_free);
 
-	/** clone method which will be used to copy constraint handler and variable pricer objects */
-	virtual SCIP_DECL_CONSHDLRCLONE(ObjProbCloneable* clone);
-
 public:
 
 	/** get cutsAdded_ */
@@ -78,10 +75,9 @@ protected:
 
 	/** generate Benders cuts */
 	virtual void generateCuts(
-			int size,      /**< [in] size of x */
-			double * x,    /**< [in] master solution */
-			int where,     /**< [in] where to be called */
-			OsiCuts * cuts /**< [out] cuts generated */);
+		int size,  /**< [in] size of x */
+		double *x, /**< [in] master solution */
+		OsiCuts *cuts /**< [out] cuts generated */);
 
 private:
 
