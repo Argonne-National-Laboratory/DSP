@@ -56,8 +56,8 @@ ub_(rhs.ub_) {
 
 DdWorkerUB::~DdWorkerUB() {
 	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), mat_mp_);
-	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), rlbd_org_);
-	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), rubd_org_);
+	FREE_2D_ARRAY_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), rlbd_org_);
+	FREE_2D_ARRAY_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), rubd_org_);
 	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), osi_);
 	FREE_PTR(osi_dro_);
 }
