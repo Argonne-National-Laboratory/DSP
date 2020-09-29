@@ -149,34 +149,39 @@ SCIP_DECL_CONSENFOLP(SCIPconshdlrBenders::scip_enfolp)
 		// get the current solution
 		SCIP_CALL(SCIPcreateCurrentSol(scip, &sol, NULL));
 
-		// evaluate the recourse value
-		SCIP_CALL(evaluateRecourse(scip, sol, recourse_values));
+		// Check whether this solution has been evaluated or not.
+		if (check_binary_solution_pool(scip, sol, true) == false) 
+		{
+			// evaluate the recourse value
+			SCIP_CALL(evaluateRecourse(scip, sol, recourse_values));
 
-		// compute weighted sum for DRO; otherwise, returns the current recourse
-		computeProbability(recourse_values);
-		for (int j = 0; j < nsubs; ++j) {
-			DSPdebugMessage("----- scip_enfolp: exact recourse value [%d] %e with probability %e\n", j, recourse_values[j], probability_[j]);
-			weighted_sum_of_recourse += recourse_values[j] * probability_[j];
-		}
+			// compute weighted sum for DRO; otherwise, returns the current recourse
+			computeProbability(recourse_values);
+			for (int j = 0; j < nsubs; ++j) {
+				DSPdebugMessage("----- scip_enfolp: exact recourse value [%d] %e with probability %e\n", j, recourse_values[j], probability_[j]);
+				weighted_sum_of_recourse += recourse_values[j] * probability_[j];
+			}
 
-		// set a feasible value of the auxiliary variable
-		for (int j = 0; j < naux_; ++j) {
-			approx_recourse += SCIPgetSolVal(scip, sol, vars_[nvars_ - naux_ + j]);
-			weighted_recourse = 0.0;
-			for (int k = j; k < nsubs; k += naux_)
-				weighted_recourse += recourse_values[k] * probability_[k];
-			DSPdebugMessage("----- scip_enfolp: set variable[%d] from %e to %e (bounds [%e,%e])\n",
-				nvars_ - naux_ + j, SCIPgetSolVal(scip, sol, vars_[nvars_ - naux_ + j]), weighted_recourse,
-				SCIPvarGetLbLocal(vars_[nvars_ - naux_ + j]), 
-				SCIPvarGetUbLocal(vars_[nvars_ - naux_ + j]));
-			SCIP_CALL(SCIPsetSolVal(scip, sol, vars_[nvars_ - naux_ + j], weighted_recourse));
-		}
+			// set a feasible value of the auxiliary variable
+			for (int j = 0; j < naux_; ++j) {
+				approx_recourse += SCIPgetSolVal(scip, sol, vars_[nvars_ - naux_ + j]);
+				weighted_recourse = 0.0;
+				for (int k = j; k < nsubs; k += naux_)
+					weighted_recourse += recourse_values[k] * probability_[k];
+				DSPdebugMessage("----- scip_enfolp: set variable[%d] from %e to %e (bounds [%e,%e])\n",
+					nvars_ - naux_ + j, SCIPgetSolVal(scip, sol, vars_[nvars_ - naux_ + j]), weighted_recourse,
+					SCIPvarGetLbLocal(vars_[nvars_ - naux_ + j]), 
+					SCIPvarGetUbLocal(vars_[nvars_ - naux_ + j]));
+				SCIP_CALL(SCIPsetSolVal(scip, sol, vars_[nvars_ - naux_ + j], weighted_recourse));
+			}
+			// SCIPprintSol(scip, sol, NULL, FALSE);
 
-		// set the solution as a primal feasible solution
-		double sense = SCIPgetObjsense(scip) == SCIP_OBJSENSE_MINIMIZE ? 1.0 : -1.0;
-		if (SCIPisLT(scip, (SCIPsolGetOrigObj(sol) - SCIPgetPrimalbound(scip)) * sense, 0.0)) {
-			SCIP_CALL(SCIPtrySol(scip, sol, FALSE, TRUE, TRUE, TRUE, TRUE, &stored));
-			DSPdebugMessage("----- scip_enfolp: is solution (obj: %e) stored? %s\n", SCIPsolGetOrigObj(sol), stored ? "yes" : "no");
+			// set the solution as a primal feasible solution
+			double sense = SCIPgetObjsense(scip) == SCIP_OBJSENSE_MINIMIZE ? 1.0 : -1.0;
+			if (SCIPisLT(scip, (SCIPsolGetOrigObj(sol) - SCIPgetPrimalbound(scip)) * sense, 0.0)) {
+				SCIP_CALL(SCIPtrySol(scip, sol, FALSE, FALSE, FALSE, FALSE, FALSE, &stored));
+				DSPdebugMessage("----- scip_enfolp: is solution (obj: %e) stored? %s\n", SCIPsolGetOrigObj(sol), stored ? "yes" : "no");
+			}	
 		}
 		SCIP_CALL(SCIPfreeSol(scip, &sol));
 	}
@@ -226,6 +231,7 @@ SCIP_DECL_CONSENFOPS(SCIPconshdlrBenders::scip_enfops)
 SCIP_DECL_CONSCHECK(SCIPconshdlrBenders::scip_check)
 {
 	*result = SCIP_FEASIBLE;
+
 	SCIP_CALL(sepaBenders(scip, conshdlr, sol, from_scip_check, result));
 	DSPdebugMessage("scip_check results in %d stage(%d)\n", *result, SCIPgetStage(scip));
 
@@ -233,34 +239,40 @@ SCIP_DECL_CONSCHECK(SCIPconshdlrBenders::scip_check)
 		SCIPgetStage(scip) == SCIP_STAGE_SOLVING &&
 		*result == SCIP_FEASIBLE)
 	{
-		DSPdebugMessage("scip_check: is integral recourse? %s\n", isIntegralRecourse() ? "yes" : "no");
-		int nsubs = model_->getNumSubproblems();
-		double weighted_sum_of_recourse = 0.0;
-		double approx_recourse = 0.0;
+		if (check_binary_solution_pool(scip, sol) == false)
+		{
+			DSPdebugMessage("----- scip_check: is integral recourse? %s\n", isIntegralRecourse() ? "yes" : "no");
+			int nsubs = model_->getNumSubproblems();
+			double weighted_sum_of_recourse = 0.0;
+			double approx_recourse = 0.0;
 
-		double* recourse_values = new double [nsubs];
+			double* recourse_values = new double [nsubs];
 
-		// evaluate the recourse value
-		SCIP_CALL(evaluateRecourse(scip, sol, recourse_values));
+			// evaluate the recourse value
+			SCIP_CALL(evaluateRecourse(scip, sol, recourse_values));
 
-		// compute weighted sum for DRO; otherwise, returns the current recourse
-		computeProbability(recourse_values);
-		for (int j = 0; j < nsubs; ++j) {
-			DSPdebugMessage("----- scip_check: exact recourse value [%d] %e with probability %e\n", j, recourse_values[j], probability_[j]);
-			weighted_sum_of_recourse += recourse_values[j] * probability_[j];
+			// compute weighted sum for DRO; otherwise, returns the current recourse
+			computeProbability(recourse_values);
+			for (int j = 0; j < nsubs; ++j) {
+				DSPdebugMessage("----- scip_check: exact recourse value [%d] %e with probability %e\n", j, recourse_values[j], probability_[j]);
+				weighted_sum_of_recourse += recourse_values[j] * probability_[j];
+			}
+
+			// set a feasible value of the auxiliary variable
+			for (int j = 0; j < naux_; ++j) {
+				approx_recourse += SCIPgetSolVal(scip, sol, vars_[nvars_ - naux_ + j]);
+			}
+			// DSPdebugMessage("----- scip_check:\n");
+			// SCIPprintSol(scip, sol, NULL, FALSE);
+			// DSPdebugMessage("----- scip_check: recourse values (approx %e, exact %e)\n", approx_recourse, weighted_sum_of_recourse);
+
+			if (approx_recourse < weighted_sum_of_recourse) {
+				*result = SCIP_INFEASIBLE;
+				DSPdebugMessage("----- scip_check: rejects solution (approx %e, exact %e)\n", approx_recourse, weighted_sum_of_recourse);
+			}
+
+			FREE_ARRAY_PTR(recourse_values);
 		}
-
-		// set a feasible value of the auxiliary variable
-		for (int j = 0; j < naux_; ++j) {
-			approx_recourse += SCIPgetSolVal(scip, sol, vars_[nvars_ - naux_ + j]);
-		}
-
-		if (approx_recourse < weighted_sum_of_recourse) {
-			*result = SCIP_INFEASIBLE;
-			DSPdebugMessage("----- scip_check: rejects solution (approx %e, exact %e)\n", approx_recourse, weighted_sum_of_recourse);
-		}
-
-		FREE_ARRAY_PTR(recourse_values);
 	}
 
 	return SCIP_OKAY;
@@ -762,6 +774,28 @@ SCIP_RETCODE SCIPconshdlrBenders::addIntOptimalityCut(
 #endif
 
 	return SCIP_OKAY;
+}
+
+bool SCIPconshdlrBenders::check_binary_solution_pool(
+	SCIP *scip,	   /**< [in] scip pointer */
+	SCIP_SOL *sol, /**< [in] solution to evaluate */
+	bool append /**< [in] whether sol is appended to the pool */)
+{
+	bool exist = false;
+	vector<int> solvec;
+	solvec.reserve(nvars_ - naux_);
+	for (int j = 0; j < nvars_ - naux_; ++j)
+		if (SCIPisZero(scip, SCIPgetSolVal(scip, sol, vars_[j]) - 1.0))
+			solvec.push_back(j);
+	for (unsigned i = 0; i < binary_solution_pool_.size(); ++i)
+		if (solvec == binary_solution_pool_[i])
+		{
+			exist = true;
+			break;
+		}
+	if (!exist && append) 
+		binary_solution_pool_.push_back(solvec);
+	return exist;
 }
 
 void SCIPconshdlrBenders::write_statistics()

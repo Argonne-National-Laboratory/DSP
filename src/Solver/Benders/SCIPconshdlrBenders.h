@@ -144,6 +144,11 @@ protected:
 			double recourse_lb,      /**< [in] lower bound of recourse value */
 			SCIP_RESULT * result     /**< [out] result */);
 
+	virtual bool check_binary_solution_pool(
+		SCIP *scip,	   /**< [in] scip pointer */
+		SCIP_SOL *sol, /**< [in] solution to evaluate */
+		bool append = false /**< [in] whether sol is appended to the pool */);
+
 	virtual void write_statistics();
 
 protected:
@@ -154,6 +159,8 @@ protected:
 	SCIP_Var ** vars_;             /**< pointer array to original variables */
 	int         naux_;             /**< number of auxiliary variables */
 	double*     probability_;      /**< array of probability */
+
+	vector<vector<int>> binary_solution_pool_; /**< binary solution pool */
 
 	/** simple statistics */
 	vector<string> names_statistics_;
