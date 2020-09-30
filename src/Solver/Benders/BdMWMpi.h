@@ -35,7 +35,7 @@ public:
 protected:
 
 	/** constraint handler */
-	virtual SCIPconshdlrBenders * constraintHandler();
+	virtual SCIPconshdlrBenders *constraintHandler(bool add_integer_benders);
 
 	/** run master process */
 	virtual DSP_RTN_CODE runMaster();

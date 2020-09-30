@@ -34,19 +34,8 @@ public:
 		return new BdWorker(*this);
 	}
 
-	/** generate cuts */
-	DSP_RTN_CODE generateCuts(int nx, int naux, const double* x, OsiCuts& cs);
-
 	/** get BdSub pointer */
 	virtual BdSub * getBdSubPtr() {return bdsub_;}
-
-protected:
-	/** aggregate cuts, if necessary, based on the number of auxiliary variables
-	 * introduced to the master.
-	 *
-	 * This may be derived to communicate cuts in MPI parallel implementation.
-	 */
-	virtual DSP_RTN_CODE collectCuts(int nx, int naux, double** cut, double* rhs, OsiCuts& cs);
 
 protected:
 

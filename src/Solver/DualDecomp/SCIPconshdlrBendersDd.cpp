@@ -35,15 +35,6 @@ SCIP_DECL_CONSFREE(SCIPconshdlrBendersDd::scip_free)
 	return SCIP_OKAY;
 }
 
-/** clone method which will be used to copy constraint handler and variable pricer objects */
-SCIP_DECL_CONSHDLRCLONE(scip::ObjProbCloneable* SCIPconshdlrBendersDd::clone)
-{
-	*valid = true;
-	SCIPconshdlrBendersDd * conshdlrclone = new SCIPconshdlrBendersDd(const_cast<SCIPconshdlrBendersDd*>(this));
-	conshdlrclone->setOriginalVariables(nvars_, vars_, 1);
-	return conshdlrclone;
-}
-
 /** set cutsToAdd_ */
 void SCIPconshdlrBendersDd::setCutsToAdd(OsiCuts * cuts)
 {
@@ -68,15 +59,13 @@ void SCIPconshdlrBendersDd::clearCuts(OsiCuts * cuts)
 }
 
 void SCIPconshdlrBendersDd::generateCuts(
-		int size,      /**< [in] size of x */
-		double * x,    /**< [in] master solution */
-		int where,     /**< [in] where to be called */
-		OsiCuts * cuts /**< [out] cuts generated */)
+	int size,  /**< [in] size of x */
+	double *x, /**< [in] master solution */
+	OsiCuts *cuts /**< [out] cuts generated */)
 {
 	if (cutsToAdd_->sizeCuts() <= 0) return;
 
 	BGN_TRY_CATCH
-	DSPdebugMessage("where %d\n", where);
 
 	/** update cut efficacy in cutsToAdd_ */
 	bool isCutFromPool = false;

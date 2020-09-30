@@ -327,7 +327,8 @@ void solveBd(DspApiEnv * env)
 		return;
 	}
 
-	BdDriverSerial * bd = new BdDriverSerial(new DecTssModel(*getTssModel(env)), env->par_, env->message_);
+	DecTssModel* dec = new DecTssModel(*getTssModel(env));
+	BdDriverSerial * bd = new BdDriverSerial(dec, env->par_, env->message_);
 	env->solver_ = bd;
 	DSPdebugMessage("Created a serial Benders object\n");
 
@@ -359,6 +360,8 @@ void solveBd(DspApiEnv * env)
 	DSP_RTN_CHECK_THROW(env->solver_->init());
 	DSP_RTN_CHECK_THROW(dynamic_cast<BdDriverSerial*>(env->solver_)->run());
 	DSP_RTN_CHECK_THROW(env->solver_->finalize());
+
+	FREE_PTR(dec);
 #else
 	printf("Benders decomposition has been disabled because SCIP was not available.\n");
 #endif

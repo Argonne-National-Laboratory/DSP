@@ -9,6 +9,7 @@
 
 #include "Solver/Benders/BdMWSerial.h"
 #include "Solver/Benders/SCIPconshdlrBenders.h"
+#include "Solver/Benders/SCIPconshdlrIntBenders.h"
 #include "SolverInterface/DspOsiScip.h"
 
 BdMWSerial::BdMWSerial(
@@ -41,7 +42,7 @@ DSP_RTN_CODE BdMWSerial::init()
 	/** create Benders worker */
 	worker_ = new BdWorker(model_, par_, message_);
 
-	if (worker_->getBdSubPtr()->recourse_has_integer_)
+	if (master_->is_binary() == false && worker_->getBdSubPtr()->has_integer())
 		warning_relaxation();
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
@@ -88,17 +89,30 @@ SCIPconshdlrBenders* BdMWSerial::constraintHandler()
 
 	BGN_TRY_CATCH
 
+	int naux = par_->getIntParam("BD/NUM_CUTS_PER_ITER");
+	int priority = par_->getIntParam("BD/CUT_PRIORITY");
+
 	/** get solver interface */
 	OsiScipSolverInterface * si = dynamic_cast<OsiScipSolverInterface*>(master_->getSiPtr());
 
-	/** Benders constraint handler */
-	conshdlr = new SCIPconshdlrBenders(si->getScip(), "Benders", par_->getIntParam("BD/CUT_PRIORITY"));
-	conshdlr->setDecModel(model_);
-	conshdlr->setBdSub(worker_->getBdSubPtr());
-	conshdlr->setOriginalVariables(si->getNumCols(),
-			si->getScipVars(), par_->getIntParam("BD/NUM_CUTS_PER_ITER"));
+	/** get Benders subproblem solver */
+	BdSub *bdsub = worker_->getBdSubPtr();
 
-	END_TRY_CATCH_RTN(;,NULL)
+	/** check whether integer Benders cuts need used or not */
+	bool add_integer_benders = false;
+	if (model_->isStochastic() && master_->is_binary() && bdsub->has_integer())
+		add_integer_benders = true;
+
+	/** Benders constraint handler */
+	if (add_integer_benders)
+		conshdlr = new SCIPconshdlrIntBenders(si->getScip(), "Benders", priority);
+	else
+		conshdlr = new SCIPconshdlrBenders(si->getScip(), "Benders", priority);
+	conshdlr->setDecModel(model_);
+	conshdlr->setBdSub(bdsub);
+	conshdlr->setOriginalVariables(si->getNumCols(), si->getScipVars(), naux);
+
+	END_TRY_CATCH_RTN(;, NULL)
 
 	return conshdlr;
 }

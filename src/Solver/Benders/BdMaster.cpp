@@ -23,7 +23,8 @@ worker_(NULL),
 naux_(1),
 obj_aux_(NULL),
 clbd_aux_(NULL),
-cubd_aux_(NULL) {
+cubd_aux_(NULL),
+is_binary_(false) {
 	obj_aux_ = new double[naux_];
 	clbd_aux_ = new double[naux_];
 	cubd_aux_ = new double[naux_];
@@ -35,7 +36,8 @@ cubd_aux_(NULL) {
 
 BdMaster::BdMaster(const BdMaster& rhs) :
 DecSolver(rhs),
-naux_(rhs.naux_) {
+naux_(rhs.naux_),
+is_binary_(rhs.is_binary_) {
 	obj_aux_ = new double[naux_];
 	clbd_aux_ = new double[naux_];
 	cubd_aux_ = new double[naux_];
@@ -139,14 +141,14 @@ DSP_RTN_CODE BdMaster::setConshdlr(SCIPconshdlrBenders* conshdlr)
 	OsiScipSolverInterface * scip = dynamic_cast<DspOsiScip*>(osi_)->scip_;
 
 	/** include constraint handler */
-	SCIP_CALL_ABORT(SCIPincludeObjConshdlr(scip->getScip(), conshdlr, false));
+	DSPdebugMessage("Added constraint handler %p\n", conshdlr);
+	SCIP_CALL_ABORT(SCIPincludeObjConshdlr(scip->getScip(), conshdlr, TRUE));
 
 	/** create constraint */
 	SCIP_CONS * cons = NULL;
 	SCIP_CALL_ABORT(SCIPcreateConsBenders(scip->getScip(), &cons, "Benders"));
 	SCIP_CALL_ABORT(SCIPaddCons(scip->getScip(), cons));
 	SCIP_CALL_ABORT(SCIPreleaseCons(scip->getScip(), &cons));
-	DSPdebugMessage("Added constraint handler %p\n", conshdlr);
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -195,6 +197,7 @@ DSP_RTN_CODE BdMaster::createProblem() {
 	DSPdebugMessage("Decomposed the model.\n");
 
 	/** convert column types */
+	is_binary_ = true;
 	if (model_->isStochastic())
 	{
 		TssModel * tssModel;
@@ -206,6 +209,18 @@ DSP_RTN_CODE BdMaster::createProblem() {
 		{
 			printf("Model claims to be stochastic when it is not");
 			return DSP_RTN_ERR;
+		}
+
+		/** is binary program? */
+		for (int j = 0; j < tssModel->getNumCols(0); ++j) {
+			if (ctype[j] == 'C') { 
+				is_binary_ = false;
+				break;
+			}
+			if (ctype[j] == 'I' && (clbd[j] != 0.0 || cubd[j] != 1.0)) {
+				is_binary_ = false;
+				break;
+			}
 		}
 
 		/** relax integrality? */
@@ -222,10 +237,28 @@ DSP_RTN_CODE BdMaster::createProblem() {
 	}
 	else
 	{
+		/** is binary program? */
+		for (int j = 0; j < mat->getNumCols(); ++j) {
+			if (ctype[j] == 'C') { 
+				is_binary_ = false;
+				break;
+			}
+			if (ctype[j] == 'I' && (clbd[j] != 0.0 || cubd[j] != 1.0)) {
+				is_binary_ = false;
+				break;
+			}
+		}
+
 		if (par_->getBoolPtrParam("RELAX_INTEGRALITY")[0])
 		{
 			for (int j = 0; j < mat->getNumCols(); j++)
 			{
+				if (is_binary_) {
+					if (ctype[j] == 'C') 
+						is_binary_ = false;
+					if (ctype[j] == 'I' && (clbd[j] != 0.0 || cubd[j] != 1.0)) 
+						is_binary_ = false;
+				}
 				if (ctype[j] != 'C')
 					nIntegers--;
 				ctype[j] = 'C';
@@ -238,7 +271,7 @@ DSP_RTN_CODE BdMaster::createProblem() {
 	if (!osi_) throw CoinError("Failed to create DspOsiScip", "createProblem", "DdMaster");
 	
 	osi_->setLogLevel(CoinMin(par_->getIntParam("LOG_LEVEL"), 5));
-	DSPdebugMessage("Successfully created SCIP interface \n");
+	osi_->setNodeInfoFreq(par_->getIntParam("SCIP/DISPLAY_FREQ"));
 
 	/** load problem data */
 	getSiPtr()->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);

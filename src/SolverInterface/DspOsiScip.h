@@ -105,12 +105,17 @@ public:
 		SCIPsetIntParam(scip_->getScip(), "display/verblevel", CoinMax(0,CoinMin(5,level)));
 	}
 
+    /** set node information display frequency */
+    virtual void setNodeInfoFreq(int level) {
+        SCIPsetIntParam(scip_->getScip(), "display/freq", CoinMax(-1,level));
+    }
+
     /** set number of cores */
     virtual void setNumCores(int num) {}
 
     /** set time limit */
     virtual void setTimeLimit(double time) {
-        SCIPsetRealParam(scip_->getScip(), "limits/time", time);
+        SCIPsetRealParam(scip_->getScip(), "limits/time", CoinMin(time,1.0e+20));
     }
 
     /** set node limit */

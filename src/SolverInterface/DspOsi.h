@@ -45,25 +45,28 @@ public:
 		throw CoinError("Barrier is not supported.", "use_barrier", "DspOsi");
 	}
 
-	/** solution statue */
-	virtual int status() {
-		if (si_->isProvenOptimal())
+	static int dsp_status(const OsiSolverInterface *si)
+	{
+		if (si->isProvenOptimal())
 			return DSP_STAT_OPTIMAL;
-		else if (si_->isProvenPrimalInfeasible())
+		else if (si->isProvenPrimalInfeasible())
 			return DSP_STAT_PRIM_INFEASIBLE;
-		else if (si_->isProvenDualInfeasible())
+		else if (si->isProvenDualInfeasible())
 			return DSP_STAT_DUAL_INFEASIBLE;
-		else if (si_->isPrimalObjectiveLimitReached())
+		else if (si->isPrimalObjectiveLimitReached())
 			return DSP_STAT_LIM_PRIM_OBJ;
-		else if (si_->isDualObjectiveLimitReached())
+		else if (si->isDualObjectiveLimitReached())
 			return DSP_STAT_LIM_DUAL_OBJ;
-		else if (si_->isIterationLimitReached())
+		else if (si->isIterationLimitReached())
 			return DSP_STAT_LIM_ITERorTIME;
-		else if (si_->isAbandoned())
+		else if (si->isAbandoned())
 			return DSP_STAT_ABORT;
 		else
 			return DSP_STAT_UNKNOWN;
 	}
+
+	/** solution statue */
+	virtual int status() { return dsp_status(si_); }
 
 	/** get primal objective value */
 	virtual double getPrimObjValue() {return si_->getObjValue();}
@@ -78,6 +81,9 @@ public:
 	virtual void setLogLevel(int level) {
 		si_->messageHandler()->setLogLevel(level);
 	}
+	
+	/** set node information display frequency */
+    virtual void setNodeInfoFreq(int level) {}
 
 	/** set number of cores */
 	virtual void setNumCores(int num) {}

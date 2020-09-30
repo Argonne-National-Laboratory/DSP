@@ -48,6 +48,12 @@ public:
 			double **      cutval, /** dense cut coefficients for each subproblem */
 			double *       cutrhs  /** cut rhs for each subproblem */);
 
+	/** evaluate recourse function */
+	DSP_RTN_CODE evaluateRecourse(
+		const double * x, /**< [in] first-stage solution */
+		double * objvals  /**< [out] objective values */
+	);
+
 public:
 
 	/** get objective value */
@@ -74,6 +80,9 @@ public:
 	/** get number of columns */
 	int getNumCols(int i) {return cglp_[i]->si_->getNumCols();}
 
+	/** does recourse have integer variables? */
+	bool has_integer() {return recourse_has_integer_;}
+
 private:
 
 	static DspOsi * createDspOsi(int solver);
@@ -88,16 +97,24 @@ private:
 			double *       cutrhs,           /**< Benders cut RHS */
 			int            enableOptCuts = 1 /**< whether to generate optimality cuts or not */);
 
+	/** solve one integer subproblem */
+	static DSP_RTN_CODE solveOneIntegerSubproblem(
+			BdSub *     cgl,
+			int            s,     /**< scenario index */
+			const double * x,     /**< first-stage solution */
+			double *       Tx,    /**< Tx */
+			double *       objval /**< objective value */);
+
 	/** solve feasibility problem */
 	static DSP_RTN_CODE solveFeasProblem(
-			DspOsi * osi, /**< [in] subproblem solver interface */
-			int & nAddedCols         /**< [out] number of columns added */);
+		OsiSolverInterface *si, /**< [in] subproblem solver interface */
+		int &nAddedCols /**< [out] number of columns added */);
 
 	/** change feasibility problem to original problem */
 	static DSP_RTN_CODE chgToOrgProblem(
-			DspOsi * osi, /**< [in] subproblem solver interface */
-			const double * obj,      /**< [in] original objective function */
-			int & nAddedCols         /**< [out] number of columns added */);
+		OsiSolverInterface *si, /**< [in] subproblem solver interface */
+		const double *obj,		/**< [in] original objective function */
+		int &nAddedCols /**< [out] number of columns added */);
 
 	/** calculate cut elements and rhs */
 	static int calculateCutElements(
@@ -119,17 +136,20 @@ protected:
 
 	int   nsubprobs_;  /**< number of subproblems */
 	int * subindices_; /**< subproblem indices indices for cut generation */
+	double* probability_; /**< probability; 1.0 for non-stochastic model */
 
 	CoinPackedMatrix   ** mat_mp_;     /**< array of matrix corresponding to master problem part */
-	DspOsi ** cglp_;       /**< array of Cut Generation LP */
+	DspOsi ** cglp_;                   /**< array of Cut Generation LP */
 	CoinWarmStart **      warm_start_; /**< warm start information for each subproblem */
 	double *              objvals_;    /**< subproblem objective values */
 	double **             solutions_;  /**< subproblem solutions */
 	DSP_RTN_CODE *        status_;     /**< subproblem solution status */
+	bool recourse_has_integer_;        /**< whether the recourse has integer variables */
 
-public:
-
-	bool recourse_has_integer_;
+	/** simple statistics */
+	vector<string> names_statistics_;
+	unordered_map<string, int> count_statistics_;
+	unordered_map<string, double> time_statistics_;
 };
 
 #endif /* SRC_SOLVER_BENDERS_BDSUB_H_ */

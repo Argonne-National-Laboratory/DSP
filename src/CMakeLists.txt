@@ -108,6 +108,7 @@ if(SCIPLIB)
         Solver/Benders/BdSub.cpp
         Solver/Benders/BdWorker.cpp
         Solver/Benders/SCIPconshdlrBenders.cpp
+        Solver/Benders/SCIPconshdlrIntBenders.cpp
         Solver/DualDecomp/DdWorkerCGBd.cpp
         Solver/DualDecomp/SCIPconshdlrBendersDd.cpp
 		SolverInterface/SCIPbranchruleLB.cpp
@@ -165,7 +166,8 @@ if (MPI_CXX_FOUND)
             ${DSP_SRC}
             Solver/Benders/BdDriverMpi.cpp
             Solver/Benders/BdMWMpi.cpp
-            Solver/Benders/SCIPconshdlrBendersWorker.cpp
+            Solver/Benders/SCIPconshdlrBaseBendersWorker.cpp
+            Solver/Benders/SCIPconshdlrIntBendersWorker.cpp
         )
     endif(SCIPLIB)
     set(DSP_INC_DIR 

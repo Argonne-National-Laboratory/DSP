@@ -21,6 +21,7 @@ public:
 	enum
 	{
 		MASTER_NEEDS_CUTS = 0,
+		MASTER_EVALUATES_RECOURSE,
 		MASTER_STOPPED
 	};
 
@@ -51,9 +52,12 @@ public:
 	virtual DSP_RTN_CODE finalize() {return DSP_RTN_OK;}
 
 	virtual void warning_relaxation() {
-		message_->print(0, "************************************************************************\n");
-		message_->print(0, "* WARNING: Integer variables are detected but relaxed in the recourse. *\n");
-		message_->print(0, "************************************************************************\n");
+		message_->print(0, "\n*****************************************************************************************\n");
+		message_->print(0, "* WARNING:                                                                              *\n");
+		message_->print(0, "*   The first stage is not a pure-binary program.                                       *\n");
+		message_->print(0, "*   The second-stage integer variables will be relaxed.                                 *\n");
+		message_->print(0, "*   Please consider the binarization of the first-stage variables for a global optimum. *\n");
+		message_->print(0, "*****************************************************************************************\n\n");
 	}
 
 protected:
