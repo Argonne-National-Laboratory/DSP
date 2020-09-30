@@ -85,8 +85,6 @@ SCIPconshdlrBenders::SCIPconshdlrBenders(
 	/** initialize statistics */
 	names_statistics_.push_back("sepaBenders");
 	names_statistics_.push_back("checkBenders");
-	names_statistics_.push_back("addIntOptimalityCut");
-	names_statistics_.push_back("addNoGoodCut");
 	for (unsigned i = 0; i < names_statistics_.size(); ++i)
 	{
 		time_statistics_[names_statistics_[i]] = 0.0;
@@ -559,14 +557,6 @@ void SCIPconshdlrBenders::aggregateCuts(
 	FREE_MEMORY
 
 #undef FREE_MEMORY
-}
-
-void SCIPconshdlrBenders::computeProbability(
-		const double* recourse /**< [in] recourse values */) {
-	if (isDro() == false)
-		return;
-	assert(isStochastic());
-	// TODO: find new probability distribution
 }
 
 void SCIPconshdlrBenders::write_statistics()

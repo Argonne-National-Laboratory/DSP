@@ -70,11 +70,6 @@ public:
 		else return false;
 	}
 
-	virtual bool isDro() {
-		if (model_ && model_->isDro()) return true;
-		else return false;
-	}
-
 public:
 
 	/** set model pointer */
@@ -119,10 +114,6 @@ protected:
 			double ** cutvec, /**< [in] cut vector */
 			double *  cutrhs, /**< [in] cut right-hand side */
 			OsiCuts * cuts    /**< [out] cuts generated */);
-
-	/** compuate probability (used for DRO) */
-	virtual void computeProbability(
-			const double* recourse /**< [in] recourse values */);
 
 	virtual void write_statistics();
 
