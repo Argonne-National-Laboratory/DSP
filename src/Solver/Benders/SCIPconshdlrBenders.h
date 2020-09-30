@@ -120,39 +120,9 @@ protected:
 			double *  cutrhs, /**< [in] cut right-hand side */
 			OsiCuts * cuts    /**< [out] cuts generated */);
 
-	/** Has integer variables in the recouse? */
-	virtual bool isIntegralRecourse() {
-		return (bdsub_ != NULL && bdsub_->has_integer());
-	}
-
-	/** evaluate recourse: 
-	 * This function is called only when the recourse has integer variables.
-	*/
-	virtual SCIP_RETCODE evaluateRecourse(
-			SCIP * scip,    /**< [in] scip pointer */
-			SCIP_SOL * sol, /**< [in] solution to evaluate */
-			double * values /**< [out] evaluated recourse values */);
-
 	/** compuate probability (used for DRO) */
 	virtual void computeProbability(
 			const double* recourse /**< [in] recourse values */);
-
-	virtual SCIP_RETCODE addNoGoodCut(
-			SCIP * scip,             /**< [in] scip pointer */
-   			SCIP_CONSHDLR* conshdlr, /**< [in] constraint handler that creates the row */
-			SCIP_RESULT * result     /**< [out] result */);
-
-	virtual SCIP_RETCODE addIntOptimalityCut(
-			SCIP * scip,             /**< [in] scip pointer */
-   			SCIP_CONSHDLR* conshdlr, /**< [in] constraint handler that creates the row */
-			double exact_recourse,   /**< [in] exact recourse value */
-			double recourse_lb,      /**< [in] lower bound of recourse value */
-			SCIP_RESULT * result     /**< [out] result */);
-
-	virtual bool check_binary_solution_pool(
-		SCIP *scip,	   /**< [in] scip pointer */
-		SCIP_SOL *sol, /**< [in] solution to evaluate */
-		bool append = false /**< [in] whether sol is appended to the pool */);
 
 	virtual void write_statistics();
 
@@ -164,8 +134,6 @@ protected:
 	SCIP_Var ** vars_;             /**< pointer array to original variables */
 	int         naux_;             /**< number of auxiliary variables */
 	double*     probability_;      /**< array of probability */
-
-	vector<vector<int>> binary_solution_pool_; /**< binary solution pool */
 
 	/** simple statistics */
 	vector<string> names_statistics_;

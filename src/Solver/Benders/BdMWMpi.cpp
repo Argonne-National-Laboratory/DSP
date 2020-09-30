@@ -8,6 +8,7 @@
 // #define DSP_DEBUG
 #include "Solver/Benders/BdMWMpi.h"
 #include "Solver/Benders/SCIPconshdlrBendersWorker.h"
+#include "Solver/Benders/SCIPconshdlrIntBendersWorker.h"
 #include "SolverInterface/DspOsiScip.h"
 
 BdMWMpi::BdMWMpi(
@@ -123,14 +124,19 @@ DSP_RTN_CODE BdMWMpi::runMaster()
 	BGN_TRY_CATCH
 
 	DSPdebugMessage("Rank %d: Run Master\n", comm_rank_);
-
+	
 	/** Is integer recourse? */
 	int temp = 0, is_integral_recourse = 0;
 	MPI_Reduce(&temp, &is_integral_recourse, 1, MPI_INT, MPI_MAX, 0, comm_);
-	DSPdebugMessage("Rank %d: is integral recourse? %d\n", comm_rank_, is_integral_recourse);
+
+	/** check whether integer Benders cuts need used or not */
+	bool add_integer_benders = false;
+	if (model_->isStochastic() && master_->is_binary() && is_integral_recourse > 0)
+		add_integer_benders = true;
+	// printf("----- add_integer_benders = %s\n", add_integer_benders ? "true" : "false");
 
 	/** set constraint handler */
-	master_->setConshdlr(constraintHandler((is_integral_recourse > 0)));
+	master_->setConshdlr(constraintHandler(add_integer_benders));
 
 	/** solve */
 	DSP_RTN_CHECK_THROW(master_->solve());
@@ -144,24 +150,27 @@ DSP_RTN_CODE BdMWMpi::runMaster()
 	return DSP_RTN_OK;
 }
 
-SCIPconshdlrBenders* BdMWMpi::constraintHandler(bool is_integral_recourse)
+SCIPconshdlrBenders *BdMWMpi::constraintHandler(bool add_integer_benders)
 {
 	SCIPconshdlrBenders * conshdlr = NULL;
 
 	BGN_TRY_CATCH
 
+	int naux = par_->getIntParam("BD/NUM_CUTS_PER_ITER");
+	int priority = par_->getIntParam("BD/CUT_PRIORITY");
+
 	/** get solver interface */
 	OsiScipSolverInterface * si = dynamic_cast<OsiScipSolverInterface*>(master_->getSiPtr());
 
 	/** MPI Benders */
-	conshdlr = new SCIPconshdlrBendersWorker(
-		si->getScip(), 
-		par_->getIntParam("BD/CUT_PRIORITY"), 
-		is_integral_recourse,
-		comm_);
+	if (add_integer_benders)
+		conshdlr = new SCIPconshdlrIntBendersWorker(si->getScip(), priority, comm_);
+	else
+		conshdlr = new SCIPconshdlrBendersWorker(si->getScip(), priority, comm_);
+
 	conshdlr->setDecModel(model_);
 	conshdlr->setBdSub(NULL);
-	conshdlr->setOriginalVariables(si->getNumCols(), si->getScipVars(), par_->getIntParam("BD/NUM_CUTS_PER_ITER"));
+	conshdlr->setOriginalVariables(si->getNumCols(), si->getScipVars(), naux);
 
 	END_TRY_CATCH_RTN(;,NULL)
 
