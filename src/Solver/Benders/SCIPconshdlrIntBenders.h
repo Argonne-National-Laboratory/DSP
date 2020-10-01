@@ -26,6 +26,12 @@ public:
 	/** feasibility check method of constraint handler for primal solutions */
 	virtual SCIP_DECL_CONSCHECK(scip_check);
 
+	/** separation method of constraint handler for LP solution */
+	virtual SCIP_DECL_CONSSEPALP(scip_sepalp);
+
+	/** separation method of constraint handler for arbitrary primal solution */
+	virtual SCIP_DECL_CONSSEPASOL(scip_sepasol);
+
 protected:
 	virtual double compute_weighted_sum(
 		const double *recourse_values /**< [in] recourse values */

@@ -104,7 +104,8 @@ SCIP_DECL_CONSENFOLP(SCIPconshdlrIntBenders::scip_enfolp)
 			SCIP_CALL(evaluateRecourse(scip, sol, recourse_values));
 
 			// compute weighted sum for DRO; otherwise, returns the current recourse
-			SCIP_CALL(computeProbability(recourse_values));
+			if (model_->isDro())
+				SCIP_CALL(computeProbability(recourse_values));
 
 			// try solution after adjusting the auxiliary variable values
 			SCIP_CALL(tryPrimalSolution(scip, sol, recourse_values));
@@ -119,7 +120,7 @@ SCIP_DECL_CONSENFOLP(SCIPconshdlrIntBenders::scip_enfolp)
 	}
 
 	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, &sepa_result));
-	DSPdebugMessage("----- scip_enfolp results in %d stage %d\n", sepa_result, SCIPgetStage(scip));
+	DSPdebugMessage("----- scip_enfolp: Benders cut result %d stage %d\n", sepa_result, SCIPgetStage(scip));
 
 	// Add no-good cut for pure binary
 	addNoGoodCut(scip, conshdlr, &nogood_result);
@@ -162,7 +163,8 @@ SCIP_DECL_CONSENFOPS(SCIPconshdlrIntBenders::scip_enfops)
 			SCIP_CALL(evaluateRecourse(scip, sol, recourse_values));
 
 			// compute weighted sum for DRO; otherwise, returns the current recourse
-			SCIP_CALL(computeProbability(recourse_values));
+			if (model_->isDro())
+				SCIP_CALL(computeProbability(recourse_values));
 
 			double weighted_sum_of_recourse = compute_weighted_sum(recourse_values);
 			double approx_recourse = compute_approximate_recourse(scip, sol, recourse_values);
@@ -206,13 +208,14 @@ SCIP_DECL_CONSCHECK(SCIPconshdlrIntBenders::scip_check)
 			SCIP_CALL(evaluateRecourse(scip, sol, recourse_values));
 
 			// compute weighted sum for DRO; otherwise, returns the current recourse
-			SCIP_CALL(computeProbability(recourse_values));
+			if (model_->isDro())
+				SCIP_CALL(computeProbability(recourse_values));
 
 			double weighted_sum_of_recourse = compute_weighted_sum(recourse_values);
 			double approx_recourse = compute_approximate_recourse(scip, sol, recourse_values);
 			if (SCIPisLT(scip, approx_recourse, weighted_sum_of_recourse))
 			{
-				DSPdebugMessage("----- scip_check: rejects solution (approx %e, exact %e)\n", approx_recourse, weighted_sum_of_recourse);
+				// DSPdebugMessage("----- scip_check: rejects solution (approx %e, exact %e)\n", approx_recourse, weighted_sum_of_recourse);
 				*result = SCIP_INFEASIBLE;
 			}
 			
@@ -222,8 +225,34 @@ SCIP_DECL_CONSCHECK(SCIPconshdlrIntBenders::scip_check)
 
 	if (*result != SCIP_INFEASIBLE)
 		SCIP_CALL(checkBenders(scip, conshdlr, sol, result));
-	DSPdebugMessage("----- scip_check: result %d stage %d\n", *result, SCIPgetStage(scip));
+	// DSPdebugMessage("----- scip_check: result %d stage %d\n", *result, SCIPgetStage(scip));
 
+	return SCIP_OKAY;
+}
+
+SCIP_DECL_CONSSEPALP(SCIPconshdlrIntBenders::scip_sepalp)
+{
+	*result = SCIP_DIDNOTRUN;
+	if (model_->isDro())
+		SCIP_CALL(sepaDrBenders(scip, conshdlr, NULL, result));
+	else
+		SCIP_CALL(sepaBenders(scip, conshdlr, NULL, result));
+	if (*result == SCIP_DIDNOTRUN)
+		*result = SCIP_DIDNOTFIND;
+	DSPdebugMessage("scip_sepalp: results %d stage %d\n", *result, SCIPgetStage(scip));
+	return SCIP_OKAY;
+}
+
+SCIP_DECL_CONSSEPASOL(SCIPconshdlrIntBenders::scip_sepasol)
+{
+	*result = SCIP_DIDNOTRUN;
+	if (model_->isDro())
+		SCIP_CALL(sepaDrBenders(scip, conshdlr, NULL, result));
+	else
+		SCIP_CALL(sepaBenders(scip, conshdlr, NULL, result));
+	if (*result == SCIP_DIDNOTRUN)
+		*result = SCIP_DIDNOTFIND;
+	DSPdebugMessage("scip_sepasol results in %d stage %d\n", *result, SCIPgetStage(scip));
 	return SCIP_OKAY;
 }
 
@@ -262,7 +291,10 @@ SCIP_RETCODE SCIPconshdlrIntBenders::tryPrimalSolution(
 	{
 		double weighted_recourse = 0.0;
 		for (int k = j; k < model_->getNumSubproblems(); k += naux_)
+		{
 			weighted_recourse += recourse_values[k] * probability_[k];
+			// DSPdebugMessage("---- s = %d, recourse_values = %e, probability_ %e\n", k, recourse_values[k], probability_[k]);
+		}
 		SCIP_CALL(SCIPsetSolVal(scip, sol, vars_[nvars_ - naux_ + j], weighted_recourse));
 	}
 	// SCIPprintSol(scip, sol, NULL, FALSE);
@@ -272,7 +304,7 @@ SCIP_RETCODE SCIPconshdlrIntBenders::tryPrimalSolution(
 	if (SCIPisLT(scip, (SCIPsolGetOrigObj(sol) - SCIPgetPrimalbound(scip)) * sense, 0.0))
 	{
 		SCIP_CALL(SCIPtrySol(scip, sol, FALSE, FALSE, FALSE, FALSE, FALSE, &stored));
-		DSPdebugMessage("----- scip_enfolp: is solution (obj: %e) stored? %s\n", SCIPsolGetOrigObj(sol), stored ? "yes" : "no");
+		DSPdebugMessage("----- is solution (obj: %e) stored? %s\n", SCIPsolGetOrigObj(sol), stored ? "yes" : "no");
 	}
 	
 	return SCIP_OKAY;
@@ -345,7 +377,7 @@ SCIP_RETCODE SCIPconshdlrIntBenders::tryIntOptimalityCut(
 	if (SCIPisLT(scip, approx_recourse, weighted_sum_of_recourse))
 	{
 		addIntOptimalityCut(scip, conshdlr, weighted_sum_of_recourse, result);
-		DSPdebugMessage("----- scip_enfolp: integer optimality cut result %d\n", *result);
+		DSPdebugMessage("---- integer optimality cut result %d\n", *result);
 	}
 	return SCIP_OKAY;
 }
