@@ -104,6 +104,12 @@ DSP_RTN_CODE DdMasterTr::init()
 		throw CoinError("Invalid parameter value", "init", "DdMasterTr");
 #endif
 	parMasterAlgo_ = par_->getIntParam("DD/MASTER_ALGO");
+	if (model_->isDro() && parMasterAlgo_ == IPM_Feasible)
+	{
+		printf("-- DRO cannot use IPM_Feasible option.\n"
+			   "-- The master problem will use IPM instead.\n");
+		parMasterAlgo_ = IPM;
+	}
 	parLogLevel_ = par_->getIntParam("LOG_LEVEL");
 	DSPdebugMessage("Trust region size %f\n", parTrSize_);
 
@@ -785,8 +791,8 @@ int DdMasterTr::addCuts(
 			recourse_obj = 0.0;
 			for (int j = 0; j < tss->getNumCols(1); ++j) {
 				recourse_obj += obj_reco_[s][j] * subsolution_[s][tss->getNumCols(0)+j];
-				DSPdebugMessage("obj_reco_[%d][%d] = %e, subsolution_[%d][%d] = %e\n", 
-					s, j, obj_reco_[s][j], s, tss->getNumCols(0)+j, subsolution_[s][tss->getNumCols(0)+j]);
+				// DSPdebugMessage("obj_reco_[%d][%d] = %e, subsolution_[%d][%d] = %e\n",
+				// 	s, j, obj_reco_[s][j], s, tss->getNumCols(0)+j, subsolution_[s][tss->getNumCols(0)+j]);
 			}
 			// recourse_obj = scen_obj->dotProduct(subsolution_[s] + tss->getNumCols(0));
 

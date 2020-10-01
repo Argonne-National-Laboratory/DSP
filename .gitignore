@@ -11,3 +11,5 @@ build_master
 build/*
 build_merge/*
 extra/glpk*
+examples/smps/cplex.log
+examples/dro/cplex.log
