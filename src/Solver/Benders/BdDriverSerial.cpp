@@ -112,7 +112,8 @@ DSP_RTN_CODE BdDriverSerial::findLowerBound()
 	int fcut = par_->getIntParam("DD/FEAS_CUTS");
 	int ocut = par_->getIntParam("DD/OPT_CUTS");
 	int evalub = par_->getIntParam("DD/EVAL_UB");
-	par_->setIntParam("DD/ITER_LIM", par_->getIntParam("BD/DD/ITER_LIM"));
+	int iter_lim = model_->isDro() ? 0 : par_->getIntParam("BD/DD/ITER_LIM");
+	par_->setIntParam("DD/ITER_LIM", iter_lim);
 	par_->setIntParam("DD/FEAS_CUTS", -1);
 	par_->setIntParam("DD/OPT_CUTS", -1);
 	par_->setIntParam("DD/EVAL_UB", -1);
