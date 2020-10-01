@@ -344,8 +344,6 @@ void solveBd(DspApiEnv * env)
 	DSP_RTN_CHECK_THROW(env->solver_->init());
 	DSP_RTN_CHECK_THROW(dynamic_cast<BdDriverSerial*>(env->solver_)->run());
 	DSP_RTN_CHECK_THROW(env->solver_->finalize());
-
-	FREE_PTR(dec);
 #else
 	printf("Benders decomposition has been disabled because SCIP was not available.\n");
 #endif
