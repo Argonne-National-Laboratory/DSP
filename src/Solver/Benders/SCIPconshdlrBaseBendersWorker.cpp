@@ -47,15 +47,16 @@ void SCIPconshdlrBaseBendersWorker::initialize(int nsubprobs)
 		}
 		displs_[i] = i == 0 ? 0 : displs_[i - 1] + recvcounts_[i - 1];
 		DSPdebugMessage("recvcounts_[%d] %d displs_[%d] %d\n", i, recvcounts_[i], i, displs_[i]);
-		DSPdebug(DspMessage::printArray(nsubprobs, cut_index_));
 	}
+	DSPdebug(DspMessage::printArray(nsubprobs, cut_index_));
 }
 
 void SCIPconshdlrBaseBendersWorker::generateCutsBase(
-	int nsubprobs, /**< [in] number of subproblems */
-	int nvars,	   /**< [in] number of variables */
-	int naux,	   /**< [in] number of auxiliary variables */
-	double *x,	   /**< [in] master solution */
+	int nsubprobs,			   /**< [in] number of subproblems */
+	int nvars,				   /**< [in] number of variables */
+	int naux,				   /**< [in] number of auxiliary variables */
+	double *x,				   /**< [in] master solution */
+	const double *probability, /**< [in] probability */
 	OsiCuts *cuts /**< [out] cuts generated */)
 {
 #define FREE_MEMORY                      \
@@ -98,7 +99,7 @@ void SCIPconshdlrBaseBendersWorker::generateCutsBase(
 	}
 
 	/** aggregate cuts */
-	aggregateCutsBase(nsubprobs, nvars, naux, cutval, cutrhs, cuts);
+	aggregateCutsBase(nsubprobs, nvars, naux, cutval, cutrhs, probability, cuts);
 	DSPdebug(cuts->printCuts());
 	// cuts->printCuts();
 
@@ -110,11 +111,12 @@ void SCIPconshdlrBaseBendersWorker::generateCutsBase(
 }
 
 void SCIPconshdlrBaseBendersWorker::aggregateCutsBase(
-	int nsubprobs,	 /**< [in] number of subproblems */
-	int nvars,		 /**< [in] number of variables */
-	int naux,		 /**< [in] number of auxiliary variables */
-	double **cutvec, /**< [in] cut vector */
-	double *cutrhs,	 /**< [in] cut right-hand side */
+	int nsubprobs,			   /**< [in] number of subproblems */
+	int nvars,				   /**< [in] number of variables */
+	int naux,				   /**< [in] number of auxiliary variables */
+	double **cutvec,		   /**< [in] cut vector */
+	double *cutrhs,			   /**< [in] cut right-hand side */
+	const double *probability, /**< [in] probability */
 	OsiCuts *cuts /**< [out] cuts generated */)
 {
 #define FREE_MEMORY                 \
@@ -176,8 +178,8 @@ void SCIPconshdlrBaseBendersWorker::aggregateCutsBase(
 
 		/** calculate weighted aggregation of cuts */
 		for (int j = 0; j < nvars; ++j)
-			aggval[ind_aux][j] += cutvec[i][j];
-		aggrhs[ind_aux] += cutrhs[i];
+			aggval[ind_aux][j] += cutvec[i][j] * probability[cut_index_[i]];
+		aggrhs[ind_aux] += cutrhs[i] * probability[cut_index_[i]];
 	}
 
 	/** We generate optimality cuts only if there is no feasibility cut generated. */

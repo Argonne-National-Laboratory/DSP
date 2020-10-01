@@ -23,19 +23,21 @@ public:
 protected:
 	/** generate Benders cuts */
 	virtual void generateCutsBase(
-		int nsubprobs, /**< [in] number of subproblems */
-		int nvars,	   /**< [in] number of variables */
-		int naux,	   /**< [in] number of auxiliary variables */
-		double *x,	   /**< [in] master solution */
+		int nsubprobs,			   /**< [in] number of subproblems */
+		int nvars,				   /**< [in] number of variables */
+		int naux,				   /**< [in] number of auxiliary variables */
+		double *x,				   /**< [in] master solution */
+		const double *probability, /**< [in] probability */
 		OsiCuts *cuts /**< [out] cuts generated */);
 
 	/** generate Benders cuts */
 	virtual void aggregateCutsBase(
-		int nsubprobs,	 /**< [in] number of subproblems */
-		int nvars,		 /**< [in] number of variables */
-		int naux,		 /**< [in] number of auxiliary variables */
-		double **cutvec, /**< [in] cut vector */
-		double *cutrhs,	 /**< [in] cut right-hand side */
+		int nsubprobs,			   /**< [in] number of subproblems */
+		int nvars,				   /**< [in] number of variables */
+		int naux,				   /**< [in] number of auxiliary variables */
+		double **cutvec,		   /**< [in] cut vector */
+		double *cutrhs,			   /**< [in] cut right-hand side */
+		const double *probability, /**< [in] probability */
 		OsiCuts *cuts /**< [out] cuts generated */);
 
 	MPI_Comm comm_;

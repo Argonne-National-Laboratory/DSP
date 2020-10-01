@@ -40,7 +40,7 @@ protected:
 		double *x, /**< [in] master solution */
 		OsiCuts *cuts /**< [out] cuts generated */)
 	{
-		generateCutsBase(model_->getNumSubproblems(), nvars_, naux_, x, cuts);
+		generateCutsBase(model_->getNumSubproblems(), nvars_, naux_, x, probability_, cuts);
 	}
 };
 
