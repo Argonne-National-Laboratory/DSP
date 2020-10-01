@@ -155,7 +155,7 @@ SCIP_DECL_CONSENFOPS(SCIPconshdlrIntBenders::scip_enfops)
 	if (SCIPgetStage(scip) == SCIP_STAGE_SOLVING)
 	{
 		// Check whether this solution has been evaluated or not.
-		if (check_binary_solution_pool(scip, sol, true) == false)
+		if (check_binary_solution_pool(scip, sol, false) == false)
 		{
 			double *recourse_values = new double[model_->getNumSubproblems()];
 		
@@ -200,7 +200,7 @@ SCIP_DECL_CONSCHECK(SCIPconshdlrIntBenders::scip_check)
 	if (SCIPgetStage(scip) == SCIP_STAGE_SOLVING)
 	{
 		// Check whether this solution has been evaluated or not.
-		if (check_binary_solution_pool(scip, sol, true) == false)
+		if (check_binary_solution_pool(scip, sol, false) == false)
 		{
 			double *recourse_values = new double[model_->getNumSubproblems()];
 		
