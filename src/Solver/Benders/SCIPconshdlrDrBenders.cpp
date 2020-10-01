@@ -224,7 +224,7 @@ void SCIPconshdlrDrBenders::create_distsepa_problem()
 	CoinZeroN(obj, ncols);
 
 	// rhss
-	rlbd[0] = 0.0;
+	rlbd[0] = -COIN_DBL_MAX;
 	rubd[0] = model_->getWassersteinSize();
 	CoinZeroN(rlbd + 1, nscen);
 	CoinZeroN(rubd + 1, nscen);
@@ -237,7 +237,7 @@ void SCIPconshdlrDrBenders::create_distsepa_problem()
 	rubd[nrows - 1] = 1.0;
 
 	mat = new CoinPackedMatrix(false, 0, 0);
-	mat->setDimensions(nrows, ncols);
+	mat->setDimensions(0, ncols);
 
 	vector<int> vind;
 	vector<double> velem;
@@ -287,9 +287,10 @@ void SCIPconshdlrDrBenders::create_distsepa_problem()
 		vind.push_back(i);
 		velem.push_back(1.0);
 	}
-	mat->appendRow(1, vind.data(), velem.data());
+	mat->appendRow(nscen, vind.data(), velem.data());
 
 	drosi_->si_->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
+	drosi_->setLogLevel(0);
 
 	END_TRY_CATCH(FREE_MEMORY)
 
@@ -302,22 +303,28 @@ SCIP_RETCODE SCIPconshdlrDrBenders::computeProbability(
 	const double *recourse /**< [in] recourse values */)
 {
 	assert(isStochastic());
-	// TODO: find new probability distribution
-
 	// change objective function
 	for (int j = 0; j < model_->getNumSubproblems(); ++j)
 		drosi_->si_->setObjCoeff(j, recourse[j]);
 
 	// solve the distribution separation problem
 	drosi_->solve();
+	DSPdebugMessage("distribution separation status: %d\n", drosi_->status());
 
 	if (drosi_->status() == DSP_STAT_OPTIMAL)
 	{
 		for (int j = 0; j < model_->getNumSubproblems(); ++j)
+		{
 			probability_[j] = drosi_->si_->getColSolution()[j];
+			DSPdebugMessage("probability_[%d] = %e\n", j, probability_[j]);
+		}
 	}
 	else
+	{
+		printf("Unexpected status: %d\n", drosi_->status());
+		drosi_->si_->writeMps("drsepa");
 		return SCIP_ERROR;
+	}
 
 	return SCIP_OKAY;
 }
