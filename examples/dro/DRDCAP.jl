@@ -1,7 +1,34 @@
 using SIPLIB
-using StructJuMP, JuMP, MathOptFormat
+using StructJuMP, JuMP
 using LinearAlgebra
 using Random
+
+function write_dro(
+    num_scenarios::Int, num_references::Int, 
+    p::Vector{Float64}, dist::Array{Float64,2}, ϵ::Float64, 
+    filename::String)
+
+    fp = open("$filename.dro","w")
+    println(fp, ϵ)
+    println(fp, num_scenarios)
+    for s = 1:num_scenarios
+        if s > 1
+            print(fp, ",")
+        end
+        print(fp, p[s])
+    end
+    print(fp, "\n")
+    for i = 1:(num_scenarios+num_references)
+        for s = 1:num_scenarios
+            if s > 1
+                print(fp, ",")
+            end
+            print(fp, dist[s,i])
+        end
+        print(fp,"\n")
+    end
+    close(fp)
+end
 
 function DRDCAP(nR::Int, nN::Int, nT::Int, nS::Int, nK::Int, ϵ::Float64, filename::String)
 
@@ -40,26 +67,7 @@ function DRDCAP(nR::Int, nN::Int, nT::Int, nS::Int, nK::Int, ϵ::Float64, filena
         dist[s,nS+k] = sqrt(norm(c[:,:,:,s] - c_ξ[:,:,:,k])^2 + norm(c0[:,:,s] - c0_ξ[:,:,k])^2 + norm(d[:,:,s] - d_ξ[:,:,k])^2)
     end
 
-    fp = open("$filename.dro","w")
-    #println(fp, ϵ)
-    println(fp, nS)
-    for s = S
-        if s > 1
-            print(fp, ",")
-        end
-        print(fp, p[s])
-    end
-    print(fp, "\n")
-    for i = 1:(nS+nK)
-        for s = S
-            if s > 1
-                print(fp, ",")
-            end
-            print(fp, dist[s,i])
-        end
-        print(fp,"\n")
-    end
-    close(fp)
+    write_dro(nS, nK, p, dist, ϵ, filename)
 
     # construct JuMP.Model
     model = StructuredModel(num_scenarios = nS+nK)
