@@ -147,7 +147,7 @@ SCIP_DECL_CONSENFOLP(SCIPconshdlrBenders::scip_enfolp)
 	 * TODO: DRO needs to pass probability_ to sepaBenders
 	 */
 	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, result));
-	DSPdebugMessage("scip_enfolp results in %d stage %d\n", *result, SCIPgetStage(scip));
+	DSPdebugMessage("scip_enfolp: results %d stage %d\n", *result, SCIPgetStage(scip));
 
 	return SCIP_OKAY;
 }
@@ -158,6 +158,7 @@ SCIP_DECL_CONSENFOPS(SCIPconshdlrBenders::scip_enfops)
 	*result = SCIP_FEASIBLE;
 	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, result));
 	if (*result == SCIP_SEPARATED) *result = SCIP_INFEASIBLE;
+	DSPdebugMessage("scip_enfops: results %d stage %d\n", *result, SCIPgetStage(scip));
 	return SCIP_OKAY;
 }
 
@@ -166,7 +167,7 @@ SCIP_DECL_CONSCHECK(SCIPconshdlrBenders::scip_check)
 {
 	*result = SCIP_FEASIBLE;
 	SCIP_CALL(checkBenders(scip, conshdlr, sol, result));
-	DSPdebugMessage("scip_check results in %d stage(%d)\n", *result, SCIPgetStage(scip));
+	DSPdebugMessage("scip_check: results %d stage(%d)\n", *result, SCIPgetStage(scip));
 	return SCIP_OKAY;
 }
 
@@ -184,7 +185,7 @@ SCIP_DECL_CONSSEPALP(SCIPconshdlrBenders::scip_sepalp)
 {
 	*result = SCIP_DIDNOTRUN;
 	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, result));
-	DSPdebugMessage("scip_sepalp results in %d stage %d\n", *result, SCIPgetStage(scip));
+	DSPdebugMessage("scip_sepalp: results %d stage %d\n", *result, SCIPgetStage(scip));
 	return SCIP_OKAY;
 }
 
@@ -192,7 +193,7 @@ SCIP_DECL_CONSSEPASOL(SCIPconshdlrBenders::scip_sepasol)
 {
 	*result = SCIP_DIDNOTRUN;
 	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, result));
-	DSPdebugMessage("scip_sepasol results in %d stage %d\n", *result, SCIPgetStage(scip));
+	DSPdebugMessage("scip_sepasol: results %d stage %d\n", *result, SCIPgetStage(scip));
 	return SCIP_OKAY;
 }
 
