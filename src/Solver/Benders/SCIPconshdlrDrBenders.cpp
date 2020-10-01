@@ -290,6 +290,7 @@ void SCIPconshdlrDrBenders::create_distsepa_problem()
 	mat->appendRow(nscen, vind.data(), velem.data());
 
 	drosi_->si_->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
+	drosi_->si_->setObjSense(-1.0);
 	drosi_->setLogLevel(0);
 
 	END_TRY_CATCH(FREE_MEMORY)
