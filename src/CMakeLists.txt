@@ -108,6 +108,7 @@ if(SCIPLIB)
         Solver/Benders/BdSub.cpp
         Solver/Benders/BdWorker.cpp
         Solver/Benders/SCIPconshdlrBenders.cpp
+        Solver/Benders/SCIPconshdlrDrBenders.cpp
         Solver/Benders/SCIPconshdlrIntBenders.cpp
         Solver/DualDecomp/DdWorkerCGBd.cpp
         Solver/DualDecomp/SCIPconshdlrBendersDd.cpp
@@ -167,6 +168,7 @@ if (MPI_CXX_FOUND)
             Solver/Benders/BdDriverMpi.cpp
             Solver/Benders/BdMWMpi.cpp
             Solver/Benders/SCIPconshdlrBaseBendersWorker.cpp
+            Solver/Benders/SCIPconshdlrDrBendersWorker.cpp
             Solver/Benders/SCIPconshdlrIntBendersWorker.cpp
         )
     endif(SCIPLIB)

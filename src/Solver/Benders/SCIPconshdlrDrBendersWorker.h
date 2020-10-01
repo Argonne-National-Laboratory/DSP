@@ -1,24 +1,25 @@
 /*
- * SCIPconshdlrIntBendersWorker.h
+ * SCIPconshdlrDrBendersWorker.h
  */
 
-#ifndef SRC_SOLVERINTERFACE_SCIPCONSHDLRINTBENDERSWORKER_H_
-#define SRC_SOLVERINTERFACE_SCIPCONSHDLRINTBENDERSWORKER_H_
+#ifndef SRC_SOLVERINTERFACE_SCIPCONSHDLRDRBENDERSWORKER_H_
+#define SRC_SOLVERINTERFACE_SCIPCONSHDLRDRBENDERSWORKER_H_
 
-#include "Solver/Benders/SCIPconshdlrIntBenders.h"
+#include "Utility/DspMpi.h"
+#include "Solver/Benders/SCIPconshdlrDrBenders.h"
 #include "Solver/Benders/SCIPconshdlrBaseBendersWorker.h"
 
-/** A class for implementing parallel integer Benders constraint handler */
-class SCIPconshdlrIntBendersWorker : public SCIPconshdlrIntBenders, public SCIPconshdlrBaseBendersWorker
+/** A class for implementing parallel Benders constraint handler */
+class SCIPconshdlrDrBendersWorker : public SCIPconshdlrDrBenders, public SCIPconshdlrBaseBendersWorker
 {
 public:
 	/** default constructor */
-	SCIPconshdlrIntBendersWorker(SCIP *scip, int sepapriority, int param_seps_solver, MPI_Comm comm)
-		: SCIPconshdlrIntBenders(scip, "Benders", sepapriority, param_seps_solver),
+	SCIPconshdlrDrBendersWorker(SCIP *scip, int sepapriority, int param_seps_solver, MPI_Comm comm)
+		: SCIPconshdlrDrBenders(scip, "Benders", sepapriority, param_seps_solver),
 		  SCIPconshdlrBaseBendersWorker(comm) {}
 
 	/** default destructor */
-	virtual ~SCIPconshdlrIntBendersWorker() {}
+	virtual ~SCIPconshdlrDrBendersWorker() {}
 
 	/** set model pointer */
 	virtual void setDecModel(DecModel *model)
@@ -44,4 +45,4 @@ protected:
 		double *values /**< [out] evaluated recourse values */);
 };
 
-#endif /* SRC_SOLVERINTERFACE_SCIPCONSHDLRINTBENDERSWORKER_H_ */
+#endif /* SRC_SOLVERINTERFACE_SCIPCONSHDLRDRBENDERSWORKER_H_ */

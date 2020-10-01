@@ -5,14 +5,14 @@
 #ifndef SCIPCONSHDLRINTBENDERS_H_
 #define SCIPCONSHDLRINTBENDERS_H_
 
-#include "Solver/Benders/SCIPconshdlrBenders.h"
+#include "Solver/Benders/SCIPconshdlrDrBenders.h"
 
-/** A base class for implementing Benders constraint handler */
-class SCIPconshdlrIntBenders : public SCIPconshdlrBenders
+/** A base class for implementing integer Benders constraint handler */
+class SCIPconshdlrIntBenders : public SCIPconshdlrDrBenders
 {
 public:
 	/** default constructor */
-	SCIPconshdlrIntBenders(SCIP *scip, const char *name, int sepapriority);
+	SCIPconshdlrIntBenders(SCIP *scip, const char *name, int sepapriority, int param_seps_solver);
 
 	/** default constructor */
 	virtual ~SCIPconshdlrIntBenders();
@@ -27,24 +27,37 @@ public:
 	virtual SCIP_DECL_CONSCHECK(scip_check);
 
 protected:
-	/** evaluate recourse: 
-	 * This function is called only when the recourse has integer variables.
-	*/
-	virtual SCIP_RETCODE evaluateRecourse(
+	virtual double compute_weighted_sum(
+		const double *recourse_values /**< [in] recourse values */
+	);
+
+	virtual double compute_approximate_recourse(
 		SCIP *scip,	   /**< [in] scip pointer */
 		SCIP_SOL *sol, /**< [in] solution to evaluate */
-		double *values /**< [out] evaluated recourse values */);
+		const double *recourse_values /**< [in] recourse values */
+	);
+	
+	virtual SCIP_RETCODE tryPrimalSolution(
+		SCIP *scip,	   /**< [in] scip pointer */
+		SCIP_SOL *sol, /**< [in] solution to evaluate */
+		const double *recourse_values /**< [in] recourse values */);
 
 	virtual SCIP_RETCODE addNoGoodCut(
 		SCIP *scip,				 /**< [in] scip pointer */
 		SCIP_CONSHDLR *conshdlr, /**< [in] constraint handler that creates the row */
 		SCIP_RESULT *result /**< [out] result */);
 
+	virtual SCIP_RETCODE tryIntOptimalityCut(
+		SCIP *scip,					   /**< [in] scip pointer */
+		SCIP_CONSHDLR *conshdlr,	   /**< [in] constraint handler that creates the row */
+		SCIP_SOL *sol,				   /**< [in] solution to evaluate */
+		const double *recourse_values, /**< [in] recourse values */
+		SCIP_RESULT *result /**< [out] result */);
+
 	virtual SCIP_RETCODE addIntOptimalityCut(
 		SCIP *scip,				 /**< [in] scip pointer */
 		SCIP_CONSHDLR *conshdlr, /**< [in] constraint handler that creates the row */
 		double exact_recourse,	 /**< [in] exact recourse value */
-		double recourse_lb,		 /**< [in] lower bound of recourse value */
 		SCIP_RESULT *result /**< [out] result */);
 
 	virtual bool check_binary_solution_pool(

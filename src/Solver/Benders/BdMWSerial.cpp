@@ -9,6 +9,7 @@
 
 #include "Solver/Benders/BdMWSerial.h"
 #include "Solver/Benders/SCIPconshdlrBenders.h"
+#include "Solver/Benders/SCIPconshdlrDrBenders.h"
 #include "Solver/Benders/SCIPconshdlrIntBenders.h"
 #include "SolverInterface/DspOsiScip.h"
 
@@ -91,6 +92,7 @@ SCIPconshdlrBenders* BdMWSerial::constraintHandler()
 
 	int naux = par_->getIntParam("BD/NUM_CUTS_PER_ITER");
 	int priority = par_->getIntParam("BD/CUT_PRIORITY");
+	int sepa_solver = par_->getIntParam("BD/SUB/SOLVER");
 
 	/** get solver interface */
 	OsiScipSolverInterface * si = dynamic_cast<OsiScipSolverInterface*>(master_->getSiPtr());
@@ -105,9 +107,15 @@ SCIPconshdlrBenders* BdMWSerial::constraintHandler()
 
 	/** Benders constraint handler */
 	if (add_integer_benders)
-		conshdlr = new SCIPconshdlrIntBenders(si->getScip(), "Benders", priority);
+		// Distributionally robust integer benders is implemented in SCIPconshdlrIntBenders.
+		conshdlr = new SCIPconshdlrIntBenders(si->getScip(), "Benders", priority, sepa_solver);
 	else
-		conshdlr = new SCIPconshdlrBenders(si->getScip(), "Benders", priority);
+	{
+		if (model_->isDro())
+			conshdlr = new SCIPconshdlrDrBenders(si->getScip(), "Benders", priority, sepa_solver);
+		else
+			conshdlr = new SCIPconshdlrBenders(si->getScip(), "Benders", priority);
+	}
 	conshdlr->setDecModel(model_);
 	conshdlr->setBdSub(bdsub);
 	conshdlr->setOriginalVariables(si->getNumCols(), si->getScipVars(), naux);

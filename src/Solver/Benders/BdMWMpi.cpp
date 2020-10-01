@@ -8,6 +8,7 @@
 // #define DSP_DEBUG
 #include "Solver/Benders/BdMWMpi.h"
 #include "Solver/Benders/SCIPconshdlrBendersWorker.h"
+#include "Solver/Benders/SCIPconshdlrDrBendersWorker.h"
 #include "Solver/Benders/SCIPconshdlrIntBendersWorker.h"
 #include "SolverInterface/DspOsiScip.h"
 
@@ -133,7 +134,7 @@ DSP_RTN_CODE BdMWMpi::runMaster()
 	bool add_integer_benders = false;
 	if (model_->isStochastic() && master_->is_binary() && is_integral_recourse > 0)
 		add_integer_benders = true;
-	// printf("----- add_integer_benders = %s\n", add_integer_benders ? "true" : "false");
+	DSPdebugMessage("----- add_integer_benders = %s\n", add_integer_benders ? "true" : "false");
 
 	/** set constraint handler */
 	master_->setConshdlr(constraintHandler(add_integer_benders));
@@ -158,15 +159,21 @@ SCIPconshdlrBenders *BdMWMpi::constraintHandler(bool add_integer_benders)
 
 	int naux = par_->getIntParam("BD/NUM_CUTS_PER_ITER");
 	int priority = par_->getIntParam("BD/CUT_PRIORITY");
+	int sepa_solver = par_->getIntParam("BD/SUB/SOLVER");
 
 	/** get solver interface */
 	OsiScipSolverInterface * si = dynamic_cast<OsiScipSolverInterface*>(master_->getSiPtr());
 
 	/** MPI Benders */
 	if (add_integer_benders)
-		conshdlr = new SCIPconshdlrIntBendersWorker(si->getScip(), priority, comm_);
+		conshdlr = new SCIPconshdlrIntBendersWorker(si->getScip(), priority, sepa_solver, comm_);
 	else
-		conshdlr = new SCIPconshdlrBendersWorker(si->getScip(), priority, comm_);
+	{
+		if (model_->isDro())
+			conshdlr = new SCIPconshdlrDrBendersWorker(si->getScip(), priority, sepa_solver, comm_);
+		else
+			conshdlr = new SCIPconshdlrBendersWorker(si->getScip(), priority, comm_);
+	}
 
 	conshdlr->setDecModel(model_);
 	conshdlr->setBdSub(NULL);
@@ -261,7 +268,7 @@ DSP_RTN_CODE BdMWMpi::runWorker()
 
 				/** get status */
 				status[s] = bdsub->getStatus(s);
-				DSPdebugMessage("[%d]: status[%d] %d\n", comm_rank_, s, status[s]);
+				// DSPdebugMessage("[%d]: status[%d] %d\n", comm_rank_, s, status[s]);
 			}
 			DSPdebugMessage("[%d]: Found %d cuts\n", comm_rank_, cuts.sizeCuts());
 
