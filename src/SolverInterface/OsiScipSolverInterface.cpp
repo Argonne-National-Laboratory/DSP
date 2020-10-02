@@ -663,11 +663,13 @@ void OsiScipSolverInterface::loadProblem(const int numcols, const int numrows,
 
 void OsiScipSolverInterface::initialize()
 {
-	if (scip_ == NULL)
+	if (scip_ != NULL)
 	{
-		SCIP_CALL_ABORT(SCIPcreate(&scip_));
-		SCIP_CALL_ABORT(SCIPincludeDefaultPlugins(scip_));
+		SCIP_CALL_ABORT(SCIPfree(&scip_));
+		scip_ = NULL;
 	}
+	SCIP_CALL_ABORT(SCIPcreate(&scip_));
+	SCIP_CALL_ABORT(SCIPincludeDefaultPlugins(scip_));
 }
 
 void OsiScipSolverInterface::finalize()
@@ -781,6 +783,7 @@ OsiScipSolverInterface* OsiScipSolverInterface::clone(bool copyData) const {
 OsiScipSolverInterface::OsiScipSolverInterface(const OsiScipSolverInterface& rhs) :
 OsiSolverInterface(rhs) {
 	// Initialize SCIP
+	scip_ = NULL;
 	initialize();
 	/** load problem */
 	loadProblem(*(rhs.mat_), &rhs.clbd_[0], &rhs.cubd_[0], &rhs.obj_[0], &rhs.rlbd_[0], &rhs.rubd_[0]);
@@ -796,6 +799,7 @@ OsiScipSolverInterface& OsiScipSolverInterface::operator =(
 		const OsiScipSolverInterface& rhs) {
 	if (this != &rhs) {
 		// Initialize SCIP
+		scip_ = NULL;
 		initialize();
 		/** load problem */
 		loadProblem(*(rhs.mat_), &rhs.clbd_[0], &rhs.cubd_[0], &rhs.obj_[0], &rhs.rlbd_[0], &rhs.rubd_[0]);
