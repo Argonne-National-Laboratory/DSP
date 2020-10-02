@@ -72,5 +72,5 @@ install:
   - make install
 
 script:
-  - ctest --verbose
+  - ctest
   - ./src/test/UnitTests
