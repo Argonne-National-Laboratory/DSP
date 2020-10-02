@@ -353,9 +353,9 @@ void OsiScipSolverInterface::addCol(
 
 	/** create new variable */
 	SCIP_VAR * var;
-	SCIP_CALL_ABORT(SCIPcreateVar(scip_, &var, "var", collb, colub, obj, 
-		SCIP_VARTYPE_CONTINUOUS, false, false, NULL, NULL, NULL, NULL, NULL));
-		
+	SCIP_CALL_ABORT(SCIPcreateVar(scip_, &var, "var", collb, colub, obj,
+								  SCIP_VARTYPE_CONTINUOUS, TRUE, TRUE, NULL, NULL, NULL, NULL, NULL));
+
 	/** add the variable */
 	SCIP_CALL_ABORT(SCIPaddVar(scip_, var));
 
