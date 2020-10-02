@@ -383,9 +383,8 @@ void OsiScipSolverInterface::deleteCols(const int num, const int* colIndices) {
 
 	for (int j = 0; j < num; ++j) 
 	{
-		SCIP_CALL_ABORT(SCIPdelVar(scip_, vars_[colIndices[j]], NULL));
 		SCIP_CALL_ABORT(SCIPdelVar(scip_, vars_[colIndices[j]], &deleted));
-		SCIP_CALL_ABORT(SCIPreleaseVar(scip_, &vars_[colIndices[j]]));
+		//SCIP_CALL_ABORT(SCIPreleaseVar(scip_, &vars_[colIndices[j]]));
 		inds[j] = colIndices[j];
 	}
 
@@ -782,8 +781,9 @@ OsiScipSolverInterface* OsiScipSolverInterface::clone(bool copyData) const {
 
 OsiScipSolverInterface::OsiScipSolverInterface(const OsiScipSolverInterface& rhs) :
 OsiSolverInterface(rhs) {
-	// Initialize SCIP
 	scip_ = NULL;
+	mat_ = NULL;
+	// Initialize SCIP
 	initialize();
 	/** load problem */
 	loadProblem(*(rhs.mat_), &rhs.clbd_[0], &rhs.cubd_[0], &rhs.obj_[0], &rhs.rlbd_[0], &rhs.rubd_[0]);
