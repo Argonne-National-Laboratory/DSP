@@ -374,12 +374,17 @@ void OsiScipSolverInterface::addCol(
 }
 
 void OsiScipSolverInterface::deleteCols(const int num, const int* colIndices) {
+
+	SCIP_Bool deleted;
 	std::vector<int> inds;
 	inds.resize(num);
+
+	freeTransform();
 
 	for (int j = 0; j < num; ++j) 
 	{
 		SCIP_CALL_ABORT(SCIPdelVar(scip_, vars_[colIndices[j]], NULL));
+		SCIP_CALL_ABORT(SCIPdelVar(scip_, vars_[colIndices[j]], &deleted));
 		SCIP_CALL_ABORT(SCIPreleaseVar(scip_, &vars_[colIndices[j]]));
 		inds[j] = colIndices[j];
 	}
@@ -435,6 +440,8 @@ void OsiScipSolverInterface::addRow(
 void OsiScipSolverInterface::deleteRows(const int num, const int* rowIndices) {
 	std::vector<int> inds;
 	inds.resize(num);
+
+	freeTransform();
 
 	for (int j = 0; j < num; ++j) 
 	{
