@@ -161,6 +161,7 @@ public:
 
 	// The following functions are for distributionally robust variant.
 	// TODO: Better to create a new inhereted class?
+	virtual void setDro(bool yes) { isdro_ = yes; }
 	virtual bool isDro() {return isdro_;}
 	virtual int getNumReferences() {return nrefs_;}
 	virtual double getWassersteinSize() {return wass_eps_;}

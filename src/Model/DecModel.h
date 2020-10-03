@@ -177,6 +177,11 @@ public:
 	virtual bool isStochastic() = 0;
 
 	/**
+	 * Set whether this is dro model or not.
+	 */
+	virtual void setDro(bool yes) = 0;
+
+	/**
 	 * If true, this is a distributionally robust variant.
 	 */
 	virtual bool isDro() = 0;

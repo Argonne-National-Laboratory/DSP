@@ -288,6 +288,7 @@ void SCIPconshdlrDrBenders::create_distsepa_problem()
 		velem.push_back(1.0);
 	}
 	mat->appendRow(nscen, vind.data(), velem.data());
+	DSPdebug(mat->verifyMtx(4));
 
 	drosi_->si_->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
 	drosi_->si_->setObjSense(-1.0);
@@ -304,9 +305,12 @@ SCIP_RETCODE SCIPconshdlrDrBenders::computeProbability(
 	const double *recourse /**< [in] recourse values */)
 {
 	assert(isStochastic());
+	assert(drosi_);
+	assert(drosi_->si_);
 	// change objective function
 	for (int j = 0; j < model_->getNumSubproblems(); ++j)
 		drosi_->si_->setObjCoeff(j, recourse[j]);
+	DSPdebugMessage("updated distribution separation objective.\n");
 
 	// solve the distribution separation problem
 	drosi_->solve();
