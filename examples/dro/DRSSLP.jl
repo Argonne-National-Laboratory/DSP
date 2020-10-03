@@ -33,41 +33,14 @@ using StructJuMP
 using LinearAlgebra
 using Random
 
-function write_dro(
-    num_scenarios::Int, num_references::Int, 
-    p::Vector{Float64}, dist::Array{Float64,2}, ϵ::Float64, 
-    filename::String)
-
-    fp = open("$filename.dro","w")
-    println(fp, ϵ)
-    println(fp, num_scenarios)
-    for s = 1:num_scenarios
-        if s > 1
-            print(fp, ",")
-        end
-        print(fp, p[s])
-    end
-    print(fp, "\n")
-    for i = 1:(num_scenarios+num_references)
-        for s = 1:num_scenarios
-            if s > 1
-                print(fp, ",")
-            end
-            print(fp, dist[s,i])
-        end
-        print(fp,"\n")
-    end
-    close(fp)
-end
-
 function DRSSLP(nJ::Int, nI::Int, nS::Int, nK::Int, filename::String, seed::Int=1)
 
     Random.seed!(seed)
 
     J = 1:nJ
     I = 1:nI
-    S = 1:nS
-    K = 1:nK
+    S = 1:nS # number of references
+    K = 1:nK # number of discretization points
     Z = []
 
     c = rand(40:80,nJ)
@@ -85,29 +58,7 @@ function DRSSLP(nJ::Int, nI::Int, nS::Int, nK::Int, filename::String, seed::Int=
     # generate many scenarios ahead
     # This allows us to consistently increase the number of scenarios for experiment.
     max_nK = Int(1e+6)
-    # q_ξ = rand(0:25,nI,nJ,max_nK)
-    # d_ξ = q_ξ
-    # u_ξ = floor.([1.5*sum(d_ξ[:,:,s])/nJ for s=1:max_nK])
     h_ξ = rand(0:1,nI,max_nK)
-
-    # compute Wasserstein distance
-    dist = zeros(nS,nS+nK)
-    for s = S, ss = S
-        dist[s,ss] = sqrt(
-            # norm(q[:,:,s] - q[:,:,ss])^2 
-            # + norm(d[:,:,s] - d[:,:,ss])^2 
-            # + norm(u[s] - u[ss])^2 
-            + norm(h[:,s] - h[:,ss])^2)
-    end
-    for s = S, k = K
-        dist[s,nS+k] = sqrt(
-            # norm(q[:,:,s] - q_ξ[:,:,k])^2 
-            # + norm(d[:,:,s] - d_ξ[:,:,k])^2
-            # + norm(u_ξ[s] - u_ξ[k])^2  
-            + norm(h[:,s] - h_ξ[:,k])^2)
-    end
-
-    write_dro(nS, nK, p, dist, 0.0001, filename)
 
     # construct JuMP.Model
     model = StructuredModel(num_scenarios=nS+nK)
@@ -137,6 +88,19 @@ function DRSSLP(nJ::Int, nI::Int, nS::Int, nK::Int, filename::String, seed::Int=
     end
 
     SIPLIB.write_smps(model, filename)
+
+    # Write .dro file
+
+    # compute Wasserstein distance
+    dist = zeros(nS,nS+nK)
+    for s = S, ss = S
+        dist[s,ss] = sqrt(norm(h[:,s] - h[:,ss])^2)
+    end
+    for s = S, k = K
+        dist[s,nS+k] = sqrt(norm(h[:,s] - h_ξ[:,k])^2)
+    end
+
+    SIPLIB.write_wasserstein_dro(nS, nK, p, dist, 0.0001, filename)
 
     return
 end

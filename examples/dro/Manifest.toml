@@ -273,7 +273,7 @@ uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 
 [[SIPLIB]]
 deps = ["Combinatorics", "DelimitedFiles", "Distributions", "JuMP", "MathOptInterface", "Printf", "Random", "SparseArrays", "StructJuMP"]
-git-tree-sha1 = "ba9b87c3bd90c43e7c49b7517ad8c392a2fb79f2"
+git-tree-sha1 = "e939b0ce1db31aa03710fa937efba0f15746622a"
 repo-rev = "master"
 repo-url = "https://github.com/kibaekkim/SIPLIB.jl.git"
 uuid = "72665cec-df22-56d5-ab03-f048af203c59"
