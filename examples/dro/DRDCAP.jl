@@ -40,7 +40,7 @@ function DRDCAP(nR::Int, nN::Int, nT::Int, nS::Int, nK::Int, nE::Int, ϵ::Float6
     ## 1st stage
     if nE > 0
         @variable(model, x2[i=R,t=T,e=1:nE], Bin)
-        @expression(model, x[i=R,t=T], sum(x2[i,t,e]/2^e for e=1:nE))
+        @expression(model, x[i=R,t=T], sum(x2[i,t,e]/2^(e-1) for e=1:nE))
     else
         @variable(model, x[i=R,t=T] >= 0)
     end
