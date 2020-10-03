@@ -7,6 +7,13 @@
 #include "Solver/Benders/SCIPconshdlrIntBendersWorker.h"
 #include "Solver/Benders/BdMW.h"
 
+void SCIPconshdlrIntBendersWorker::setDecModel(DecModel *model)
+{
+	model_ = model;
+	initialize(model_->getNumSubproblems());
+	create_distsepa_problem();
+}
+
 SCIP_RETCODE SCIPconshdlrIntBendersWorker::evaluateRecourse(
 	SCIP *scip,	   /**< [in] scip pointer */
 	SCIP_SOL *sol, /**< [in] solution to evaluate */
@@ -47,7 +54,7 @@ SCIP_RETCODE SCIPconshdlrIntBendersWorker::evaluateRecourse(
 	{
 		for (int s = i - 1; s < model_->getNumSubproblems(); s += comm_size_ - 1)
 		{
-			DSPdebugMessage("values[%d] = %e\n", s, recourse[j]);
+			DSPdebugMessage("recourse[%d] = %e\n", s, recourse[j]);
 			values[s] = recourse[j++];
 		}
 	}

@@ -21,11 +21,7 @@ public:
 	virtual ~SCIPconshdlrIntBendersWorker() {}
 
 	/** set model pointer */
-	virtual void setDecModel(DecModel *model)
-	{
-		model_ = model;
-		initialize(model_->getNumSubproblems());
-	}
+	virtual void setDecModel(DecModel *model);
 
 protected:
 	/** generate Benders cuts */
