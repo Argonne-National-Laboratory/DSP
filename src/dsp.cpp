@@ -34,7 +34,7 @@ void createBlockModel(DspApiEnv* env, CoinMpsIO& p, const CoinPackedMatrix* mat,
 	int blockid, vector<string>& rows_in_block, map<string,int>& rowname2index, 
 	const char* ctype, const double* obj);
 
-const double test_tolerance = 1.0e-8;
+const double test_tolerance = 1.0e-4;
 
 /*
  This will compile a stand-alone binary file that reads problem instances.
