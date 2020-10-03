@@ -67,9 +67,12 @@ protected:
 		SCIP_RESULT *result /**< [out] result */);
 
 	virtual bool check_binary_solution_pool(
-		SCIP *scip,	   /**< [in] scip pointer */
-		SCIP_SOL *sol, /**< [in] solution to evaluate */
-		bool append = false /**< [in] whether sol is appended to the pool */);
+		SCIP *scip, /**< [in] scip pointer */
+		SCIP_SOL *sol /**< [in] solution to evaluate */);
+
+	virtual void add_binary_solution_pool(
+		SCIP *scip, /**< [in] scip pointer */
+		SCIP_SOL *sol /**< [in] solution to evaluate */);
 
 protected:
 	vector<vector<int>> binary_solution_pool_; /**< binary solution pool */

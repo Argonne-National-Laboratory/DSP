@@ -39,7 +39,7 @@ SCIP_RETCODE SCIPcreateConsBenders(
 
 	/* create constraint */
 	SCIP_CALL(SCIPcreateCons(scip, cons, name, conshdlr, consdata,
-							 false, /**< being in the initial LP? */
+							 true, /**< being in the initial LP? */
 							 true,	/**< separated during LP process? */
 							 true,	/**< enforced? */
 							 true,	/**< checked for feasibility? */
@@ -47,7 +47,7 @@ SCIP_RETCODE SCIPcreateConsBenders(
 							 false, /**< only locally valid? */
 							 false, /**< modifiable? */
 							 false, /**< is constraint subject to aging? */
-							 true,	/**< removable? */
+							 false,	/**< removable? */
 							 false));
 	return SCIP_OKAY;
 }

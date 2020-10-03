@@ -36,7 +36,7 @@ SCIP_RETCODE SCIPcreateConsIntBenders(
 
 	/* create constraint */
 	SCIP_CALL(SCIPcreateCons(scip, cons, name, conshdlr, consdata,
-							 false, /**< being in the initial LP? */
+							 true, /**< being in the initial LP? */
 							 true,	/**< separated during LP process? */
 							 true,	/**< enforced? */
 							 true,	/**< checked for feasibility? */
@@ -44,7 +44,7 @@ SCIP_RETCODE SCIPcreateConsIntBenders(
 							 false, /**< only locally valid? */
 							 false, /**< modifiable? */
 							 false, /**< is constraint subject to aging? */
-							 true,	/**< removable? */
+							 false, /**< removable? */
 							 false));
 
 	return SCIP_OKAY;
@@ -96,7 +96,7 @@ SCIP_DECL_CONSENFOLP(SCIPconshdlrIntBenders::scip_enfolp)
 		SCIP_CALL(SCIPcreateCurrentSol(scip, &sol, NULL));
 
 		// Check whether this solution has been evaluated or not.
-		if (check_binary_solution_pool(scip, sol, true) == false)
+		if (check_binary_solution_pool(scip, sol) == false)
 		{
 			double *recourse_values = new double[model_->getNumSubproblems()];
 		
@@ -113,6 +113,8 @@ SCIP_DECL_CONSENFOLP(SCIPconshdlrIntBenders::scip_enfolp)
 			// try to add integer optimality cut
 			SCIP_CALL(tryIntOptimalityCut(scip, conshdlr, sol, recourse_values, &int_result));
 			DSPdebugMessage("----- scip_enfolp: integer Benders cut result %d\n", int_result);
+
+			add_binary_solution_pool(scip, sol);
 			
 			FREE_ARRAY_PTR(recourse_values);
 		}
@@ -155,7 +157,7 @@ SCIP_DECL_CONSENFOPS(SCIPconshdlrIntBenders::scip_enfops)
 	if (SCIPgetStage(scip) == SCIP_STAGE_SOLVING)
 	{
 		// Check whether this solution has been evaluated or not.
-		if (check_binary_solution_pool(scip, sol, false) == false)
+		if (check_binary_solution_pool(scip, sol) == false)
 		{
 			double *recourse_values = new double[model_->getNumSubproblems()];
 		
@@ -200,7 +202,7 @@ SCIP_DECL_CONSCHECK(SCIPconshdlrIntBenders::scip_check)
 	if (SCIPgetStage(scip) == SCIP_STAGE_SOLVING)
 	{
 		// Check whether this solution has been evaluated or not.
-		if (check_binary_solution_pool(scip, sol, false) == false)
+		if (check_binary_solution_pool(scip, sol) == false)
 		{
 			double *recourse_values = new double[model_->getNumSubproblems()];
 		
@@ -215,12 +217,19 @@ SCIP_DECL_CONSCHECK(SCIPconshdlrIntBenders::scip_check)
 			double approx_recourse = compute_approximate_recourse(scip, sol, recourse_values);
 			if (SCIPisLT(scip, approx_recourse, weighted_sum_of_recourse))
 			{
-				// DSPdebugMessage("----- scip_check: rejects solution (approx %e, exact %e)\n", approx_recourse, weighted_sum_of_recourse);
+				DSPdebugMessage("----- scip_check: rejects solution (approx %e, exact %e)\n", approx_recourse, weighted_sum_of_recourse);
 				*result = SCIP_INFEASIBLE;
 			}
-			
+			// else
+			// {
+			// 	printf("----- scip_check: accepts solution (approx %e, exact %e)\n", approx_recourse, weighted_sum_of_recourse);
+			// 	SCIPprintSol(scip, sol, NULL, FALSE);
+			// }
+
 			FREE_ARRAY_PTR(recourse_values);
 		}
+		else
+			*result = SCIP_INFEASIBLE;
 	}
 
 	if (*result != SCIP_INFEASIBLE)
@@ -452,10 +461,10 @@ SCIP_RETCODE SCIPconshdlrIntBenders::addIntOptimalityCut(
 
 bool SCIPconshdlrIntBenders::check_binary_solution_pool(
 	SCIP *scip,	   /**< [in] scip pointer */
-	SCIP_SOL *sol, /**< [in] solution to evaluate */
-	bool append /**< [in] whether sol is appended to the pool */)
+	SCIP_SOL *sol /**< [in] solution to evaluate */)
 {
 	bool exist = false;
+	// return exist;
 	vector<int> solvec;
 	solvec.reserve(nvars_ - naux_);
 	for (int j = 0; j < nvars_ - naux_; ++j)
@@ -467,7 +476,17 @@ bool SCIPconshdlrIntBenders::check_binary_solution_pool(
 			exist = true;
 			break;
 		}
-	if (!exist && append)
-		binary_solution_pool_.push_back(solvec);
 	return exist;
+}
+
+void SCIPconshdlrIntBenders::add_binary_solution_pool(
+	SCIP *scip,	   /**< [in] scip pointer */
+	SCIP_SOL *sol /**< [in] solution to evaluate */)
+{
+	vector<int> solvec;
+	solvec.reserve(nvars_ - naux_);
+	for (int j = 0; j < nvars_ - naux_; ++j)
+		if (SCIPisZero(scip, SCIPgetSolVal(scip, sol, vars_[j]) - 1.0))
+			solvec.push_back(j);
+	binary_solution_pool_.push_back(solvec);
 }
