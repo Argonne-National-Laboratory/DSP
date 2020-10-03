@@ -117,7 +117,6 @@ DSP_RTN_CODE BdDriverMpi::findLowerBound() {
 	par_->setIntParam("DD/FEAS_CUTS", -1);
 	par_->setIntParam("DD/OPT_CUTS", -1);
 	par_->setIntParam("DD/EVAL_UB", -1);
-	par_->setBoolPtrParam("RELAX_INTEGRALITY", 1, true);
 
 	message_->print(1, "Finding a good lower bound using Dual Decomposition...\n");
 
@@ -141,7 +140,7 @@ DSP_RTN_CODE BdDriverMpi::findLowerBound() {
 	par_->setIntParam("DD/OPT_CUTS", ocut);
 	par_->setIntParam("DD/EVAL_UB", evalub);
 
-    END_TRY_CATCH_RTN(FREE_MEMORY, DSP_RTN_ERR)
+	END_TRY_CATCH_RTN(FREE_MEMORY, DSP_RTN_ERR)
 
     FREE_MEMORY
 

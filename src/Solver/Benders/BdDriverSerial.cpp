@@ -117,7 +117,6 @@ DSP_RTN_CODE BdDriverSerial::findLowerBound()
 	par_->setIntParam("DD/FEAS_CUTS", -1);
 	par_->setIntParam("DD/OPT_CUTS", -1);
 	par_->setIntParam("DD/EVAL_UB", -1);
-	par_->setBoolPtrParam("RELAX_INTEGRALITY", 1, true);
 
 	message_->print(1, "Finding a good lower bound using Dual Decomposition...\n");
 

@@ -338,9 +338,6 @@ void solveBd(DspApiEnv * env)
 	}
 	DSPdebugMessage("Set auxiliary variable data\n");
 
-	/** relax second-stage integrality */
-	env->par_->setBoolPtrParam("RELAX_INTEGRALITY", 1, true);
-
 	DSP_RTN_CHECK_THROW(env->solver_->init());
 	DSP_RTN_CHECK_THROW(dynamic_cast<BdDriverSerial*>(env->solver_)->run());
 	DSP_RTN_CHECK_THROW(env->solver_->finalize());
@@ -448,9 +445,6 @@ void solveBdMpi(
 		FREE_ARRAY_PTR(clbd_aux);
 		FREE_ARRAY_PTR(cubd_aux);
 	}
-
-	/** relax second-stage integrality */
-	env->par_->setBoolPtrParam("RELAX_INTEGRALITY", 1, true);
 
 	DSP_RTN_CHECK_THROW(env->solver_->init());
 	DSP_RTN_CHECK_THROW(dynamic_cast<BdDriverMpi*>(env->solver_)->run());
