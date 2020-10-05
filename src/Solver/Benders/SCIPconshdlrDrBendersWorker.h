@@ -5,7 +5,6 @@
 #ifndef SRC_SOLVERINTERFACE_SCIPCONSHDLRDRBENDERSWORKER_H_
 #define SRC_SOLVERINTERFACE_SCIPCONSHDLRDRBENDERSWORKER_H_
 
-#include "Utility/DspMpi.h"
 #include "Solver/Benders/SCIPconshdlrDrBenders.h"
 #include "Solver/Benders/SCIPconshdlrBaseBendersWorker.h"
 
@@ -22,11 +21,7 @@ public:
 	virtual ~SCIPconshdlrDrBendersWorker() {}
 
 	/** set model pointer */
-	virtual void setDecModel(DecModel *model)
-	{
-		model_ = model;
-		initialize(model_->getNumSubproblems());
-	}
+	virtual void setDecModel(DecModel *model);
 
 protected:
 	/** generate Benders cuts */
