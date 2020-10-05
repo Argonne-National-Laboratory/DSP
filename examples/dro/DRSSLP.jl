@@ -33,7 +33,8 @@ using StructJuMP
 using LinearAlgebra
 using Random
 
-function DRSSLP(nJ::Int, nI::Int, nS::Int, nK::Int, filename::String, seed::Int=1)
+function DRSSLP(nJ::Int, nI::Int, nS::Int, nK::Int, filename::String, 
+  relax_xbin::Bool = false, relax_ybin::Bool = false, seed::Int=1)
 
     Random.seed!(seed)
 
@@ -64,7 +65,11 @@ function DRSSLP(nJ::Int, nI::Int, nS::Int, nK::Int, filename::String, seed::Int=
     model = StructuredModel(num_scenarios=nS+nK)
 
     ## 1st stage
-    @variable(model, x[j=J], Bin)
+    if relax_xbin
+      @variable(model, 0 <= x[j=J] <= 1)
+    else
+      @variable(model, x[j=J], Bin)
+    end
     @objective(model, Min, sum(c[j]*x[j] for j in J))
     @constraint(model, sum(x[j] for j in J) <= v)
     @constraint(model, [z=Z], sum(x[j] for j in Jz[z]) >= w[z])
@@ -72,7 +77,11 @@ function DRSSLP(nJ::Int, nI::Int, nS::Int, nK::Int, filename::String, seed::Int=
     ## 2nd stage
     for ss = S
         sb = StructuredModel(parent=model, id = ss, prob = Pr)
-        @variable(sb, y[i=I,j=J], Bin)
+        if relax_ybin
+          @variable(sb, 0 <= y[i=I,j=J] <= 1)
+        else
+          @variable(sb, y[i=I,j=J], Bin)
+        end
         @variable(sb, y0[j=J] >= 0)
         @objective(sb, Min, -sum(q[i,j]*y[i,j] for i in I for j in J) + sum(q0[j]*y0[j] for j in J))
         @constraint(sb, [j=J], sum(d[i,j]*y[i,j] for i in I) - y0[j] <= u*x[j])
@@ -80,7 +89,11 @@ function DRSSLP(nJ::Int, nI::Int, nS::Int, nK::Int, filename::String, seed::Int=
     end
     for k = K
         sb = StructuredModel(parent=model, id = nS+k, prob = Pr)
-        @variable(sb, y[i=I,j=J], Bin)
+        if relax_ybin
+          @variable(sb, 0 <= y[i=I,j=J] <= 1)
+        else
+          @variable(sb, y[i=I,j=J], Bin)
+        end
         @variable(sb, y0[j=J] >= 0)
         @objective(sb, Min, -sum(q[i,j]*y[i,j] for i in I for j in J) + sum(q0[j]*y0[j] for j in J))
         @constraint(sb, [j=J], sum(d[i,j]*y[i,j] for i in I) - y0[j] <= u*x[j])
@@ -100,7 +113,7 @@ function DRSSLP(nJ::Int, nI::Int, nS::Int, nK::Int, filename::String, seed::Int=
         dist[s,nS+k] = sqrt(norm(h[:,s] - h_ξ[:,k])^2)
     end
 
-    SIPLIB.write_wasserstein_dro(nS, nK, p, dist, 0.0001, filename)
+    SIPLIB.write_wasserstein_dro(nS, nK, p, dist, 1.0, filename)
 
     return
 end
