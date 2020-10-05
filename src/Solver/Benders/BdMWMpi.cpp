@@ -132,7 +132,7 @@ DSP_RTN_CODE BdMWMpi::runMaster()
 
 	/** check whether integer Benders cuts need used or not */
 	bool add_integer_benders = false;
-	if (model_->isStochastic() && master_->is_binary() && is_integral_recourse > 0)
+	if (model_->isStochastic() && master_->is_binary())
 		add_integer_benders = true;
 	DSPdebugMessage("----- add_integer_benders = %s\n", add_integer_benders ? "true" : "false");
 
