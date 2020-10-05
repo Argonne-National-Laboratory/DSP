@@ -144,9 +144,11 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 				qobj_reco_ncoupling_[s]=NULL;
 		}
 		else{
+				
 			DSP_RTN_CHECK_THROW(model_->copyRecoProb(par_->getIntPtrParam("ARR_PROC_IDX")[s],
 				mat_mp_[s], mat_reco, clbd_reco, cubd_reco, ctype_reco,
 				obj_reco, qobj_reco_coupling_[s], qobj_reco_ncoupling_[s], rlbd_org_[s], rubd_org_[s]));
+				
 		}
 		//printf("number of elements in qobj_reco_coupling = %d\n", qobj_reco_coupling_[s]->getNumElements());
 		//PRINT_ARRAY_MSG(qobj_reco_ncoupling->getNumElements(), qobj_reco_ncoupling->getElements(), "elements in qobj_reco_ncoupling");
@@ -324,7 +326,7 @@ double DdWorkerUB::evaluate(CoinPackedVector* solution) {
 
 	/** if qcqp, add quadratic part */
 	if (tss->isQCQP()){
-		if (tss->getQuadraticObjCore(0)->getNumElements()!=0){
+		if (tss->getQuadraticObjCore(0)!=NULL){
 			xq = new double [tss->getNumCols(0)];
 			//PRINT_ARRAY_MSG(tss->getQuadraticObjCore(0)->getNumElements(), tss->getQuadraticObjCore(0)->getElements(), "elements of x^2");
 			tss->getQuadraticObjCore(0)->transposeTimes(x, xq);
@@ -334,9 +336,8 @@ double DdWorkerUB::evaluate(CoinPackedVector* solution) {
 			}
 			cx+=xqx;
 			}
-		
 	}
-
+	
 	for (int s = nsubprobs - 1; s >= 0; --s) { //why from the last subprob?
 		/** calculate Tx */
 		Tx = new double [mat_mp_[s]->getNumRows()];
@@ -359,6 +360,7 @@ double DdWorkerUB::evaluate(CoinPackedVector* solution) {
 		//if (qobj_reco_coupling_[s]->getNumElements()!=0){
 			if (tss->isQCQP()){
 				if (qobj_reco_coupling_[s]!=NULL){
+					DSPdebugMessage("there are coupling constraints\n");
 				xy=new double [tss->getNumCols(0)+tss->getNumCols(1)];
 				for (int i=0; i<tss->getNumCols(0)+tss->getNumCols(1);i++){
 					if (i<tss->getNumCols(0)){
@@ -519,7 +521,7 @@ DspOsi * DdWorkerUB::createDspOsi() {
 	DspOsi * osi = NULL;
 	BGN_TRY_CATCH
 
-	switch (par_->getIntParam("DW/SUB/SOLVER")) {
+	switch (par_->getIntParam("DD/SUB/SOLVER")) {
 	case OsiCpx:
 #ifdef DSP_HAS_CPX
 		osi = new DspOsiCpx();
