@@ -59,21 +59,18 @@ SCIPconshdlrDrBenders::SCIPconshdlrDrBenders(SCIP *scip, const char *name, int s
 {
 	switch (param_seps_solver)
 	{
-	case OsiScip:
-		drosi_ = new DspOsiScip();
-		break;
 	case OsiCpx:
 #ifdef DSP_HAS_CPX
 		drosi_ = new DspOsiCpx();
 #else
-		throw CoinError("Cplex is not available.", "createDspOsi", "BdSub");
+		throw CoinError("Cplex is not available.", "SCIPconshdlrDrBenders", "SCIPconshdlrDrBenders");
 #endif
 		break;
 	case OsiGrb:
 #ifdef DSP_HAS_GRB
 		drosi_ = new DspOsiGrb();
 #else
-		throw CoinError("Gurobi is not available.", "createDspOsi", "BdSub");
+		throw CoinError("Gurobi is not available.", "SCIPconshdlrDrBenders", "SCIPconshdlrDrBenders");
 #endif
 		break;
 	case OsiClp:
@@ -110,6 +107,7 @@ SCIPconshdlrDrBenders::~SCIPconshdlrDrBenders()
 SCIP_DECL_CONSENFOLP(SCIPconshdlrDrBenders::scip_enfolp)
 {
 	*result = SCIP_FEASIBLE;
+	DSPdebugMessage("scip_enfolp\n");
 	SCIP_CALL(sepaDrBenders(scip, conshdlr, NULL, result));
 	DSPdebugMessage("scip_enfolp results in %d stage %d\n", *result, SCIPgetStage(scip));
 
@@ -130,14 +128,16 @@ SCIP_DECL_CONSENFOPS(SCIPconshdlrDrBenders::scip_enfops)
 SCIP_DECL_CONSCHECK(SCIPconshdlrDrBenders::scip_check)
 {
 	*result = SCIP_FEASIBLE;
+	DSPdebugMessage("scip_check\n");
 	SCIP_CALL(checkDrBenders(scip, conshdlr, sol, result));
-	// DSPdebugMessage("scip_check results in %d stage(%d)\n", *result, SCIPgetStage(scip));
+	DSPdebugMessage("scip_check results in %d stage(%d)\n", *result, SCIPgetStage(scip));
 	return SCIP_OKAY;
 }
 
 SCIP_DECL_CONSSEPALP(SCIPconshdlrDrBenders::scip_sepalp)
 {
 	*result = SCIP_DIDNOTRUN;
+	DSPdebugMessage("scip_sepalp\n");
 	SCIP_CALL(sepaDrBenders(scip, conshdlr, NULL, result));
 	DSPdebugMessage("scip_sepalp results in %d stage %d\n", *result, SCIPgetStage(scip));
 	return SCIP_OKAY;
@@ -307,6 +307,7 @@ SCIP_RETCODE SCIPconshdlrDrBenders::computeProbability(
 	assert(isStochastic());
 	assert(drosi_);
 	assert(drosi_->si_);
+	assert(drosi_->si_->getNumCols() >= model_->getNumSubproblems());
 	// change objective function
 	for (int j = 0; j < model_->getNumSubproblems(); ++j)
 		drosi_->si_->setObjCoeff(j, recourse[j]);
