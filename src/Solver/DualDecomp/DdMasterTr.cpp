@@ -799,8 +799,8 @@ int DdMasterTr::addCuts(
 			linerr_ += recourse_obj * (stability_center_[nlambdas_+nus_+s] - primsol_[ncols-nPs_+s]);
 			aggvec[cutidx][ncols-nPs_+s] = -recourse_obj;
 			aggrhs[cutidx] -= recourse_obj * primsol_[ncols-nPs_+s];
-			DSPdebugMessage("recourse_obj[%d] = %e, primsol_[%d] = %e, aggvec[%d][%d] = %e\n", 
-				s, recourse_obj, ncols-nPs_+s, primsol_[ncols-nPs_+s], cutidx, ncols-nPs_+s, aggvec[cutidx][ncols-nPs_+s]);
+			DSPdebugMessage("recourse_obj[%d] = %e, primsol_[%d] = %e, aggvec[%d][%d] = %e\n",
+							s, recourse_obj, ncols - nPs_ + s, primsol_[ncols - nPs_ + s], cutidx, ncols - nPs_ + s, aggvec[cutidx][ncols - nPs_ + s]);
 		}
 	}
 
@@ -819,15 +819,17 @@ int DdMasterTr::addCuts(
 
 		/** cut rhs */
 		cutrhs = aggrhs[s];
-		if (fabs(cutrhs) < 1E-10)
+		if (fabs(cutrhs) < 1e-10)
 			cutrhs = 0.0;
+		if (model_->isDro() && fabs(cutrhs) > 1.e-10)
+		{
 #ifdef DSP_DEBUG
-		if (model_->isDro() && fabs(cutrhs) > 0.0) {
 			DSPdebugMessage("cutrhs[%d] = %e\n", s, cutrhs);
+#endif
+			printf("Master problem may experience numerical difficulty in cut generation: (fabs(%e) >> 0.0)\n", cutrhs);
 			cutrhs = 0.0;
 		}
-#endif
-		assert(model_->isDro() == false || cutrhs == 0.0);
+		// assert(model_->isDro() == false || cutrhs == 0.0);
 
 		OsiRowCut * rc = new OsiRowCut;
 		rc->setRow(cutvec);
