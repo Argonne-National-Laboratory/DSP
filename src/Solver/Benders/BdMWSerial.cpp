@@ -102,7 +102,7 @@ SCIPconshdlrBenders* BdMWSerial::constraintHandler()
 
 	/** check whether integer Benders cuts need used or not */
 	bool add_integer_benders = false;
-	if (model_->isStochastic() && master_->is_binary() && bdsub->has_integer())
+	if (model_->isStochastic() && master_->is_binary())
 		add_integer_benders = true;
 
 	/** Benders constraint handler */
