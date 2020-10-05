@@ -120,7 +120,7 @@ SCIP_DECL_CONSENFOLP(SCIPconshdlrDrBenders::scip_enfolp)
 SCIP_DECL_CONSENFOPS(SCIPconshdlrDrBenders::scip_enfops)
 {
 	*result = SCIP_FEASIBLE;
-	SCIP_CALL(sepaDrBenders(scip, conshdlr, NULL, result));
+	SCIP_CALL(checkDrBenders(scip, conshdlr, NULL, result));
 	if (*result == SCIP_SEPARATED)
 		*result = SCIP_INFEASIBLE;
 	return SCIP_OKAY;
@@ -130,8 +130,8 @@ SCIP_DECL_CONSENFOPS(SCIPconshdlrDrBenders::scip_enfops)
 SCIP_DECL_CONSCHECK(SCIPconshdlrDrBenders::scip_check)
 {
 	*result = SCIP_FEASIBLE;
-	SCIP_CALL(sepaDrBenders(scip, conshdlr, sol, result));
-	DSPdebugMessage("scip_check results in %d stage(%d)\n", *result, SCIPgetStage(scip));
+	SCIP_CALL(checkDrBenders(scip, conshdlr, sol, result));
+	// DSPdebugMessage("scip_check results in %d stage(%d)\n", *result, SCIPgetStage(scip));
 	return SCIP_OKAY;
 }
 
@@ -373,6 +373,49 @@ SCIP_RETCODE SCIPconshdlrDrBenders::sepaDrBenders(
 	}
 
 	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, result));
+
+	return SCIP_OKAY;
+}
+
+SCIP_RETCODE SCIPconshdlrDrBenders::checkDrBenders(
+	SCIP *scip, /**< [in] scip pointer */
+	SCIP_CONSHDLR *conshdlr,
+	SCIP_SOL *sol, /**< [in] solution to evaluate */
+	SCIP_RESULT *result /**< [out] result */)
+{
+	/**
+	 * This part computes the exact recourse function value at the current solution
+	 * 	and adjusts the probability distribution.
+	*/
+	if (SCIPgetStage(scip) == SCIP_STAGE_SOLVING)
+	{
+		SCIP_Sol *tmpsol;
+
+		// get the current solution
+		if (sol == NULL)
+			SCIP_CALL(SCIPcreateCurrentSol(scip, &tmpsol, NULL));
+		else
+			tmpsol = sol;
+
+		double *recourse_values = new double[model_->getNumSubproblems()];
+
+		// evaluate the recourse value
+		SCIP_CALL(evaluateRecourse(scip, tmpsol, recourse_values));
+
+		// compute weighted sum for DRO; otherwise, returns the current recourse
+		SCIP_CALL(computeProbability(recourse_values));
+
+		// free memeory
+		FREE_ARRAY_PTR(recourse_values);
+
+		// free solution memeory
+		if (sol == NULL)
+			SCIP_CALL(SCIPfreeSol(scip, &tmpsol));
+		else
+			tmpsol = NULL;
+	}
+
+	SCIP_CALL(checkBenders(scip, conshdlr, NULL, result));
 
 	return SCIP_OKAY;
 }

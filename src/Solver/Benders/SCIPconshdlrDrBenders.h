@@ -56,6 +56,13 @@ protected:
 		SCIP_SOL *sol, /**< [in] solution to evaluate */
 		SCIP_RESULT *result /**< [out] result */);
 
+	/** distributionally robust Benders separation (checking only) */
+	virtual SCIP_RETCODE checkDrBenders(
+		SCIP *scip, /**< [in] scip pointer */
+		SCIP_CONSHDLR *conshdlr,
+		SCIP_SOL *sol, /**< [in] solution to evaluate */
+		SCIP_RESULT *result /**< [out] result */);
+
 	DspOsi *drosi_; /**< distribution separation problem */
 };
 
