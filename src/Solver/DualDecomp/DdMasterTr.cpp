@@ -320,19 +320,22 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 			}
 
 			/** stability center for DRO model */
-			for (i = 0; i < model_->getNumReferences(); ++i) {
-				for (j = 0; j < model_->getNumSubproblems(); ++j) {
-					if (i == j)
-						stability_center_[nlambdas_+model_->getNumReferences()*j+i] = model_->getReferenceProbability(i);
-					else
-						stability_center_[nlambdas_+model_->getNumReferences()*j+i] = 0.0;
+			if (model_->isDro())
+			{
+				for (i = 0; i < model_->getNumReferences(); ++i) {
+					for (j = 0; j < model_->getNumSubproblems(); ++j) {
+						if (i == j)
+							stability_center_[nlambdas_+model_->getNumReferences()*j+i] = model_->getReferenceProbability(i);
+						else
+							stability_center_[nlambdas_+model_->getNumReferences()*j+i] = 0.0;
+					}
 				}
-			}
-			for (i = 0; i < nPs_; ++i) {
-				if (i < model_->getNumReferences())
-					stability_center_[nlambdas_+nus_+i] = model_->getReferenceProbability(i);
-				else
-					stability_center_[nlambdas_+nus_+i] = 0.0;
+				for (i = 0; i < nPs_; ++i) {
+					if (i < model_->getNumReferences())
+						stability_center_[nlambdas_+nus_+i] = model_->getReferenceProbability(i);
+					else
+						stability_center_[nlambdas_+nus_+i] = 0.0;
+				}
 			}
 		} else {
 			CoinZeroN(stability_center_, ncols-nthetas_);
