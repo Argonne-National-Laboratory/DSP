@@ -37,13 +37,14 @@ void SCIPconshdlrBaseBendersWorker::initialize(int nsubprobs)
 	displs_[0] = 0;
 
 	/** Subproblems are assigned to each process in round-and-robin fashion. */
+	int j = 0;
 	for (int i = 1; i < comm_size_; ++i)
 	{
 		recvcounts_[i] = 0;
 		for (int s = i - 1; s < nsubprobs; s += comm_size_ - 1)
 		{
 			recvcounts_[i]++;
-			cut_index_[s] = i;
+			cut_index_[j++] = s;
 		}
 		displs_[i] = i == 0 ? 0 : displs_[i - 1] + recvcounts_[i - 1];
 		DSPdebugMessage("recvcounts_[%d] %d displs_[%d] %d\n", i, recvcounts_[i], i, displs_[i]);
@@ -85,9 +86,8 @@ void SCIPconshdlrBaseBendersWorker::generateCutsBase(
 	MPIgatherOsiCuts(comm_, *cuts, cuts_collected);
 	DSPdebugMessage("[%d]: Collected %d cuts\n", comm_rank_, cuts_collected.sizeCuts());
 
-	/** TODO: Collect integer feasibility status to the master */
-
 	/** allocate memory */
+	/** TODO: use memeber variables to avoid reallocation */
 	cutval = new double *[nsubprobs];
 	cutrhs = new double[nsubprobs];
 

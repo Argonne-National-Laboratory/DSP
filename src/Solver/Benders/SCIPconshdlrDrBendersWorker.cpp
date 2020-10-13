@@ -54,7 +54,7 @@ SCIP_RETCODE SCIPconshdlrDrBendersWorker::evaluateRecourse(
 	{
 		for (int s = i - 1; s < model_->getNumSubproblems(); s += comm_size_ - 1)
 		{
-			DSPdebugMessage("values[%d] = %e\n", s, recourse[j]);
+			DSPdebugMessage("s %d, recourse[%d] = %e\n", s, j, recourse[j]);
 			values[s] = recourse[j++];
 		}
 	}

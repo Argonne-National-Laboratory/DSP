@@ -183,7 +183,7 @@ SCIP_DECL_CONSLOCK(SCIPconshdlrBenders::scip_lock)
 
 SCIP_DECL_CONSSEPALP(SCIPconshdlrBenders::scip_sepalp)
 {
-	*result = SCIP_DIDNOTRUN;
+	*result = SCIP_DIDNOTFIND;
 	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, result));
 	DSPdebugMessage("scip_sepalp: results %d stage %d\n", *result, SCIPgetStage(scip));
 	return SCIP_OKAY;
@@ -191,7 +191,7 @@ SCIP_DECL_CONSSEPALP(SCIPconshdlrBenders::scip_sepalp)
 
 SCIP_DECL_CONSSEPASOL(SCIPconshdlrBenders::scip_sepasol)
 {
-	*result = SCIP_DIDNOTRUN;
+	*result = SCIP_DIDNOTFIND;
 	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, result));
 	DSPdebugMessage("scip_sepasol: results %d stage %d\n", *result, SCIPgetStage(scip));
 	return SCIP_OKAY;
@@ -426,8 +426,6 @@ void SCIPconshdlrBenders::generateCuts(
 	cutrhs = new double [nsubprobs];
 
 	/** generate cuts */
-	// printf("x:\n");
-	// DspMessage::printArray(nvars_, x);
 	bdsub_->generateCuts(size, x, cutval, cutrhs);
 
 	/** aggregate cuts */

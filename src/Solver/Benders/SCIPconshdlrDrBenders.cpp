@@ -109,7 +109,7 @@ SCIP_DECL_CONSENFOLP(SCIPconshdlrDrBenders::scip_enfolp)
 	*result = SCIP_FEASIBLE;
 	DSPdebugMessage("scip_enfolp\n");
 	SCIP_CALL(sepaDrBenders(scip, conshdlr, NULL, result));
-	DSPdebugMessage("scip_enfolp results in %d stage %d\n", *result, SCIPgetStage(scip));
+	DSPdebugMessage("scip_enfolp: result %d, stage %d\n", *result, SCIPgetStage(scip));
 
 	return SCIP_OKAY;
 }
@@ -136,7 +136,7 @@ SCIP_DECL_CONSCHECK(SCIPconshdlrDrBenders::scip_check)
 
 SCIP_DECL_CONSSEPALP(SCIPconshdlrDrBenders::scip_sepalp)
 {
-	*result = SCIP_DIDNOTRUN;
+	*result = SCIP_DIDNOTFIND;
 	DSPdebugMessage("scip_sepalp\n");
 	SCIP_CALL(sepaDrBenders(scip, conshdlr, NULL, result));
 	DSPdebugMessage("scip_sepalp results in %d stage %d\n", *result, SCIPgetStage(scip));
@@ -145,7 +145,7 @@ SCIP_DECL_CONSSEPALP(SCIPconshdlrDrBenders::scip_sepalp)
 
 SCIP_DECL_CONSSEPASOL(SCIPconshdlrDrBenders::scip_sepasol)
 {
-	*result = SCIP_DIDNOTRUN;
+	*result = SCIP_DIDNOTFIND;
 	SCIP_CALL(sepaDrBenders(scip, conshdlr, NULL, result));
 	DSPdebugMessage("scip_sepasol results in %d stage %d\n", *result, SCIPgetStage(scip));
 	return SCIP_OKAY;
@@ -373,7 +373,7 @@ SCIP_RETCODE SCIPconshdlrDrBenders::sepaDrBenders(
 			tmpsol = NULL;
 	}
 
-	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, result));
+	SCIP_CALL(sepaBenders(scip, conshdlr, sol, result));
 
 	return SCIP_OKAY;
 }
@@ -416,7 +416,7 @@ SCIP_RETCODE SCIPconshdlrDrBenders::checkDrBenders(
 			tmpsol = NULL;
 	}
 
-	SCIP_CALL(checkBenders(scip, conshdlr, NULL, result));
+	SCIP_CALL(checkBenders(scip, conshdlr, sol, result));
 
 	return SCIP_OKAY;
 }

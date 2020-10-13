@@ -8,7 +8,7 @@
 #include "Solver/Benders/SCIPconshdlrDrBenders.h"
 #include "Solver/Benders/SCIPconshdlrBaseBendersWorker.h"
 
-/** A class for implementing parallel Benders constraint handler */
+/** A class for implementing parallel distributionally robust Benders constraint handler */
 class SCIPconshdlrDrBendersWorker : public SCIPconshdlrDrBenders, public SCIPconshdlrBaseBendersWorker
 {
 public:

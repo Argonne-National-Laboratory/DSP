@@ -241,7 +241,7 @@ SCIP_DECL_CONSCHECK(SCIPconshdlrIntBenders::scip_check)
 
 SCIP_DECL_CONSSEPALP(SCIPconshdlrIntBenders::scip_sepalp)
 {
-	*result = SCIP_DIDNOTRUN;
+	*result = SCIP_DIDNOTFIND;
 	if (model_->isDro())
 		SCIP_CALL(sepaDrBenders(scip, conshdlr, NULL, result));
 	else
@@ -254,7 +254,7 @@ SCIP_DECL_CONSSEPALP(SCIPconshdlrIntBenders::scip_sepalp)
 
 SCIP_DECL_CONSSEPASOL(SCIPconshdlrIntBenders::scip_sepasol)
 {
-	*result = SCIP_DIDNOTRUN;
+	*result = SCIP_DIDNOTFIND;
 	if (model_->isDro())
 		SCIP_CALL(sepaDrBenders(scip, conshdlr, NULL, result));
 	else
