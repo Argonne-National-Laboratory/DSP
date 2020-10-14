@@ -12,14 +12,15 @@ Running the file without any argument will display available arguments for the r
 ```
 
 ```shell
-Usage: --algo <de,bd,dd,dro,dw> --smps <smps file> --mps <mps file> --dec <dec file> [--soln <solution file prefix> --param <param file> --test <benchmark objective value>]
+Usage: --algo <de,bd,dd,drbd,drdd,dw> --smps <smps file> --mps <mps file> --dec <dec file> [--soln <solution file prefix> --param <param file> --test <benchmark objective value>]
 
        --algo	choice of algorithms.
-               de: deterministic equivalent form
-               bd: Benders decomposition
-               dd: dual decomposition
-               dro: distributionally robust
-               dw: Dantzig-Wolfe decomposition with branch-and-bound
+                de: deterministic equivalent form
+                bd: Benders decomposition
+                dd: dual decomposition
+                drbd: distributionally robust bd
+                drdd: distributionally robust dd
+                dw: Dantzig-Wolfe decomposition with branch-and-bound
        --smps	SMPS file name without extensions. For example, if your SMPS files are ../test/farmer.cor, ../test/farmer.sto, and ../test/farmer.tim, this value should be ../test/farmer
        --mps	MPS file name
        --dec	DEC file name

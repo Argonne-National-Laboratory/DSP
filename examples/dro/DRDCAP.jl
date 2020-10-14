@@ -1,9 +1,11 @@
 using SIPLIB
-using StructJuMP, JuMP, MathOptFormat
+using StructJuMP, JuMP
 using LinearAlgebra
 using Random
 
-function DRDCAP(nR::Int, nN::Int, nT::Int, nS::Int, nK::Int, ϵ::Float64, filename::String)
+DRDCAP(nR::Int, nN::Int, nT::Int, nS::Int, nK::Int, ϵ::Float64, filename::String) = DRDCAP(nR, nN, nT, nS, nK, 0, ϵ, filename)
+
+function DRDCAP(nR::Int, nN::Int, nT::Int, nS::Int, nK::Int, nE::Int, ϵ::Float64, filename::String)
 
     # set random seed (default=1)
     Random.seed!(1)
@@ -13,8 +15,8 @@ function DRDCAP(nR::Int, nN::Int, nT::Int, nS::Int, nK::Int, ϵ::Float64, filena
     R = 1:nR
     N = 1:nN
     T = 1:nT
-    S = 1:nS
-    K = 1:nK
+    S = 1:nS # number of references
+    K = 1:nK # number of discretization points
 
     ## parameters
     a = rand(nR, nT) * 5 .+ 5
@@ -32,40 +34,16 @@ function DRDCAP(nR::Int, nN::Int, nT::Int, nS::Int, nK::Int, ϵ::Float64, filena
     c0_ξ = rand(nN, nT, max_nK) * 500 .+ 500 # (500,1000]
     d_ξ = rand(nN, nT, max_nK) .+ 0.5        # (0.5,1.5]
 
-    dist = zeros(nS,nS+nK)
-    for s = S, ss = S
-        dist[s,ss] = sqrt(norm(c[:,:,:,s] - c[:,:,:,ss])^2 + norm(c0[:,:,s] - c0[:,:,ss])^2 + norm(d[:,:,s] - d[:,:,ss])^2)
-    end
-    for s = S, k = K
-        dist[s,nS+k] = sqrt(norm(c[:,:,:,s] - c_ξ[:,:,:,k])^2 + norm(c0[:,:,s] - c0_ξ[:,:,k])^2 + norm(d[:,:,s] - d_ξ[:,:,k])^2)
-    end
-
-    fp = open("$filename.dro","w")
-    #println(fp, ϵ)
-    println(fp, nS)
-    for s = S
-        if s > 1
-            print(fp, ",")
-        end
-        print(fp, p[s])
-    end
-    print(fp, "\n")
-    for i = 1:(nS+nK)
-        for s = S
-            if s > 1
-                print(fp, ",")
-            end
-            print(fp, dist[s,i])
-        end
-        print(fp,"\n")
-    end
-    close(fp)
-
     # construct JuMP.Model
     model = StructuredModel(num_scenarios = nS+nK)
 
     ## 1st stage
-    @variable(model, x[i=R,t=T] >= 0)
+    if nE > 0
+        @variable(model, x2[i=R,t=T,e=1:nE], Bin)
+        @expression(model, x[i=R,t=T], sum(x2[i,t,e]/2^(e-1) for e=1:nE))
+    else
+        @variable(model, x[i=R,t=T] >= 0)
+    end
     @variable(model, u[i=R,t=T], Bin)
     @objective(model, Min, sum(a[i,t]*x[i,t] + b[i,t]*u[i,t] for i in R for t in T))
     @constraint(model, [i=R,t=T], x[i,t] - u[i,t] <= 0)
@@ -92,6 +70,16 @@ function DRDCAP(nR::Int, nN::Int, nT::Int, nS::Int, nK::Int, ϵ::Float64, filena
 
     SIPLIB.write_smps(model, filename)
 
+    # Write .dro file
+    dist = zeros(nS,nS+nK)
+    for s = S, ss = S
+        dist[s,ss] = sqrt(norm(c[:,:,:,s] - c[:,:,:,ss])^2 + norm(c0[:,:,s] - c0[:,:,ss])^2 + norm(d[:,:,s] - d[:,:,ss])^2)
+    end
+    for s = S, k = K
+        dist[s,nS+k] = sqrt(norm(c[:,:,:,s] - c_ξ[:,:,:,k])^2 + norm(c0[:,:,s] - c0_ξ[:,:,k])^2 + norm(d[:,:,s] - d_ξ[:,:,k])^2)
+    end
+
+    SIPLIB.write_wasserstein_dro(nS, nK, p, dist, ϵ, filename)
 
 	"""
 	Deterministic equivalent model

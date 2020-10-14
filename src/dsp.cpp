@@ -11,13 +11,14 @@
 
 const char* gDspUsage = 
 	"Not enough or invalid arguments, please try again.\n\n"
-	"Usage: --algo <de,bd,dd,dro,dw> --smps <smps file> --mps <mps file> --dec <dec file> [--soln <solution file prefix> --param <param file> --test <benchmark objective value>]\n\n"
+	"Usage: --algo <de,bd,dd,drbd,drdd,dw> --smps <smps file> --mps <mps file> --dec <dec file> [--soln <solution file prefix> --param <param file> --test <benchmark objective value>]\n\n"
 	"       --algo\tchoice of algorithms.\n"
-	"               de: deterministic equivalent form\n"
-	"               bd: Benders decomposition\n"
-	"               dd: dual decomposition\n"
-	"               dro: distributionally robust\n"
-	"               dw: Dantzig-Wolfe decomposition with branch-and-bound\n"
+	"             \tde: deterministic equivalent form\n"
+	"             \tbd: Benders decomposition\n"
+	"             \tdd: dual decomposition\n"
+	"             \tdrbd: distributionally robust bd\n"
+	"             \tdrdd: distributionally robust dd\n"
+	"             \tdw: Dantzig-Wolfe decomposition with branch-and-bound\n"
 	"       --smps\tSMPS file name without extensions. For example, if your SMPS files are ../test/farmer.cor, ../test/farmer.sto, and ../test/farmer.tim, this value should be ../test/farmer\n"
 	"       --mps\tMPS file name\n"
 	"       --dec\tDEC file name\n"
@@ -33,7 +34,7 @@ void createBlockModel(DspApiEnv* env, CoinMpsIO& p, const CoinPackedMatrix* mat,
 	int blockid, vector<string>& rows_in_block, map<string,int>& rowname2index, 
 	const char* ctype, const double* obj);
 
-const double test_tolerance = 1.0e-8;
+const double test_tolerance = 1.0e-4;
 
 /*
  This will compile a stand-alone binary file that reads problem instances.
@@ -176,7 +177,9 @@ int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* s
 			cout << "Dual decomposition is not available for mps/dec files." << endl;
 			issolved = false;
 		}
-	} else if (string(algotype) == "dro") {
+	}
+	else if (string(algotype) == "drbd")
+	{
 		if (isstochastic) {
 			char drofile[128];
 			sprintf(drofile, "%s.dro", smpsfile);
@@ -185,19 +188,46 @@ int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* s
 			int ret = readDro(env, drofile);
 			if (ret != 0) return ret;
 
-			if (isroot) cout << "Run dual decomposition for DRO" << endl;
-			solveDro(env);
+			if (isroot)
+				cout << "Run distributionally robust Benders decomposition" << endl;
+#ifdef DSP_HAS_MPI
+			solveBdMpi(env, MPI_COMM_WORLD);
+#else
+			solveBd(env);
+#endif
+		} else {
+			cout << "Benders decomposition is not available for mps/dec files." << endl;
+			issolved = false;
+		}
+	}
+	else if (string(algotype) == "drdd")
+	{
+		if (isstochastic) {
+			char drofile[128];
+			sprintf(drofile, "%s.dro", smpsfile);
+			if (isroot) cout << "Reading DRO file: " << drofile << endl;
+
+			int ret = readDro(env, drofile);
+			if (ret != 0) return ret;
+
+			if (isroot)
+				cout << "Run distributionally robust dual decomposition" << endl;
+			solveDd(env);
 		} else {
 			cout << "Dual decomposition is not available for mps/dec files." << endl;
 			issolved = false;
 		}
-	} else if (string(algotype) == "dw") {
+	}
+	else if (string(algotype) == "dw")
+	{
 #ifdef DSP_HAS_MPI
 		solveDwMpi(env, MPI_COMM_WORLD);
 #else
 		solveDw(env);
 #endif
-	} else {
+	}
+	else
+	{
 		if (isroot) cout << "Invalid algorithm type, please try again.\n";
 		issolved = false;
 	}

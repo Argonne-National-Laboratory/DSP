@@ -173,9 +173,9 @@ void DspParams::initIntParams()
 	IntParams_.createParam("BD/INIT_LB_ALGO", SEPARATE_LP);
 
     /** iteration limit of the dual decomposition used in Benders for initial lower bounding */
-    IntParams_.createParam("BD/DD/ITER_LIM", 10);
+	IntParams_.createParam("BD/DD/ITER_LIM", 1);
 
-    /** iteration limit */
+	/** iteration limit */
     IntParams_.createParam("DD/ITER_LIM", MAX_INT_NUM);
 
 	/** algorithm for the master */

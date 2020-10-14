@@ -1,0 +1,34 @@
+STOCH         drslp_5_5_5_5
+SCENARIOS
+ SC SCEN_1    'ROOT'    0.100000  PERIOD2
+ SC SCEN_2    SCEN_1    0.100000  PERIOD2
+    RHS       CON8      0.000000    
+    RHS       CON9      1.000000    
+    RHS       CON10     1.000000    
+    RHS       CON11     0.000000    
+ SC SCEN_3    SCEN_2    0.100000  PERIOD2
+    RHS       CON7      0.000000    
+    RHS       CON10     0.000000    
+ SC SCEN_4    SCEN_3    0.100000  PERIOD2
+ SC SCEN_5    SCEN_4    0.100000  PERIOD2
+    RHS       CON9      0.000000    
+    RHS       CON10     1.000000    
+    RHS       CON11     1.000000    
+ SC SCEN_6    SCEN_5    0.100000  PERIOD2
+    RHS       CON8      1.000000    
+    RHS       CON9      1.000000    
+    RHS       CON10     0.000000    
+    RHS       CON11     0.000000    
+ SC SCEN_7    SCEN_6    0.100000  PERIOD2
+    RHS       CON7      1.000000    
+    RHS       CON9      0.000000    
+ SC SCEN_8    SCEN_7    0.100000  PERIOD2
+    RHS       CON7      0.000000    
+    RHS       CON11     1.000000    
+ SC SCEN_9    SCEN_8    0.100000  PERIOD2
+    RHS       CON8      0.000000    
+    RHS       CON10     1.000000    
+ SC SCEN_10   SCEN_9    0.100000  PERIOD2
+    RHS       CON8      1.000000    
+    RHS       CON11     0.000000    
+ENDATA

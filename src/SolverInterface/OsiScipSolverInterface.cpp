@@ -353,9 +353,9 @@ void OsiScipSolverInterface::addCol(
 
 	/** create new variable */
 	SCIP_VAR * var;
-	SCIP_CALL_ABORT(SCIPcreateVar(scip_, &var, "var", collb, colub, obj, 
-		SCIP_VARTYPE_CONTINUOUS, false, false, NULL, NULL, NULL, NULL, NULL));
-		
+	SCIP_CALL_ABORT(SCIPcreateVar(scip_, &var, "var", collb, colub, obj,
+								  SCIP_VARTYPE_CONTINUOUS, TRUE, TRUE, NULL, NULL, NULL, NULL, NULL));
+
 	/** add the variable */
 	SCIP_CALL_ABORT(SCIPaddVar(scip_, var));
 
@@ -374,13 +374,17 @@ void OsiScipSolverInterface::addCol(
 }
 
 void OsiScipSolverInterface::deleteCols(const int num, const int* colIndices) {
+
+	SCIP_Bool deleted;
 	std::vector<int> inds;
 	inds.resize(num);
 
+	freeTransform();
+
 	for (int j = 0; j < num; ++j) 
 	{
-		SCIP_CALL_ABORT(SCIPdelVar(scip_, vars_[colIndices[j]], NULL));
-		SCIP_CALL_ABORT(SCIPreleaseVar(scip_, &vars_[colIndices[j]]));
+		SCIP_CALL_ABORT(SCIPdelVar(scip_, vars_[colIndices[j]], &deleted));
+		//SCIP_CALL_ABORT(SCIPreleaseVar(scip_, &vars_[colIndices[j]]));
 		inds[j] = colIndices[j];
 	}
 
@@ -435,6 +439,8 @@ void OsiScipSolverInterface::addRow(
 void OsiScipSolverInterface::deleteRows(const int num, const int* rowIndices) {
 	std::vector<int> inds;
 	inds.resize(num);
+
+	freeTransform();
 
 	for (int j = 0; j < num; ++j) 
 	{
@@ -656,11 +662,13 @@ void OsiScipSolverInterface::loadProblem(const int numcols, const int numrows,
 
 void OsiScipSolverInterface::initialize()
 {
-	if (scip_ == NULL)
+	if (scip_ != NULL)
 	{
-		SCIP_CALL_ABORT(SCIPcreate(&scip_));
-		SCIP_CALL_ABORT(SCIPincludeDefaultPlugins(scip_));
+		SCIP_CALL_ABORT(SCIPfree(&scip_));
+		scip_ = NULL;
 	}
+	SCIP_CALL_ABORT(SCIPcreate(&scip_));
+	SCIP_CALL_ABORT(SCIPincludeDefaultPlugins(scip_));
 }
 
 void OsiScipSolverInterface::finalize()
@@ -773,6 +781,8 @@ OsiScipSolverInterface* OsiScipSolverInterface::clone(bool copyData) const {
 
 OsiScipSolverInterface::OsiScipSolverInterface(const OsiScipSolverInterface& rhs) :
 OsiSolverInterface(rhs) {
+	scip_ = NULL;
+	mat_ = NULL;
 	// Initialize SCIP
 	initialize();
 	/** load problem */
@@ -789,6 +799,7 @@ OsiScipSolverInterface& OsiScipSolverInterface::operator =(
 		const OsiScipSolverInterface& rhs) {
 	if (this != &rhs) {
 		// Initialize SCIP
+		scip_ = NULL;
 		initialize();
 		/** load problem */
 		loadProblem(*(rhs.mat_), &rhs.clbd_[0], &rhs.cubd_[0], &rhs.obj_[0], &rhs.rlbd_[0], &rhs.rubd_[0]);

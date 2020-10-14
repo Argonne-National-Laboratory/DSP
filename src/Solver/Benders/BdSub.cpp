@@ -313,9 +313,12 @@ void BdSub::solveOneSubproblem(
 	if (!cgl->warm_start_[s])
 	{
 		cgl->warm_start_[s] = si->getWarmStart();
-		CoinWarmStartBasis * basis = dynamic_cast<CoinWarmStartBasis*>(cgl->warm_start_[s]);
-		basis->resize(si->getNumRows(), si->getNumCols() - nAddedCols);
-		basis = NULL;
+		if (cgl->warm_start_[s] != NULL)
+		{
+			CoinWarmStartBasis * basis = dynamic_cast<CoinWarmStartBasis*>(cgl->warm_start_[s]);
+			basis->resize(si->getNumRows(), si->getNumCols() - nAddedCols);
+			basis = NULL;
+		}
 	}
 
 	/** infeasible? */

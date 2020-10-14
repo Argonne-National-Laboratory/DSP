@@ -5,6 +5,7 @@ methods for **structured mixed-integer linear programming problems**.
 
 Examples of the structured programming problem include:
 
+- distributionally robust optimization problem (with Wasserstein ambiguity set)
 - stochastic programming problem
 - long-term planning problem
 - network optimization problem
@@ -45,6 +46,8 @@ For more technical details, please refer the following papers.
 
 This solves the integer Benders decomposition of stochastic programming problems with the lower bound initialized by the dual decomposition.
 Integer Benders decomposition runs when the first stage is a pure-binary program and the second stage is a mixed-integer program.
+
+> NOTE: A **distributionally robust** variant of Benders decomposition is available for the problems given in SMPS files and `.dro` file.
 
 > Note: When the first stage is not a pure-binary program, any second-stage integer variables will be relaxed.
 

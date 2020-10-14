@@ -39,7 +39,7 @@ SCIP_RETCODE SCIPcreateConsBenders(
 
 	/* create constraint */
 	SCIP_CALL(SCIPcreateCons(scip, cons, name, conshdlr, consdata,
-							 false, /**< being in the initial LP? */
+							 true, /**< being in the initial LP? */
 							 true,	/**< separated during LP process? */
 							 true,	/**< enforced? */
 							 true,	/**< checked for feasibility? */
@@ -47,7 +47,7 @@ SCIP_RETCODE SCIPcreateConsBenders(
 							 false, /**< only locally valid? */
 							 false, /**< modifiable? */
 							 false, /**< is constraint subject to aging? */
-							 true,	/**< removable? */
+							 false,	/**< removable? */
 							 false));
 	return SCIP_OKAY;
 }
@@ -85,8 +85,6 @@ SCIPconshdlrBenders::SCIPconshdlrBenders(
 	/** initialize statistics */
 	names_statistics_.push_back("sepaBenders");
 	names_statistics_.push_back("checkBenders");
-	names_statistics_.push_back("addIntOptimalityCut");
-	names_statistics_.push_back("addNoGoodCut");
 	for (unsigned i = 0; i < names_statistics_.size(); ++i)
 	{
 		time_statistics_[names_statistics_[i]] = 0.0;
@@ -149,7 +147,7 @@ SCIP_DECL_CONSENFOLP(SCIPconshdlrBenders::scip_enfolp)
 	 * TODO: DRO needs to pass probability_ to sepaBenders
 	 */
 	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, result));
-	DSPdebugMessage("scip_enfolp results in %d stage %d\n", *result, SCIPgetStage(scip));
+	DSPdebugMessage("scip_enfolp: results %d stage %d\n", *result, SCIPgetStage(scip));
 
 	return SCIP_OKAY;
 }
@@ -160,6 +158,7 @@ SCIP_DECL_CONSENFOPS(SCIPconshdlrBenders::scip_enfops)
 	*result = SCIP_FEASIBLE;
 	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, result));
 	if (*result == SCIP_SEPARATED) *result = SCIP_INFEASIBLE;
+	DSPdebugMessage("scip_enfops: results %d stage %d\n", *result, SCIPgetStage(scip));
 	return SCIP_OKAY;
 }
 
@@ -168,7 +167,7 @@ SCIP_DECL_CONSCHECK(SCIPconshdlrBenders::scip_check)
 {
 	*result = SCIP_FEASIBLE;
 	SCIP_CALL(checkBenders(scip, conshdlr, sol, result));
-	DSPdebugMessage("scip_check results in %d stage(%d)\n", *result, SCIPgetStage(scip));
+	DSPdebugMessage("scip_check: results %d stage(%d)\n", *result, SCIPgetStage(scip));
 	return SCIP_OKAY;
 }
 
@@ -184,17 +183,17 @@ SCIP_DECL_CONSLOCK(SCIPconshdlrBenders::scip_lock)
 
 SCIP_DECL_CONSSEPALP(SCIPconshdlrBenders::scip_sepalp)
 {
-	*result = SCIP_DIDNOTRUN;
+	*result = SCIP_DIDNOTFIND;
 	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, result));
-	DSPdebugMessage("scip_sepalp results in %d stage %d\n", *result, SCIPgetStage(scip));
+	DSPdebugMessage("scip_sepalp: results %d stage %d\n", *result, SCIPgetStage(scip));
 	return SCIP_OKAY;
 }
 
 SCIP_DECL_CONSSEPASOL(SCIPconshdlrBenders::scip_sepasol)
 {
-	*result = SCIP_DIDNOTRUN;
+	*result = SCIP_DIDNOTFIND;
 	SCIP_CALL(sepaBenders(scip, conshdlr, NULL, result));
-	DSPdebugMessage("scip_sepasol results in %d stage %d\n", *result, SCIPgetStage(scip));
+	DSPdebugMessage("scip_sepasol: results %d stage %d\n", *result, SCIPgetStage(scip));
 	return SCIP_OKAY;
 }
 
@@ -427,8 +426,6 @@ void SCIPconshdlrBenders::generateCuts(
 	cutrhs = new double [nsubprobs];
 
 	/** generate cuts */
-	// printf("x:\n");
-	// DspMessage::printArray(nvars_, x);
 	bdsub_->generateCuts(size, x, cutval, cutrhs);
 
 	/** aggregate cuts */
@@ -559,14 +556,6 @@ void SCIPconshdlrBenders::aggregateCuts(
 	FREE_MEMORY
 
 #undef FREE_MEMORY
-}
-
-void SCIPconshdlrBenders::computeProbability(
-		const double* recourse /**< [in] recourse values */) {
-	if (isDro() == false)
-		return;
-	assert(isStochastic());
-	// TODO: find new probability distribution
 }
 
 void SCIPconshdlrBenders::write_statistics()

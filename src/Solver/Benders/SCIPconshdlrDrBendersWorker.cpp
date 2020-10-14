@@ -1,20 +1,20 @@
 /*
- * SCIPconshdlrIntBendersWorker.cpp
+ * SCIPconshdlrDrBendersWorker.cpp
  */
 
 // #define DSP_DEBUG
 #include "Utility/DspMessage.h"
-#include "Solver/Benders/SCIPconshdlrIntBendersWorker.h"
+#include "Solver/Benders/SCIPconshdlrDrBendersWorker.h"
 #include "Solver/Benders/BdMW.h"
 
-void SCIPconshdlrIntBendersWorker::setDecModel(DecModel *model)
+void SCIPconshdlrDrBendersWorker::setDecModel(DecModel *model)
 {
 	model_ = model;
 	initialize(model_->getNumSubproblems());
 	create_distsepa_problem();
 }
 
-SCIP_RETCODE SCIPconshdlrIntBendersWorker::evaluateRecourse(
+SCIP_RETCODE SCIPconshdlrDrBendersWorker::evaluateRecourse(
 	SCIP *scip,	   /**< [in] scip pointer */
 	SCIP_SOL *sol, /**< [in] solution to evaluate */
 	double *values /**< [out] evaluated recourse values */)
@@ -54,7 +54,7 @@ SCIP_RETCODE SCIPconshdlrIntBendersWorker::evaluateRecourse(
 	{
 		for (int s = i - 1; s < model_->getNumSubproblems(); s += comm_size_ - 1)
 		{
-			DSPdebugMessage("recourse[%d] = %e\n", s, recourse[j]);
+			DSPdebugMessage("s %d, recourse[%d] = %e\n", s, j, recourse[j]);
 			values[s] = recourse[j++];
 		}
 	}

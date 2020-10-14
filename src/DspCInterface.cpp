@@ -281,22 +281,6 @@ void solveDd(DspApiEnv * env)
 	END_TRY_CATCH(;)
 }
 
-/** solve dual decomposition for DRO */
-void solveDro(DspApiEnv * env)
-{
-	BGN_TRY_CATCH
-
-	DSP_API_CHECK_MODEL();
-	freeSolver(env);
-
-	env->solver_ = new DdDriverSerial(env->model_, env->par_, env->message_);
-	DSP_RTN_CHECK_THROW(env->solver_->init());
-	DSP_RTN_CHECK_THROW(dynamic_cast<DdDriverSerial*>(env->solver_)->run());
-	DSP_RTN_CHECK_THROW(env->solver_->finalize());
-
-	END_TRY_CATCH(;)
-}
-
 /** solve Dantzig-Wolfe decomposition (with branch-and-bound) */
 void solveDw(DspApiEnv * env)
 {
@@ -354,14 +338,9 @@ void solveBd(DspApiEnv * env)
 	}
 	DSPdebugMessage("Set auxiliary variable data\n");
 
-	/** relax second-stage integrality */
-	env->par_->setBoolPtrParam("RELAX_INTEGRALITY", 1, true);
-
 	DSP_RTN_CHECK_THROW(env->solver_->init());
 	DSP_RTN_CHECK_THROW(dynamic_cast<BdDriverSerial*>(env->solver_)->run());
 	DSP_RTN_CHECK_THROW(env->solver_->finalize());
-
-	FREE_PTR(dec);
 #else
 	printf("Benders decomposition has been disabled because SCIP was not available.\n");
 #endif
@@ -466,9 +445,6 @@ void solveBdMpi(
 		FREE_ARRAY_PTR(clbd_aux);
 		FREE_ARRAY_PTR(cubd_aux);
 	}
-
-	/** relax second-stage integrality */
-	env->par_->setBoolPtrParam("RELAX_INTEGRALITY", 1, true);
 
 	DSP_RTN_CHECK_THROW(env->solver_->init());
 	DSP_RTN_CHECK_THROW(dynamic_cast<BdDriverMpi*>(env->solver_)->run());
