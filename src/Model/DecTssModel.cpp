@@ -672,8 +672,10 @@ double DecTssModel::evalLhsCouplingRowAlternative(int row, double ** solutions)
 //			val += solutions[s][row] - solutions[s][row+1];
 //		else
 //			val += solutions[s][row] - solutions[s][0];
-	int s = row / getNumSubproblems();
-	int i = row % getNumSubproblems();
+//	int s = row / getNumSubproblems(); //index of scenario
+//	int i = row % getNumSubproblems(); 
+	int s = row / getNumCouplingCols();
+	int i = row % getNumCouplingCols();
 	val = solutions[s][i];
 	if (s + 1 < getNumSubproblems())
 		val -= solutions[s+1][i];
