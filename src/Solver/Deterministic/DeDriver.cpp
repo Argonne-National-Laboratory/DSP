@@ -226,7 +226,10 @@ void DeDriver::writeExtMps(const char * name)
 
 	/** load problem */
 	osi->si_->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
-	osi->loadQuadraticObjective(*qobj);
+	if (qobj!=NULL){
+		osi->loadQuadraticObjective(*qobj);
+	}
+	
 	for (int j = 0; j < mat->getNumCols(); j++)
 	{
 		if (ctype[j] != 'C')
