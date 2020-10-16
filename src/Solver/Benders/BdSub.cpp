@@ -170,6 +170,7 @@ DSP_RTN_CODE BdSub::loadProblem(DecModel* model)
 			}
 		}
 		cglp_[i]->setLogLevel(0);
+		cglp_[i]->setNumCores(par_->getIntParam("BD/SUB/THREADS"));
 
 		/** allocate memory for solution */
 		solutions_[i] = new double [cglp_[i]->si_->getNumCols()];
