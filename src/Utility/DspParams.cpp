@@ -247,6 +247,7 @@ void DspParams::initIntParams()
 	IntParams_.createParam("DW/SUB/SOLVER/LOG_LEVEL", 0);
 
 	/** number of threads used for subproblem solution */
+	IntParams_.createParam("BD/MASTER/THREADS", 1);
 	IntParams_.createParam("BD/SUB/THREADS", 1);
 	IntParams_.createParam("DD/SUB/THREADS", 1);
 	IntParams_.createParam("DW/SUB/THREADS", 1);

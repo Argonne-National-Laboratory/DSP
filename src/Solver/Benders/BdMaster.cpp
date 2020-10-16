@@ -66,6 +66,9 @@ DSP_RTN_CODE BdMaster::init() {
 	/** set print level */
 	osi_->setLogLevel(CoinMin(par_->getIntParam("LOG_LEVEL") + 2, 5));
 
+	/** use single core */
+	osi_->setNumCores(par_->getIntParam("BD/MASTER/THREADS"));
+
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;

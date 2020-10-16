@@ -111,7 +111,10 @@ public:
     }
 
     /** set number of cores */
-    virtual void setNumCores(int num) {}
+    virtual void setNumCores(int num)
+    {
+        SCIPsetIntParam(scip_->getScip(), "parallel/maxnthreads", num);
+    }
 
     /** set time limit */
     virtual void setTimeLimit(double time) {

@@ -60,8 +60,6 @@ BdSub::BdSub(const BdSub &rhs) : par_(rhs.par_),
 		probability_[i] = rhs.probability_[i];
 		mat_mp_[i] = new CoinPackedMatrix(*(rhs.mat_mp_[i]));
 		cglp_[i] = rhs.cglp_[i]->clone();
-		cglp_[i]->setLogLevel(0);
-		cglp_[i]->setNumCores(par_->getIntParam("BD/SUB/THREADS"));
 		warm_start_[i] = rhs.warm_start_[i]->clone();
 		objvals_[i] = rhs.objvals_[i];
 		solutions_[i] = new double [cglp_[i]->si_->getNumCols()];
@@ -267,9 +265,8 @@ void BdSub::solveOneSubproblem(
 		int            enableOptCuts /**< whether to generate optimality cuts or not */)
 {
 #define FREE_MEMORY \
-	FREE_PTR(osi)
+	FREE_PTR(si)
 
-	DspOsi *osi = NULL;
 	OsiSolverInterface *si = NULL;
 
 	BGN_TRY_CATCH
@@ -288,10 +285,7 @@ void BdSub::solveOneSubproblem(
 	double stime = CoinGetTimeOfDay(); // tic
 
 	/** clone CGLP */
-	osi = cgl->cglp_[s]->clone();
-	osi->setLogLevel(0);
-	osi->setNumCores(cgl->par_->getIntParam("BD/SUB/THREADS"));
-	si = osi->si_;
+	si = cgl->cglp_[s]->si_->clone();
 	si->setWarmStart(cgl->warm_start_[s]);
 
 	int nrows = si->getNumRows();
@@ -432,9 +426,8 @@ DSP_RTN_CODE BdSub::solveOneIntegerSubproblem(
 			double *       objval /**< objective value */)
 {
 #define FREE_MEMORY \
-	FREE_PTR(osi)
+	FREE_PTR(si)
 
-	DspOsi *osi = NULL;
 	OsiSolverInterface *si = NULL;
 	DSP_RTN_CODE ret = DSP_RTN_OK;
 
@@ -449,10 +442,7 @@ DSP_RTN_CODE BdSub::solveOneIntegerSubproblem(
 
 	double stime = CoinGetTimeOfDay(); // tic
 
-	osi = cgl->cglp_[s]->clone();
-	osi->setLogLevel(0);
-	osi->setNumCores(cgl->par_->getIntParam("BD/SUB/THREADS"));
-	si = osi->si_;
+	si = cgl->cglp_[s]->si_->clone();
 
 	/** collect statistics */
 	cgl->count_statistics_["create ipsub DspOsi"]++;
