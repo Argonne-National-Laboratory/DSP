@@ -304,9 +304,9 @@ DSP_RTN_CODE DdSub::createProblem() {
 	}
 
 	/** set number of cores */
-	osi_->setNumCores(1);
+	osi_->setNumCores(par_->getIntParam("DD/SUB/THREADS"));
 
-    /** set display */
+	/** set display */
     osi_->setLogLevel(par_->getIntParam("DD/SUB/SOLVER/LOG_LEVEL"));
 
     /** load problem */

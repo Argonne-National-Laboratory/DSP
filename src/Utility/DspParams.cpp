@@ -246,6 +246,11 @@ void DspParams::initIntParams()
 	IntParams_.createParam("DW/MASTER/SOLVER/LOG_LEVEL", 0);
 	IntParams_.createParam("DW/SUB/SOLVER/LOG_LEVEL", 0);
 
+	/** number of threads used for subproblem solution */
+	IntParams_.createParam("BD/SUB/THREADS", 1);
+	IntParams_.createParam("DD/SUB/THREADS", 1);
+	IntParams_.createParam("DW/SUB/THREADS", 1);
+
 	/** display frequency */
 	IntParams_.createParam("SCIP/DISPLAY_FREQ", 100);
 
@@ -256,8 +261,7 @@ void DspParams::initIntParams()
 	IntParams_.createParam("DW/MASTER/COL_AGE_LIM", 10);
     IntParams_.createParam("DW/ITER_LIM", MAX_INT_NUM);
     IntParams_.createParam("DW/HEURISTICS/TRIVIAL/ITER_LIM", MAX_INT_NUM);
-    IntParams_.createParam("DW/HEURISTICS/DIVE/ITER_LIM", MAX_INT_NUM);
-    IntParams_.createParam("DW/SUB/THREADS", 1);
+	IntParams_.createParam("DW/HEURISTICS/DIVE/ITER_LIM", MAX_INT_NUM);
 	IntParams_.createParam("DW/SUB/ADVIND", 1);
 	IntParams_.createParam("DW/BRANCH", 2);
 	IntParams_.createParam("DW/STRONG_BRANCH/ITER_LIM", 10);

@@ -34,7 +34,7 @@ void createBlockModel(DspApiEnv* env, CoinMpsIO& p, const CoinPackedMatrix* mat,
 	int blockid, vector<string>& rows_in_block, map<string,int>& rowname2index, 
 	const char* ctype, const double* obj);
 
-const double test_tolerance = 1.0e-4;
+const double test_tolerance = 1.0e-2;
 
 /*
  This will compile a stand-alone binary file that reads problem instances.
@@ -252,6 +252,8 @@ int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* s
 			if (testvalue != NULL) {
 				double val = atof(testvalue);
 				cout << "Testing Bound: " << val << endl;
+				// cout << "relgap: " << fabs(val - primobj) / (fabs(val) + 1.e-10) << endl;
+				// cout << "relgap: " << fabs(val - dualobj) / (fabs(val) + 1.e-10) << endl;
 				if (primobj >= dualobj) {
 					if ((val - primobj) / (fabs(val) + 1.e-10) > test_tolerance || (dualobj - val) / (fabs(val) + 1.e-10) > test_tolerance)
 						ret = 1;
