@@ -247,6 +247,7 @@ void DspParams::initIntParams()
 	IntParams_.createParam("DW/SUB/SOLVER/LOG_LEVEL", 0);
 
 	/** number of threads used for subproblem solution */
+	IntParams_.createParam("BD/MASTER/THREADS", 1);
 	IntParams_.createParam("BD/SUB/THREADS", 1);
 	IntParams_.createParam("DD/SUB/THREADS", 1);
 	IntParams_.createParam("DW/SUB/THREADS", 1);
@@ -291,8 +292,8 @@ void DspParams::initDblParams()
 	DblParams_.createParam("DD/STOP_TOL", 0.00001);
 
 	/** branch-and-bound gap tolerance */
-	DblParams_.createParam("MIP/GAP_TOL", 0.00001);
-	/** TODO: Is this option duplicate? */
+	DblParams_.createParam("DE/GAPTOL", 1.0e-4);
+	DblParams_.createParam("DD/SUB/GAPTOL", 1.0e-5);
 	DblParams_.createParam("DW/GAPTOL", 1.0e-4);
 	DblParams_.createParam("DW/SUB/GAPTOL", 1.0e-4);
 
