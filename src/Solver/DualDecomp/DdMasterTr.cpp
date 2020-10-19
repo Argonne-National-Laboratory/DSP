@@ -1125,7 +1125,8 @@ DSP_RTN_CODE DdMasterTr::terminationTest()
 	double relgap = getRelApproxGap();
 	DSPdebugMessage("absgap %+e relgap %+e\n", absgap, relgap);
 	double gaptol = par_->getDblParam("DD/STOP_TOL");
-	if (getSiPtr()->getNumIntegers() > 0) gaptol += par_->getDblParam("MIP/GAP_TOL");
+	if (getSiPtr()->getNumIntegers() > 0)
+		gaptol += par_->getDblParam("DD/SUB/GAPTOL");
 	if (relgap <= gaptol) {
 		signal = DSP_STAT_MW_STOP;
 		status_ = DSP_STAT_OPTIMAL;
