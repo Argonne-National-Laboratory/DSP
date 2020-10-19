@@ -73,5 +73,5 @@ install:
   - make install
 
 script:
-  - ctest
+  - ctest -R scip_farmer_bd --verbose
   - ./src/test/UnitTests
