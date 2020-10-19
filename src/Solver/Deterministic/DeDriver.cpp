@@ -121,6 +121,9 @@ DSP_RTN_CODE DeDriver::run()
 			osi_->si_->setInteger(j);
 	}
 
+	/** set optimality gap tolerance */
+	osi_->setRelMipGap(par_->getDblParam("DE/GAPTOL"));
+
 	/** time limit */
 	double time_limit = par_->getDblParam("DE/WALL_LIM");
 	osi_->setTimeLimit(CoinMin(time_remains_,time_limit));

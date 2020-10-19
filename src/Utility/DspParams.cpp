@@ -292,6 +292,7 @@ void DspParams::initDblParams()
 	DblParams_.createParam("DD/STOP_TOL", 0.00001);
 
 	/** branch-and-bound gap tolerance */
+	DblParams_.createParam("DE/GAPTOL", 1.0e-4);
 	DblParams_.createParam("DD/SUB/GAPTOL", 1.0e-5);
 	DblParams_.createParam("DW/GAPTOL", 1.0e-4);
 	DblParams_.createParam("DW/SUB/GAPTOL", 1.0e-4);
