@@ -68,7 +68,6 @@ before_install:
   - cd DSPThirdPartyLibs
   - ./travis.sh
   - if [ $TRAVIS_OS_NAME == linux ]; then export LD_LIBRARY_PATH=$PWD/lib:$(dirname `gfortran --print-file-name libgfortran.so`):$LD_LIBRARY_PATH; fi
-  # - if [ $TRAVIS_OS_NAME == osx ]; then export DYLD_LIBRARY_PATH=$PWD/lib:$(dirname `gfortran --print-file-name libgfortran.dylib`):$DYLD_LIBRARY_PATH; fi
   - if [ $TRAVIS_OS_NAME == osx ]; then export DYLD_LIBRARY_PATH=$PWD/scip/build/lib:$(dirname `gfortran --print-file-name libgfortran.dylib`):$DYLD_LIBRARY_PATH; fi
   - cd ..
 
