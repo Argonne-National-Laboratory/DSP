@@ -35,7 +35,6 @@ matrix:
         # Uploading report to CodeCov
         - bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"
     - os: osx
-      # osx_image: xcode11.4
       compiler: clang
       addons:
         ssh_known_hosts: xgitlab.cels.anl.gov
@@ -46,7 +45,6 @@ matrix:
             - ccache
           update: true
     - os: osx
-      # osx_image: xcode11.4
       compiler: gcc
       addons:
         ssh_known_hosts: xgitlab.cels.anl.gov
@@ -58,7 +56,13 @@ matrix:
           update: true
 
 before_install:
+  # add environment variable for ccache on osx
   - if [ $TRAVIS_OS_NAME == osx ]; then export PATH="/usr/local/opt/ccache/libexec:$PATH"; fi
+
+  # print cache statistics
+  - ccache --show-stats
+  
+  # download and compile private dependencies
   - openssl aes-256-cbc -K $encrypted_db2095f63ba3_key -iv $encrypted_db2095f63ba3_iv -in deploy_rsa.enc -out /tmp/deploy_rsa -d
   - eval "$(ssh-agent -s)"
   - chmod 600 /tmp/deploy_rsa
@@ -70,6 +74,9 @@ before_install:
   - if [ $TRAVIS_OS_NAME == linux ]; then export LD_LIBRARY_PATH=$PWD/lib:$(dirname `gfortran --print-file-name libgfortran.so`):$LD_LIBRARY_PATH; fi
   - if [ $TRAVIS_OS_NAME == osx ]; then export DYLD_LIBRARY_PATH=$PWD/scip/build/lib:$(dirname `gfortran --print-file-name libgfortran.dylib`):$DYLD_LIBRARY_PATH; fi
   - cd ..
+
+  # print final cache statistics
+  - ccache --show-stats
 
 install:
   - mkdir build && cd build && cmake .. -DUNIT_TESTING=ON -DCODE_COVERAGE=ON -DCMAKE_BUILD_TYPE=DEBUG
