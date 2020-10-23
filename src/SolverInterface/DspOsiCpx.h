@@ -62,6 +62,16 @@ public:
 		}
     }
 
+	/** load quadratic constrs */
+	virtual void loadQuadraticConstrs(int nqconstrs, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int const ** linind, double const ** linval, 
+										int const ** quadrow, int const ** quadcol, double const ** quadval) 
+	{
+		for (int i = 0; i < nqconstrs; i++) {
+				CPXaddqconstr(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), linnzcnt[i], quadnzcnt[i], rhs[i], sense[i], 
+				linind[i], linval[i], quadrow[i], quadcol[i], quadval[i], NULL);
+		}
+    }
+
 	/** solve problem */
 	virtual void solve() {
 		if (si_->getNumIntegers() > 0)
