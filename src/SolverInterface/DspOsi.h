@@ -34,6 +34,10 @@ public:
 		throw CoinError("Quadratic objective is not supported.", "loadQuadraticObjective", "DspOsi");
 	}
 
+	/** load quadratic constrs */
+	virtual void loadQuadraticConstrs(int nqconstrs, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int const ** linind, double const ** linval, 
+										int const ** quadrow, int const ** quadcol, double const ** quadval) {};
+
 	/** solve problem */
 	virtual void solve() = 0;
 

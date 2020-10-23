@@ -84,8 +84,9 @@ else()
 endif()
 
 option(CODE_COVERAGE "Enable coverage reporting" OFF)
-option(UNIT_TESTING "Enable unit testing" OFF)
-
+##
+option(UNIT_TESTING "Enable unit testing" ON)
+##
 add_subdirectory(extra)
 add_subdirectory(src)
 

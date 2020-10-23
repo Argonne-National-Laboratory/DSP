@@ -16,6 +16,7 @@ set(DSP_SRC
     Model/DetModel.cpp
     Model/StoModel.cpp
     Model/TssModel.cpp
+    Model/QCModel.cpp
     Solver/DecSolver.cpp
     Solver/DantzigWolfe/DwBranchInt.cpp
     Solver/DantzigWolfe/DwBranchNonant.cpp
@@ -237,6 +238,7 @@ target_link_libraries(runDsp ${DSP_LIBS})
 ##################################################
 if(UNIT_TESTING)
     add_subdirectory(test)
+    message(STATUS "unitTest is ON")
 endif(UNIT_TESTING)
 
 ##################################################
@@ -244,6 +246,8 @@ endif(UNIT_TESTING)
 ##################################################
 install(TARGETS Dsp LIBRARY DESTINATION $ENV{PWD}/lib)
 install(TARGETS runDsp DESTINATION $ENV{PWD}/bin)
+message(STATUS "libDsp install dir: $ENV{PWD}/lib")
+message(STATUS "runDsp install dir: $ENV{PWD}/bin")
 
 install(CODE "message(\"\")")
 install(CODE "message(\"${Blue}** Standalone binary file was installed in $ENV{PWD}/bin${ColourReset}\")")

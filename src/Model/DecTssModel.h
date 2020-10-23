@@ -10,6 +10,7 @@
 
 #include <numeric>
 #include "Model/TssModel.h"
+#include "Model/QcModel.h"
 #include "Model/DecModel.h"
 
 /**
@@ -25,7 +26,7 @@
  * [1] M Lubin, K Martin, CG Petra, B Sandıkçı, "On parallelizing dual decomposition in stochastic 
  *     integer programming", 2013
  */
-class DecTssModel: public TssModel, public DecModel {
+class DecTssModel: public TssModel, public DecModel, public QcModel {
 
 public:
 
