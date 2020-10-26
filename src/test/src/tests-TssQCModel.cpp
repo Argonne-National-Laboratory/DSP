@@ -71,9 +71,9 @@ TEST_CASE("Class TssQCModel") {
 
     qc->readQuad(smpsfile, "../examples/quad/farmer.txt");
 
-    qc->printQuadraticConstrs(0);
-    qc->printQuadraticConstrs(1);
-    qc->printQuadraticConstrs(2);
+    // qc->printQuadRows(0);
+    // qc->printQuadRows(1);
+    // qc->printQuadRows(2);
 
     // // x1 + 3x1^2 >= 1
     // int nqrows_0 = 1;
@@ -131,9 +131,9 @@ TEST_CASE("Class TssQCModel") {
     // qc->loadQuadraticConstrs(1, nqrows_1, linnzcnt_1, quadnzcnt_1, rhs_1, sense_1, linstart_1, linind_1, linval_1, quadstart_1, quadrow_1, quadcol_1, quadval_1);
     // qc->loadQuadraticConstrs(2, nqrows_2, linnzcnt_2, quadnzcnt_2, rhs_2, sense_2, linstart_2, linind_2, linval_2, quadstart_2, quadrow_2, quadcol_2, quadval_2);
 
-    // qc->printQuadraticConstrs(0);
-    // qc->printQuadraticConstrs(1);
-    // qc->printQuadraticConstrs(2);
+    // qc->printQuadRows(0);
+    // qc->printQuadRows(1);
+    // qc->printQuadRows(2);
     
     /** set up solvers */
 	DSP_API_CHECK_MODEL();
@@ -145,19 +145,20 @@ TEST_CASE("Class TssQCModel") {
     
     for (int s = 0; s < getNumScenarios(env); s++)
     {
-        /** quadratic constraints data */
-	    int nqrows = qc->getNumQRows(s);
-	    int * linnzcnt = qc->getLinearNonZeroCounts(s);
-	    int * quadnzcnt = qc->getQuadNonZeroCounts(s); 
-	    double * rhs = qc->getRhs(s); 
-	    int * sense = qc->getSense(s); 
-	    const int ** linind = qc->getLinearIndices(s); 
-	    const int ** quadrow = qc->getQuadIndices1st(s); 
-	    const int ** quadcol = qc->getQuadIndices2nd(s); 
-	    const double ** linval = qc->getLinearVals(s); 
-	    const double ** quadval = qc->getQuadraticVals(s); 
+        // int nqrows;
+		// int * linnzcnt;
+		// int * quadnzcnt;
+		// double * rhs;
+		// int * sense; 
+		// const int ** linind;
+		// const double ** linval;
+		// const int ** quadrow;
+		// const int ** quadcol;
+		// const double ** quadval;
+        QcRowDataScen * qcrowdata = qc->getQRowsCPXParams(s);
 
-        qc->printQuadraticConstrs(s);
+        qc->printQuadRows(s);
+        qc->printQuadRows(qcrowdata);
 
 //     DdWorkerLB* worker_ = dynamic_cast<DdMWSerial*> (env->solver_)
 
