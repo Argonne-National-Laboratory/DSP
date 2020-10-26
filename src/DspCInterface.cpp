@@ -180,9 +180,9 @@ int readDro(DspApiEnv * env, const char * dro)
 }
 
 /** read quad files */
-int readQuad(DspApiEnv * env, const char * smps, const char * quad)
+int readQuad(DspApiEnv * env, const char * smps, const char * quad, int ncols_2nd_)
 {
-	return getQcModel(env)->readQuad(smps, quad);
+	return getQcModel(env)->readQuad(smps, quad, ncols_2nd_);
 }
 
 /** load first-stage problem */

@@ -38,6 +38,9 @@ public:
 	virtual void addQuadraticRows(int nqrows, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int const ** linind, double const ** linval, 
 										int const ** quadrow, int const ** quadcol, double const ** quadval) {};
 
+	/** write problem file */
+	virtual void writeProb(char const * filename_str, char const * filetype_str) {};
+
 	/** solve problem */
 	virtual void solve() = 0;
 

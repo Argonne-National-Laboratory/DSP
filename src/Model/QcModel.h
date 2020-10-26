@@ -55,7 +55,7 @@ public:
 	bool mapVarnameIndex(map<string, int> &map_varName_index, const char * corefilename);
 	
 	/** read quadratic data file */
-	DSP_RTN_CODE readQuad(const char * smps, const char * filename);
+	DSP_RTN_CODE readQuad(const char * smps, const char * filename, int ncols_2nd_);
 
 	/** set dimensions for quadratic constraints */
 	DSP_RTN_CODE setQuadDimensions(int nscen);

@@ -127,7 +127,7 @@ bool QcModel::mapVarnameIndex(map<string, int> &map_varName_index, const char * 
 	return true;
 }
 /** read quadratic data file */
-DSP_RTN_CODE QcModel::readQuad(const char * smps, const char * filename) 
+DSP_RTN_CODE QcModel::readQuad(const char * smps, const char * filename, int ncols_2nd_) 
 {
 	BGN_TRY_CATCH
 
@@ -256,7 +256,7 @@ DSP_RTN_CODE QcModel::readQuad(const char * smps, const char * filename)
 
 				for (j = 0; j < QcRowData_[sind].linnzcnt_[i]; j++) 
 				{
-					QcRowData_[sind].linind_[i][j] = linind[i][j];
+					QcRowData_[sind].linind_[i][j] = ncols_2nd_ * sind + linind[i][j];
 					QcRowData_[sind].linval_[i][j] = linval[i][j];
 				}
 			}
@@ -300,8 +300,8 @@ DSP_RTN_CODE QcModel::readQuad(const char * smps, const char * filename)
 
 				for (j = 0; j < QcRowData_[sind].quadnzcnt_[i]; j++) 
 				{
-					QcRowData_[sind].quadrow_[i][j] = quadrow[i][j];
-					QcRowData_[sind].quadcol_[i][j] = quadcol[i][j];
+					QcRowData_[sind].quadrow_[i][j] = ncols_2nd_ * sind + quadrow[i][j];
+					QcRowData_[sind].quadcol_[i][j] = ncols_2nd_ * sind + quadcol[i][j];
 					QcRowData_[sind].quadval_[i][j] = quadval[i][j];
 				}
 			}

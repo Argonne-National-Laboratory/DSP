@@ -72,7 +72,7 @@ int readSmps(DspApiEnv * env, const char * smps);
 int readDro(DspApiEnv * env, const char * dro);
 
 /** read quad files */
-int readQuad(DspApiEnv * env, const char * smps, const char * quad);
+int readQuad(DspApiEnv * env, const char * smps, const char * quad, int ncols_2nd_);
 
 /** load first-stage problem */
 void loadFirstStage(
