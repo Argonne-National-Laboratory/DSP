@@ -69,8 +69,16 @@ public:
 		for (int i = 0; i < nqrows; i++) {
 				CPXaddqconstr(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), linnzcnt[i], quadnzcnt[i], rhs[i], sense[i], 
 				linind[i], linval[i], quadrow[i], quadcol[i], quadval[i], NULL);
+				std::cout << i << " th row added " << std::endl;
 		}
     }
+
+	virtual void writeProb(char const * filename_str, char const * filetype_str)
+	{
+		if (CPXwriteprob(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), filename_str, filetype_str))
+			std::cout << "fail to write problem file" << std::endl;
+	}
+		
 
 	/** solve problem */
 	virtual void solve() {

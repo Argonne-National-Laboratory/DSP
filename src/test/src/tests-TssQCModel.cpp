@@ -69,7 +69,7 @@ TEST_CASE("Class TssQCModel") {
     setIsQuadratic(env, isquadratic);
     QcModel * qc = getQcModel(env);
 
-    qc->readQuad(smpsfile, "../examples/quad/farmer.txt");
+    qc->readQuad(smpsfile, "../examples/quad/farmer.txt", getNumCols(env, 1));
 
     // qc->printQuadRows(0);
     // qc->printQuadRows(1);

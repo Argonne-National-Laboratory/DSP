@@ -168,7 +168,7 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 	{
 		setIsQuadratic(env, isquadratic);
 		if (isroot) cout << "Reading Quad files: " << quadfile << endl;
-		ret = readQuad(env, smpsfile, quadfile);
+		ret = readQuad(env, smpsfile, quadfile, getNumCols(env, 1));
 		if (ret != 0) return ret;
 		if (isroot) 
 		{
