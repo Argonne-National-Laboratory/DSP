@@ -23,6 +23,20 @@
 #include "Utility/DspMacros.h"
 #include "Utility/DspRtnCodes.h"
 
+/** quadratic row infomration for a scenario */
+struct QcRowDataScen {
+	int			nqrows_; 			/** number of quadratic rows for a scenario  */
+    int *         linnzcnt_;  		/** number of nonzero coefficients in the linear part of each constraint  */
+    int *        	quadnzcnt_;  	/** number of nonzero coefficients in the quadratic part of each constraint  */
+	double *		rhs_; 			/** constraint rhs of each constraint */
+	int *			sense_; 		/** constraint sense of each constraint */
+	int **        linind_; 			/** indices for the linear part */
+	double **      linval_; 		/** nonzero coefficient of the linear part */
+	int **      	quadrow_;  		/** indices for the quadratic part */
+	int **      	quadcol_;  		/** indices for the quadratic part */
+	double **     quadval_; 		/** nonzero coefficient of the quadratic part */ 
+};
+
 class QcModel {
 public:
 
@@ -65,54 +79,52 @@ public:
 		const double *      quadval 	/**< nonzero coefficient of the quadratic part */ );
 	
 	/** print quadratic constraints */
-	DSP_RTN_CODE printQuadraticConstrs (const int s);
+	DSP_RTN_CODE printQuadRows (const int s);
+
+	/** print quadratic constraints for given params */
+	DSP_RTN_CODE printQuadRows (QcRowDataScen *qcdata);
 
 	/** get parameters for CPX interface */
-	DSP_RTN_CODE getQConstrParametersCPX (int scen, int &nqrows, int *linnzcnt, int * quadnzcnt, double * rhs, int * sense, const int ** linind, const double ** linval, const int ** quadrow, const int ** quadcol, const double ** quadval);
+	QcRowDataScen * getQRowsCPXParams (int s) {return &QcRowData_[s];}
 
+	/** get number of scenarios */
+	int getNumScens() const {return nscen_;} /* must be the same as getNumScenarios() in StoModel */
+	
 	/** get number of quadratic constraints */
-	int getNumQRows(int scen) {return nqrows_[scen];}
+	int getNumQRows(int scen) {return QcRowData_[scen].nqrows_;}
 
 	/** get number of non-zero linear terms of quadratic constraints */
-	int * getLinearNonZeroCounts(int scen) const {return linnzcnt_[scen];}
+	int * getLinearNonZeroCounts(int scen) const {return QcRowData_[scen].linnzcnt_;}
 
 	/** get number of non-zero quadratic terms of quadratic constraints */
-	int * getQuadNonZeroCounts(int scen) const {return quadnzcnt_[scen];}
+	int * getQuadNonZeroCounts(int scen) const {return QcRowData_[scen].quadnzcnt_;}
 
 	/** get rhs of quadratic constraints */
-	double * getRhs(int scen) const {return rhs_[scen];}
+	double * getRhs(int scen) const {return QcRowData_[scen].rhs_;}
 
 	/** get sense of quadratic constraints */
-	int * getSense(int scen) const {return sense_[scen];}
+	int * getSense(int scen) const {return QcRowData_[scen].sense_;}
 
 	/** get indices for linear terms of quadratic constraints */
-	const int ** getLinearIndices(int scen) const {return (const int **) linind_[scen];}
+	const int ** getLinearIndices(int scen) const {return (const int **) QcRowData_[scen].linind_;}
 
 	/** get coefficients for linear terms of quadratic constraints */
-	const double ** getLinearVals(int scen) const {return (const double **) linval_[scen];}
+	const double ** getLinearVals(int scen) const {return (const double **) QcRowData_[scen].linval_;}
 
 	/** get first indices for quadratic terms of quadratic constraints */
-	const int ** getQuadIndices1st(int scen) const {return (const int **) quadrow_[scen];}
+	const int ** getQuadIndices1st(int scen) const {return (const int **) QcRowData_[scen].quadrow_;}
 
 	/** get second indices for quadratic terms of quadratic constraints */
-	const int ** getQuadIndices2nd(int scen) const {return (const int **) quadcol_[scen];}
+	const int ** getQuadIndices2nd(int scen) const {return (const int **) QcRowData_[scen].quadcol_;}
 
 	/** get coefficients for quadratic terms of quadratic constraints */
-	const double ** getQuadraticVals(int scen) const {return (const double **) quadval_[scen];}
+	const double ** getQuadraticVals(int scen) const {return (const double **) QcRowData_[scen].quadval_;}
 
 protected:
 
 	int				nscen_;
-	int *			nqrows_;
-    int **         linnzcnt_;  	/**< number of nonzero coefficients in the linear part of each constraint  */
-    int **        	quadnzcnt_;  /**< number of nonzero coefficients in the quadratic part of each constraint  */
-	double **		rhs_; 		/**< constraint rhs of each constraint */
-	int **			sense_; 		/**< constraint sense of each constraint */
-	int ***        linind_; 	/**< indices for the linear part */
-	double ***      linval_; 	/**< nonzero coefficient of the linear part */
-	int ***      	quadrow_;  	/**< indices for the quadratic part */
-	int ***      	quadcol_;  	/**< indices for the quadratic part */
-	double ***     quadval_; 	/**< nonzero coefficient of the quadratic part */ 
+
+	vector<QcRowDataScen> QcRowData_;
 };
 
 #endif /* QCMODEL_H_ */

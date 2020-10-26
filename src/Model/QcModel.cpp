@@ -19,25 +19,19 @@ QcModel::QcModel(const QcModel & rhs) {}
 
 QcModel::~QcModel()
 {
-	FREE_2D_ARRAY_PTR(nscen_, linnzcnt_);
-	FREE_2D_ARRAY_PTR(nscen_, quadnzcnt_);
-	FREE_2D_ARRAY_PTR(nscen_, rhs_);
-	FREE_2D_ARRAY_PTR(nscen_, sense_);
-
-	for (int i = 0; i < nscen_; i++)
+	for (int s = 0; s < nscen_; s++)
 	{
-		FREE_2D_ARRAY_PTR(nqrows_[i], linind_);
-		FREE_2D_ARRAY_PTR(nqrows_[i], linval_);
-		FREE_2D_ARRAY_PTR(nqrows_[i], quadrow_);
-		FREE_2D_ARRAY_PTR(nqrows_[i], quadcol_);
-		FREE_2D_ARRAY_PTR(nqrows_[i], quadval_);
+		FREE_ARRAY_PTR(QcRowData_[s].linnzcnt_);
+		FREE_ARRAY_PTR(QcRowData_[s].quadnzcnt_);
+		FREE_ARRAY_PTR(QcRowData_[s].rhs_);
+		FREE_ARRAY_PTR(QcRowData_[s].sense_);
+
+		FREE_2D_ARRAY_PTR(QcRowData_[s].nqrows_, QcRowData_[s].linind_);
+		FREE_2D_ARRAY_PTR(QcRowData_[s].nqrows_, QcRowData_[s].linval_);
+		FREE_2D_ARRAY_PTR(QcRowData_[s].nqrows_, QcRowData_[s].quadrow_);
+		FREE_2D_ARRAY_PTR(QcRowData_[s].nqrows_, QcRowData_[s].quadcol_);
+		FREE_2D_ARRAY_PTR(QcRowData_[s].nqrows_, QcRowData_[s].quadval_);
 	}
-	FREE_ARRAY_PTR(linind_);
-	FREE_ARRAY_PTR(linval_);
-	FREE_ARRAY_PTR(quadrow_);
-	FREE_ARRAY_PTR(quadcol_);
-	FREE_ARRAY_PTR(quadval_);
-	FREE_ARRAY_PTR(nqrows_);
 }
 
 /** construct a map that maps variable names to their indices */
@@ -184,7 +178,7 @@ DSP_RTN_CODE QcModel::readQuad(const char * smps, const char * filename)
 			while (1) {
 			myfile >> sind;
 			
-			nqrows_[sind] = 0;
+			QcRowData_[sind].nqrows_ = 0;
 
 			myfile >> item;
 			if (item.find("QUADROWS") == string::npos) {
@@ -212,25 +206,25 @@ DSP_RTN_CODE QcModel::readQuad(const char * smps, const char * filename)
 
 				myfile >> name;
 
-				map_qrowName_index[name] = nqrows_[sind];
+				map_qrowName_index[name] = QcRowData_[sind].nqrows_;
 
-				nqrows_[sind]++;
+				QcRowData_[sind].nqrows_++;
 			}
 
 			/** allocate memory */
-			assert(nqrows_[sind] == qrow_sense.size());
-			assert(nqrows_[sind] == map_qrowName_index.size());
+			assert(QcRowData_[sind].nqrows_ == qrow_sense.size());
+			assert(QcRowData_[sind].nqrows_ == map_qrowName_index.size());
 			
-			setQuadDimensions(sind, nqrows_[sind]);
+			setQuadDimensions(sind, QcRowData_[sind].nqrows_);
 
 			/** read sense_ */
-			for (int i = 0; i < nqrows_[sind]; i++) {
-				sense_[sind][i] = qrow_sense[i];
+			for (int i = 0; i < QcRowData_[sind].nqrows_; i++) {
+				QcRowData_[sind].sense_[i] = qrow_sense[i];
 			}
 
 			/** read linind_, linval_ */
-			vector<vector<int>> linind(nqrows_[sind]);
-			vector<vector<double>> linval(nqrows_[sind]);
+			vector<vector<int>> linind(QcRowData_[sind].nqrows_);
+			vector<vector<double>> linval(QcRowData_[sind].nqrows_);
 				
 			while (1) {
 				myfile >> item;
@@ -253,24 +247,24 @@ DSP_RTN_CODE QcModel::readQuad(const char * smps, const char * filename)
 				}
 			}
 			
-			for (i = 0; i < nqrows_[sind]; i++)
+			for (i = 0; i < QcRowData_[sind].nqrows_; i++)
 			{
 				assert(linind[i].size() == linval[i].size());
-				linnzcnt_[sind][i] = linval[i].size();
-				linind_[sind][i] = new int [linnzcnt_[sind][i]];
-				linval_[sind][i] = new double [linnzcnt_[sind][i]];
+				QcRowData_[sind].linnzcnt_[i] = linval[i].size();
+				QcRowData_[sind].linind_[i] = new int [QcRowData_[sind].linnzcnt_[i]];
+				QcRowData_[sind].linval_[i] = new double [QcRowData_[sind].linnzcnt_[i]];
 
-				for (j = 0; j < linnzcnt_[sind][i]; j++) 
+				for (j = 0; j < QcRowData_[sind].linnzcnt_[i]; j++) 
 				{
-					linind_[sind][i][j] = linind[i][j];
-					linval_[sind][i][j] = linval[i][j];
+					QcRowData_[sind].linind_[i][j] = linind[i][j];
+					QcRowData_[sind].linval_[i][j] = linval[i][j];
 				}
 			}
 
 			/** read quadrow_, quadcol_, quadval_ */
-			vector<vector<int>> quadrow(nqrows_[sind]);
-			vector<vector<int>> quadcol(nqrows_[sind]);
-			vector<vector<double>> quadval(nqrows_[sind]);
+			vector<vector<int>> quadrow(QcRowData_[sind].nqrows_);
+			vector<vector<int>> quadcol(QcRowData_[sind].nqrows_);
+			vector<vector<double>> quadval(QcRowData_[sind].nqrows_);
 
 			while (1) {
 				myfile >> item;
@@ -295,20 +289,20 @@ DSP_RTN_CODE QcModel::readQuad(const char * smps, const char * filename)
 
 			}
 
-			for (i = 0; i < nqrows_[sind]; i++)
+			for (i = 0; i < QcRowData_[sind].nqrows_; i++)
 			{
 				assert(quadrow[i].size() == quadcol[i].size());
 				assert(quadrow[i].size() == quadval[i].size());
-				quadnzcnt_[sind][i] = quadrow[i].size();
-				quadrow_[sind][i] = new int [quadnzcnt_[sind][i]];
-				quadcol_[sind][i] = new int [quadnzcnt_[sind][i]];
-				quadval_[sind][i] = new double [quadnzcnt_[sind][i]];
+				QcRowData_[sind].quadnzcnt_[i] = quadrow[i].size();
+				QcRowData_[sind].quadrow_[i] = new int [QcRowData_[sind].quadnzcnt_[i]];
+				QcRowData_[sind].quadcol_[i] = new int [QcRowData_[sind].quadnzcnt_[i]];
+				QcRowData_[sind].quadval_[i] = new double [QcRowData_[sind].quadnzcnt_[i]];
 
-				for (j = 0; j < quadnzcnt_[sind][i]; j++) 
+				for (j = 0; j < QcRowData_[sind].quadnzcnt_[i]; j++) 
 				{
-					quadrow_[sind][i][j] = quadrow[i][j];
-					quadcol_[sind][i][j] = quadcol[i][j];
-					quadval_[sind][i][j] = quadval[i][j];
+					QcRowData_[sind].quadrow_[i][j] = quadrow[i][j];
+					QcRowData_[sind].quadcol_[i][j] = quadcol[i][j];
+					QcRowData_[sind].quadval_[i][j] = quadval[i][j];
 				}
 			}
 
@@ -334,7 +328,7 @@ DSP_RTN_CODE QcModel::readQuad(const char * smps, const char * filename)
 					} else 
 					{
 						myfile >> val;
-						rhs_[sind][map_qrowName_index[item]] = val;
+						QcRowData_[sind].rhs_[map_qrowName_index[item]] = val;
 					}
 				}
 
@@ -372,18 +366,7 @@ DSP_RTN_CODE QcModel::setQuadDimensions(int nscen)
 
 	nscen_ = nscen;
 
-	nqrows_ = new int [nscen];
-	linnzcnt_ = new int * [nscen];
-	quadnzcnt_ = new int * [nscen];
-	rhs_ = new double * [nscen];
-	sense_ = new int * [nscen];
-
-	linind_ = new int ** [nscen];
-	linval_ = new double ** [nscen];
-
-	quadrow_ = new int ** [nscen];
-	quadcol_ = new int ** [nscen];
-	quadval_ = new double ** [nscen];
+	QcRowData_.resize(nscen);
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	
@@ -393,18 +376,18 @@ DSP_RTN_CODE QcModel::setQuadDimensions(int s, int nqrows)
 {
 	BGN_TRY_CATCH
 
-	nqrows_[s] = nqrows; 	
+	QcRowData_[s].nqrows_ = nqrows; 	
 	
-	linnzcnt_[s] = new int [nqrows];
-	quadnzcnt_[s] = new int [nqrows];
-	rhs_[s] = new double [nqrows];
-	sense_[s] = new int [nqrows];
+	QcRowData_[s].linnzcnt_ = new int [nqrows];
+	QcRowData_[s].quadnzcnt_ = new int [nqrows];
+	QcRowData_[s].rhs_ = new double [nqrows];
+	QcRowData_[s].sense_ = new int [nqrows];
 
-	linind_[s] = new int * [nqrows];
-	linval_[s] = new double * [nqrows];
-	quadrow_[s] = new int * [nqrows];
-	quadcol_[s] = new int * [nqrows];
-	quadval_[s] = new double * [nqrows];
+	QcRowData_[s].linind_ = new int * [nqrows];
+	QcRowData_[s].linval_ = new double * [nqrows];
+	QcRowData_[s].quadrow_ = new int * [nqrows];
+	QcRowData_[s].quadcol_ = new int * [nqrows];
+	QcRowData_[s].quadval_ = new double * [nqrows];
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	
@@ -434,29 +417,29 @@ DSP_RTN_CODE QcModel::loadQuadraticConstrs(
 	/** allocate values */
 	for (int k = 0; k < nqrows; k++) 
 	{
-		linnzcnt_[s][k] = linnzcnt[k];
-		quadnzcnt_[s][k] = quadnzcnt[k];
-		rhs_[s][k] = rhs[k];
-		sense_[s][k] = sense[k];
+		QcRowData_[s].linnzcnt_[k] = linnzcnt[k];
+		QcRowData_[s].quadnzcnt_[k] = quadnzcnt[k];
+		QcRowData_[s].rhs_[k] = rhs[k];
+		QcRowData_[s].sense_[k] = sense[k];
 
-		linind_[s][k] = new int [linnzcnt[k]];
-		linval_[s][k] = new double [linnzcnt[k]];
+		QcRowData_[s].linind_[k] = new int [linnzcnt[k]];
+		QcRowData_[s].linval_[k] = new double [linnzcnt[k]];
 
-		quadrow_[s][k] = new int [quadnzcnt[k]];
-		quadcol_[s][k] = new int [quadnzcnt[k]];
-		quadval_[s][k] = new double [quadnzcnt[k]];
+		QcRowData_[s].quadrow_[k] = new int [quadnzcnt[k]];
+		QcRowData_[s].quadcol_[k] = new int [quadnzcnt[k]];
+		QcRowData_[s].quadval_[k] = new double [quadnzcnt[k]];
 
-		for (int t = 0; t < linnzcnt_[s][k]; t++) 
+		for (int t = 0; t < QcRowData_[s].linnzcnt_[k]; t++) 
 		{
-			linind_[s][k][t] = linind[linstart[k] + t];
-			linval_[s][k][t] = linval[linstart[k] + t];
+			QcRowData_[s].linind_[k][t] = linind[linstart[k] + t];
+			QcRowData_[s].linval_[k][t] = linval[linstart[k] + t];
 		}
 		
-		for (int t = 0; t < quadnzcnt[k]; t++) 
+		for (int t = 0; t < QcRowData_[s].quadnzcnt_[k]; t++) 
 		{
-			quadrow_[s][k][t] = quadrow[quadstart[k] + t];
-			quadcol_[s][k][t] = quadcol[quadstart[k] + t];
-			quadval_[s][k][t] = quadval[quadstart[k] + t];
+			QcRowData_[s].quadrow_[k][t] = quadrow[quadstart[k] + t];
+			QcRowData_[s].quadcol_[k][t] = quadcol[quadstart[k] + t];
+			QcRowData_[s].quadval_[k][t] = quadval[quadstart[k] + t];
 		}
 	}
 
@@ -465,27 +448,27 @@ DSP_RTN_CODE QcModel::loadQuadraticConstrs(
 	return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE QcModel::printQuadraticConstrs (const int s)
+DSP_RTN_CODE QcModel::printQuadRows (const int s)
 {
 	BGN_TRY_CATCH
 
-	for (int i = 0; i < nqrows_[s]; i++) 
+	for (int i = 0; i < QcRowData_[s].nqrows_; i++) 
 	{
 		cout << "Scen " << s << "th " << i << "th quad constr: ";
 
-		for (int lt = 0; lt < linnzcnt_[s][i]; lt++)
+		for (int lt = 0; lt < QcRowData_[s].linnzcnt_[i]; lt++)
 		{
-			cout << linval_[s][i][lt] << " x" << linind_[s][i][lt] << " + ";
+			cout << QcRowData_[s].linval_[i][lt] << " x" << QcRowData_[s].linind_[i][lt] << " + ";
 		}
-		for (int qt = 0; qt < quadnzcnt_[s][i]-1; qt++)
+		for (int qt = 0; qt < QcRowData_[s].quadnzcnt_[i]-1; qt++)
 		{
-			cout << quadval_[s][i][qt] << " x" << quadrow_[s][i][qt] << " x" << quadcol_[s][i][qt] << " + ";
+			cout << QcRowData_[s].quadval_[i][qt] << " x" << QcRowData_[s].quadrow_[i][qt] << " x" << QcRowData_[s].quadcol_[i][qt] << " + ";
 		}
-		cout << quadval_[s][i][quadnzcnt_[s][i]-1] << " x" << quadrow_[s][i][quadnzcnt_[s][i]-1] << " x" << quadcol_[s][i][quadnzcnt_[s][i]-1];
-		if (sense_[s][i] == 'L')
-			cout << " <= " << rhs_[s][i] << endl;
+		cout << QcRowData_[s].quadval_[i][QcRowData_[s].quadnzcnt_[i]-1] << " x" << QcRowData_[s].quadrow_[i][QcRowData_[s].quadnzcnt_[i]-1] << " x" << QcRowData_[s].quadcol_[i][QcRowData_[s].quadnzcnt_[i]-1];
+		if (QcRowData_[s].sense_[i] == 'L')
+			cout << " <= " << QcRowData_[s].rhs_[i] << endl;
 		else 
-			cout << " >= " << rhs_[s][i] << endl;
+			cout << " >= " << QcRowData_[s].rhs_[i] << endl;
 
 	}
 
@@ -494,22 +477,30 @@ DSP_RTN_CODE QcModel::printQuadraticConstrs (const int s)
 	return DSP_RTN_OK;
 }
 
-
-DSP_RTN_CODE QcModel::getQConstrParametersCPX (int s, int &nqrows, int *linnzcnt, int * quadnzcnt, double * rhs, int * sense, const int ** linind, const double ** linval, const int ** quadrow, const int ** quadcol, const double ** quadval)
+DSP_RTN_CODE QcModel::printQuadRows (QcRowDataScen *qcdata)
 {
 	BGN_TRY_CATCH
-	
-	nqrows = getNumQRows(s);
-	linnzcnt =  getLinearNonZeroCounts(s);
-	quadnzcnt = getQuadNonZeroCounts(s); 
-	rhs = getRhs(s); 
-	sense = getSense(s); 
-	linind = getLinearIndices(s); 
-	linval = getLinearVals(s); 
-	quadrow = getQuadIndices1st(s); 
-	quadcol = getQuadIndices2nd(s); 
-	quadval = getQuadraticVals(s); 
-	
+
+	for (int i = 0; i < qcdata->nqrows_; i++) 
+	{
+		cout << i << "th quad constr: ";
+
+		for (int lt = 0; lt < qcdata->linnzcnt_[i]; lt++)
+		{
+			cout << qcdata->linval_[i][lt] << " x" << qcdata->linind_[i][lt] << " + ";
+		}
+		for (int qt = 0; qt < qcdata->quadnzcnt_[i]-1; qt++)
+		{
+			cout << qcdata->quadval_[i][qt] << " x" << qcdata->quadrow_[i][qt] << " x" << qcdata->quadcol_[i][qt] << " + ";
+		}
+		cout << qcdata->quadval_[i][qcdata->quadnzcnt_[i]-1] << " x" << qcdata->quadrow_[i][qcdata->quadnzcnt_[i]-1] << " x" << qcdata->quadcol_[i][qcdata->quadnzcnt_[i]-1];
+		if (qcdata->sense_[i] == 'L')
+			cout << " <= " << qcdata->rhs_[i] << endl;
+		else 
+			cout << " >= " << qcdata->rhs_[i] << endl;
+
+	}
+
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;

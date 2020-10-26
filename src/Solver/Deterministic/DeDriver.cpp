@@ -6,6 +6,7 @@
  */
 
 #include "Model/TssModel.h"
+#include "Model/QcModel.h"
 #include "Solver/Deterministic/DeDriver.h"
 #include "SolverInterface/DspOsiCpx.h"
 #include "SolverInterface/DspOsiGrb.h"
@@ -119,6 +120,31 @@ DSP_RTN_CODE DeDriver::run()
 	{
 		if (ctype[j] != 'C')
 			osi_->si_->setInteger(j);
+	}
+
+	/** add quadratic constraints */
+	if (model_->isQuadratic())
+	{
+		QcModel * qcModel;
+		try
+		{
+			qcModel = dynamic_cast<QcModel *>(model_);
+		}
+		catch (const std::bad_cast& e)
+		{
+			printf("Model claims to be quadratic when it is not");
+			return DSP_RTN_ERR;
+		}
+
+		for (int s = 0; s < qcModel->getNumScens(); s++) {
+			
+			QcRowDataScen * qcrowdata = qcModel->getQRowsCPXParams(s);
+
+        	qcModel->printQuadRows(s);
+        	qcModel->printQuadRows(qcrowdata);
+        	
+			osi_->addQuadraticRows(qcrowdata->nqrows_, qcrowdata->linnzcnt_, qcrowdata->quadnzcnt_, qcrowdata->rhs_, qcrowdata->sense_, (const int **) qcrowdata->linind_, (const double **) qcrowdata->linval_, (const int **) qcrowdata->quadrow_, (const int **) qcrowdata->quadcol_, (const double **) qcrowdata->quadval_);
+		}
 	}
 
 	/** set optimality gap tolerance */
