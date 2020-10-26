@@ -139,7 +139,16 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 	if (isroot) cout << "Creating DSP environment\n";
 	DspApiEnv* env = createEnv();
 
-	// Read problem instance from file(s)
+	// // Read problem instance from file(s)
+	// if (quadfile != NULL) {
+	// 	if (isroot) cout << "Reading Quad files: " << quadfile << endl;
+	// 	ret = readQuad(env, quadfile);
+	// 	if (ref != 0) return ret;
+	// 	if (isroot) {
+
+	// 	}
+	// }
+
 	if (smpsfile != NULL) {
 		if (isroot) cout << "Reading SMPS files: " << smpsfile << endl;
 		ret = readSmps(env, smpsfile);

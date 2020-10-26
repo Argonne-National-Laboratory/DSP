@@ -69,6 +69,7 @@ public:
 	double getRhsCouplingRow(int row);
 
 	bool isStochastic() {return false;}
+	// bool isQuadratic() {return false;}
 	virtual void setDro(bool yes) { ; }
 	virtual bool isDro() { return false; }
 	virtual bool isDistributed();
