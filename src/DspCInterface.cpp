@@ -96,6 +96,45 @@ TssModel * getTssModel(DspApiEnv * env)
 	}
 }
 
+/** If current model is quadratic, return the model as a QcModel object. */
+QcModel * getQcModel(DspApiEnv * env)
+{
+	if (env->model_ == NULL)
+	{
+		printf("Error: DecTssModel should be initialized before accessing QcModel");
+		return NULL;
+	}
+	
+	if (env->model_->isQuadratic())
+	{
+		QcModel * qc;
+		try
+		{
+			qc = dynamic_cast<QcModel *>(env->model_);
+		}
+		catch (const std::bad_cast& e)
+		{
+			printf("Error: Model claims to be quadratic when it is not");
+			return NULL;
+		}
+		return qc;
+	}
+	else
+	{
+		printf("Error: Attempted to access feature only supported by quadratic models with a general two-stage decomposition model\n");
+		return NULL;
+	}
+}
+
+/** return the model as a DecTssModel object. If no model exists, create one. */
+DecTssModel * getDecTssModel(DspApiEnv * env)
+{
+	if (env->model_ == NULL)
+		env->model_ = new DecTssModel;
+
+	return dynamic_cast<DecTssModel *>(env->model_);
+}
+
 /** get model pointer */
 DecModel * getModelPtr(DspApiEnv * env)
 {
@@ -122,6 +161,12 @@ void setDimensions(
 	getTssModel(env)->setDimensions(ncols1, nrows1, ncols2, nrows2);
 }
 
+/* update is_quadratic_ if it has quadratic rows */
+void setIsQuadratic(DspApiEnv * env, bool is_quadratic) 
+{
+	getDecTssModel(env)->setIsQuadratic(is_quadratic);
+}
+
 /** read smps files */
 int readSmps(DspApiEnv * env, const char * smps)
 {
@@ -132,6 +177,12 @@ int readSmps(DspApiEnv * env, const char * smps)
 int readDro(DspApiEnv * env, const char * dro)
 {
 	return getTssModel(env)->readDro(dro);
+}
+
+/** read quad files */
+int readQuad(DspApiEnv * env, const char * smps, const char * quad)
+{
+	return getQcModel(env)->readQuad(smps, quad);
 }
 
 /** load first-stage problem */
@@ -626,6 +677,13 @@ int getTotalNumRows(DspApiEnv * env)
 {
 	DSP_API_CHECK_MODEL(-1);
 	return getModelPtr(env)->getFullModelNumRows();
+}
+
+/** get number of quadratic rows */
+int getNumQRows(DspApiEnv * env, int s)
+{
+	DSP_API_CHECK_MODEL(-1);
+	return getQcModel(env)->getNumQRows(s);
 }
 
 /** get total number of columns */

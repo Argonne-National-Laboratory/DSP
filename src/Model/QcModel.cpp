@@ -26,88 +26,125 @@ QcModel::~QcModel()
 
 	for (int i = 0; i < nscen_; i++)
 	{
-		FREE_2D_ARRAY_PTR(nqconstrs_[i], linind_);
-		FREE_2D_ARRAY_PTR(nqconstrs_[i], linval_);
-		FREE_2D_ARRAY_PTR(nqconstrs_[i], quadrow_);
-		FREE_2D_ARRAY_PTR(nqconstrs_[i], quadcol_);
-		FREE_2D_ARRAY_PTR(nqconstrs_[i], quadval_);
+		FREE_2D_ARRAY_PTR(nqrows_[i], linind_);
+		FREE_2D_ARRAY_PTR(nqrows_[i], linval_);
+		FREE_2D_ARRAY_PTR(nqrows_[i], quadrow_);
+		FREE_2D_ARRAY_PTR(nqrows_[i], quadcol_);
+		FREE_2D_ARRAY_PTR(nqrows_[i], quadval_);
 	}
 	FREE_ARRAY_PTR(linind_);
 	FREE_ARRAY_PTR(linval_);
 	FREE_ARRAY_PTR(quadrow_);
 	FREE_ARRAY_PTR(quadcol_);
 	FREE_ARRAY_PTR(quadval_);
-	FREE_ARRAY_PTR(nqconstrs_);
+	FREE_ARRAY_PTR(nqrows_);
 }
 
-// /** construct a map that maps variable names to their indices */
-// DSP_RTN_CODE mapVarnameIndex(vector<string> &varNames, const char * corefilename) 
-// {
-// 	BGN_TRY_CATCH
+/** construct a map that maps variable names to their indices */
+bool QcModel::mapVarnameIndex(map<string, int> &map_varName_index, const char * smps) 
+{
+	char core[128];
+	sprintf(core, "%s.cor", smps); 
+	ifstream corefile (core);
 
-// 	ifstream corefile (corefilename, ios::in | ios:: binary);
+	string name, item;
 
-// 	string name, item, rowname, varname;
+	map_varName_index.clear();
+    int nvars = 0;
+	vector<string> rowNames;
 
-// 	varNames.clear();
-// 	vector<string> rowNames;
+	map<string, int>::iterator map_it;
+    vector<string>::iterator vec_it;
 
-// 	std::vector<string>::iterator it;
+    bool foundColumns = false;
 
-// 	while (corefile >> item) {
+    if (corefile.is_open()) {
+        
+	    while (corefile >> item) {
 		
-// 		if (item.find("ROWS") != string::npos) {
+            if (item.find("ROWS") != string::npos) {
 			
-// 			corefile >> name >> item;
-// 			rowNames.push_back(name);
-// 		}
+                while (1) {
+			        corefile >> item >> name;
 
-// 		if (item.find("COLUMNS") != string::npos) {
-			
-// 			corefile >> varname;
-// 			varNames.push_back(varname);
+                    if (item.find("COLUMNS") != string::npos) {
+                        foundColumns = true;
+                        map_varName_index[name] = nvars;
+                        nvars++;
+                        break;
+                    }
 
-// 			while (1) {
+                    if (name == "ENDATA" || item == "ENDATA") {
+                        cout << "Encountered ENDATA before reading Columns" << endl;
+                        break;
+                    }
+
+			        rowNames.push_back(name);
+                }
+		
+                if (foundColumns) {
+                
+                    while(1) {
 				
-// 				corefile >> name >> item;
+	        			corefile >> name >> item;
 				
-// 				it = find(rowNames.begin(), rowNames.end(), name);
-// 				if (it == rowNames.end()) 
-// 				{
-// 					/** var term */
-// 					corefile >> item;
+			        	vec_it = find(rowNames.begin(), rowNames.end(), name);
+				        if (vec_it == rowNames.end()) 
+				        {
+					        /** var term */
+					        corefile >> item;
 
-// 					if (name == "RHS")
-// 						break;
+					        if (name.find("RHS") != string::npos)
+						        break;
 					
-// 					it = find(varNames.begin(), varNames.end(), name);
-//   					if (it != varNames.end())
-//     					std::cout << "Element found in myvector: " << *it << '\n';
-//   					else {
-//     					std::cout << "Element not found in myvector\n";
-// 						varNames.push_back(name);
-// 					}
-// 				} else 
-// 				{
-// 					/* constraint term
-// 					 * does not do anything */
-// 				}
-// 			}
-// 		}
+					        map_it = map_varName_index.find(name);
+  					        if (map_it == map_varName_index.end())
+    					    {
+    					        map_varName_index[name] = nvars;
+                                nvars++;
+					        }
+				        } else 
+				        {
+					        /* constraint term
+					        * does not do anything */
+				        }
+			        }
+		        } else {
+                    cout << "Columns data should follow Rows data" << endl;
+                    break;
+                }
+            }
 
-// 		if (item.find("ENDATA") != string::npos) 
-// 			break;
-// 	}
+		if (item.find("ENDATA") != string::npos) 
+			break;
+        
+	    }
+    corefile.close();
+    } else {
+        cout << "Unable to open file";
+        return false;
+    }
 
-// 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
-// 	return DSP_RTN_OK;
-
-// }
+    cout << "variable, index" << endl;
+    for (auto &v : map_varName_index)
+        cout << v.first << ", " << v.second << endl;
+                             
+	return true;
+}
 /** read quadratic data file */
-DSP_RTN_CODE QcModel::readQuad(map<string, int> &map_varName_index, const char * filename) 
+DSP_RTN_CODE QcModel::readQuad(const char * smps, const char * filename) 
 {
 	BGN_TRY_CATCH
+
+	map<string, int> map_varName_index;
+
+	if (!mapVarnameIndex(map_varName_index, smps)) 
+	{
+		char msg[128];
+		sprintf(msg, "Unable to map variables to their indices\n");
+		throw msg;
+	}
 
 	ifstream myfile(filename);
 
@@ -147,7 +184,7 @@ DSP_RTN_CODE QcModel::readQuad(map<string, int> &map_varName_index, const char *
 			while (1) {
 			myfile >> sind;
 			
-			nqconstrs_[sind] = 0;
+			nqrows_[sind] = 0;
 
 			myfile >> item;
 			if (item.find("QUADROWS") == string::npos) {
@@ -175,25 +212,25 @@ DSP_RTN_CODE QcModel::readQuad(map<string, int> &map_varName_index, const char *
 
 				myfile >> name;
 
-				map_qrowName_index[name] = nqconstrs_[sind];
+				map_qrowName_index[name] = nqrows_[sind];
 
-				nqconstrs_[sind]++;
+				nqrows_[sind]++;
 			}
 
 			/** allocate memory */
-			assert(nqconstrs_[sind] == qrow_sense.size());
-			assert(nqconstrs_[sind] == map_qrowName_index.size());
+			assert(nqrows_[sind] == qrow_sense.size());
+			assert(nqrows_[sind] == map_qrowName_index.size());
 			
-			setQuadDimensions(sind, nqconstrs_[sind]);
+			setQuadDimensions(sind, nqrows_[sind]);
 
 			/** read sense_ */
-			for (int i = 0; i < nqconstrs_[sind]; i++) {
+			for (int i = 0; i < nqrows_[sind]; i++) {
 				sense_[sind][i] = qrow_sense[i];
 			}
 
 			/** read linind_, linval_ */
-			vector<vector<int>> linind(nqconstrs_[sind]);
-			vector<vector<double>> linval(nqconstrs_[sind]);
+			vector<vector<int>> linind(nqrows_[sind]);
+			vector<vector<double>> linval(nqrows_[sind]);
 				
 			while (1) {
 				myfile >> item;
@@ -216,7 +253,7 @@ DSP_RTN_CODE QcModel::readQuad(map<string, int> &map_varName_index, const char *
 				}
 			}
 			
-			for (i = 0; i < nqconstrs_[sind]; i++)
+			for (i = 0; i < nqrows_[sind]; i++)
 			{
 				assert(linind[i].size() == linval[i].size());
 				linnzcnt_[sind][i] = linval[i].size();
@@ -231,9 +268,9 @@ DSP_RTN_CODE QcModel::readQuad(map<string, int> &map_varName_index, const char *
 			}
 
 			/** read quadrow_, quadcol_, quadval_ */
-			vector<vector<int>> quadrow(nqconstrs_[sind]);
-			vector<vector<int>> quadcol(nqconstrs_[sind]);
-			vector<vector<double>> quadval(nqconstrs_[sind]);
+			vector<vector<int>> quadrow(nqrows_[sind]);
+			vector<vector<int>> quadcol(nqrows_[sind]);
+			vector<vector<double>> quadval(nqrows_[sind]);
 
 			while (1) {
 				myfile >> item;
@@ -258,7 +295,7 @@ DSP_RTN_CODE QcModel::readQuad(map<string, int> &map_varName_index, const char *
 
 			}
 
-			for (i = 0; i < nqconstrs_[sind]; i++)
+			for (i = 0; i < nqrows_[sind]; i++)
 			{
 				assert(quadrow[i].size() == quadcol[i].size());
 				assert(quadrow[i].size() == quadval[i].size());
@@ -314,7 +351,7 @@ DSP_RTN_CODE QcModel::readQuad(map<string, int> &map_varName_index, const char *
 }
 
 /** set dimensions for second-stage quadratic constraints */
-DSP_RTN_CODE QcModel::setQuadDimensions(int nscen, int * nqconstrs)
+DSP_RTN_CODE QcModel::setQuadDimensions(int nscen, int * nqrows)
 {
 	BGN_TRY_CATCH
 
@@ -322,7 +359,7 @@ DSP_RTN_CODE QcModel::setQuadDimensions(int nscen, int * nqconstrs)
 
 	for (int s = 0; s < nscen; s++) 
 	{
-		setQuadDimensions(s, nqconstrs[s]);
+		setQuadDimensions(s, nqrows[s]);
 	}
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
@@ -335,7 +372,7 @@ DSP_RTN_CODE QcModel::setQuadDimensions(int nscen)
 
 	nscen_ = nscen;
 
-	nqconstrs_ = new int [nscen];
+	nqrows_ = new int [nscen];
 	linnzcnt_ = new int * [nscen];
 	quadnzcnt_ = new int * [nscen];
 	rhs_ = new double * [nscen];
@@ -352,22 +389,22 @@ DSP_RTN_CODE QcModel::setQuadDimensions(int nscen)
 	
 	return DSP_RTN_OK;
 }
-DSP_RTN_CODE QcModel::setQuadDimensions(int s, int nqconstrs)
+DSP_RTN_CODE QcModel::setQuadDimensions(int s, int nqrows)
 {
 	BGN_TRY_CATCH
 
-	nqconstrs_[s] = nqconstrs; 	
+	nqrows_[s] = nqrows; 	
 	
-	linnzcnt_[s] = new int [nqconstrs];
-	quadnzcnt_[s] = new int [nqconstrs];
-	rhs_[s] = new double [nqconstrs];
-	sense_[s] = new int [nqconstrs];
+	linnzcnt_[s] = new int [nqrows];
+	quadnzcnt_[s] = new int [nqrows];
+	rhs_[s] = new double [nqrows];
+	sense_[s] = new int [nqrows];
 
-	linind_[s] = new int * [nqconstrs];
-	linval_[s] = new double * [nqconstrs];
-	quadrow_[s] = new int * [nqconstrs];
-	quadcol_[s] = new int * [nqconstrs];
-	quadval_[s] = new double * [nqconstrs];
+	linind_[s] = new int * [nqrows];
+	linval_[s] = new double * [nqrows];
+	quadrow_[s] = new int * [nqrows];
+	quadcol_[s] = new int * [nqrows];
+	quadval_[s] = new double * [nqrows];
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	
@@ -377,7 +414,7 @@ DSP_RTN_CODE QcModel::setQuadDimensions(int s, int nqconstrs)
 /** load quadratic constraints to the second stage */
 DSP_RTN_CODE QcModel::loadQuadraticConstrs(
         const int           s,     		/**< scenario index */
-		const int 			nqconstrs,
+		const int 			nqrows,
         const int *         linnzcnt,  	/**< number of nonzero coefficients in the linear part of each constraint  */
         const int *        	quadnzcnt,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
 		const double *		rhs, 		/**< constraint rhs of each constraint */
@@ -392,10 +429,10 @@ DSP_RTN_CODE QcModel::loadQuadraticConstrs(
 
     BGN_TRY_CATCH
 
-	assert(nqconstrs == nqconstrs_[s]);
+	assert(nqrows == nqrows_[s]);
 	
 	/** allocate values */
-	for (int k = 0; k < nqconstrs; k++) 
+	for (int k = 0; k < nqrows; k++) 
 	{
 		linnzcnt_[s][k] = linnzcnt[k];
 		quadnzcnt_[s][k] = quadnzcnt[k];
@@ -432,7 +469,7 @@ DSP_RTN_CODE QcModel::printQuadraticConstrs (const int s)
 {
 	BGN_TRY_CATCH
 
-	for (int i = 0; i < nqconstrs_[s]; i++) 
+	for (int i = 0; i < nqrows_[s]; i++) 
 	{
 		cout << "Scen " << s << "th " << i << "th quad constr: ";
 
@@ -458,11 +495,11 @@ DSP_RTN_CODE QcModel::printQuadraticConstrs (const int s)
 }
 
 
-DSP_RTN_CODE QcModel::getQConstrParametersCPX (int s, int &nqconstrs, int *linnzcnt, int * quadnzcnt, double * rhs, int * sense, const int ** linind, const double ** linval, const int ** quadrow, const int ** quadcol, const double ** quadval)
+DSP_RTN_CODE QcModel::getQConstrParametersCPX (int s, int &nqrows, int *linnzcnt, int * quadnzcnt, double * rhs, int * sense, const int ** linind, const double ** linval, const int ** quadrow, const int ** quadcol, const double ** quadval)
 {
 	BGN_TRY_CATCH
 	
-	nqconstrs = getNumQConstrs(s);
+	nqrows = getNumQRows(s);
 	linnzcnt =  getLinearNonZeroCounts(s);
 	quadnzcnt = getQuadNonZeroCounts(s); 
 	rhs = getRhs(s); 

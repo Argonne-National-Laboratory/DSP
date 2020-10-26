@@ -143,7 +143,10 @@ public:
 	double evalLhsCouplingRowSubprob(int row, int subprob, double * subprobSolution);
 
 	bool isStochastic() {return true;}
-	// bool isQuadratic() {return true;}/*is_quadratic_*/
+	bool isQuadratic() {return is_quadratic_;}
+
+	/* update is_quadratic_ if it has quadratic rows */
+	void setIsQuadratic(bool is_quadratic) {is_quadratic_ = is_quadratic;}
 
 	// The following functions are for distributionally robust variant.
 	// TODO: Better to create a new inhereted class?
@@ -228,7 +231,7 @@ public:
 protected:
 
 	int* master_col_indices_; /**< master column indices */
-	// bool is_quadratic_;
+	bool is_quadratic_;
 };
 
 #endif /* DECTSSMODEL_H_ */

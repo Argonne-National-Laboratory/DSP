@@ -129,6 +129,7 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 	bool isroot = true;
 	bool issolved = true;
 	bool isstochastic = true;
+	bool isquadratic = quadfile != NULL ? true : false;
 #ifdef DSP_HAS_MPI
 	int comm_rank, comm_size;
 	MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
@@ -139,34 +140,41 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 	if (isroot) cout << "Creating DSP environment\n";
 	DspApiEnv* env = createEnv();
 
-	// // Read problem instance from file(s)
-	// if (quadfile != NULL) {
-	// 	if (isroot) cout << "Reading Quad files: " << quadfile << endl;
-	// 	ret = readQuad(env, quadfile);
-	// 	if (ref != 0) return ret;
-	// 	if (isroot) {
-
-	// 	}
-	// }
-
-	if (smpsfile != NULL) {
+	if (smpsfile != NULL) 
+	{
 		if (isroot) cout << "Reading SMPS files: " << smpsfile << endl;
 		ret = readSmps(env, smpsfile);
 		if (ret != 0) return ret;
-		if (isroot) {
+		if (isroot) 
+		{
 			cout << "First stage: " << getNumRows(env,0) << " rows, " << getNumCols(env,0) << " cols, " << getNumIntegers(env,0) << " integers" << endl;
 			cout << "Second stage: " << getNumRows(env,1) << " rows, " << getNumCols(env,1) << " cols, " << getNumIntegers(env,1) << " integers" << endl;
 			cout << "Number of scenarios: " << getNumSubproblems(env) << endl;
 		}
 		setBlockIds(env, getNumSubproblems(env), true);
-	} else if (mpsfile != NULL && decfile != NULL) {
-		if (isroot) {
+	} else if (mpsfile != NULL && decfile != NULL) 
+	{
+		if (isroot) 
+		{
 			cout << "Reading MPS file: " << mpsfile << endl;
 			cout << "Reading DEC file: " << decfile << endl;
 		}
 		ret = readMpsDec(env, mpsfile, decfile);
 		if (ret != 0) return ret;
 		isstochastic = false;
+	}
+	
+	if (quadfile != NULL) 
+	{
+		setIsQuadratic(env, isquadratic);
+		if (isroot) cout << "Reading Quad files: " << quadfile << endl;
+		ret = readQuad(env, smpsfile, quadfile);
+		if (ret != 0) return ret;
+		if (isroot) 
+		{
+			for (int s = 0; s < getNumScenarios(env); s++)
+				cout << "Second stage: " << getNumQRows(env,s) << " quadratic rows in scenario " << s << endl;
+		}
 	}
 
 	if (paramfile != NULL) {

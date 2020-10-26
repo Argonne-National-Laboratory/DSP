@@ -167,7 +167,7 @@ public:
 	 * If true, this is a quadratic model that can be downcasted to QcModel.
 	 * Used to handle specific quadratic subproblem cases.
 	 */
-	// virtual bool isQuadratic() = 0;
+	virtual bool isQuadratic() = 0;
 
 	/**
 	 * Set whether this is dro model or not.
