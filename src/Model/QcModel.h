@@ -62,6 +62,9 @@ public:
 	DSP_RTN_CODE setQuadDimensions(int s, int nqrows);
 	DSP_RTN_CODE setQuadDimensions(const int nscen, int * nqrows);
 
+	/** set file name */
+	void setFileName(const char * smps) {filename_ = smps;} 
+
 	/** add quadratic constraints to the second stage problem */
 	DSP_RTN_CODE loadQuadraticConstrs (
 			const int           s,     		/**< scenario index */
@@ -87,6 +90,9 @@ public:
 	/** get parameters for CPX interface */
 	QcRowDataScen * getQRowsCPXParams (int s) {return &QcRowData_[s];}
 
+	/** get file name */
+	const char * getFileName() const {return filename_;} /* must be the same as getNumScenarios() in StoModel */
+	
 	/** get number of scenarios */
 	int getNumScens() const {return nscen_;} /* must be the same as getNumScenarios() in StoModel */
 	
@@ -123,6 +129,7 @@ public:
 protected:
 
 	int				nscen_;
+	const char * filename_;
 
 	vector<QcRowDataScen> QcRowData_;
 };
