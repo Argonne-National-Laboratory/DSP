@@ -140,7 +140,10 @@ DSP_RTN_CODE QcModel::readQuad(const char * smps, const char * filename, int nco
 		throw msg;
 	}
 
-	ifstream myfile(filename);
+	setFileName(filename);
+	char quadfile[128];
+	sprintf(quadfile, "%s.txt", filename); 
+	ifstream myfile(quadfile);
 
 	string item;
 	string name, name2; 

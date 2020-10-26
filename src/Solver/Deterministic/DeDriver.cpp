@@ -140,12 +140,17 @@ DSP_RTN_CODE DeDriver::run()
 			
 			QcRowDataScen * qcrowdata = qcModel->getQRowsCPXParams(s);
 
-        	qcModel->printQuadRows(s);
-        	qcModel->printQuadRows(qcrowdata);
+			/* print qcrowdata to test whether it is successfully received or not */
+        	// qcModel->printQuadRows(s);
+        	// qcModel->printQuadRows(qcrowdata);
         	
 			osi_->addQuadraticRows(qcrowdata->nqrows_, qcrowdata->linnzcnt_, qcrowdata->quadnzcnt_, qcrowdata->rhs_, qcrowdata->sense_, (const int **) qcrowdata->linind_, (const double **) qcrowdata->linval_, (const int **) qcrowdata->quadrow_, (const int **) qcrowdata->quadcol_, (const double **) qcrowdata->quadval_);
-			osi_->writeProb("farmer.lp", NULL);
 		}
+
+		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
+		char lpfilename[128];
+		sprintf(lpfilename, "%s.lp", qcModel->getFileName()); 
+		osi_->writeProb(lpfilename, NULL);
 	}
 
 	/** set optimality gap tolerance */
