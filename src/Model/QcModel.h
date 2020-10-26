@@ -11,6 +11,8 @@
 //#define QCMODEL_DEBUG
 
 #include <vector>
+#include <algorithm>
+#include <fstream>
 // #include <map>
 /** Coin */
 // #include "CoinTime.hpp"
@@ -35,7 +37,15 @@ public:
 
 public:
 
+	/** construct a map that maps variable names to their indices */
+	DSP_RTN_CODE mapVarnameIndex(vector<string> &varNames, const char * corefilename); 
+	
+	/** read quadratic data file */
+	DSP_RTN_CODE readQuad(map<string, int> &map_varName_index, const char * filename);
+
 	/** set dimensions for quadratic constraints */
+	DSP_RTN_CODE setQuadDimensions(int nscen);
+	DSP_RTN_CODE setQuadDimensions(int s, int nqconstrs);
 	DSP_RTN_CODE setQuadDimensions(const int nscen, int * nqconstrs);
 
 	/** add quadratic constraints to the second stage problem */

@@ -246,8 +246,6 @@ endif(UNIT_TESTING)
 ##################################################
 install(TARGETS Dsp LIBRARY DESTINATION $ENV{PWD}/lib)
 install(TARGETS runDsp DESTINATION $ENV{PWD}/bin)
-message(STATUS "libDsp install dir: $ENV{PWD}/lib")
-message(STATUS "runDsp install dir: $ENV{PWD}/bin")
 
 install(CODE "message(\"\")")
 install(CODE "message(\"${Blue}** Standalone binary file was installed in $ENV{PWD}/bin${ColourReset}\")")

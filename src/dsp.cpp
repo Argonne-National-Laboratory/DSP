@@ -27,7 +27,7 @@ const char* gDspUsage =
 	"       --test\toptional parameter for testing objective value\n";
 
 void setBlockIds(DspApiEnv* env, int nsubprobs, bool master_has_subblocks);
-int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* paramfile, char* testvalue);
+int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* paramfile, char* testvalue, char* quadfile);
 int readMpsDec(DspApiEnv* env, char* mpsfile, char* decfile);
 int parseDecFile(char* decfile, vector<vector<string> >& rows_in_blocks);
 void createBlockModel(DspApiEnv* env, CoinMpsIO& p, const CoinPackedMatrix* mat, 
@@ -68,6 +68,7 @@ int main(int argc, char* argv[]) {
 		char* solnfile = NULL;
 		char* paramfile = NULL;
 		char* testvalue = NULL;
+		char* quadfile = NULL;
 		for (int i = 1; i < argc; i += 2) {
 			if (i + 1 != argc) {
 				if (string(argv[i]) == "--algo") {
@@ -84,6 +85,8 @@ int main(int argc, char* argv[]) {
 					paramfile = argv[i+1];
 				} else if (string(argv[i]) == "--test") {
 					testvalue = argv[i+1];
+				} else if (string(argv[i]) == "--quad") {
+					quadfile = argv[i+1];
 				} else {
 					EXIT_WITH_MSG
 				}
@@ -101,7 +104,7 @@ int main(int argc, char* argv[]) {
 		}
 
 		// run dsp
-		int ret = runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue);
+		int ret = runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile);
 
 #ifdef DSP_HAS_MPI
 		MPI_Finalize();
@@ -111,7 +114,7 @@ int main(int argc, char* argv[]) {
 #undef EXIT_WITH_MSG
 }
 
-int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* paramfile, char* testvalue) {
+int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* paramfile, char* testvalue, char* quadfile) {
 
 	int ret = 0;
 	bool isroot = true;
@@ -127,7 +130,16 @@ int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* s
 	if (isroot) cout << "Creating DSP environment\n";
 	DspApiEnv* env = createEnv();
 
-	// Read problem instance from file(s)
+	// // Read problem instance from file(s)
+	// if (quadfile != NULL) {
+	// 	if (isroot) cout << "Reading Quad files: " << quadfile << endl;
+	// 	ret = readQuad(env, quadfile);
+	// 	if (ref != 0) return ret;
+	// 	if (isroot) {
+
+	// 	}
+	// }
+
 	if (smpsfile != NULL) {
 		if (isroot) cout << "Reading SMPS files: " << smpsfile << endl;
 		ret = readSmps(env, smpsfile);
