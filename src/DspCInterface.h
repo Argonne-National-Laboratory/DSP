@@ -18,6 +18,8 @@
 #include "DspApiEnv.h"
 
 class TssModel;
+class QcModel;
+class DecTssModel;
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,6 +40,12 @@ void freeSolver(DspApiEnv * env);
 /** If current model is stochastic, return the model as a TssModel object. If no model exists, create one. */
 TssModel * getTssModel(DspApiEnv * env);
 
+/** If current model is quadratic, return the model as a QcModel object. */
+QcModel * getQcModel(DspApiEnv * env);
+
+/** return the model as a DecTssModel object. If no model exists, create one. */
+DecTssModel * getDecTssModel(DspApiEnv * env);
+
 /** get model pointer */
 DecModel * getModelPtr(DspApiEnv * env);
 
@@ -54,11 +62,17 @@ void setDimensions(
 		const int   ncols2, /**< number of second-stage columns */
 		const int   nrows2  /**< number of second-stage rows */);
 
+/* update is_quadratic_ if it has quadratic rows */
+void setIsQuadratic(DspApiEnv * env, bool is_quadratic);
+
 /** read smps files */
 int readSmps(DspApiEnv * env, const char * smps);
 
 /** read dro files */
 int readDro(DspApiEnv * env, const char * dro);
+
+/** read quad files */
+int readQuad(DspApiEnv * env, const char * smps, const char * quad);
 
 /** load first-stage problem */
 void loadFirstStage(
@@ -181,6 +195,9 @@ int getNumIntegers(DspApiEnv * env, int stage);
 
 /** get Total number of row */
 int getTotalNumRows(DspApiEnv * env);
+
+/** get number of quadratic rows */
+int getNumQRows(DspApiEnv * env, int s);
 
 /** get number of columns */
 int getTotalNumCols(DspApiEnv * env);

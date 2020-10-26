@@ -38,20 +38,20 @@ public:
 public:
 
 	/** construct a map that maps variable names to their indices */
-	DSP_RTN_CODE mapVarnameIndex(vector<string> &varNames, const char * corefilename); 
+	bool mapVarnameIndex(map<string, int> &map_varName_index, const char * corefilename);
 	
 	/** read quadratic data file */
-	DSP_RTN_CODE readQuad(map<string, int> &map_varName_index, const char * filename);
+	DSP_RTN_CODE readQuad(const char * smps, const char * filename);
 
 	/** set dimensions for quadratic constraints */
 	DSP_RTN_CODE setQuadDimensions(int nscen);
-	DSP_RTN_CODE setQuadDimensions(int s, int nqconstrs);
-	DSP_RTN_CODE setQuadDimensions(const int nscen, int * nqconstrs);
+	DSP_RTN_CODE setQuadDimensions(int s, int nqrows);
+	DSP_RTN_CODE setQuadDimensions(const int nscen, int * nqrows);
 
 	/** add quadratic constraints to the second stage problem */
 	DSP_RTN_CODE loadQuadraticConstrs (
 			const int           s,     		/**< scenario index */
-		const int 			nqconstrs,
+		const int 			nqrows,
         const int *         linnzcnt,  	/**< number of nonzero coefficients in the linear part of each constraint  */
         const int *        	quadnzcnt,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
 		const double *		rhs, 		/**< constraint rhs of each constraint */
@@ -68,10 +68,10 @@ public:
 	DSP_RTN_CODE printQuadraticConstrs (const int s);
 
 	/** get parameters for CPX interface */
-	DSP_RTN_CODE getQConstrParametersCPX (int scen, int &nqconstrs, int *linnzcnt, int * quadnzcnt, double * rhs, int * sense, const int ** linind, const double ** linval, const int ** quadrow, const int ** quadcol, const double ** quadval);
+	DSP_RTN_CODE getQConstrParametersCPX (int scen, int &nqrows, int *linnzcnt, int * quadnzcnt, double * rhs, int * sense, const int ** linind, const double ** linval, const int ** quadrow, const int ** quadcol, const double ** quadval);
 
 	/** get number of quadratic constraints */
-	int getNumQConstrs(int scen) {return nqconstrs_[scen];}
+	int getNumQRows(int scen) {return nqrows_[scen];}
 
 	/** get number of non-zero linear terms of quadratic constraints */
 	int * getLinearNonZeroCounts(int scen) const {return linnzcnt_[scen];}
@@ -103,7 +103,7 @@ public:
 protected:
 
 	int				nscen_;
-	int *			nqconstrs_;
+	int *			nqrows_;
     int **         linnzcnt_;  	/**< number of nonzero coefficients in the linear part of each constraint  */
     int **        	quadnzcnt_;  /**< number of nonzero coefficients in the quadratic part of each constraint  */
 	double **		rhs_; 		/**< constraint rhs of each constraint */
