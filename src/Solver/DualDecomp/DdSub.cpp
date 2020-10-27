@@ -9,8 +9,8 @@
 
 #include "Utility/DspMacros.h"
 #include "Utility/DspMessage.h"
-#include "Model/TssModel.h"
-#include "Model/QcModel.h"
+// #include "Model/TssModel.h"
+#include "Model/DecTssQcModel.h"
 #include "Solver/DualDecomp/DdSub.h"
 #include "SolverInterface/DspOsiClp.h"
 #include "SolverInterface/DspOsiCpx.h"
@@ -96,8 +96,18 @@ DSP_RTN_CODE DdSub::solve()
 	DSPdebug(DspMessage::printArray(osi_->si_->getNumCols(), osi_->si_->getObjCoefficients()));
 
 	while (1) {
-		osi_->solve();
-	
+		// osi_->solve();
+		/** solve */
+		if (model_->isQuadratic())
+		{
+			/* solve using MIQCP solver */
+			osi_->solveQp();
+		} 
+		else 
+		{
+			osi_->solve();
+		}	
+
 		/** check status. there might be unexpected results. */
 		status_ = osi_->status();
 		DSPdebugMessage("solution status %d\n", status_);
@@ -331,12 +341,10 @@ DSP_RTN_CODE DdSub::createProblem() {
 	/** add quadratic constraints */
 	if (model_->isQuadratic())
 	{
-		osi_->chgProbTypeToMIQCP();
-		
-		QcModel * qcModel;
+		DecTssQcModel * qcModel;
 		try
 		{
-			qcModel = dynamic_cast<QcModel *>(model_);
+			qcModel = dynamic_cast<DecTssQcModel *>(model_);
 		}
 		catch (const std::bad_cast& e)
 		{
@@ -358,6 +366,18 @@ DSP_RTN_CODE DdSub::createProblem() {
 		osi_->writeProb(lpfilename, NULL);
 	}
 
+	if (model_->isQuadratic())
+	{
+		/* change problem type to MIQCP */
+		osi_->chgProbTypeToMIQCP();
+
+		/** set column type */
+		int nc = mat->getNumCols();
+		osi_->setColumnTypes(nc, ctype);
+	
+		// /* solve using MIQCP solver */
+		// osi_->solveQp();
+	} 
 
     /** set solution gap tolerance */
 	if (nIntegers > 0)
