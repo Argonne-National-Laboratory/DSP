@@ -204,9 +204,10 @@ DSP_RTN_CODE DeDriver::run()
 		/* change problem type to MIQCP */
 		osi_->chgProbTypeToMIQCP();
 
-		/* need to update integer variables */
-
-		
+		/** set column type */
+		int nc = mat->getNumCols();
+		osi_->setColumnTypes(nc, ctype);
+	
 		/* solve using MIQCP solver */
 		osi_->solveQp();
 	} 

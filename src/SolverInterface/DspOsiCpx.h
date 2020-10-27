@@ -90,6 +90,19 @@ public:
 			std::cout << "fail to write problem file" << std::endl;
 	}
 
+	/** set column type */
+	virtual void setColumnTypes(int nc, const char *ctype)
+	{
+		int *cindarray = new int[nc];
+		for (int i = 0; i < nc; ++i)
+      		cindarray[i] = i;
+
+    	if (CPXchgctype(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), nc, cindarray, ctype))
+			std::cout << "fail to update column type" << std::endl;
+
+    	delete[] cindarray;
+	}
+
 	/** solve problem directly through the solver */
 	virtual void solveQp()
 	{
