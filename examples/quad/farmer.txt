@@ -1,51 +1,10 @@
 NAME	test
-NSCEN	3
 SCEN	0
  QUADROWS
  L c_1
- G c_2
 LINTERMS
- c_1 	x1	1
- c_2	x1	2
- c_1	x7	1
- c_2	x8	2
 QUADTERMS
- c_1	x2	x1	1
- c_1	x0	x0	2
- c_2	x6	x4	3
+ c_1	x0	x0	1
 RHS
- c_1	2
- c_2	3
-SCEN	1
- QUADROWS
- L c_1
- G c_2
-LINTERMS
- c_1 	x7	1
- c_2	x3	2
- c_1	x2	1
- c_2	x1	2
-QUADTERMS
- c_1	x3	x3	1
- c_1	x4	x2	2
- c_2	x6	x5	3
-RHS
- c_1	2
- c_2	3
-SCEN	2
- QUADROWS
- L c_1
- G c_2
-LINTERMS
- c_1 	x3	1
- c_2	x6	2
- c_1	x4	1
- c_2	x2	2
-QUADTERMS
- c_1	x1	x1	1
- c_1	x2	x2	2
- c_2	x4	x1	3
-RHS
- c_1	2
- c_2	3
+ c_1	160000
 ENDATA	
