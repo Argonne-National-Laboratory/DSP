@@ -3,13 +3,14 @@
 
 #include "DspCInterface.h"
 #include "Model/TssModel.h"
-#include "Model/QcModel.h"
+// #include "Model/QcModel.h"
+#include "Model/DecTssQcModel.h"
 #include "SolverInterface/DspOsiCpx.h"
 #include "Solver/DualDecomp/DdDriverSerial.h"
 
 void printCoreRows (DspApiEnv * env) {
     
-    TssModel * tss = dynamic_cast<TssModel*>(env->model_);
+    TssModel * tss = getTssModel(env);
 	cout << "number of stages: " << tss->getNumStages() << endl;
 	cout << "row data: " << endl;
 	    
@@ -43,7 +44,7 @@ void printCoreRows (DspApiEnv * env) {
 	}
 }
 
-TEST_CASE("Class TssQCModel") {
+TEST_CASE("Class DecTssQCModel") {
     
     DspApiEnv* env = NULL;
 
@@ -53,21 +54,34 @@ TEST_CASE("Class TssQCModel") {
     REQUIRE(env->model_ == NULL);
     REQUIRE(env->solver_ == NULL);
 
-    /** read SMPS file */        
+    /** set  SMPS file name */        
     char smpsfile[80];
     sprintf(smpsfile, "../examples/smps/farmer");
     puts(smpsfile);
+
+    /** set quad file name */        
+    bool is_qc = false;
+    char * quadfile;
+    quadfile = new char [80];
+    sprintf(quadfile, "../examples/quad/farmer");
+    puts(quadfile);
+    if (quadfile != NULL)
+        is_qc = true;
             
-    int ret = readSmps(env, smpsfile);
+    /** create env->model_
+     *      create DecTssQcModel    if is_qc
+     *      create DecTssModel      if !is_qc
+     */        
+    createModel(env, is_qc);
+
+    int ret = readSmps(env, smpsfile); 
     REQUIRE(ret == 0);
 
     /** test variable indices by printing constraints */
     printCoreRows(env);
     
     /** test QcModel functions */
-    bool isquadratic = true;
-    setIsQuadratic(env, isquadratic);
-    QcModel * qc = getQcModel(env);
+    DecTssQcModel * qc = getDecTssQcModel(env);
 
     qc->readQuad(smpsfile, "../examples/quad/farmer");
 
@@ -186,6 +200,7 @@ TEST_CASE("Class TssQCModel") {
 	// DSP_RTN_CHECK_THROW(dynamic_cast<DdDriverSerial*>(env->solver_)->run());
 	// DSP_RTN_CHECK_THROW(env->solver_->finalize());
 
+    FREE_PTR(quadfile);
 
     freeEnv(env);
     REQUIRE(env == NULL);

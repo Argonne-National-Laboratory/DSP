@@ -10,7 +10,6 @@
 
 #include <numeric>
 #include "Model/TssModel.h"
-#include "Model/QcModel.h"
 #include "Model/DecModel.h"
 
 /**
@@ -26,7 +25,7 @@
  * [1] M Lubin, K Martin, CG Petra, B Sandıkçı, "On parallelizing dual decomposition in stochastic 
  *     integer programming", 2013
  */
-class DecTssModel: public TssModel, public DecModel, public QcModel {
+class DecTssModel: public TssModel, public DecModel {
 
 public:
 
@@ -145,10 +144,7 @@ public:
 	bool nonanticipativity() {return true;}
 
 	bool isStochastic() {return true;}
-	bool isQuadratic() {return is_quadratic_;}
-
-	/* update is_quadratic_ if it has quadratic rows */
-	void setIsQuadratic(bool is_quadratic) {is_quadratic_ = is_quadratic;}
+	bool isQuadratic() {return false;}
 
 	// The following functions are for distributionally robust variant.
 	// TODO: Better to create a new inhereted class?
@@ -229,7 +225,6 @@ public:
 protected:
 
 	int* master_col_indices_; /**< master column indices */
-	bool is_quadratic_;
 };
 
 #endif /* DECTSSMODEL_H_ */

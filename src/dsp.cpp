@@ -130,6 +130,9 @@ int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* s
 
 	if (isroot) cout << "Creating DSP environment\n";
 	DspApiEnv* env = createEnv();
+	
+	bool is_qc = quadfile != NULL ? true : false;
+	createModel(env, is_qc);
 
 	// Read problem instance from file(s)
 	if (smpsfile != NULL) 
@@ -158,7 +161,6 @@ int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* s
 	
 	if (quadfile != NULL) 
 	{
-		setIsQuadratic(env, isquadratic);
 		if (isroot) cout << "Reading Quad files: " << quadfile << endl;
 		ret = readQuad(env, smpsfile, quadfile);
 		if (ret != 0) return ret;

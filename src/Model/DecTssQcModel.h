@@ -1,29 +1,23 @@
 /*
- * QCModel.h
+ * DecTssQcModel.h
  *
- *  Created on: Oct 22, 2020
+ *  Created on: Oct 27, 2020
  *      Author: geunyeongbyeon
  */
 
-#ifndef QCMODEL_H_
-#define QCMODEL_H_
-
-//#define QCMODEL_DEBUG
+#ifndef DECTSSQCMODEL_H_
+#define DECTSSQCMODEL_H_
 
 #include <vector>
 #include <algorithm>
 #include <fstream>
-// #include <map>
-/** Coin */
-// #include "CoinTime.hpp"
-// #include "CoinPackedMatrix.hpp"
-// #include "CoinHelperFunctions.hpp"
-/** Dsp */
+#include <numeric>
+
+#include "Model/DecTssModel.h"
+
 #include "Utility/DspTypes.h"
 #include "Utility/DspMacros.h"
 #include "Utility/DspRtnCodes.h"
-
-#include "Model/TssModel.h"
 
 /** quadratic row infomration for a scenario */
 struct QcRowDataScen {
@@ -39,22 +33,28 @@ struct QcRowDataScen {
 	double **     quadval_; 		/** nonzero coefficient of the quadratic part */ 
 };
 
-class QcModel : public TssModel {
+/**
+ * A decomposable two-stage stochastic problem with quadratic constraints. 
+ */
+class DecTssQcModel: public DecTssModel {
+
 public:
 
 	/** default constructor */
-	QcModel();
+	DecTssQcModel();
 
 	/** copy constructor */
-	QcModel(const QcModel & rhs);
+	DecTssQcModel(const DecTssQcModel & rhs);
 
 	/** copy constructor */
-	QcModel(const TssModel & rhs);
+	DecTssQcModel(const DecTssModel & rhs);
 
 	/** default destructor */
-	virtual ~QcModel();
+	virtual ~DecTssQcModel();
 
 public:
+
+	bool isQuadratic() {return true;}
 
 	/** construct a map that maps variable names to their indices */
 	bool mapVarnameIndex(map<string, int> &map_varName_index, const char * corefilename);
@@ -63,15 +63,15 @@ public:
 	DSP_RTN_CODE readQuad(const char * smps, const char * filename);
 
 	/** set dimensions for quadratic constraints */
-	DSP_RTN_CODE setQuadDimensions(int nscen);
-	DSP_RTN_CODE setQuadDimensions(int s, int nqrows);
-	DSP_RTN_CODE setQuadDimensions(const int nscen, int * nqrows);
+    void setQcDimensions(){QcRowData_.resize(nscen_);};
+	DSP_RTN_CODE setQcDimensions(int * nqrows);
+	DSP_RTN_CODE setQcDimensions(int s, int nqrows);
 
 	/** set file name */
 	void setFileName(const char * smps) {filename_ = smps;} 
 
 	/** add quadratic constraints to the second stage problem */
-	DSP_RTN_CODE loadQuadraticConstrs (
+	DSP_RTN_CODE loadQuadraticRows (
 			const int           s,     		/**< scenario index */
 		const int 			nqrows,
         const int *         linnzcnt,  	/**< number of nonzero coefficients in the linear part of each constraint  */
@@ -98,50 +98,41 @@ public:
 	/** get file name */
 	const char * getFileName() const {return filename_;} /* must be the same as getNumScenarios() in StoModel */
 	
-	/** get number of scenarios */
-	int getNumScens() const {return nscen_;} /* must be the same as getNumScenarios() in StoModel */
-
-	/** get number of core columns */
-	int getNumQCols(int stage) const {return nqcols_[stage];} /* must be the same as getNumCols(int stage) in StoModel */
-	
 	/** get number of quadratic constraints */
 	int getNumQRows(int scen) {return QcRowData_[scen].nqrows_;}
 
 	/** get number of non-zero linear terms of quadratic constraints */
-	int * getLinearNonZeroCounts(int scen) const {return QcRowData_[scen].linnzcnt_;}
+	int * getQcLinearNonZeroCounts(int scen) const {return QcRowData_[scen].linnzcnt_;}
 
 	/** get number of non-zero quadratic terms of quadratic constraints */
-	int * getQuadNonZeroCounts(int scen) const {return QcRowData_[scen].quadnzcnt_;}
+	int * getQcQuadNonZeroCounts(int scen) const {return QcRowData_[scen].quadnzcnt_;}
 
 	/** get rhs of quadratic constraints */
-	double * getRhs(int scen) const {return QcRowData_[scen].rhs_;}
+	double * getQcRhs(int scen) const {return QcRowData_[scen].rhs_;}
 
 	/** get sense of quadratic constraints */
-	int * getSense(int scen) const {return QcRowData_[scen].sense_;}
+	int * getQcSense(int scen) const {return QcRowData_[scen].sense_;}
 
 	/** get indices for linear terms of quadratic constraints */
-	const int ** getLinearIndices(int scen) const {return (const int **) QcRowData_[scen].linind_;}
+	const int ** getQcLinearIndices(int scen) const {return (const int **) QcRowData_[scen].linind_;}
 
 	/** get coefficients for linear terms of quadratic constraints */
-	const double ** getLinearVals(int scen) const {return (const double **) QcRowData_[scen].linval_;}
+	const double ** getQcLinearVals(int scen) const {return (const double **) QcRowData_[scen].linval_;}
 
 	/** get first indices for quadratic terms of quadratic constraints */
-	const int ** getQuadIndices1st(int scen) const {return (const int **) QcRowData_[scen].quadrow_;}
+	const int ** getQcQuadIndices1st(int scen) const {return (const int **) QcRowData_[scen].quadrow_;}
 
 	/** get second indices for quadratic terms of quadratic constraints */
-	const int ** getQuadIndices2nd(int scen) const {return (const int **) QcRowData_[scen].quadcol_;}
+	const int ** getQcQuadIndices2nd(int scen) const {return (const int **) QcRowData_[scen].quadcol_;}
 
 	/** get coefficients for quadratic terms of quadratic constraints */
-	const double ** getQuadraticVals(int scen) const {return (const double **) QcRowData_[scen].quadval_;}
+	const double ** getQcQuadraticVals(int scen) const {return (const double **) QcRowData_[scen].quadval_;}
 
-protected:
+    protected:
 
-	int				nscen_;
-	int				nstage_;
 	const char * filename_;
-	int * nqcols_;
 
 	vector<QcRowDataScen> QcRowData_;
 };
 
-#endif /* QCMODEL_H_ */
+#endif /* DECTSSQCMODEL_H_ */
