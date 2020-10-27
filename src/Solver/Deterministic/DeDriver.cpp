@@ -6,8 +6,7 @@
  */
 
 #include "DspConfig.h"
-#include "Model/TssModel.h"
-#include "Model/QcModel.h"
+#include "Model/DecTssQcModel.h"
 #include "Solver/Deterministic/DeDriver.h"
 #include "SolverInterface/DspOsiCpx.h"
 #include "SolverInterface/DspOsiGrb.h"
@@ -64,8 +63,6 @@ DSP_RTN_CODE DeDriver::run()
 	double * rlbd   = NULL;
 	double * rubd   = NULL;
 
-	int ncols_2nd; 
-
 	BGN_TRY_CATCH
 
 	/** get DE model */
@@ -83,8 +80,6 @@ DSP_RTN_CODE DeDriver::run()
 			printf("Model claims to be stochastic when it is not");
 			return DSP_RTN_ERR;
 		}
-
-		ncols_2nd = tssModel->getNumCols(1);
 
 		/** relax integrality? */
 		if (par_->getBoolPtrParam("RELAX_INTEGRALITY")[0])
@@ -134,10 +129,10 @@ DSP_RTN_CODE DeDriver::run()
 	/** add quadratic constraints */
 	if (model_->isQuadratic())
 	{
-		QcModel * qcModel;
+		DecTssQcModel * qcModel;
 		try
 		{
-			qcModel = dynamic_cast<QcModel *>(model_);
+			qcModel = dynamic_cast<DecTssQcModel *>(model_);
 		}
 		catch (const std::bad_cast& e)
 		{
@@ -145,7 +140,7 @@ DSP_RTN_CODE DeDriver::run()
 			return DSP_RTN_ERR;
 		}
 
-		for (int s = 0; s < qcModel->getNumScens(); s++) {
+		for (int s = 0; s < qcModel->getNumScenarios(); s++) {
 			
 			QcRowDataScen * qcrowdata = qcModel->getQRowsCPXParams(s);
 
@@ -166,13 +161,13 @@ DSP_RTN_CODE DeDriver::run()
 
 				for (int j = 0; j < qcrowdata->linnzcnt_[i]; j++) 
 				{
-					linind[i][j] = ncols_2nd * s + qcrowdata->linind_[i][j];
+					linind[i][j] = qcModel->getNumCols(1) * s + qcrowdata->linind_[i][j];
 				}
 
 				for (int j = 0; j < qcrowdata->quadnzcnt_[i]; j++) 
 				{
-					quadrow[i][j] = ncols_2nd * s + qcrowdata->quadrow_[i][j];
-					quadcol[i][j] = ncols_2nd * s + qcrowdata->quadcol_[i][j];
+					quadrow[i][j] = qcModel->getNumCols(1) * s + qcrowdata->quadrow_[i][j];
+					quadcol[i][j] = qcModel->getNumCols(1) * s + qcrowdata->quadcol_[i][j];
 				}
 			}
         	
@@ -204,15 +199,21 @@ DSP_RTN_CODE DeDriver::run()
 	walltime_ = CoinGetTimeOfDay();
 
 	/** solve */
-	// solve();
 	if (model_->isQuadratic())
 	{
+		/* change problem type to MIQCP */
 		osi_->chgProbTypeToMIQCP();
-		char lpfilename[128];
-		sprintf(lpfilename, "%s.lp", "farmer2"); 
-		osi_->writeProb(lpfilename, NULL);
+
+		/* need to update integer variables */
+
+		
+		/* solve using MIQCP solver */
 		osi_->solveQp();
-	} else	solve();
+	} 
+	else 
+	{
+		solve();
+	}	
 
 	/** toc */
 	cputime_  = CoinCpuTime() - cputime_;

@@ -13,7 +13,7 @@
 #include "DspApiEnv.h"
 #include "DspCInterface.h"
 #include "Utility/DspMacros.h"
-#include "Model/DecTssModel.h"
+#include "Model/DecTssQcModel.h"
 #include "Model/DecBlkModel.h"
 
 #include "Solver/Deterministic/DeDriver.h"
@@ -49,6 +49,17 @@ DspApiEnv * createEnv(void)
 	return new DspApiEnv;
 }
 
+/** create model */
+void createModel(DspApiEnv * env, bool is_qc)
+{
+	if (env->model_ == NULL) {
+		if (is_qc)
+			env->model_ = new DecTssQcModel;
+		else 
+			env->model_ = new DecTssModel;
+	}
+}
+
 /** free API environment */
 void freeEnv(DspApiEnv * &env)
 {
@@ -69,12 +80,14 @@ void freeSolver(DspApiEnv * env)
 	FREE_PTR(env->solver_);
 }
 
-/** If current model is stochastic, return the model as a TssModel object. If no model exists, create one. */
+/** If current model is stochastic, return the model as a TssModel object. */
 TssModel * getTssModel(DspApiEnv * env)
-{
+{	
 	if (env->model_ == NULL)
-		env->model_ = new DecTssModel;
-	/** TODO: Should fail gracefully */
+	{
+		printf("Error: env->model_ should be initialized using createModel function");
+		return NULL;
+	}
 	if (env->model_->isStochastic())
 	{
 		TssModel * tss;
@@ -97,20 +110,21 @@ TssModel * getTssModel(DspApiEnv * env)
 }
 
 /** If current model is quadratic, return the model as a QcModel object. */
-QcModel * getQcModel(DspApiEnv * env)
+DecTssQcModel * getDecTssQcModel(DspApiEnv * env)
+// QcModel * getQcModel(DspApiEnv * env)
 {
 	if (env->model_ == NULL)
 	{
-		printf("Error: DecTssModel should be initialized before accessing QcModel");
+		printf("Error: env->model_ should be initialized using createModel function");
 		return NULL;
 	}
 	
 	if (env->model_->isQuadratic())
 	{
-		QcModel * qc;
+		DecTssQcModel * qc;
 		try
 		{
-			qc = dynamic_cast<QcModel *>(env->model_);
+			qc = dynamic_cast<DecTssQcModel *>(env->model_);
 		}
 		catch (const std::bad_cast& e)
 		{
@@ -124,15 +138,6 @@ QcModel * getQcModel(DspApiEnv * env)
 		printf("Error: Attempted to access feature only supported by quadratic models with a general two-stage decomposition model\n");
 		return NULL;
 	}
-}
-
-/** return the model as a DecTssModel object. If no model exists, create one. */
-DecTssModel * getDecTssModel(DspApiEnv * env)
-{
-	if (env->model_ == NULL)
-		env->model_ = new DecTssModel;
-
-	return dynamic_cast<DecTssModel *>(env->model_);
 }
 
 /** get model pointer */
@@ -161,12 +166,6 @@ void setDimensions(
 	getTssModel(env)->setDimensions(ncols1, nrows1, ncols2, nrows2);
 }
 
-/* update is_quadratic_ if it has quadratic rows */
-void setIsQuadratic(DspApiEnv * env, bool is_quadratic) 
-{
-	getDecTssModel(env)->setIsQuadratic(is_quadratic);
-}
-
 /** read smps files */
 int readSmps(DspApiEnv * env, const char * smps)
 {
@@ -182,7 +181,7 @@ int readDro(DspApiEnv * env, const char * dro)
 /** read quad files */
 int readQuad(DspApiEnv * env, const char * smps, const char * quad)
 {
-	return getQcModel(env)->readQuad(smps, quad);
+	return getDecTssQcModel(env)->readQuad(smps, quad);
 }
 
 /** load first-stage problem */
@@ -677,13 +676,6 @@ int getTotalNumRows(DspApiEnv * env)
 {
 	DSP_API_CHECK_MODEL(-1);
 	return getModelPtr(env)->getFullModelNumRows();
-}
-
-/** get number of quadratic rows */
-int getNumQRows(DspApiEnv * env, int s)
-{
-	DSP_API_CHECK_MODEL(-1);
-	return getQcModel(env)->getNumQRows(s);
 }
 
 /** get total number of columns */

@@ -19,8 +19,8 @@
 #include "DspApiEnv.h"
 
 class TssModel;
-class QcModel;
 class DecTssModel;
+class DecTssQcModel;
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,6 +28,9 @@ extern "C" {
 
 /** create API environment */
 DspApiEnv * createEnv(void);
+
+/** create model */
+void createModel(DspApiEnv * env, bool is_qc=false);
 
 /** free API environment */
 void freeEnv(DspApiEnv * &env);
@@ -42,10 +45,7 @@ void freeSolver(DspApiEnv * env);
 TssModel * getTssModel(DspApiEnv * env);
 
 /** If current model is quadratic, return the model as a QcModel object. */
-QcModel * getQcModel(DspApiEnv * env);
-
-/** return the model as a DecTssModel object. If no model exists, create one. */
-DecTssModel * getDecTssModel(DspApiEnv * env);
+DecTssQcModel * getDecTssQcModel(DspApiEnv * env);
 
 /** get model pointer */
 DecModel * getModelPtr(DspApiEnv * env);
@@ -207,9 +207,6 @@ int getNumIntegers(DspApiEnv * env, int stage);
 
 /** get Total number of row */
 int getTotalNumRows(DspApiEnv * env);
-
-/** get number of quadratic rows */
-int getNumQRows(DspApiEnv * env, int s);
 
 /** get number of columns */
 int getTotalNumCols(DspApiEnv * env);

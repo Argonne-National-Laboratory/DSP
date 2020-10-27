@@ -1,33 +1,31 @@
 /*
- * QCModel.cpp
+ * DecTssQcModel.cpp
  *
- *  Created on: Oct 22, 2020
- *      Author: geunyeong byeon
+ *  Created on: Oct 27, 2020
+ *      Author: geunyeongbyeon
  */
 
-//#define DSP_DEBUG
-
 #include "Utility/DspMessage.h"
-#include "Model/QcModel.h"
+#include "Model/DecTssQcModel.h"
 
-QcModel::QcModel() :
-TssModel() {
-	cout << "reach QcModel constructor" << endl;
-	cout << "nstgs_: " << nstgs_ << endl;
+DecTssQcModel::DecTssQcModel() :
+DecTssModel() {
+	/** nothing to do */
 }
 
 /** copy constructor */
-QcModel::QcModel(const QcModel & rhs) :
-TssModel(rhs) {}
+DecTssQcModel::DecTssQcModel(const DecTssQcModel & rhs) :
+DecTssModel(rhs) {
+	/** nothing to do */
+}
 
 /** copy constructor */
-QcModel::QcModel(const TssModel & rhs) :
-TssModel(rhs) {}
-
-QcModel::~QcModel()
-{
-	FREE_ARRAY_PTR(nqcols_);
-
+DecTssQcModel::DecTssQcModel(const DecTssModel & rhs) :
+DecTssModel(rhs) {
+	/** nothing to do */
+}
+DecTssQcModel::~DecTssQcModel() {
+	
 	for (int s = 0; s < nscen_; s++)
 	{
 		FREE_ARRAY_PTR(QcRowData_[s].linnzcnt_);
@@ -43,8 +41,9 @@ QcModel::~QcModel()
 	}
 }
 
+
 /** construct a map that maps variable names to their indices */
-bool QcModel::mapVarnameIndex(map<string, int> &map_varName_index, const char * smps) 
+bool DecTssQcModel::mapVarnameIndex(map<string, int> &map_varName_index, const char * smps) 
 {
 	char core[128];
 	sprintf(core, "%s.cor", smps); 
@@ -136,7 +135,7 @@ bool QcModel::mapVarnameIndex(map<string, int> &map_varName_index, const char * 
 	return true;
 }
 /** read quadratic data file */
-DSP_RTN_CODE QcModel::readQuad(const char * smps, const char * filename)
+DSP_RTN_CODE DecTssQcModel::readQuad(const char * smps, const char * filename)
 {
 	BGN_TRY_CATCH
 
@@ -165,6 +164,9 @@ DSP_RTN_CODE QcModel::readQuad(const char * smps, const char * filename)
 	map<string, int>::iterator it;
 	vector<char> qrow_sense;
 
+	/* allocate memory */
+	setQcDimensions();
+
 	if (myfile.is_open()) {
 		while (myfile >> item) {
 		
@@ -172,32 +174,6 @@ DSP_RTN_CODE QcModel::readQuad(const char * smps, const char * filename)
 			{
 				myfile >> item;
 			} 
-			else if (item.find("NSCEN") != string::npos) 
-			{
-				int nscen;
-				myfile >> nscen;
-
-				/** allocate memory */
-				setQuadDimensions(nscen);
-			} 
-			else if (item.find("NSTAGE") != string::npos) 
-			{
-				myfile >> nstage_;
-
-				if (nstage_ != 2) {
-					char msg[128];
-					sprintf(msg, "Current version only supports quadratic rows for two-stage models\n");
-					throw msg;
-				} 
-			} 
-			else if (item.find("NCORECOLS") != string::npos) 
-			{	
-				nqcols_ = new int [nstage_];
-			
-				for (int i = 0; i < nstage_; i++) {
-					myfile >> nqcols_[i];
-				}
-			}
 			else if (item.find("SCEN") != string::npos) 
 			{	
 				/** start reading quad constr data for some scenario */		
@@ -209,44 +185,44 @@ DSP_RTN_CODE QcModel::readQuad(const char * smps, const char * filename)
 				}
 
 				while (1) {
-				myfile >> sind;
-			
-				QcRowData_[sind].nqrows_ = 0;
+					
+					myfile >> sind;
+					QcRowData_[sind].nqrows_ = 0;
 
-				myfile >> item;
-				if (item.find("QUADROWS") == string::npos) {
-					char msg[128];
-					sprintf(msg, "Quadratic Constraints Data for each SCEN should be provided in this order: QUADROWS, LINTERMS, QUADTERMS, RHS\n");
-					throw msg;
-				} 
-			
-				/** read row data */
-				while (1) 
-				{
 					myfile >> item;
-
-					if (item.find("LINTERMS") != string::npos)
-						break;
-					else if (item == "G")
-						qrow_sense.push_back('G');
-					else if (item == "L")
-						qrow_sense.push_back('L');
-					else {
+					if (item.find("QUADROWS") == string::npos) {
 						char msg[128];
-						sprintf(msg, "Quadratic constraints sense must be 'G' or 'L'\n");
+						sprintf(msg, "Quadratic Constraints Data for each SCEN should be provided in this order: QUADROWS, LINTERMS, QUADTERMS, RHS\n");
 						throw msg;
 					} 
-
-					myfile >> name;
-					map_qrowName_index[name] = QcRowData_[sind].nqrows_;
-					QcRowData_[sind].nqrows_++;
-				}
-
-				/** allocate memory */
-				assert(QcRowData_[sind].nqrows_ == qrow_sense.size());
-				assert(QcRowData_[sind].nqrows_ == map_qrowName_index.size());
 			
-				setQuadDimensions(sind, QcRowData_[sind].nqrows_);
+					/** read row data */
+					while (1) 
+					{
+						myfile >> item;
+
+						if (item.find("LINTERMS") != string::npos)
+							break;
+						else if (item == "G")
+							qrow_sense.push_back('G');
+						else if (item == "L")
+							qrow_sense.push_back('L');
+						else {
+							char msg[128];
+							sprintf(msg, "Quadratic constraints sense must be 'G' or 'L'\n");
+							throw msg;
+						} 
+
+						myfile >> name;
+						map_qrowName_index[name] = QcRowData_[sind].nqrows_;
+						QcRowData_[sind].nqrows_++;
+					}
+
+					/** allocate memory */
+					assert(QcRowData_[sind].nqrows_ == qrow_sense.size());
+					assert(QcRowData_[sind].nqrows_ == map_qrowName_index.size());
+				
+					setQcDimensions(sind, QcRowData_[sind].nqrows_);
 
 				/** read sense_ */
 				for (int i = 0; i < QcRowData_[sind].nqrows_; i++) {
@@ -385,34 +361,23 @@ DSP_RTN_CODE QcModel::readQuad(const char * smps, const char * filename)
 }
 
 /** set dimensions for second-stage quadratic constraints */
-DSP_RTN_CODE QcModel::setQuadDimensions(int nscen, int * nqrows)
+DSP_RTN_CODE DecTssQcModel::setQcDimensions(int * nqrows)
 {
 	BGN_TRY_CATCH
 
-	setQuadDimensions(nscen);
+	QcRowData_.resize(nscen_);
 
-	for (int s = 0; s < nscen; s++) 
+	for (int s = 0; s < nscen_; s++) 
 	{
-		setQuadDimensions(s, nqrows[s]);
+		setQcDimensions(s, nqrows[s]);
 	}
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 	
 	return DSP_RTN_OK;
 }
-DSP_RTN_CODE QcModel::setQuadDimensions(int nscen)
-{
-	BGN_TRY_CATCH
 
-	nscen_ = nscen;
-
-	QcRowData_.resize(nscen);
-
-	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
-	
-	return DSP_RTN_OK;
-}
-DSP_RTN_CODE QcModel::setQuadDimensions(int s, int nqrows)
+DSP_RTN_CODE DecTssQcModel::setQcDimensions(int s, int nqrows)
 {
 	BGN_TRY_CATCH
 
@@ -435,7 +400,7 @@ DSP_RTN_CODE QcModel::setQuadDimensions(int s, int nqrows)
 }
 
 /** load quadratic constraints to the second stage */
-DSP_RTN_CODE QcModel::loadQuadraticConstrs(
+DSP_RTN_CODE DecTssQcModel::loadQuadraticRows(
         const int           s,     		/**< scenario index */
 		const int 			nqrows,
         const int *         linnzcnt,  	/**< number of nonzero coefficients in the linear part of each constraint  */
@@ -488,7 +453,7 @@ DSP_RTN_CODE QcModel::loadQuadraticConstrs(
 	return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE QcModel::printQuadRows (const int s)
+DSP_RTN_CODE DecTssQcModel::printQuadRows (const int s)
 {
 	BGN_TRY_CATCH
 
@@ -517,7 +482,7 @@ DSP_RTN_CODE QcModel::printQuadRows (const int s)
 	return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE QcModel::printQuadRows (QcRowDataScen *qcdata)
+DSP_RTN_CODE DecTssQcModel::printQuadRows (QcRowDataScen *qcdata)
 {
 	BGN_TRY_CATCH
 
