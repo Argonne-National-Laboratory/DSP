@@ -324,7 +324,7 @@ void solveDd(DspApiEnv * env)
 	freeSolver(env);
 
 	env->solver_ = new DdDriverSerial(env->model_, env->par_, env->message_);
-	DSP_RTN_CHECK_THROW(env->solver_->init());
+ 	DSP_RTN_CHECK_THROW(env->solver_->init());
 	DSP_RTN_CHECK_THROW(dynamic_cast<DdDriverSerial*>(env->solver_)->run());
 	DSP_RTN_CHECK_THROW(env->solver_->finalize());
 

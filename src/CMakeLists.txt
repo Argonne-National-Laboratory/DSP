@@ -16,7 +16,6 @@ set(DSP_SRC
     Model/DetModel.cpp
     Model/StoModel.cpp
     Model/TssModel.cpp
-    Model/QCModel.cpp
     Model/DecTssQCModel.cpp
     Solver/DecSolver.cpp
     Solver/DantzigWolfe/DwBranchInt.cpp

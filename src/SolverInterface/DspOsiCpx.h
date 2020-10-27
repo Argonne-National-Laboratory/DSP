@@ -132,7 +132,6 @@ public:
 	virtual int status() {
 		int status = DSP_STAT_UNKNOWN;
 		int probtype = CPXgetprobtype(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
-		std::cout << "probtype: " << probtype << std::endl;
 		int stat = CPXgetstat(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
 
 		if (probtype == CPXPROB_LP) {
