@@ -757,12 +757,23 @@ void StoModel::combineRandQuadraticObjective(CoinPackedMatrix * &qobj_coupling, 
 			}
 		}
 	}
-	//printf("newcolindex_ncoupling.size() = %d\n", newcolindex_ncoupling.size());
+	//printf("newcolindex_coupling.size() = %d\n", newcolindex_coupling.size());
 	//for (int m=0; m<newcolindex_ncoupling.size(); m++){
 	//	printf("newcolindex_ncoupling[%d]=%d\n", m, newcolindex_ncoupling[m]);
 	//}
-	qobj_coupling=new CoinPackedMatrix(false, &newcolindex_coupling[0], &newrowindex_coupling[0], &newelements_coupling[0], newelements_coupling.size());
-	qobj_ncoupling=new CoinPackedMatrix(false, &newcolindex_ncoupling[0], &newrowindex_ncoupling[0], &newelements_ncoupling[0], newelements_ncoupling.size());
+	if (newelements_coupling.size()==0){
+		qobj_coupling=NULL;
+	}
+	else{
+		qobj_coupling=new CoinPackedMatrix(false, &newcolindex_coupling[0], &newrowindex_coupling[0], &newelements_coupling[0], newelements_coupling.size());
+	}
+	if (newelements_ncoupling.size()==0){
+		qobj_coupling=NULL;
+	}
+	else{
+		qobj_ncoupling=new CoinPackedMatrix(false, &newcolindex_ncoupling[0], &newrowindex_ncoupling[0], &newelements_ncoupling[0], newelements_ncoupling.size());
+	}
+	//qobj_ncoupling=new CoinPackedMatrix(false, &newcolindex_ncoupling[0], &newrowindex_ncoupling[0], &newelements_ncoupling[0], newelements_ncoupling.size());
 	//PRINT_ARRAY_MSG(newcolindex_ncoupling.size(), &newcolindex_ncoupling[0], "elements in newcolindex_ncoupling");
 	//PRINT_ARRAY_MSG(qobj_ncoupling->getNumElements(), qobj_ncoupling->getElements(), "elements in qobj_ncoupling");
 
