@@ -165,6 +165,7 @@ DSP_RTN_CODE TssModel::loadFirstStage(
 	CoinCopyN(obj,   ncols_[0], obj_core_[0]);
 	CoinCopyN(rlbd,  nrows_[0], rlbd_core_[0]);
 	CoinCopyN(rubd,  nrows_[0], rubd_core_[0]);
+	qobj_core_[0] = NULL;
 
 	/** count number of integer variables */
 	nints_core_ = 0;
