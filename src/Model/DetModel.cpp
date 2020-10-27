@@ -91,7 +91,10 @@ DetModel::DetModel(const DetModel & rhs) :
 	rubd_ = new double [nrows];
 
 	mat_ = new CoinPackedMatrix(*rhs.mat_);
-	qobj_ = new CoinPackedMatrix(*rhs.qobj_);
+	if (rhs.qobj_!=NULL){
+		qobj_ = new CoinPackedMatrix(*rhs.qobj_);
+	}
+	
 	CoinCopyN(rhs.clbd_,  ncols, clbd_);
 	CoinCopyN(rhs.cubd_,  ncols, cubd_);
 	CoinCopyN(rhs.ctype_, ncols, ctype_);
