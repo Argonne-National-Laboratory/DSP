@@ -196,6 +196,9 @@ int getNumIntegers(DspApiEnv * env, int stage);
 /** get Total number of row */
 int getTotalNumRows(DspApiEnv * env);
 
+/** get number of quadratic rows */
+int getNumQRows(DspApiEnv * env, int s);
+
 /** get number of columns */
 int getTotalNumCols(DspApiEnv * env);
 

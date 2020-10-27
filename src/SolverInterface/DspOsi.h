@@ -44,6 +44,9 @@ public:
 	/** write problem file */
 	virtual void writeProb(char const * filename_str, char const * filetype_str) {};
 
+	/** set column type */
+	virtual void setColumnTypes(int nc, const char *ctype) {};
+	
 	/** solve problem directly through the solver */
 	virtual void solveQp() {};
 

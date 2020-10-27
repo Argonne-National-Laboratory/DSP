@@ -613,6 +613,13 @@ int getTotalNumRows(DspApiEnv * env)
 	return getModelPtr(env)->getFullModelNumRows();
 }
 
+/** get number of quadratic rows */
+int getNumQRows(DspApiEnv * env, int s)
+{
+	DSP_API_CHECK_MODEL(-1);
+	return getDecTssQcModel(env)->getNumQRows(s);
+}
+
 /** get total number of columns */
 int getTotalNumCols(DspApiEnv * env)
 {
