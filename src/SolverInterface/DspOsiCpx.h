@@ -69,17 +69,34 @@ public:
 		for (int i = 0; i < nqrows; i++) {
 				CPXaddqconstr(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), linnzcnt[i], quadnzcnt[i], rhs[i], sense[i], 
 				linind[i], linval[i], quadrow[i], quadcol[i], quadval[i], NULL);
-				std::cout << i << " th row added " << std::endl;
 		}
     }
 
+	/** change problem type to MIQCP */
+	virtual void chgProbTypeToMIQCP() {
+		if (CPXchgprobtype(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), CPXPROB_MIQCP))
+			std::cout << "fail to change the problem type to MIQCP" << std::endl;
+	}
+
+	// /** change column type using coltype_ for MIQCP */
+	// virtual void chgCType (nc, cindarray, coltype_) {
+	// 	CPXchgctype(env_, lp, nc, cindarray, coltype_);
+	// }
+
+	/** write problem file */
 	virtual void writeProb(char const * filename_str, char const * filetype_str)
 	{
 		if (CPXwriteprob(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), filename_str, filetype_str))
 			std::cout << "fail to write problem file" << std::endl;
 	}
-		
 
+	/** solve problem directly through the solver */
+	virtual void solveQp()
+	{
+		if (CPXmipopt(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL)))
+			std::cout << "fail to solve problem directly through the CPLEX" << std::endl;
+	}
+		
 	/** solve problem */
 	virtual void solve() {
 		if (si_->getNumIntegers() > 0)
@@ -106,6 +123,7 @@ public:
 	virtual int status() {
 		int status = DSP_STAT_UNKNOWN;
 		int probtype = CPXgetprobtype(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
+		std::cout << "probtype: " << probtype << std::endl;
 		int stat = CPXgetstat(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
 
 		if (probtype == CPXPROB_LP) {
@@ -144,7 +162,7 @@ public:
 				status = DSP_STAT_UNKNOWN;
 				break;
 			}
-		} else if (probtype == CPXPROB_MILP) {
+		} else if (probtype == CPXPROB_MILP || probtype == CPXPROB_MIQCP) {
 			switch(stat) {
 			case CPXMIP_OPTIMAL:
 			case CPXMIP_OPTIMAL_TOL:
