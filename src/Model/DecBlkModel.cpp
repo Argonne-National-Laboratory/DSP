@@ -550,8 +550,8 @@ DSP_RTN_CODE DecBlkModel::copyRecoProb(
 	CoinCopyN(sub->getObj(), sub->getNumCols(), obj_reco);
 	CoinCopyN(sub->getRowLower(), sub->getNumRows(), rlbd_reco);
 	CoinCopyN(sub->getRowUpper(), sub->getNumRows(), rubd_reco);
-	CoinPackedMatrix *qobj_reco;
-	qobj_reco->copyOf(*sub->getQuadraticObjectiveMatrix());
+	//CoinPackedMatrix *qobj_reco;
+	//qobj_reco->copyOf(*sub->getQuadraticObjectiveMatrix());
 	// TO BE MODIFIED
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
@@ -716,18 +716,22 @@ DSP_RTN_CODE DecBlkModel::getFullModel(
 	if (mat->isColOrdered()) mat->reverseOrdering();
 
 	/** master quadratic objective */
+	/*
 	CoinPackedMatrix *qmaster=NULL;
 	if (master->getQuadraticObjectiveMatrix() != NULL){
 		qmaster = new CoinPackedMatrix(*(master->getQuadraticObjectiveMatrix()));
 		if (qmaster->isColOrdered()) qmaster->reverseOrdering();
 		cout << "master qobj is not empty" <<endl;
 	}
-	
-			
+	*/
+
+	/*		
 	vector<int> qrowIndices;
 	vector<int> qcolIndices;
 	vector<double> qelements;
+	*/
 
+	/*
 	int rownum=0;
 	int pos=0;
 	if (qmaster !=NULL){
@@ -750,7 +754,7 @@ DSP_RTN_CODE DecBlkModel::getFullModel(
 			}	
 			rownum++;
 		}
-	}
+	}*/
 	
 	/** the subproblem part */
 	int coloffset = 0;
@@ -767,11 +771,12 @@ DSP_RTN_CODE DecBlkModel::getFullModel(
 		const double* values = submat->getElements();
 
 		/** quadratic objective */
+		/*
 		const CoinPackedMatrix* subqobj = NULL;
 		if (sub->getQuadraticObjectiveMatrix() != NULL){
 			subqobj=new CoinPackedMatrix(*(sub->getQuadraticObjectiveMatrix()));
 		}
-		
+		*/
 
 		/** add rows with column indices adjusted */
 		for (int k = 0; k < submat->getNumRows(); ++k) {
@@ -785,6 +790,7 @@ DSP_RTN_CODE DecBlkModel::getFullModel(
 			mat->appendRow(row);
 		}
 
+		/*
 		if (subqobj != NULL){
 			int rownum=0;
 			for (int k = 0; k < subqobj->getNumRows(); ++k){
@@ -812,6 +818,7 @@ DSP_RTN_CODE DecBlkModel::getFullModel(
 				rownum++;
 			}
 		}
+		*/
 		coloffset += sub->getNumCols() - mat->getNumCols();
 		sub = NULL;
 	}
