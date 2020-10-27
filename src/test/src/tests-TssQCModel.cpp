@@ -69,7 +69,7 @@ TEST_CASE("Class TssQCModel") {
     setIsQuadratic(env, isquadratic);
     QcModel * qc = getQcModel(env);
 
-    qc->readQuad(smpsfile, "../examples/quad/farmer.txt", getNumCols(env, 1));
+    qc->readQuad(smpsfile, "../examples/quad/farmer");
 
     // qc->printQuadRows(0);
     // qc->printQuadRows(1);
@@ -136,28 +136,18 @@ TEST_CASE("Class TssQCModel") {
     // qc->printQuadRows(2);
     
     /** set up solvers */
-	DSP_API_CHECK_MODEL();
-	freeSolver(env);
+	// DSP_API_CHECK_MODEL();
+	// freeSolver(env);
 
-	env->solver_ = new DdDriverSerial(env->model_, env->par_, env->message_);
-	DSP_RTN_CODE c = env->solver_->init();
-    REQUIRE(c == DSP_RTN_OK);
+	// env->solver_ = new DdDriverSerial(env->model_, env->par_, env->message_);
+	// DSP_RTN_CODE c = env->solver_->init();
+    // REQUIRE(c == DSP_RTN_OK);
     
     for (int s = 0; s < getNumScenarios(env); s++)
     {
-        // int nqrows;
-		// int * linnzcnt;
-		// int * quadnzcnt;
-		// double * rhs;
-		// int * sense; 
-		// const int ** linind;
-		// const double ** linval;
-		// const int ** quadrow;
-		// const int ** quadcol;
-		// const double ** quadval;
         QcRowDataScen * qcrowdata = qc->getQRowsCPXParams(s);
 
-        qc->printQuadRows(s);
+        // qc->printQuadRows(s);
         qc->printQuadRows(qcrowdata);
 
 //     DdWorkerLB* worker_ = dynamic_cast<DdMWSerial*> (env->solver_)

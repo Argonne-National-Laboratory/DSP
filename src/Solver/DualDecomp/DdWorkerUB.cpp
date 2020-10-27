@@ -161,6 +161,11 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 	    DSPdebug(mat_reco->verifyMtx(4));
 		DSPdebugMessage("number of integers: %d\n", osi_[s]->si_->getNumIntegers());
 
+		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
+		char lpfilename[128];
+		sprintf(lpfilename, "DdWorkerUB_scen%d.lp", s); 
+		osi_[s]->writeProb(lpfilename, NULL);
+
 		/** allocate array size for each scenario primal solution */
 		primsols_[s].resize(osi_[s]->si_->getNumCols());
 
