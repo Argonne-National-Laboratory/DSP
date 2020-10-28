@@ -245,7 +245,7 @@ public:
 		try{
 			double node;
         	GUROBI_CALL("getNumNodes", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
-        	GUROBI_CALL("getNumNodes", GRBgetdblattr(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), GRB_DBL_ATTR_NODECOUNT, &node));
+       		GUROBI_CALL("getNumNodes", GRBgetdblattr(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), GRB_DBL_ATTR_NODECOUNT, &node));       	
         	return (int)node;
 		}
 		catch(const CoinError& e){
