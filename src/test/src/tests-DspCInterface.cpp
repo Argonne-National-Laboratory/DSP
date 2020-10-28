@@ -80,19 +80,19 @@ TEST_CASE("C interface functions") {
     //setNumberOfScenarios(env, NS);
 
     SECTION("load quadratic first stage problem"){
-        env = createEnv();
-        setNumberOfScenarios(env, NS);
-        setDimensions(env, 3, 1, 6, 3);
-        loadQuadraticFirstStage(env, start1, index1, value1, xclbd, xcubd, xctype, Cost, qrowindex, qcolindex, qvalue, numq, rubd1, rubd1);
-        for (int i=0; i<NS; i++){
-            loadQuadraticSecondStage(env, i, probability[i], start, index, value[i], yclbd, ycubd, yctype, profit,qrowindex2, qcolindex2, qvalue2, numq2, rlbd, rubd);
-        }
-        setIntParam(env, "DE/SOLVER", 4);
-        solveDe(env);
-        double prim;
-        prim=getPrimalBound(env);
-        double p=round(prim*1000000)/1000000;
-        REQUIRE(p == -64818.588589);
+        //env = createEnv();
+        //setNumberOfScenarios(env, NS);
+        //setDimensions(env, 3, 1, 6, 3);
+        //loadQuadraticFirstStage(env, start1, index1, value1, xclbd, xcubd, xctype, Cost, qrowindex, qcolindex, qvalue, numq, rubd1, rubd1);
+        //for (int i=0; i<NS; i++){
+        //    loadQuadraticSecondStage(env, i, probability[i], start, index, value[i], yclbd, ycubd, yctype, profit,qrowindex2, qcolindex2, qvalue2, numq2, rlbd, rubd);
+        //}
+        //setIntParam(env, "DE/SOLVER", 4);
+        //solveDe(env);
+        //double prim;
+        //prim=getPrimalBound(env);
+        //double p=round(prim*1000000)/1000000;
+        //REQUIRE(p == -64818.588589);
     }
 
     SECTION("freeEnv function") {
