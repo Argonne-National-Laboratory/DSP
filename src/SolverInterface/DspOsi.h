@@ -72,6 +72,10 @@ public:
 	/** change problem type to QP */
 	virtual void switchToQP(void){};
 
+	virtual void writeMps(const char *filename){
+		si_->writeMps(filename);
+	}
+
 	/** solve problem */
 	virtual void solve() = 0;
 

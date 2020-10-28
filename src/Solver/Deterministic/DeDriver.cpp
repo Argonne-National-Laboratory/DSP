@@ -4,6 +4,7 @@
  *  Created on: Feb 17, 2016
  *      Author: kibaekkim
  */
+//#define DSP_DEBUG
 
 #include "DspConfig.h"
 #include "Model/DecTssQcModel.h"
@@ -49,6 +50,7 @@ DSP_RTN_CODE DeDriver::run()
 	FREE_ARRAY_PTR(cubd)  \
 	FREE_ARRAY_PTR(ctype) \
 	FREE_ARRAY_PTR(obj)   \
+	FREE_PTR(qobj)		  \
 	FREE_ARRAY_PTR(rlbd)  \
 	FREE_ARRAY_PTR(rubd)
 
@@ -59,6 +61,7 @@ DSP_RTN_CODE DeDriver::run()
 	double * clbd   = NULL;
 	double * cubd   = NULL;
 	double * obj    = NULL;
+	CoinPackedMatrix * qobj = NULL;
 	char *   ctype  = NULL;
 	double * rlbd   = NULL;
 	double * rubd   = NULL;
@@ -69,7 +72,7 @@ DSP_RTN_CODE DeDriver::run()
 	BGN_TRY_CATCH
 
 	/** get DE model */
-	DSP_RTN_CHECK_THROW(model_->getFullModel(mat, clbd, cubd, ctype, obj, rlbd, rubd));
+	DSP_RTN_CHECK_THROW(model_->getFullModel(mat, clbd, cubd, ctype, obj, qobj, rlbd, rubd));
 
 	if (model_->isStochastic())
 	{
@@ -123,6 +126,11 @@ DSP_RTN_CODE DeDriver::run()
 
 	/** load problem */
 	osi_->si_->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
+	//PRINT_ARRAY_MSG(qobj->getNumElements(), qobj->getElements(), "elements in qobj");
+	if (qobj != NULL){
+		osi_->loadQuadraticObjective(*qobj);
+	}
+	osi_->writeMps("farmer111");
 	for (int j = 0; j < mat->getNumCols(); j++)
 	{
 		if (ctype[j] != 'C')
@@ -285,14 +293,15 @@ void DeDriver::writeExtMps(const char * name)
 	double * clbd   = NULL;
 	double * cubd   = NULL;
 	double * obj    = NULL;
+	CoinPackedMatrix * qobj = NULL;
 	char *   ctype  = NULL;
 	double * rlbd   = NULL;
 	double * rubd   = NULL;
-
+	
 	BGN_TRY_CATCH
 
 	/** get DE model */
-	DSP_RTN_CHECK_THROW(model_->getFullModel(mat, clbd, cubd, ctype, obj, rlbd, rubd));
+	DSP_RTN_CHECK_THROW(model_->getFullModel(mat, clbd, cubd, ctype, obj, qobj, rlbd, rubd));
 
 	/** create DspOsi */
 	osi = createDspOsi();
@@ -300,6 +309,10 @@ void DeDriver::writeExtMps(const char * name)
 
 	/** load problem */
 	osi->si_->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
+	if (qobj!=NULL){
+		osi->loadQuadraticObjective(*qobj);
+	}
+	
 	for (int j = 0; j < mat->getNumCols(); j++)
 	{
 		if (ctype[j] != 'C')
