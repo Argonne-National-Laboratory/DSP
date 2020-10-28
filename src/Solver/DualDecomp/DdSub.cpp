@@ -358,10 +358,7 @@ DSP_RTN_CODE DdSub::createProblem() {
 		char lpfilename[128];
 		sprintf(lpfilename, "%s_DdWorkerLB_scen%d.lp", qcModel->getFileName(), sind_); 
 		osi_->writeProb(lpfilename, NULL);
-	}
 
-	if (model_->isQuadratic())
-	{
 		/* change problem type to MIQCP */
 		osi_->chgProbTypeToMIQCP();
 
@@ -371,7 +368,7 @@ DSP_RTN_CODE DdSub::createProblem() {
 	
 		// /* solve using MIQCP solver */
 		// osi_->solveQp();
-	} 
+	}
 
     /** set solution gap tolerance */
 	if (nIntegers > 0)
