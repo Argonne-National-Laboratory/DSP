@@ -98,19 +98,22 @@ public:
     	delete[] cindarray;
 	}
 
-	/** solve problem directly through the solver */
-	virtual void solveQp()
-	{
-		if (CPXmipopt(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL)))
-			std::cout << "fail to solve problem directly through the CPLEX" << std::endl;
-	}
-		
 	/** solve problem */
 	virtual void solve() {
-		if (si_->getNumIntegers() > 0)
-			si_->branchAndBound();
-		else
-			si_->initialSolve();
+
+		int probtype = CPXgetprobtype(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
+
+		if (probtype == CPXPROB_MIQCP) {
+			if (CPXmipopt(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL)))
+			std::cout << "fail to solve MIQCP using CPXmipopt" << std::endl;
+		}
+		else 
+		{
+			if (si_->getNumIntegers() > 0)
+				si_->branchAndBound();
+			else
+				si_->initialSolve();
+		}
 	}
 
 	virtual void use_simplex() {
