@@ -941,7 +941,7 @@ DSP_RTN_CODE DecTssModel::copyRecoProb(
 		CoinPackedMatrix *& qobj_reco_ncoupling, /**< [out] non-coupling quadratic coefficients (xy) */
 		double *& rlbd_reco,          /**< [out] row lower bounds */
 		double *& rubd_reco,          /**< [out] row upper bounds */
-		bool adjust_probability = true /**< [in] adjust probability */)
+		bool adjust_probability 	  /**< [in] adjust probability */)
 {
 	assert(scen >= 0 && scen < nscen_);
 	assert(nstgs_ > 1);

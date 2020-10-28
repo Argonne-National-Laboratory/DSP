@@ -1,5 +1,5 @@
 #include <iostream>
-#include "./src/DspCInterface.h"
+#include "../src/DspCInterface.h"
 
 /** This is an extension of example of Farmers problem in Section 1.1, Intorduction to Stochatic Programming
  *  This example has qudratic terms in the second stage objective functions.
