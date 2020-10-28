@@ -320,7 +320,6 @@ void solveDd(DspApiEnv * env)
 	
 	DSP_RTN_CHECK_THROW(env->solver_->init());
 	DSP_RTN_CHECK_THROW(dynamic_cast<DdDriverSerial*>(env->solver_)->run());
-	printf("debug");
 	DSP_RTN_CHECK_THROW(env->solver_->finalize());
 
 	END_TRY_CATCH(;)
