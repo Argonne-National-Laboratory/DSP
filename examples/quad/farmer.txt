@@ -4,7 +4,7 @@ SCEN	0
  L c_1
 LINTERMS
 QUADTERMS
- c_1	x0	x0	1
+ c_1	x5	x5	1
 RHS
- c_1	160000
+ c_1	1000000
 ENDATA	
