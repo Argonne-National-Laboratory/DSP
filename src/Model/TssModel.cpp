@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+// #define DSP_DEBUG
 
 #include "Utility/DspMessage.h"
 #include "Model/TssModel.h"
@@ -44,6 +44,7 @@ DSP_RTN_CODE TssModel::setNumberOfScenarios(int nscen)
 	clbd_core_  = new double * [nstgs_];
 	cubd_core_  = new double * [nstgs_];
 	obj_core_   = new double * [nstgs_];
+	qobj_core_  = new CoinPackedMatrix * [nstgs_];
 	rlbd_core_  = new double * [nstgs_];
 	rubd_core_  = new double * [nstgs_];
 	ctype_core_ = new char * [nstgs_];
@@ -52,6 +53,7 @@ DSP_RTN_CODE TssModel::setNumberOfScenarios(int nscen)
 	clbd_scen_  = new CoinPackedVector * [nscen_];
 	cubd_scen_  = new CoinPackedVector * [nscen_];
 	obj_scen_   = new CoinPackedVector * [nscen_];
+	qobj_scen_  = new CoinPackedMatrix * [nscen_];
 	rlbd_scen_  = new CoinPackedVector * [nscen_];
 	rubd_scen_  = new CoinPackedVector * [nscen_];
 
@@ -62,6 +64,7 @@ DSP_RTN_CODE TssModel::setNumberOfScenarios(int nscen)
 		cubd_core_[s]  = NULL;
 		ctype_core_[s] = NULL;
 		obj_core_[s]   = NULL;
+		qobj_core_[s]  = NULL;
 		rlbd_core_[s]  = NULL;
 		rubd_core_[s]  = NULL;
 	}
@@ -71,6 +74,7 @@ DSP_RTN_CODE TssModel::setNumberOfScenarios(int nscen)
 		clbd_scen_[s] = NULL;
 		cubd_scen_[s] = NULL;
 		obj_scen_[s]  = NULL;
+		qobj_scen_[s] = NULL;
 		rlbd_scen_[s] = NULL;
 		rubd_scen_[s] = NULL;
 	}
@@ -161,6 +165,7 @@ DSP_RTN_CODE TssModel::loadFirstStage(
 	CoinCopyN(obj,   ncols_[0], obj_core_[0]);
 	CoinCopyN(rlbd,  nrows_[0], rlbd_core_[0]);
 	CoinCopyN(rubd,  nrows_[0], rubd_core_[0]);
+	qobj_core_[0] = NULL;
 
 	/** count number of integer variables */
 	nints_core_ = 0;
@@ -190,7 +195,44 @@ DSP_RTN_CODE TssModel::loadFirstStage(
 	return DSP_RTN_OK;
 }
 
-/** load first-stage problem */
+DSP_RTN_CODE TssModel::loadFirstStage(
+		const CoinBigIndex * start, /**< start index for each row */
+		const int *          index, /**< column indices */
+		const double *       value, /**< constraint elements */
+		const double *       clbd,  /**< column lower bounds */
+		const double *       cubd,  /**< column upper bounds */
+		const char *         ctype, /**< column types */
+		const double *       obj,   /**< objective coefficients */
+		const int * 		 qobjrowindex, /**< quadratic objective row indices */
+		const int *			 qobjcolindex, /**< quadratic objective column indices */
+		const double *		 qobjvalue, /**< quadratic objective constraint elements value */
+		const int 			 numq,  /**< number of quadratic terms */
+		const double *       rlbd,  /**< row lower bounds */
+		const double *       rubd   /**< row upper bounds */)
+{
+	BGN_TRY_CATCH
+
+	/** load linear part */
+	if (qobjrowindex == NULL||qobjcolindex == NULL||qobjvalue == NULL || numq == 0){
+		loadFirstStage(start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
+		return DSP_RTN_OK;
+	}
+	else{
+		isQCQP_=1;
+		loadFirstStage(start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
+		/** load quadratic objective */
+		qobj_core_[0] = new CoinPackedMatrix(false, qobjrowindex, qobjcolindex, qobjvalue, numq);
+		qobj_core_[0]->setDimensions(ncols_[0], ncols_[0]);
+		DSPdebugMessage("get number of elements in qobjcore_[0] = %d\n", qobj_core_[0]->getNumElements());
+		//PRINT_ARRAY_MSG(3, qobj_core_[0]->getVector(0), "the first row of qobj_core_[0]");
+		//PRINT_ARRAY_MSG(3, qobj_core_[0]->getVector(1), "the second row of qobj_core_[0]");
+	}
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
+}
+
+/** load second-stage problem */
 DSP_RTN_CODE TssModel::loadSecondStage(
         const int s,               /**< scenario index */
         const double prob,         /**< probability */
@@ -233,7 +275,7 @@ DSP_RTN_CODE TssModel::loadSecondStage(
             printf("Error: invalid scenario index.\n");
             return DSP_RTN_ERR;
         }
-
+		
         /** allocate values */
         prob_[s] = prob;
         CoinCopyN(clbd, ncols_[1], clbd_core_[1]);
@@ -243,7 +285,7 @@ DSP_RTN_CODE TssModel::loadSecondStage(
         CoinCopyN(rlbd, nrows_[1], rlbd_core_[1]);
         CoinCopyN(rubd, nrows_[1], rubd_core_[1]);
         //PRINT_ARRAY_MSG(ncols_[1], ctype_core_[1], "ctype_core_[1]");
-
+		
         /** count number of integer variables */
         if (s == 0) {
             for (int j = 0; j < ncols_[1]; ++j) {
@@ -259,7 +301,7 @@ DSP_RTN_CODE TssModel::loadSecondStage(
                 }
             }
         }
-
+		DSPdebugMessage("ncols_[1] = %d\n", ncols_[1]);
         /** construct core matrix rows */
         for (int i = 0; i < nrows_[1]; ++i) {
             if (rows_core_[rstart_[1] + i] == NULL) {
@@ -270,7 +312,7 @@ DSP_RTN_CODE TssModel::loadSecondStage(
                 for (int j = start[i]; j < start[i + 1]; ++j) {
                     bool added = false;
                     if (rows_core_[rstart_[1] + i]->findIndex(index[j]) < 0) {
-                        //printf(" added index %d element %e to rows_core_[%d]\n", index[j], value[j], rstart_[1]+i);
+                        printf(" added index %d element %e to rows_core_[%d]\n", index[j], value[j], rstart_[1]+i);
                         rows_core_[rstart_[1] + i]->insert(index[j], 0.);
                         added = true;
                     }
@@ -309,6 +351,46 @@ DSP_RTN_CODE TssModel::loadSecondStage(
     return DSP_RTN_OK;
 }
 
+DSP_RTN_CODE TssModel::loadSecondStage(
+			const int            s,     /**< scenario index */
+			const double         prob,  /**< probability */
+			const CoinBigIndex * start, /**< start index for each row */
+			const int *          index, /**< column indices */
+			const double *       value, /**< constraint elements */
+			const double *       clbd,  /**< column lower bounds */
+			const double *       cubd,  /**< column upper bounds */
+			const char *         ctype, /**< column types */
+			const double *       obj,   /**< objective coefficients */
+			const int * 		 qobjrowindex, /**< quadratic objective row indices */
+			const int *			 qobjcolindex, /**< quadratic objective column indices */
+			const double *		 qobjvalue, /**< quadratic objective constraint elements value */
+			const CoinBigIndex 	 qnum,  /**< number of quadratic terms */
+			const double *       rlbd,  /**< row lower bounds */
+			const double *       rubd   /**< row upper bounds */)
+{
+	BGN_TRY_CATCH
+	if (qobjrowindex == NULL||qobjcolindex == NULL||qobjvalue == NULL || qnum == 0){
+		loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
+	}
+	else{
+		isQCQP_=1;
+		loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
+
+		/** allocate memory for qobj_core_[1] */
+		qobj_core_[1] = new CoinPackedMatrix(false, qobjrowindex, qobjcolindex, qobjvalue, qnum);
+		qobj_core_[1]->setDimensions(ncols_[0] + ncols_[1], ncols_[0] + ncols_[1]);
+
+		/** allocate memory for qobj_scen_ */
+		qobj_scen_[s] = new CoinPackedMatrix(false, qobjrowindex, qobjcolindex, qobjvalue, qnum);
+		qobj_scen_[s]->setDimensions(ncols_[0] + ncols_[1], ncols_[0] + ncols_[1]);
+		DSPdebug(qobj_scen_[s]->verifyMtx(4));
+	}
+	DSPdebugMessage("load second stage with quadratic objective\n");
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
+};
+
 DSP_RTN_CODE TssModel::copyRecoObj(int scen, double *& obj_reco, bool adjustProbability) {
 
 	assert(ncols_[1] >= 0);
@@ -320,7 +402,29 @@ DSP_RTN_CODE TssModel::copyRecoObj(int scen, double *& obj_reco, bool adjustProb
 
 	/** objective coefficients */
 	copyCoreObjective(obj_reco, 1);
+	//PRINT_ARRAY_MSG(ncols_[1],obj_reco,"obj_reco");
 	combineRandObjective(obj_reco, 1, scen, adjustProbability);
+	//PRINT_ARRAY_MSG(ncols_[1],obj_reco,"obj_reco");
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+ 
+	return DSP_RTN_OK;
+
+}
+
+DSP_RTN_CODE TssModel::copyRecoObj(int scen, double *& obj_reco, CoinPackedMatrix *& qobj_reco_coupling, CoinPackedMatrix *& qobj_reco_ncoupling, bool adjustProbability) {
+
+	BGN_TRY_CATCH
+
+	copyRecoObj(scen, obj_reco, adjustProbability);
+
+	qobj_reco_coupling=new CoinPackedMatrix(false, 0, 0);
+	qobj_reco_ncoupling=new CoinPackedMatrix(false, 0, 0);
+
+	/** copy quadratic objective coefficience to qobj_reco */
+	copyCoreQuadrativeObjective(qobj_reco_coupling, qobj_reco_ncoupling, 1);
+	//PRINT_ARRAY_MSG(qobj_reco_ncoupling->getNumElements(), qobj_reco_ncoupling->getElements(), "elements in qobj_reco_ncoupling11");
+	combineRandQuadraticObjective(qobj_reco_coupling, qobj_reco_ncoupling, 1, scen, adjustProbability);
+	//PRINT_ARRAY_MSG(qobj_reco_ncoupling->getNumElements(), qobj_reco_ncoupling->getElements(), "elements in qobj_reco_ncoupling");
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 

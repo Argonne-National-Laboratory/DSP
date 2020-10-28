@@ -23,6 +23,7 @@ StoModel::StoModel() :
 		clbd_core_(NULL),
 		cubd_core_(NULL),
 		obj_core_(NULL),
+		qobj_core_(NULL),
 		rlbd_core_(NULL),
 		rubd_core_(NULL),
 		ctype_core_(NULL),
@@ -31,6 +32,7 @@ StoModel::StoModel() :
 		clbd_scen_(NULL),
 		cubd_scen_(NULL),
 		obj_scen_(NULL),
+		qobj_scen_(NULL),
 		rlbd_scen_(NULL),
 		rubd_scen_(NULL),
 		fromSMPS_(false),
@@ -67,6 +69,7 @@ StoModel::StoModel(const StoModel & rhs) :
 	clbd_core_  = new double * [nstgs_];
 	cubd_core_  = new double * [nstgs_];
 	obj_core_   = new double * [nstgs_];
+	qobj_core_  = new CoinPackedMatrix * [nstgs_];
 	rlbd_core_  = new double * [nstgs_];
 	rubd_core_  = new double * [nstgs_];
 	ctype_core_ = new char * [nstgs_];
@@ -75,6 +78,7 @@ StoModel::StoModel(const StoModel & rhs) :
 	clbd_scen_  = new CoinPackedVector * [nscen_];
 	cubd_scen_  = new CoinPackedVector * [nscen_];
 	obj_scen_   = new CoinPackedVector * [nscen_];
+	qobj_scen_  = new CoinPackedMatrix * [nscen_];
 	rlbd_scen_  = new CoinPackedVector * [nscen_];
 	rubd_scen_  = new CoinPackedVector * [nscen_];
 
@@ -96,6 +100,10 @@ StoModel::StoModel(const StoModel & rhs) :
 		clbd_core_[i] = new double [ncols_[i]];
 		cubd_core_[i] = new double [ncols_[i]];
 		obj_core_[i] = new double [ncols_[i]];
+		/** copy quadratic objective information */
+		if (rhs.qobj_core_[i]!=NULL){
+			qobj_core_[i] = new CoinPackedMatrix(*(rhs.qobj_core_[i]));
+		}
 		ctype_core_[i] = new char [ncols_[i]];
 		rlbd_core_[i] = new double [nrows_[i]];
 		rubd_core_[i] = new double [nrows_[i]];
@@ -125,6 +133,10 @@ StoModel::StoModel(const StoModel & rhs) :
 			obj_scen_[i] = new CoinPackedVector(*(rhs.obj_scen_[i]));
 		else
 			obj_scen_[i] = new CoinPackedVector;
+		if (rhs.qobj_scen_[i])
+			qobj_scen_[i] = new CoinPackedMatrix(*(rhs.qobj_scen_[i]));
+		else
+			qobj_scen_[i] = new CoinPackedMatrix;
 		if (rhs.rlbd_scen_[i])
 			rlbd_scen_[i] = new CoinPackedVector(*(rhs.rlbd_scen_[i]));
 		else
@@ -153,6 +165,7 @@ StoModel::~StoModel()
 	FREE_2D_ARRAY_PTR(nstgs_, clbd_core_);
 	FREE_2D_ARRAY_PTR(nstgs_, cubd_core_);
 	FREE_2D_ARRAY_PTR(nstgs_, obj_core_);
+	FREE_2D_PTR(nstgs_, qobj_core_);
 	FREE_2D_ARRAY_PTR(nstgs_, rlbd_core_);
 	FREE_2D_ARRAY_PTR(nstgs_, rubd_core_);
 	FREE_2D_ARRAY_PTR(nstgs_, ctype_core_);
@@ -161,6 +174,7 @@ StoModel::~StoModel()
 	FREE_2D_PTR(nscen_, clbd_scen_);
 	FREE_2D_PTR(nscen_, cubd_scen_);
 	FREE_2D_PTR(nscen_, obj_scen_);
+	FREE_2D_PTR(nscen_, qobj_scen_);
 	FREE_2D_PTR(nscen_, rlbd_scen_);
 	FREE_2D_PTR(nscen_, rubd_scen_);
 	scen2stg_.clear();
@@ -216,6 +230,7 @@ DSP_RTN_CODE StoModel::readSmps(const char * filename)
 	clbd_core_  = new double * [nstgs_];
 	cubd_core_  = new double * [nstgs_];
 	obj_core_   = new double * [nstgs_];
+	qobj_core_  = new CoinPackedMatrix * [nstgs_];
 	rlbd_core_  = new double * [nstgs_];
 	rubd_core_  = new double * [nstgs_];
 	ctype_core_ = new char * [nstgs_];
@@ -224,9 +239,17 @@ DSP_RTN_CODE StoModel::readSmps(const char * filename)
 	clbd_scen_  = new CoinPackedVector * [nscen_];
 	cubd_scen_  = new CoinPackedVector * [nscen_];
 	obj_scen_   = new CoinPackedVector * [nscen_];
+	qobj_scen_  = new CoinPackedMatrix * [nscen_];
 	rlbd_scen_  = new CoinPackedVector * [nscen_];
 	rubd_scen_  = new CoinPackedVector * [nscen_];
 
+	for (i=0; i<nstgs_;i++){
+		qobj_core_[i]=NULL;
+	}
+
+	for (i=0; i<nscen_; i++){
+		qobj_scen_[i]=NULL;
+	}
 	/** stage information */
 	nrows_core_ = 0;
 	ncols_core_ = 0;
@@ -491,6 +514,71 @@ void StoModel::copyCoreObjective(double * obj, int stg)
 	}
 }
 
+void StoModel::copyCoreQuadrativeObjective(CoinPackedMatrix * &qobj_coupling, CoinPackedMatrix * &qobj_ncoupling, int stg)
+{
+	vector<int> colidx;
+	vector<int> rowidx;
+	vector<double> elements;
+	int numq=qobj_core_[stg]->getNumElements();
+	const CoinBigIndex * start = qobj_core_[stg]->getVectorStarts();
+	vector<int> colidx_coupling;
+	vector<int> rowidx_coupling;
+	vector<double> elements_coupling;
+	int numq_coupling = 0;
+	vector<int> colidx_ncoupling;
+	vector<int> rowidx_ncoupling;
+	vector<double> elements_ncoupling;
+	int numq_ncoupling = 0;
+
+	int rowcount=0;
+	for (int i=0; i<qobj_core_[stg]->getMajorDim();i++){
+		if (start[i+1]-start[i]>0){
+				for (int k=0; k<start[i+1]-start[i]; k++){
+					rowidx.push_back(rowcount);
+				}
+		}
+		rowcount++;
+	}
+
+	for (int i=0; i<numq; i++){
+		colidx.push_back(qobj_core_[stg]->getIndices()[i]);
+		elements.push_back(qobj_core_[stg]->getElements()[i]);
+	}
+
+	// security check
+	assert(numq==rowidx.size());
+	assert(numq==colidx.size());
+	assert(numq==elements.size());
+	for (int i=0; i<numq; i++){
+		if (rowidx[i]>=ncols_[stg-1] && colidx[i]>=ncols_[stg-1]){
+			rowidx_ncoupling.push_back(rowidx[i]-ncols_[stg-1]);
+			colidx_ncoupling.push_back(colidx[i]-ncols_[stg-1]);
+			elements_ncoupling.push_back(elements[i]);
+			numq_ncoupling++;
+		}
+		else{
+			rowidx_coupling.push_back(rowidx[i]);
+			colidx_coupling.push_back(colidx[i]);
+			elements_coupling.push_back(elements[i]);
+			numq_coupling++;
+		}
+	}
+
+	if(numq_ncoupling!=0){
+		qobj_ncoupling = new CoinPackedMatrix(false, &rowidx_ncoupling[0], &colidx_ncoupling[0], &elements_ncoupling[0], numq_ncoupling);
+	}
+	else{
+		qobj_ncoupling = NULL;
+	}
+	
+	if(numq_coupling!=0){
+		qobj_coupling = new CoinPackedMatrix(false, &rowidx_coupling[0], &colidx_coupling[0], &elements_coupling[0], numq_coupling);
+	}
+	else{
+		qobj_coupling = NULL;
+	}
+}
+
 /** copy core column types */
 void StoModel::copyCoreColType(char * ctype, int stg)
 {
@@ -566,7 +654,7 @@ void StoModel::combineRandRowVec(
 			}
 		}
 	}
-}
+}	
 
 /** combine random column lower bounds */
 void StoModel::combineRandColLower(double * clbd, int stg, int scen)
@@ -608,12 +696,88 @@ void StoModel::combineRandObjective(double * obj, int stg, int scen, bool adjust
 	}
 
 	if (adjustProbability)
-	{
+	{ 
 		for (j = ncols_[stg] - 1; j >= 0; --j)
 		{
 			obj[j] *= prob_[scen];
 		}
 	}
+}
+
+void StoModel::combineRandQuadraticObjective(CoinPackedMatrix * &qobj_coupling, CoinPackedMatrix * &qobj_ncoupling, int stg, int scen, bool adjustProbability)
+{
+	int i, j, s;
+	int numelements = qobj_scen_[scen]->getNumElements();
+	const int * colindex=qobj_scen_[scen]->getIndices();
+	const CoinBigIndex * start = qobj_scen_[scen]->getVectorStarts();
+	const int dim=qobj_scen_[scen]->getMajorDim();
+	const double * elements=qobj_scen_[scen]->getElements();
+
+	int * rowindex;
+	rowindex = new int [numelements];
+	
+	std::vector<int> newrowindex_coupling, newcolindex_coupling;
+	std::vector<double> newelements_coupling;
+
+	std::vector<int> newrowindex_ncoupling, newcolindex_ncoupling;
+	std::vector<double> newelements_ncoupling;
+
+	
+	int idx=0;
+	/** convert start into row index */
+	for (int k=0; k<dim; k++){
+		for (i=0; i<start[k+1]-start[k];i++){
+			rowindex[idx]=k;
+			idx++;
+		}
+	}
+
+	int sidx=stg-1;
+	if (sidx<0) sidx=0;
+	for (i = 0; i < numelements; ++i)
+	{
+		if (colindex[i]>=ncols_[sidx] && rowindex[i]>=ncols_[sidx]){
+			newrowindex_ncoupling.push_back(rowindex[i]-ncols_[sidx]);
+			newcolindex_ncoupling.push_back(colindex[i]-ncols_[sidx]);
+			if (adjustProbability){
+				newelements_ncoupling.push_back(elements[i]*prob_[scen]);
+			}
+			else{
+				newelements_ncoupling.push_back(elements[i]);
+			}
+		}
+		else{
+			newrowindex_coupling.push_back(rowindex[i]);
+			newcolindex_coupling.push_back(colindex[i]);
+			if (adjustProbability){
+				newelements_coupling.push_back(elements[i]*prob_[scen]);
+			}
+			else{
+				newelements_coupling.push_back(elements[i]);
+			}
+		}
+	}
+	//printf("newcolindex_coupling.size() = %d\n", newcolindex_coupling.size());
+	//for (int m=0; m<newcolindex_ncoupling.size(); m++){
+	//	printf("newcolindex_ncoupling[%d]=%d\n", m, newcolindex_ncoupling[m]);
+	//}
+	if (newelements_coupling.size()==0){
+		qobj_coupling=NULL;
+	}
+	else{
+		qobj_coupling=new CoinPackedMatrix(false, &newcolindex_coupling[0], &newrowindex_coupling[0], &newelements_coupling[0], newelements_coupling.size());
+	}
+	if (newelements_ncoupling.size()==0){
+		qobj_coupling=NULL;
+	}
+	else{
+		qobj_ncoupling=new CoinPackedMatrix(false, &newcolindex_ncoupling[0], &newrowindex_ncoupling[0], &newelements_ncoupling[0], newelements_ncoupling.size());
+	}
+	//qobj_ncoupling=new CoinPackedMatrix(false, &newcolindex_ncoupling[0], &newrowindex_ncoupling[0], &newelements_ncoupling[0], newelements_ncoupling.size());
+	//PRINT_ARRAY_MSG(newcolindex_ncoupling.size(), &newcolindex_ncoupling[0], "elements in newcolindex_ncoupling");
+	//PRINT_ARRAY_MSG(qobj_ncoupling->getNumElements(), qobj_ncoupling->getElements(), "elements in qobj_ncoupling");
+
+	delete[] rowindex;
 }
 
 /** combine random row lower bounds */
@@ -712,6 +876,17 @@ void StoModel::__printData()
 		PRINT_ARRAY_MSG(ncols_[t], ctype_core_[t], "ctype_core_")
 		PRINT_ARRAY_MSG(nrows_[t], rlbd_core_[t], "rlbd_core_")
 		PRINT_ARRAY_MSG(nrows_[t], rubd_core_[t], "rubd_core_")
+		printf("\n### quadratic objective coefficient ###\n\n");
+		if (qobj_core_[t])
+		{
+			printf("isColOrdered %d\n", qobj_core_[t]->isColOrdered());
+			PRINT_ARRAY_MSG(qobj_core_[t]->getMajorDim(), qobj_core_[t]->getVectorStarts(), "VectorStarts")
+			PRINT_SPARSE_ARRAY_MSG(
+					qobj_core_[t]->getNumElements(),
+					qobj_core_[t]->getIndices(),
+					qobj_core_[t]->getElements(),
+					"Elements")
+		}
 	}
 
 	for (int s = 0; s < nscen_; ++s)
@@ -732,6 +907,19 @@ void StoModel::__printData()
 					"Elements")
 		}
 		printf("=== END of CoinPackedMatrix mat_scen_[%d] ===\n", s);
+
+		printf("=== BEGINNING of CoinPackedMatrix qobj_scen_[%d] ===\n", s);
+		if (qobj_scen_[s])
+		{
+			printf("isColOrdered %d\n", qobj_scen_[s]->isColOrdered());
+			PRINT_ARRAY_MSG(qobj_scen_[s]->getMajorDim(), qobj_scen_[s]->getVectorStarts(), "VectorStarts")
+			PRINT_SPARSE_ARRAY_MSG(
+					qobj_scen_[s]->getNumElements(),
+					qobj_scen_[s]->getIndices(),
+					qobj_scen_[s]->getElements(),
+					"Elements")
+		}
+		printf("=== END of CoinPackedMatrix qobj_scen_[%d] ===\n", s);
 #endif
 //		PRINT_COIN_PACKED_VECTOR_MSG((*clbd_scen_[s]), "clbd_scen_")
 //		PRINT_COIN_PACKED_VECTOR_MSG((*cubd_scen_[s]), "cubd_scen_")

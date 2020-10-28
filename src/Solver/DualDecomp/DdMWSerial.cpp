@@ -63,7 +63,7 @@ DSP_RTN_CODE DdMWSerial::init() {
 	worker_.push_back(new DdWorkerLB(model_, par_, message_));
 	/** create CG worker */
 #ifdef DSP_HAS_SCIP
-	if (par_->getIntParam("DW/SUB/SOLVER") == OsiScip && (parFeasCuts_ >= 0 || parOptCuts_ >= 0))
+	if (par_->getIntParam("DD/SUB/SOLVER") == OsiScip && (parFeasCuts_ >= 0 || parOptCuts_ >= 0))
 		worker_.push_back(new DdWorkerCGBd(model_, par_, message_));
 	else {
 		message_->print(0, "No Benders cut is generated.\n");
@@ -577,3 +577,43 @@ DSP_RTN_CODE DdMWSerial::generateBendersCuts(
 }
 
 #endif
+
+
+#ifdef DSP_HAS_GRB
+
+DSP_RTN_CODE DdMWSerial::generateQuadraticBendersCuts(
+ 	DdWorkerCGBd * workercg, /**< CG worker pointer */
+ 	Solutions solutions, /**< solutions at which cuts are generated */
+  	OsiCuts & cuts       /**< cuts generated */)
+{
+  	#define FREE_MEMORY\
+  	FREE_ARRAY_PTR(aggcut)
+	
+  	int ret = DSP_STAT_MW_CONTINUE;
+
+  	if (solutions.size() == 0) return ret;
+  	if (model_->isStochastic() == false)
+  	{
+  		message_->print(0, "This problem is not a stochastic program. Benders cut option is valid only for stochastic programming.\n");
+  		parFeasCuts_ = -1;
+  		parOptCuts_ = -1;
+  		return ret;
+ 	}
+
+// 	vector<int> cuttype;
+// 	TssModel * tssmodel = NULL;
+// 	double * aggcut = NULL;
+// 	double aggrhs;
+
+// 	BGN_TRY_CATCH
+
+// 	/** timing */
+// 	double cputime = CoinCpuTime();
+// 	double walltime = CoinGetTimeOfDay();
+
+// 	/** downcast to TssModel */
+// 	tssmodel = dynamic_cast<TssModel*>(model_);
+
+// }
+
+// #endif

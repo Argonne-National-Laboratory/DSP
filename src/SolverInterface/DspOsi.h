@@ -34,6 +34,10 @@ public:
 		throw CoinError("Quadratic objective is not supported.", "loadQuadraticObjective", "DspOsi");
 	}
 
+	virtual void writeMps(const char *filename){
+		si_->writeMps(filename);
+	}
+
 	/** solve problem */
 	virtual void solve() = 0;
 
@@ -98,6 +102,21 @@ public:
 	virtual void setRelMipGap(double tol) {}
 
 	OsiSolverInterface *si_;
+
+	/** functions for Benders cuts */
+
+	/** generate Benders cuts */
+	virtual void generateCuts(
+		int size,      /**< [in] size of x */
+		double * x,    /**< [in] master solution */
+		int where,     /**< [in] where to be called */
+		OsiCuts * cuts /**< [out] cuts generated */ 
+	);
+	/** generate Benders cuts */
+	virtual void aggregateCuts(
+		double ** cutvec, /**< [in] cut vector */
+		double *  cutrhs, /**< [in] cut right-hand side */
+		OsiCuts * cuts    /**< [out] cuts generated */);
 };
 
 #endif /* SRC_SOLVERINTERFACE_DSPOSI_H_ */
