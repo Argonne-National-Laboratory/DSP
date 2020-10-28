@@ -158,9 +158,6 @@ void solveDe(DspApiEnv * env /**< pointer to API object */);
 /** solve dual decomposition */
 void solveDd(DspApiEnv * env /**< pointer to API object */);
 
-/** solve dual decomposition for DRO */
-void solveDro(DspApiEnv * env /**< pointer to API object */);
-
 /** solve Dantzig-Wolfe decomposition with branch-and-bound */
 void solveDw(DspApiEnv * env /**< pointer to API object */);
 

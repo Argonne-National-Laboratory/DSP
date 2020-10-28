@@ -151,6 +151,7 @@ public:
 
 	// The following functions are for distributionally robust variant.
 	// TODO: Better to create a new inhereted class?
+	virtual void setDro(bool yes) { TssModel::setDro(yes); }
 	virtual bool isDro() {return TssModel::isDro();}
 	virtual int getNumReferences() {return TssModel::getNumReferences();}
 	virtual double getWassersteinSize() {return TssModel::getWassersteinSize();}
@@ -221,15 +222,16 @@ public:
 		double *& rubd           /**< [out] row upper bounds */);
 
 	DSP_RTN_CODE copyRecoProb(
-		int scen,                     /**< [in] scenario index */
-		CoinPackedMatrix *& mat_tech, /**< [out] technology matrix (A matrix) */
-		CoinPackedMatrix *& mat_reco, /**< [out] recourse matrix (B matrix) */
-		double *& clbd_reco,          /**< [out] column lower bounds of y */
-		double *& cubd_reco,          /**< [out] column upper bounds of y */
-		char   *& ctype_reco,         /**< [out] column types of y */
-		double *& obj_reco,           /**< [out] objective coefficients for y */
-		double *& rlbd_reco,          /**< [out] row lower bounds */
-		double *& rubd_reco           /**< [out] row upper bounds */);
+		int scen,                      /**< [in] scenario index */
+		CoinPackedMatrix *& mat_tech,  /**< [out] technology matrix (A matrix) */
+		CoinPackedMatrix *& mat_reco,  /**< [out] recourse matrix (B matrix) */
+		double *& clbd_reco,           /**< [out] column lower bounds of y */
+		double *& cubd_reco,           /**< [out] column upper bounds of y */
+		char   *& ctype_reco,          /**< [out] column types of y */
+		double *& obj_reco,            /**< [out] objective coefficients for y */
+		double *& rlbd_reco,           /**< [out] row lower bounds */
+		double *& rubd_reco,           /**< [out] row upper bounds */
+		bool adjust_probability = true /**< [in] adjust probability */);
 
 	DSP_RTN_CODE copyRecoProb(
 		int scen,                     /**< [in] scenario index */

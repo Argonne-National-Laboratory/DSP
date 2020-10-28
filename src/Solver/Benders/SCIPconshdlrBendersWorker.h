@@ -10,52 +10,38 @@
 
 #include "Utility/DspMpi.h"
 #include "Solver/Benders/SCIPconshdlrBenders.h"
+#include "Solver/Benders/SCIPconshdlrBaseBendersWorker.h"
 
 /** A class for implementing parallel Benders constraint handler */
-class SCIPconshdlrBendersWorker: public SCIPconshdlrBenders {
+class SCIPconshdlrBendersWorker : public SCIPconshdlrBenders, public SCIPconshdlrBaseBendersWorker
+{
 public:
 
 	/** default constructor */
-	SCIPconshdlrBendersWorker(SCIP * scip, int sepapriority, MPI_Comm comm);
+	SCIPconshdlrBendersWorker(SCIP *scip, int sepapriority, MPI_Comm comm)
+		: SCIPconshdlrBenders(scip, "Benders", sepapriority),
+		  SCIPconshdlrBaseBendersWorker(comm) {}
 
 	/** default destructor */
-	virtual ~SCIPconshdlrBendersWorker();
-
-	/** destructor of constraint handler to free user data (called when SCIP is exiting) */
-	virtual SCIP_DECL_CONSFREE(scip_free);
-
-	/** clone method which will be used to copy constraint handler and variable pricer objects */
-	virtual SCIP_DECL_CONSHDLRCLONE(ObjProbCloneable* clone);
+	virtual ~SCIPconshdlrBendersWorker() {}
 
 	/** set model pointer */
-	virtual void setDecModel(DecModel * model);
+	virtual void setDecModel(DecModel *model)
+	{
+		model_ = model;
+		initialize(model_->getNumSubproblems());
+	}
 
 protected:
 
 	/** generate Benders cuts */
 	virtual void generateCuts(
-			int size,      /**< [in] size of x */
-			double * x,    /**< [in] master solution */
-			int where,     /**< [in] where to be called */
-			OsiCuts * cuts /**< [out] cuts generated */);
-
-	/** generate Benders cuts */
-	virtual void aggregateCuts(
-			double ** cutvec, /**< [in] cut vector */
-			double *  cutrhs, /**< [in] cut right-hand side */
-			OsiCuts * cuts    /**< [out] cuts generated */);
-
-private:
-
-	MPI_Comm comm_;
-	int comm_rank_;
-	int comm_size_;
-
-	/** cut communication */
-	int * recvcounts_;
-	int * displs_;
-	int * cut_index_;  /**< subproblem index for which cut is generated */
-	int * cut_status_; /**< cut generation status from MPI_Gatherv */
+		int size,  /**< [in] size of x */
+		double *x, /**< [in] master solution */
+		OsiCuts *cuts /**< [out] cuts generated */)
+	{
+		generateCutsBase(model_->getNumSubproblems(), nvars_, naux_, x, probability_, cuts);
+	}
 };
 
 #endif /* SRC_SOLVERINTERFACE_SCIPCONSHDLRBENDERSWORKER_H_ */

@@ -64,6 +64,10 @@ public:
 
 	//@}
 
+	virtual int getNumAuxVars() {return naux_;}
+
+	virtual bool is_binary() {return is_binary_;}
+
 protected:
 
 	/** create problem */
@@ -77,6 +81,7 @@ protected:
 	double * obj_aux_;  /**< auxiliary variable objectives */
 	double * clbd_aux_; /**< auxiliary variable lower bounds */
 	double * cubd_aux_; /**< auxiliary variable upper bounds */
+	bool is_binary_;    /**< indicate whether the first stage is a pure binary or not */
 };
 
 #endif /* SRC_SOLVER_BENDERS_BDMASTER_H_ */

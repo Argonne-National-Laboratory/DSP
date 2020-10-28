@@ -17,6 +17,10 @@
 
 using namespace std;
 
+inline bool is_integer(double v, double eps) {
+	return fabs(v - floor(v + 0.5)) < eps;
+}
+
 inline bool myduplicatetolerance(double i, double j) {
 	return (fabs(i-j) < 1.0e-8);
 }

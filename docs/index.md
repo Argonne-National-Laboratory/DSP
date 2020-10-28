@@ -5,6 +5,7 @@ methods for **structured mixed-integer linear programming problems**.
 
 Examples of the structured programming problem include:
 
+- distributionally robust optimization problem (with Wasserstein ambiguity set)
 - stochastic programming problem
 - long-term planning problem
 - network optimization problem
@@ -41,11 +42,14 @@ For more technical details, please refer the following papers.
 1. Kibaek Kim, Mihai Anitescu, and Victor M. Zavala. "An Asynchronous Decomposition Algorithm for Security Constrained Unit Commitment under Contingency Events" Proceedings in Power System Computation Conference, 2018
 1. Kibaek Kim and Victor M. Zavala. "Algorithmic Innovations and Software for the Dual Decomposition Method applied to Stochastic Mixed-Integer Programs" Mathematical Programming Computation, 2017
 
-### Benders Decomposition
+### Integer Benders Decomposition
 
-This solves the Benders decomposition of stochastic programming problems with the lower bound initialized by the dual decomposition.
+This solves the integer Benders decomposition of stochastic programming problems with the lower bound initialized by the dual decomposition.
+Integer Benders decomposition runs when the first stage is a pure-binary program and the second stage is a mixed-integer program.
 
-> Note: Any second-stage integer variables will be relaxed.
+> NOTE: A **distributionally robust** variant of Benders decomposition is available for the problems given in SMPS files and `.dro` file.
+
+> Note: When the first stage is not a pure-binary program, any second-stage integer variables will be relaxed.
 
 > Note: This algorithm requires SCIP and is available only for stochastic programs.
 

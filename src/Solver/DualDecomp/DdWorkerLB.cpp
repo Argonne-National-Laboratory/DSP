@@ -60,7 +60,7 @@ DSP_RTN_CODE DdWorkerLB::solve() {
 
 		/** reset gap tolerance */
 		if (subprobs_[s]->getSiPtr()->getNumIntegers() > 0)
-			subprobs_[s]->setGapTol(par_->getDblParam("MIP/GAP_TOL"));
+			subprobs_[s]->setGapTol(par_->getDblParam("DD/SUB/GAPTOL"));
 
 		bool resolve = true;
 		while (resolve) {

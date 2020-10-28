@@ -72,6 +72,7 @@ public:
 
 	bool isStochastic() {return false;}
 	bool isQCQP() {return false;}
+	virtual void setDro(bool yes) { ; }
 	bool isDro() {return false;}
 	int getNumReferences() {return 0;}
 	double getWassersteinSize() {return 0.0;}
@@ -131,15 +132,16 @@ public:
 		double *& rubd           /**< [out] row upper bounds */);
 
 	DSP_RTN_CODE copyRecoProb(
-		int scen,                     /**< [in] scenario index */
-		CoinPackedMatrix *& mat_tech, /**< [out] technology matrix (A matrix) */
-		CoinPackedMatrix *& mat_reco, /**< [out] recourse matrix (B matrix) */
-		double *& clbd_reco,          /**< [out] column lower bounds of y */
-		double *& cubd_reco,          /**< [out] column upper bounds of y */
-		char   *& ctype_reco,         /**< [out] column types of y */
-		double *& obj_reco,           /**< [out] objective coefficients for y */
-		double *& rlbd_reco,          /**< [out] row lower bounds */
-		double *& rubd_reco           /**< [out] row upper bounds */);
+		int scen,                      /**< [in] scenario index */
+		CoinPackedMatrix *& mat_tech,  /**< [out] technology matrix (A matrix) */
+		CoinPackedMatrix *& mat_reco,  /**< [out] recourse matrix (B matrix) */
+		double *& clbd_reco,           /**< [out] column lower bounds of y */
+		double *& cubd_reco,           /**< [out] column upper bounds of y */
+		char   *& ctype_reco,          /**< [out] column types of y */
+		double *& obj_reco,            /**< [out] objective coefficients for y */
+		double *& rlbd_reco,           /**< [out] row lower bounds */
+		double *& rubd_reco,           /**< [out] row upper bounds */
+		bool adjust_probability = true /**< not used */);
 
 	DSP_RTN_CODE copyRecoProb(
 		int scen,                     /**< [in] scenario index */

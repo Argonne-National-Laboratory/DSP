@@ -185,9 +185,9 @@ DSP_RTN_CODE DdSub::createProblem() {
 
     /** parameters */
     parRelaxIntegrality_ = par_->getBoolPtrParam("RELAX_INTEGRALITY");
-    gapTol_ = par_->getDblParam("MIP/GAP_TOL");
+	gapTol_ = par_->getDblParam("DD/SUB/GAPTOL");
 
-    /** augmented subproblem index */
+	/** augmented subproblem index */
     augs[0] = sind_;
 
     /** for auxiliary term */
@@ -359,9 +359,9 @@ DSP_RTN_CODE DdSub::createProblem() {
 	}
 
 	/** set number of cores */
-	osi_->setNumCores(1);
+	osi_->setNumCores(par_->getIntParam("DD/SUB/THREADS"));
 
-    /** set display */
+	/** set display */
     osi_->setLogLevel(par_->getIntParam("DD/SUB/SOLVER/LOG_LEVEL"));
 
     /** load problem */

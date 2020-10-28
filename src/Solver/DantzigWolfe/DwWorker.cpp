@@ -611,10 +611,8 @@ DSP_RTN_CODE DwWorker::solveSubproblems() {
 
 			/** solve */
 			osi_[s]->solve();
-#ifdef DSP_DEBUG
-			status = osi_[s]->status();
-			DSPdebugMessage("MILP subproblem %d status %d\n", parProcIdx_[s], status);
-#endif
+			DSPdebugMessage("MILP subproblem %d status %d\n", parProcIdx_[s], osi_[s]->status());
+			
 			if (osi_[s]->si_->isProvenDualInfeasible()) {
 				/** If primal unbounded, ray may not be immediately available.
 				 * But, it becomes available if it is solved one more time.
@@ -626,10 +624,7 @@ DSP_RTN_CODE DwWorker::solveSubproblems() {
 		} else {
 			/** solve LP relaxation */
 			osi_[s]->si_->resolve();
-#ifdef DSP_DEBUG
-			status = osi_[s]->status();
-			DSPdebugMessage("LP relaxation subproblem %d status %d\n", parProcIdx_[s], status);
-#endif
+			DSPdebugMessage("LP relaxation subproblem %d status %d\n", parProcIdx_[s], osi_[s]->status());
 		}
 	}
 

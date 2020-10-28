@@ -104,6 +104,12 @@ DSP_RTN_CODE DdMasterTr::init()
 		throw CoinError("Invalid parameter value", "init", "DdMasterTr");
 #endif
 	parMasterAlgo_ = par_->getIntParam("DD/MASTER_ALGO");
+	if (model_->isDro() && parMasterAlgo_ == IPM_Feasible)
+	{
+		printf("-- DRO cannot use IPM_Feasible option.\n"
+			   "-- The master problem will use IPM instead.\n");
+		parMasterAlgo_ = IPM;
+	}
 	parLogLevel_ = par_->getIntParam("LOG_LEVEL");
 	DSPdebugMessage("Trust region size %f\n", parTrSize_);
 
@@ -314,19 +320,22 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 			}
 
 			/** stability center for DRO model */
-			for (i = 0; i < model_->getNumReferences(); ++i) {
-				for (j = 0; j < model_->getNumSubproblems(); ++j) {
-					if (i == j)
-						stability_center_[nlambdas_+model_->getNumReferences()*j+i] = model_->getReferenceProbability(i);
-					else
-						stability_center_[nlambdas_+model_->getNumReferences()*j+i] = 0.0;
+			if (model_->isDro())
+			{
+				for (i = 0; i < model_->getNumReferences(); ++i) {
+					for (j = 0; j < model_->getNumSubproblems(); ++j) {
+						if (i == j)
+							stability_center_[nlambdas_+model_->getNumReferences()*j+i] = model_->getReferenceProbability(i);
+						else
+							stability_center_[nlambdas_+model_->getNumReferences()*j+i] = 0.0;
+					}
 				}
-			}
-			for (i = 0; i < nPs_; ++i) {
-				if (i < model_->getNumReferences())
-					stability_center_[nlambdas_+nus_+i] = model_->getReferenceProbability(i);
-				else
-					stability_center_[nlambdas_+nus_+i] = 0.0;
+				for (i = 0; i < nPs_; ++i) {
+					if (i < model_->getNumReferences())
+						stability_center_[nlambdas_+nus_+i] = model_->getReferenceProbability(i);
+					else
+						stability_center_[nlambdas_+nus_+i] = 0.0;
+				}
 			}
 		} else {
 			CoinZeroN(stability_center_, ncols-nthetas_);
@@ -785,16 +794,16 @@ int DdMasterTr::addCuts(
 			recourse_obj = 0.0;
 			for (int j = 0; j < tss->getNumCols(1); ++j) {
 				recourse_obj += obj_reco_[s][j] * subsolution_[s][tss->getNumCols(0)+j];
-				DSPdebugMessage("obj_reco_[%d][%d] = %e, subsolution_[%d][%d] = %e\n", 
-					s, j, obj_reco_[s][j], s, tss->getNumCols(0)+j, subsolution_[s][tss->getNumCols(0)+j]);
+				// DSPdebugMessage("obj_reco_[%d][%d] = %e, subsolution_[%d][%d] = %e\n",
+				// 	s, j, obj_reco_[s][j], s, tss->getNumCols(0)+j, subsolution_[s][tss->getNumCols(0)+j]);
 			}
 			// recourse_obj = scen_obj->dotProduct(subsolution_[s] + tss->getNumCols(0));
 
 			linerr_ += recourse_obj * (stability_center_[nlambdas_+nus_+s] - primsol_[ncols-nPs_+s]);
 			aggvec[cutidx][ncols-nPs_+s] = -recourse_obj;
 			aggrhs[cutidx] -= recourse_obj * primsol_[ncols-nPs_+s];
-			DSPdebugMessage("recourse_obj[%d] = %e, primsol_[%d] = %e, aggvec[%d][%d] = %e\n", 
-				s, recourse_obj, ncols-nPs_+s, primsol_[ncols-nPs_+s], cutidx, ncols-nPs_+s, aggvec[cutidx][ncols-nPs_+s]);
+			DSPdebugMessage("recourse_obj[%d] = %e, primsol_[%d] = %e, aggvec[%d][%d] = %e\n",
+							s, recourse_obj, ncols - nPs_ + s, primsol_[ncols - nPs_ + s], cutidx, ncols - nPs_ + s, aggvec[cutidx][ncols - nPs_ + s]);
 		}
 	}
 
@@ -813,15 +822,17 @@ int DdMasterTr::addCuts(
 
 		/** cut rhs */
 		cutrhs = aggrhs[s];
-		if (fabs(cutrhs) < 1E-10)
+		if (fabs(cutrhs) < 1e-10)
 			cutrhs = 0.0;
+		if (model_->isDro() && fabs(cutrhs) > 1.e-10)
+		{
 #ifdef DSP_DEBUG
-		if (model_->isDro() && fabs(cutrhs) > 0.0) {
 			DSPdebugMessage("cutrhs[%d] = %e\n", s, cutrhs);
+#endif
+			printf("Master problem may experience numerical difficulty in cut generation: (fabs(%e) >> 0.0)\n", cutrhs);
 			cutrhs = 0.0;
 		}
-#endif
-		assert(model_->isDro() == false || cutrhs == 0.0);
+		// assert(model_->isDro() == false || cutrhs == 0.0);
 
 		OsiRowCut * rc = new OsiRowCut;
 		rc->setRow(cutvec);
@@ -1114,7 +1125,8 @@ DSP_RTN_CODE DdMasterTr::terminationTest()
 	double relgap = getRelApproxGap();
 	DSPdebugMessage("absgap %+e relgap %+e\n", absgap, relgap);
 	double gaptol = par_->getDblParam("DD/STOP_TOL");
-	if (getSiPtr()->getNumIntegers() > 0) gaptol += par_->getDblParam("MIP/GAP_TOL");
+	if (getSiPtr()->getNumIntegers() > 0)
+		gaptol += par_->getDblParam("DD/SUB/GAPTOL");
 	if (relgap <= gaptol) {
 		signal = DSP_STAT_MW_STOP;
 		status_ = DSP_STAT_OPTIMAL;

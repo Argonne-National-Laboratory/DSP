@@ -18,63 +18,17 @@
 class SCIPconshdlrBenders : public scip::ObjConshdlr
 {
 public:
-
-	enum whereFrom
-	{
-		from_scip_sepalp = 0,
-		from_scip_sepasol,
-		from_scip_enfolp,
-		from_scip_enfops,
-		from_scip_check
-	};
+	/** default constructor */
+	SCIPconshdlrBenders(SCIP *scip, const char *name, int sepapriority);
 
 	/** default constructor */
-	SCIPconshdlrBenders(SCIP * scip, const char * name, int sepapriority) :
-		ObjConshdlr(scip, name, "Benders cuts",
-				sepapriority, /**< priority of the constraint handler for separation */
-				sepapriority, /**< priority of the constraint handler for constraint enforcing */
-				sepapriority, /**< priority of the constraint handler for checking infeasibility (and propagation) */
-				1,        /**< always call separator */
-				-1,       /**< disable constraint propagation */
-				1,        /**< always use all constraints (no aging) */
-				0,        /**< disable the preprocessing callback of the constraint handler */
-				TRUE,     /**< delay separation method */
-				FALSE,    /**< do not delay propatation method */
-#if SCIP_VERSION < 320
-				FALSE,    /**< do not delay presolving method */
-				TRUE,     /**< skip constraint handler even if no constraints are available. */
-				SCIP_PROPTIMING_BEFORELP /**< propagation method is called before solving LP */),
-#else
-				TRUE,     /**< skip constraint handler even if no constraints are available. */
-				SCIP_PROPTIMING_BEFORELP, /**< propagation method is called before solving LP */
-				SCIP_PRESOLTIMING_FAST),
-#endif
-	model_(NULL),
-	bdsub_(NULL),
-	nvars_(0),
-	vars_(NULL),
-	naux_(0)
-	{
-		/** nothing to do */
-	}
-
-	/** default constructor */
-	virtual ~SCIPconshdlrBenders()
-	{
-		/** nothing to do */
-	}
+	virtual ~SCIPconshdlrBenders();
 
 	/** destructor of constraint handler to free user data (called when SCIP is exiting) */
 	virtual SCIP_DECL_CONSFREE(scip_free);
 
 	/** transforms constraint data into data belonging to the transformed problem */
 	virtual SCIP_DECL_CONSTRANS(scip_trans);
-
-	/** separation method of constraint handler for LP solution */
-	virtual SCIP_DECL_CONSSEPALP(scip_sepalp);
-
-	/** separation method of constraint handler for arbitrary primal solution */
-	virtual SCIP_DECL_CONSSEPASOL(scip_sepasol);
 
 	/** constraint enforcing method of constraint handler for LP solutions */
 	virtual SCIP_DECL_CONSENFOLP(scip_enfolp);
@@ -88,11 +42,14 @@ public:
 	/** variable rounding lock method of constraint handler */
 	virtual SCIP_DECL_CONSLOCK(scip_lock);
 
-	/** returns whether the objective plugin is copyable */
-	virtual SCIP_DECL_CONSHDLRISCLONEABLE(iscloneable) {return true;}
+	/** separation method of constraint handler for LP solution */
+	virtual SCIP_DECL_CONSSEPALP(scip_sepalp);
 
-	/** clone method which will be used to copy constraint handler and variable pricer objects */
-	virtual SCIP_DECL_CONSHDLRCLONE(ObjProbCloneable* clone);
+	/** separation method of constraint handler for arbitrary primal solution */
+	virtual SCIP_DECL_CONSSEPASOL(scip_sepasol);
+
+	/** returns whether the objective plugin is copyable */
+	virtual SCIP_DECL_CONSHDLRISCLONEABLE(iscloneable) {return false;}
 
 public:
 
@@ -108,16 +65,18 @@ public:
 	/** get number of auxiliary variables */
 	virtual int getNumAuxVars() {return naux_;}
 
+	virtual bool isStochastic() {
+		if (model_ && model_->isStochastic()) return true;
+		else return false;
+	}
+
 public:
 
 	/** set model pointer */
 	virtual void setDecModel(DecModel * model) {model_ = model;}
 
 	/** set pointer to cut generator */
-	virtual void setBdSub(BdSub * bdsub)
-	{
-		bdsub_ = bdsub;
-	}
+	virtual void setBdSub(BdSub * bdsub);
 
 	/** set original variable pointers */
 	virtual SCIP_RETCODE setOriginalVariables(
@@ -126,20 +85,29 @@ public:
 			int         naux  /**< number of auxiliary variables */);
 
 protected:
+	virtual SCIP_RETCODE generate_Benders(
+		SCIP *scip,
+		SCIP_CONSHDLR *conshdlr,
+		SCIP_SOL *sol,
+		OsiCuts *cs);
 
 	virtual SCIP_RETCODE sepaBenders(
-			SCIP * scip,
-			SCIP_CONSHDLR * conshdlr,
-			SCIP_SOL * sol,
-			whereFrom where,
-			SCIP_RESULT * result);
+		SCIP *scip,
+		SCIP_CONSHDLR *conshdlr,
+		SCIP_SOL *sol,
+		SCIP_RESULT *result);
+
+	virtual SCIP_RETCODE checkBenders(
+		SCIP *scip,
+		SCIP_CONSHDLR *conshdlr,
+		SCIP_SOL *sol,
+		SCIP_RESULT *result);
 
 	/** generate Benders cuts */
 	virtual void generateCuts(
-			int size,      /**< [in] size of x */
-			double * x,    /**< [in] master solution */
-			int where,     /**< [in] where to be called */
-			OsiCuts * cuts /**< [out] cuts generated */);
+		int size,  /**< [in] size of x */
+		double *x, /**< [in] master solution */
+		OsiCuts *cuts /**< [out] cuts generated */);
 
 	/** generate Benders cuts */
 	virtual void aggregateCuts(
@@ -147,13 +115,21 @@ protected:
 			double *  cutrhs, /**< [in] cut right-hand side */
 			OsiCuts * cuts    /**< [out] cuts generated */);
 
+	virtual void write_statistics();
+
 protected:
 
-	DecModel *  model_;     /**< DecModel object */
-	BdSub *     bdsub_;     /**< pointer to cut generator */
-	int         nvars_;     /**< number of original variables */
-	SCIP_Var ** vars_;      /**< pointer array to original variables */
-	int         naux_;      /**< number of auxiliary variables */
+	DecModel *  model_;            /**< DecModel object */
+	BdSub *     bdsub_;            /**< pointer to cut generator */
+	int         nvars_;            /**< number of original variables */
+	SCIP_Var ** vars_;             /**< pointer array to original variables */
+	int         naux_;             /**< number of auxiliary variables */
+	double*     probability_;      /**< array of probability */
+
+	/** simple statistics */
+	vector<string> names_statistics_;
+	unordered_map<string, int> count_statistics_;
+	unordered_map<string, double> time_statistics_;
 };
 
 /** creates and captures a Benders constraint */
