@@ -303,7 +303,8 @@ public:
 		CoinPackedMatrix *& qobj_reco_coupling,/**< [out] coupling quadratric coefficients (y^2}*/
 		CoinPackedMatrix *& qobj_reco_ncoupling, /**< [out] non-coupling quadratic coefficients (xy) */
 		double *& rlbd_reco,          /**< [out] row lower bounds */
-		double *& rubd_reco           /**< [out] row upper bounds */) = 0;
+		double *& rubd_reco,          /**< [out] row upper bounds */
+		bool adjust_probability = true /**< [in] adjust probability (only for stochastic)*/) = 0;
 
 	/**
 	 * Returns the full model in matrix form, including coupling constraints.

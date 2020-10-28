@@ -494,7 +494,8 @@ DSP_RTN_CODE DecBlkModel::copyRecoProb(
 		CoinPackedMatrix *& qobj_reco_coupling,/**< [out] coupling quadratric coefficients (y^2)*/
 		CoinPackedMatrix *& qobj_reco_ncoupling, /**< [out] non-coupling quadratic coefficients (xy) */
 		double *& rlbd_reco,          /**< [out] row lower bounds */
-		double *& rubd_reco           /**< [out] row upper bounds */) {
+		double *& rubd_reco,          /**< [out] row upper bounds */
+		bool adjust_probability       /**< not used */) {
 
 	BGN_TRY_CATCH
 
