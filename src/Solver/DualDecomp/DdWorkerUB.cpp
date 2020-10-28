@@ -6,7 +6,7 @@
  */
 
 // #define DSP_DEBUG
-#include "Model/TssModel.h"
+#include "Model/DecTssQcModel.h"
 #include "Solver/DualDecomp/DdWorkerUB.h"
 #include "SolverInterface/DspOsiCpx.h"
 #include "SolverInterface/DspOsiGrb.h"
@@ -158,13 +158,81 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 	    DSPdebug(mat_reco->verifyMtx(4));
 		DSPdebugMessage("number of integers: %d\n", osi_[s]->si_->getNumIntegers());
 
-		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
-		char lpfilename[128];
-		sprintf(lpfilename, "DdWorkerUB_scen%d.lp", s); 
-		osi_[s]->writeProb(lpfilename, NULL);
-
 		/** allocate array size for each scenario primal solution */
 		primsols_[s].resize(osi_[s]->si_->getNumCols());
+
+		/** add quadratic constraints */
+		if (model_->isQuadratic())
+		{
+			DecTssQcModel * qcModel;
+			try
+			{
+				qcModel = dynamic_cast<DecTssQcModel *>(model_);
+			}
+			catch (const std::bad_cast& e)
+			{
+				printf("Model claims to be quadratic when it is not");
+				return DSP_RTN_ERR;
+			}
+
+			QcRowDataScen * qcrowdata = qcModel->getQRowsCPXParams(s);
+
+			/* print qcrowdata to test whether it is successfully received or not */
+        	// qcModel->printQuadRows(s);
+        	// qcModel->printQuadRows(qcrowdata);
+
+			/* Note that current version supports quadratic constraints with only second stage variables */
+			int ** linind = new int * [qcrowdata->nqrows_];
+			int ** quadrow = new int * [qcrowdata->nqrows_];
+			int ** quadcol = new int * [qcrowdata->nqrows_];
+			
+			for (int i = 0; i < qcrowdata->nqrows_; i++)
+			{	
+				linind[i] = new int [qcrowdata->linnzcnt_[i]];
+				quadrow[i] = new int [qcrowdata->quadnzcnt_[i]];
+				quadcol[i] = new int [qcrowdata->quadnzcnt_[i]];
+
+				for (int j = 0; j < qcrowdata->linnzcnt_[i]; j++) 
+				{
+					linind[i][j] = qcrowdata->linind_[i][j] - qcModel->getNumCols(0);
+
+					if (linind[i][j] < 0) {
+						throw "Current version supports quadratic constraints in non-coupling rows only./n";
+					}
+				}
+
+				for (int j = 0; j < qcrowdata->quadnzcnt_[i]; j++) 
+				{
+					quadrow[i][j] = qcrowdata->quadrow_[i][j] - qcModel->getNumCols(0);
+					quadcol[i][j] = qcrowdata->quadcol_[i][j] - qcModel->getNumCols(0);
+
+					if (quadrow[i][j] < 0 || quadcol[i][j] < 0) {
+						throw "current version support quadratic constraints in non-coupling rows only./n";
+					}
+				}
+			}
+        	
+			osi_[s]->addQuadraticRows(qcrowdata->nqrows_, qcrowdata->linnzcnt_, qcrowdata->quadnzcnt_, qcrowdata->rhs_, qcrowdata->sense_, (const int **) linind, (const double **) qcrowdata->linval_, (const int **) quadrow, (const int **) quadcol, (const double **) qcrowdata->quadval_);
+
+			/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
+			char lpfilename[128];
+			sprintf(lpfilename, "%s_DdWorkerUB_scen%d.lp", qcModel->getFileName(), s); 
+			osi_[s]->writeProb(lpfilename, NULL);
+
+			FREE_2D_ARRAY_PTR(qcrowdata->nqrows_, linind);
+			FREE_2D_ARRAY_PTR(qcrowdata->nqrows_, quadrow);
+			FREE_2D_ARRAY_PTR(qcrowdata->nqrows_, quadcol);
+
+			/* change problem type to MIQCP */
+			osi_[s]->chgProbTypeToMIQCP();
+
+			/** set column type */
+			int nc = mat_reco->getNumCols();
+			osi_[s]->setColumnTypes(nc, ctype_reco);
+		
+			// /* solve using MIQCP solver */
+			// osi_->solveQp();
+		}
 
 		FREE_MEMORY
     }
@@ -288,8 +356,17 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 				CoinMin(CoinMax(0.01, time_remains_),
 				par_->getDblParam("DD/SUB/TIME_LIM")));
 
-		/** solve */
-		osi_[s]->solve();
+		// /** solve */
+		// osi_[s]->solve();
+		if (model_->isQuadratic())
+		{
+			/* solve using MIQCP solver */
+			osi_[s]->solveQp();
+		} 
+		else 
+		{
+			osi_[s]->solve();
+		}	
 
 		/** check status. there might be unexpected results. */
 		int status = osi_[s]->status();
