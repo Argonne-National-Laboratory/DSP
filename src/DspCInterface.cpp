@@ -436,6 +436,7 @@ void solveBd(DspApiEnv * env)
 
 	DecTssModel* dec = new DecTssModel(*getTssModel(env));
 	BdDriverSerial * bd = new BdDriverSerial(dec, env->par_, env->message_);
+	
 	env->solver_ = bd;
 	DSPdebugMessage("Created a serial Benders object\n");
 
@@ -572,7 +573,8 @@ void solveBdMpi(
 	}
 
 	//DSPdebugMessage("Creating a MPI Benders object (comm %d)\n", comm);
-	BdDriverMpi * bd = new BdDriverMpi(new DecTssModel(*getTssModel(env)), env->par_, env->message_, comm);
+	BdDriverMpi * bd = new BdDriverMpi(new DecTssModel(*getTssModel(env)), env->par_, env->message_, comm); //this line cause segment fault
+	//BdDriverMpi * bd = new BdDriverMpi(env->model_, env->par_, env->message_, comm);
 	env->solver_ = bd;
 
 	double * obj_aux  = NULL;
