@@ -96,17 +96,9 @@ DSP_RTN_CODE DdSub::solve()
 	DSPdebug(DspMessage::printArray(osi_->si_->getNumCols(), osi_->si_->getObjCoefficients()));
 
 	while (1) {
-		// osi_->solve();
+		
 		/** solve */
-		if (model_->isQuadratic())
-		{
-			/* solve using MIQCP solver */
-			osi_->solveQp();
-		} 
-		else 
-		{
-			osi_->solve();
-		}	
+		osi_->solve();	
 
 		/** check status. there might be unexpected results. */
 		status_ = osi_->status();
@@ -371,9 +363,6 @@ DSP_RTN_CODE DdSub::createProblem() {
 		/** set column type */
 		int nc = mat->getNumCols();
 		osi_->setColumnTypes(nc, ctype);
-	
-		// /* solve using MIQCP solver */
-		// osi_->solveQp();
 	}
 
     /** set solution gap tolerance */

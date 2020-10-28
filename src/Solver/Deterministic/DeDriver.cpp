@@ -206,15 +206,7 @@ DSP_RTN_CODE DeDriver::run()
 	walltime_ = CoinGetTimeOfDay();
 
 	/** solve */
-	if (model_->isQuadratic())
-	{
-		/* solve using MIQCP solver */
-		osi_->solveQp();
-	} 
-	else 
-	{
-		solve();
-	}	
+	solve();	
 
 	/** toc */
 	cputime_  = CoinCpuTime() - cputime_;

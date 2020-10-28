@@ -46,9 +46,6 @@ public:
 
 	/** set column type */
 	virtual void setColumnTypes(int nc, const char *ctype) {};
-	
-	/** solve problem directly through the solver */
-	virtual void solveQp() {};
 
 	/** solve problem */
 	virtual void solve() = 0;

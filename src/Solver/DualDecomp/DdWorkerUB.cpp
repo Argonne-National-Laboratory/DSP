@@ -356,17 +356,8 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 				CoinMin(CoinMax(0.01, time_remains_),
 				par_->getDblParam("DD/SUB/TIME_LIM")));
 
-		// /** solve */
-		// osi_[s]->solve();
-		if (model_->isQuadratic())
-		{
-			/* solve using MIQCP solver */
-			osi_[s]->solveQp();
-		} 
-		else 
-		{
-			osi_[s]->solve();
-		}	
+		/** solve */
+		osi_[s]->solve();	
 
 		/** check status. there might be unexpected results. */
 		int status = osi_[s]->status();
