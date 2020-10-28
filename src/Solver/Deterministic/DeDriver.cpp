@@ -176,6 +176,13 @@ DSP_RTN_CODE DeDriver::run()
 			FREE_2D_ARRAY_PTR(qcrowdata->nqrows_, linind);
 			FREE_2D_ARRAY_PTR(qcrowdata->nqrows_, quadrow);
 			FREE_2D_ARRAY_PTR(qcrowdata->nqrows_, quadcol);
+
+			/* change problem type to MIQCP */
+			osi_->chgProbTypeToMIQCP();
+
+			/** set column type */
+			int nc = mat->getNumCols();
+			osi_->setColumnTypes(nc, ctype);
 		}
 
 		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
@@ -201,13 +208,6 @@ DSP_RTN_CODE DeDriver::run()
 	/** solve */
 	if (model_->isQuadratic())
 	{
-		/* change problem type to MIQCP */
-		osi_->chgProbTypeToMIQCP();
-
-		/** set column type */
-		int nc = mat->getNumCols();
-		osi_->setColumnTypes(nc, ctype);
-	
 		/* solve using MIQCP solver */
 		osi_->solveQp();
 	} 

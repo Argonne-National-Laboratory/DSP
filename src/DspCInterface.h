@@ -63,9 +63,6 @@ void setDimensions(
 		const int   ncols2, /**< number of second-stage columns */
 		const int   nrows2  /**< number of second-stage rows */);
 
-/* update is_quadratic_ if it has quadratic rows */
-void setIsQuadratic(DspApiEnv * env, bool is_quadratic);
-
 /** read smps files */
 int readSmps(DspApiEnv * env, const char * smps);
 
