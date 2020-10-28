@@ -78,11 +78,6 @@ public:
 			std::cout << "fail to change the problem type to MIQCP" << std::endl;
 	}
 
-	// /** change column type using coltype_ for MIQCP */
-	// virtual void chgCType (nc, cindarray, coltype_) {
-	// 	CPXchgctype(env_, lp, nc, cindarray, coltype_);
-	// }
-
 	/** write problem file */
 	virtual void writeProb(char const * filename_str, char const * filetype_str)
 	{
