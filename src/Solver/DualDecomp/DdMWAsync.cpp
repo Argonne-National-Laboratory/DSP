@@ -736,8 +736,8 @@ DSP_RTN_CODE DdMWAsync::runMasterCore()
 			MPI_Iprobe(MPI_ANY_SOURCE, DSP_MPI_TAG_LB, subcomm_, &recv_message, &probe_status);
 #ifdef DSP_DEBUG
 			if (recv_message) {
-				MPI_Get_count(&probe_status, MPI_DOUBLE, &local_count);
-				DSPdebugMessage("Iprobe: source %d count %d recv_message %d\n", probe_status.MPI_SOURCE, local_count, recv_message);
+				// MPI_Get_count(&probe_status, MPI_DOUBLE, &local_count);
+				// DSPdebugMessage("Iprobe: source %d count %d recv_message %d\n", probe_status.MPI_SOURCE, local_count, recv_message);
 			}
 #endif
 
