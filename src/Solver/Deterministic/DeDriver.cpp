@@ -58,6 +58,9 @@ DSP_RTN_CODE DeDriver::run()
 	double * rlbd   = NULL;
 	double * rubd   = NULL;
 
+	bool isqp = false;
+	bool isqcp = false;
+
 	BGN_TRY_CATCH
 
 	/** get DE model */
@@ -139,6 +142,9 @@ DSP_RTN_CODE DeDriver::run()
 			
 			QcRowDataScen * qcrowdata = qcModel->getQRowsCPXParams(s);
 
+			if (qcrowdata->nqrows_ > 0)
+				isqcp = true;
+
 			/* print qcrowdata to test whether it is successfully received or not */
         	// qcModel->printQuadRows(s);
         	// qcModel->printQuadRows(qcrowdata);
@@ -172,18 +178,15 @@ DSP_RTN_CODE DeDriver::run()
 			FREE_2D_ARRAY_PTR(qcrowdata->nqrows_, quadrow);
 			FREE_2D_ARRAY_PTR(qcrowdata->nqrows_, quadcol);
 
-			/* change problem type to MIQCP */
-			osi_->chgProbTypeToMIQCP();
-
-			/** set column type */
-			int nc = mat->getNumCols();
-			osi_->setColumnTypes(nc, ctype);
 		}
 
 		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
 		char lpfilename[128];
 		sprintf(lpfilename, "%s.lp", qcModel->getFileName()); 
 		osi_->writeProb(lpfilename, NULL);
+
+		/** set problem type */
+		osi_->setProbType(isqp, isqcp);
 	}
 
 	/** set optimality gap tolerance */

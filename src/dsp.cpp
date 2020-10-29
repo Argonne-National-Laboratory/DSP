@@ -159,8 +159,27 @@ int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* s
 		isstochastic = false;
 	}
 	
+	if (paramfile != NULL) {
+		if (isroot) cout << "Reading parameter files: " << paramfile << endl;
+		readParamFile(env, paramfile);
+	}
+
 	if (quadfile != NULL) 
 	{
+		if (string(algotype) != "de" && string(algotype) != "dd") {
+			cout << "Current version only support deterministic or dual decomposition solvers for quadratic constrained problem" << endl;
+			return 1;
+		}
+
+		#ifndef DSP_HAS_CPX
+			cout << "Current version only support CPLEX for solving quadratic constrained problem" << endl;
+			return 1;
+		#endif
+		/** force to use CPLEX if available */
+		env->par_->setIntParam("DD/MASTER/SOLVER", OsiCpx);
+		env->par_->setIntParam("DD/SUB/SOLVER", OsiCpx);
+		env->par_->setIntParam("DE/SOLVER", OsiCpx);
+
 		if (isroot) cout << "Reading Quad files: " << quadfile << endl;
 		ret = readQuad(env, smpsfile, quadfile);
 		if (ret != 0) return ret;
@@ -169,11 +188,6 @@ int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* s
 			for (int s = 0; s < getNumScenarios(env); s++)
 				cout << "Second stage: " << getNumQRows(env,s) << " quadratic rows in scenario " << s << endl;
 		}
-	}
-
-	if (paramfile != NULL) {
-		if (isroot) cout << "Reading parameter files: " << paramfile << endl;
-		readParamFile(env, paramfile);
 	}
 
 	if (string(algotype) == "de") {

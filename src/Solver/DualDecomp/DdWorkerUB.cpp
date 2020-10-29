@@ -114,6 +114,11 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 	BGN_TRY_CATCH
 
 	int nsubprobs = par_->getIntPtrParamSize("ARR_PROC_IDX");
+
+	vector<bool> isqp = vector<bool> (nsubprobs, false);
+	vector<bool> isqcp = vector<bool> (nsubprobs, false);
+
+
 	tss = dynamic_cast<TssModel*>(model_);
 	if (tss == NULL)
 		throw "This is not a stochastic programming problem.";
@@ -155,8 +160,9 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 	    /** load problem */
 	    osi_[s]->si_->loadProblem(*mat_reco, clbd_reco, cubd_reco, obj_reco, rlbd_org_[s], rubd_org_[s]);
 		for (int j = 0; j < mat_reco->getNumCols(); ++j) {
-			if (ctype_reco[j] != 'C')
+			if (ctype_reco[j] != 'C') {
 				osi_[s]->si_->setInteger(j);
+			}
 		}
 	    DSPdebug(mat_reco->verifyMtx(4));
 		DSPdebugMessage("number of integers: %d\n", osi_[s]->si_->getNumIntegers());
@@ -179,6 +185,9 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 			}
 
 			QcRowDataScen * qcrowdata = qcModel->getQRowsCPXParams(s);
+
+			if (qcrowdata->nqrows_ > 0)
+				isqcp[s] = true;
 
 			/* print qcrowdata to test whether it is successfully received or not */
         	// qcModel->printQuadRows(s);
@@ -217,6 +226,8 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
         	
 			osi_[s]->addQuadraticRows(qcrowdata->nqrows_, qcrowdata->linnzcnt_, qcrowdata->quadnzcnt_, qcrowdata->rhs_, qcrowdata->sense_, (const int **) linind, (const double **) qcrowdata->linval_, (const int **) quadrow, (const int **) quadcol, (const double **) qcrowdata->quadval_);
 
+			osi_[s]->setProbType(isqp[s], isqcp[s]);
+
 			/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
 			char lpfilename[128];
 			sprintf(lpfilename, "%s_DdWorkerUB_scen%d.lp", qcModel->getFileName(), s); 
@@ -225,16 +236,6 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 			FREE_2D_ARRAY_PTR(qcrowdata->nqrows_, linind);
 			FREE_2D_ARRAY_PTR(qcrowdata->nqrows_, quadrow);
 			FREE_2D_ARRAY_PTR(qcrowdata->nqrows_, quadcol);
-
-			/* change problem type to MIQCP */
-			osi_[s]->chgProbTypeToMIQCP();
-
-			/** set column type */
-			int nc = mat_reco->getNumCols();
-			osi_[s]->setColumnTypes(nc, ctype_reco);
-		
-			// /* solve using MIQCP solver */
-			// osi_->solveQp();
 		}
 
 		FREE_MEMORY

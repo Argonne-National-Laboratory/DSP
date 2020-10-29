@@ -181,6 +181,9 @@ DSP_RTN_CODE DdSub::createProblem() {
     double obj_aux[1];
     int cpl_ncols;
 
+	bool isqp = false;
+	bool isqcp = false;
+
     BGN_TRY_CATCH
 
     /** parameters */
@@ -339,6 +342,8 @@ DSP_RTN_CODE DdSub::createProblem() {
 		}
 
 		QcRowDataScen * qcrowdata = qcModel->getQRowsCPXParams(sind_);
+		if (qcrowdata->nqrows_ > 0)
+			isqcp = true;
 
 		/* print qcrowdata to test whether it is successfully received or not */
         // qcModel->printQuadRows(sind_);
@@ -351,12 +356,8 @@ DSP_RTN_CODE DdSub::createProblem() {
 		sprintf(lpfilename, "%s_DdWorkerLB_scen%d.lp", qcModel->getFileName(), sind_); 
 		osi_->writeProb(lpfilename, NULL);
 
-		/* change problem type to MIQCP */
-		osi_->chgProbTypeToMIQCP();
-
-		/** set column type */
-		int nc = mat->getNumCols();
-		osi_->setColumnTypes(nc, ctype);
+		/** set problem type */
+		osi_->setProbType(isqp, isqcp);
 	}
 
     /** set solution gap tolerance */
