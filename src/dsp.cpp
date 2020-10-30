@@ -27,7 +27,7 @@ const char* gDspUsage =
 	"       --test\toptional parameter for testing objective value\n";
 
 void setBlockIds(DspApiEnv* env, int nsubprobs, bool master_has_subblocks);
-int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* paramfile, char* testvalue);
+int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* paramfile, char* testvalue, char* quadfile);
 int readMpsDec(DspApiEnv* env, char* mpsfile, char* decfile);
 int parseDecFile(char* decfile, vector<vector<string> >& rows_in_blocks);
 void createBlockModel(DspApiEnv* env, CoinMpsIO& p, const CoinPackedMatrix* mat, 
@@ -68,6 +68,7 @@ int main(int argc, char* argv[]) {
 		char* solnfile = NULL;
 		char* paramfile = NULL;
 		char* testvalue = NULL;
+		char* quadfile = NULL;
 		for (int i = 1; i < argc; i += 2) {
 			if (i + 1 != argc) {
 				if (string(argv[i]) == "--algo") {
@@ -84,6 +85,8 @@ int main(int argc, char* argv[]) {
 					paramfile = argv[i+1];
 				} else if (string(argv[i]) == "--test") {
 					testvalue = argv[i+1];
+				} else if (string(argv[i]) == "--quad") {
+					quadfile = argv[i+1];
 				} else {
 					EXIT_WITH_MSG
 				}
@@ -101,7 +104,7 @@ int main(int argc, char* argv[]) {
 		}
 
 		// run dsp
-		int ret = runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue);
+		int ret = runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile);
 
 #ifdef DSP_HAS_MPI
 		MPI_Finalize();
@@ -111,12 +114,13 @@ int main(int argc, char* argv[]) {
 #undef EXIT_WITH_MSG
 }
 
-int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* paramfile, char* testvalue) {
+int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* paramfile, char* testvalue, char* quadfile) {
 
 	int ret = 0;
 	bool isroot = true;
 	bool issolved = true;
-	bool isstochastic = true;
+	bool isstochastic = smpsfile != NULL ? true : false;
+	bool isquadratic = quadfile != NULL ? true : false;
 #ifdef DSP_HAS_MPI
 	int comm_rank, comm_size;
 	MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
@@ -127,19 +131,27 @@ int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* s
 	if (isroot) cout << "Creating DSP environment\n";
 	DspApiEnv* env = createEnv();
 
+	/* create model */
+	ret = createModel(env, isstochastic, isquadratic);
+	if (ret != 0) return ret;
+
 	// Read problem instance from file(s)
-	if (smpsfile != NULL) {
+	if (smpsfile != NULL) 
+	{
 		if (isroot) cout << "Reading SMPS files: " << smpsfile << endl;
 		ret = readSmps(env, smpsfile);
 		if (ret != 0) return ret;
-		if (isroot) {
+		if (isroot) 
+		{
 			cout << "First stage: " << getNumRows(env,0) << " rows, " << getNumCols(env,0) << " cols, " << getNumIntegers(env,0) << " integers" << endl;
 			cout << "Second stage: " << getNumRows(env,1) << " rows, " << getNumCols(env,1) << " cols, " << getNumIntegers(env,1) << " integers" << endl;
 			cout << "Number of scenarios: " << getNumSubproblems(env) << endl;
 		}
 		setBlockIds(env, getNumSubproblems(env), true);
-	} else if (mpsfile != NULL && decfile != NULL) {
-		if (isroot) {
+	} else if (mpsfile != NULL && decfile != NULL) 
+	{
+		if (isroot) 
+		{
 			cout << "Reading MPS file: " << mpsfile << endl;
 			cout << "Reading DEC file: " << decfile << endl;
 		}
@@ -147,10 +159,36 @@ int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* s
 		if (ret != 0) return ret;
 		isstochastic = false;
 	}
-
+	
 	if (paramfile != NULL) {
 		if (isroot) cout << "Reading parameter files: " << paramfile << endl;
 		readParamFile(env, paramfile);
+	}
+
+	if (quadfile != NULL) 
+	{
+		if (string(algotype) != "de" && string(algotype) != "dd") {
+			cout << "Current version only support deterministic or dual decomposition solvers for quadratic constrained problem" << endl;
+			return 1;
+		}
+
+		#ifndef DSP_HAS_CPX
+			cout << "Current version only support CPLEX for solving quadratic constrained problem" << endl;
+			return 1;
+		#endif
+		/** force to use CPLEX if available */
+		env->par_->setIntParam("DD/MASTER/SOLVER", OsiCpx);
+		env->par_->setIntParam("DD/SUB/SOLVER", OsiCpx);
+		env->par_->setIntParam("DE/SOLVER", OsiCpx);
+
+		if (isroot) cout << "Reading Quad files: " << quadfile << endl;
+		ret = readQuad(env, smpsfile, quadfile);
+		if (ret != 0) return ret;
+		if (isroot) 
+		{
+			for (int s = 0; s < getNumScenarios(env); s++)
+				cout << "Second stage: " << getNumQRows(env,s) << " quadratic rows in scenario " << s << endl;
+		}
 	}
 
 	if (string(algotype) == "de") {

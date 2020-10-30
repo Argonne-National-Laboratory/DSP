@@ -189,11 +189,12 @@ DSP_RTN_CODE StoModel::readSmps(const char * filename)
 		throw "Failed to read file.";
 	}
 	std::cout << "Read SMPS files: " << CoinCpuTime() - stime << " sec." << std::endl;
+	
 	core = smi.getCore();
 
 	/** number of stages */
 	nstgs_ = core->getNumStages();
-
+	
 	/** Do not support multi-stage */
 	if (nstgs_ > 2)
 	{

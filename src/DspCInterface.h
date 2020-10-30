@@ -18,6 +18,8 @@
 #include "DspApiEnv.h"
 
 class TssModel;
+class DecTssModel;
+class DecTssQcModel;
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,6 +27,9 @@ extern "C" {
 
 /** create API environment */
 DspApiEnv * createEnv(void);
+
+/** create model */
+int createModel(DspApiEnv * env, bool isstochastic, bool isquadratic);
 
 /** free API environment */
 void freeEnv(DspApiEnv * env);
@@ -37,6 +42,9 @@ void freeSolver(DspApiEnv * env);
 
 /** If current model is stochastic, return the model as a TssModel object. If no model exists, create one. */
 TssModel * getTssModel(DspApiEnv * env);
+
+/** If current model is quadratic, return the model as a QcModel object. */
+DecTssQcModel * getDecTssQcModel(DspApiEnv * env);
 
 /** get model pointer */
 DecModel * getModelPtr(DspApiEnv * env);
@@ -59,6 +67,9 @@ int readSmps(DspApiEnv * env, const char * smps);
 
 /** read dro files */
 int readDro(DspApiEnv * env, const char * dro);
+
+/** read quad files */
+int readQuad(DspApiEnv * env, const char * smps, const char * quad);
 
 /** load first-stage problem */
 void loadFirstStage(
@@ -181,6 +192,9 @@ int getNumIntegers(DspApiEnv * env, int stage);
 
 /** get Total number of row */
 int getTotalNumRows(DspApiEnv * env);
+
+/** get number of quadratic rows */
+int getNumQRows(DspApiEnv * env, int s);
 
 /** get number of columns */
 int getTotalNumCols(DspApiEnv * env);

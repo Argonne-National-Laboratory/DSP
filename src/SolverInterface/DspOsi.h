@@ -34,6 +34,19 @@ public:
 		throw CoinError("Quadratic objective is not supported.", "loadQuadraticObjective", "DspOsi");
 	}
 
+	/** load quadratic constrs */
+	virtual void addQuadraticRows(int nqrows, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int const ** linind, double const ** linval, 
+										int const ** quadrow, int const ** quadcol, double const ** quadval) {};
+
+	/** change problem type to qp */
+	virtual void chgProbTypeToMIQCP(){};
+
+	/** write problem file */
+	virtual void writeProb(char const * filename_str, char const * filetype_str) {};
+
+	/** set problem type */
+	virtual void setProbType(bool isqp, bool isqcp) {};
+
 	/** solve problem */
 	virtual void solve() = 0;
 
