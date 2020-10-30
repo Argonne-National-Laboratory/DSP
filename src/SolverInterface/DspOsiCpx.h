@@ -20,9 +20,7 @@ public:
 
 	/** default constructor */
 	DspOsiCpx() : 
-	ismip_(false),
-	isqp_(false),
-	isqcp_(false) 
+	DspOsi()
 	{
 		si_ = new OsiCpxSolverInterface();
 		cpx_ = dynamic_cast<OsiCpxSolverInterface*>(si_);
@@ -30,9 +28,7 @@ public:
 
 	/** copy constructor */
 	DspOsiCpx(const DspOsiCpx& rhs) : 
-	ismip_(rhs.ismip_),
-	isqp_(rhs.isqp_),
-	isqcp_(rhs.isqcp_) {
+	DspOsi(rhs) {
         si_ = new OsiCpxSolverInterface(*(rhs.cpx_));
 		cpx_ = dynamic_cast<OsiCpxSolverInterface*>(si_);
 	}
@@ -93,13 +89,12 @@ public:
 		{
 			int err = CPXaddqconstr(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), linnzcnt[i], quadnzcnt[i], rhs[i], sense[i], 
 				linind[i], linval[i], quadrow[i], quadcol[i], quadval[i], NULL);
-			checkDsPOsiCpxError(err, "CPXaddqconstr", "addQuadraticRows");	
+			checkDspOsiError(err, "CPXaddqconstr", "addQuadraticRows");	
 		}
     }
 
 	/** throw error */
-	static inline void
-	checkDsPOsiCpxError(int err, std::string cpxfuncname, std::string dsposimethod)
+	virtual inline void checkDspOsiError(int err, std::string cpxfuncname, std::string dsposimethod) 
 	{
 		if (err != 0) {
 			char s[100];
@@ -115,22 +110,7 @@ public:
 	virtual void writeProb(char const * filename_str, char const * filetype_str)
 	{
 		int err = CPXwriteprob(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), filename_str, filetype_str);
-		checkDsPOsiCpxError(err, "CPXwriteprob", "writeProb");
-	}
-
-	/** get problem type */
-	virtual int getProbType(void) {
-		return CPXgetprobtype(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
-	}
-
-	/** set problem type */
-	virtual void setProbType(bool isqp, bool isqcp) {
-		
-		if (si_->getNumIntegers() > 0)
-			ismip_ = true;
-		
-		isqp_ = isqp;
-		isqcp_ = isqcp;
+		checkDspOsiError(err, "CPXwriteprob", "writeProb");
 	}
 
 	/** change problem type to MIQCP */
@@ -141,7 +121,7 @@ public:
 		CPXLPptr lp = cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL);
 
 		int err = CPXchgprobtype(env, lp, CPXPROB_MIQCP);
-    	checkDsPOsiCpxError(err, "CPXchgprobtype", "switchToMIQCP");
+    	checkDspOsiError(err, "CPXchgprobtype", "switchToMIQCP");
 
 		int nc = cpx_->getNumCols();
     	int *cindarray = new int[nc];
@@ -150,7 +130,7 @@ public:
       		cindarray[i] = i;
 
 		err = CPXchgctype(env, lp, nc, cindarray, cpx_->getCtype());
-    	checkDsPOsiCpxError(err, "CPXchgctype", "switchToMIQCP");
+    	checkDspOsiError(err, "CPXchgctype", "switchToMIQCP");
 
     	delete[] cindarray;
   		
@@ -165,7 +145,7 @@ public:
 		CPXLPptr lp = cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL);
 
 		int err = CPXchgprobtype(env, lp, CPXPROB_MIQP);
-    	checkDsPOsiCpxError(err, "CPXchgprobtype", "switchToMIQP");
+    	checkDspOsiError(err, "CPXchgprobtype", "switchToMIQP");
 
     	int nc = cpx_->getNumCols();
     	int *cindarray = new int[nc];
@@ -174,34 +154,34 @@ public:
       		cindarray[i] = i;
 
 		err = CPXchgctype(env, lp, nc, cindarray, cpx_->getCtype());
-    	checkDsPOsiCpxError(err, "CPXchgctype", "switchToMIQP");
+    	checkDspOsiError(err, "CPXchgctype", "switchToMIQP");
 
     	delete[] cindarray;
   	}
 
-	/** change problem type to QP */
-	void switchToQCP(void)
+	/** change problem type to QCP */
+	virtual void switchToQCP(void)
 	{
 		DSPdebugMessage("DspOsiCpx::switchToQCP()\n");
 
-			CPXENVptr env = cpx_->getEnvironmentPtr();
-			CPXLPptr lp = cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL);
+		CPXENVptr env = cpx_->getEnvironmentPtr();
+		CPXLPptr lp = cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL);
 
-			int err = CPXchgprobtype(env, lp, CPXPROB_QCP);
-    		checkDsPOsiCpxError(err, "CPXchgprobtype", "switchToQCP");
+		int err = CPXchgprobtype(env, lp, CPXPROB_QCP);
+		checkDspOsiError(err, "CPXchgprobtype", "switchToQCP");
 
 	}
 
 	/** change problem type to QP */
-	void switchToQP(void)
+	virtual void switchToQP(void)
 	{
 		DSPdebugMessage("DspOsiCpx::switchToQP()\n");
 
   		CPXENVptr env = cpx_->getEnvironmentPtr();
-			CPXLPptr lp = cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL);
+		CPXLPptr lp = cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL);
 
-			int err = CPXchgprobtype(env, lp, CPXPROB_QP);
-    		checkDsPOsiCpxError(err, "CPXchgprobtype", "switchToQP");
+		int err = CPXchgprobtype(env, lp, CPXPROB_QP);
+		checkDspOsiError(err, "CPXchgprobtype", "switchToQP");
   		
 	}
 
@@ -304,12 +284,12 @@ public:
 				if (isqcp_) 
 				{
 					term = CPXbaropt(env, lp);
-					checkDsPOsiCpxError(term, "CPXqcpopt", "QCQPSolve");
+					checkDspOsiError(term, "CPXqcpopt", "QCQPSolve");
 				}
 				else if (isqp_)
 				{
 					term = CPXqpopt(env, lp);
-					checkDsPOsiCpxError(term, "CPXqpopt", "QCQPSolve");
+					checkDspOsiError(term, "CPXqpopt", "QCQPSolve");
 				}
 				break;
 			case 1:
@@ -321,7 +301,7 @@ public:
 				{
 					CPXsetintparam(env, CPX_PARAM_QPMETHOD, 1);
 					term = CPXqpopt(env, lp);
-					checkDsPOsiCpxError(term, "CPXqpopt", "QCQPSolve");
+					checkDspOsiError(term, "CPXqpopt", "QCQPSolve");
 				}
 				break;
 			case -1:
@@ -333,7 +313,7 @@ public:
 				{
 					CPXsetintparam(env, CPX_PARAM_QPMETHOD, 2);
 					term = CPXqpopt(env, lp);
-					checkDsPOsiCpxError(term, "CPXqpopt", "QCQPSolve");
+					checkDspOsiError(term, "CPXqpopt", "QCQPSolve");
 				}
 				break;
 			}
@@ -383,7 +363,7 @@ public:
 			CPXsetintparam(env, CPX_PARAM_SIMDISPLAY, 2);
 
   		term = CPXmipopt(env, lp);
-  		checkDsPOsiCpxError(term, "CPXmipopt", "MIQCQPSolve");
+  		checkDspOsiError(term, "CPXmipopt", "MIQCQPSolve");
 	}
 	
 
@@ -517,11 +497,6 @@ public:
 	}
 
     OsiCpxSolverInterface* cpx_;   
-	/** Stores whether CPLEX' prob type is currently set to mixed-integer program */
-	mutable bool ismip_;
-	/** Stores whether CPLEX' prob type is currently set to (MI)QP or (MI)QCP */
-	mutable bool isqp_;
-	mutable bool isqcp_;
 };
 
 #endif

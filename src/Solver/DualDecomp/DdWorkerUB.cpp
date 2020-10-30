@@ -183,7 +183,7 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 				return DSP_RTN_ERR;
 			}
 
-			QcRowDataScen * qcrowdata = qcModel->getQRowsCPXParams(s);
+			QcRowDataScen * qcrowdata = qcModel->getQcRowData(s);
 
 			if (qcrowdata->nqrows_ > 0)
 				isqcp[s] = true;
