@@ -218,12 +218,12 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 			}
         	
 			osi_[s]->addQuadraticRows(qcrowdata->nqrows_, qcrowdata->linnzcnt_, qcrowdata->quadnzcnt_, qcrowdata->rhs_, qcrowdata->sense_, (const int **) linind, (const double **) qcrowdata->linval_, (const int **) quadrow, (const int **) quadcol, (const double **) qcrowdata->quadval_);
-
+#ifdef DSP_DEBUG
 			/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
 			char lpfilename[128];
 			sprintf(lpfilename, "%s_DdWorkerUB_scen%d.lp", qcModel->getFileName(), s); 
 			osi_[s]->writeProb(lpfilename, NULL);
-
+#endif
 			FREE_2D_ARRAY_PTR(qcrowdata->nqrows_, linind);
 			FREE_2D_ARRAY_PTR(qcrowdata->nqrows_, quadrow);
 			FREE_2D_ARRAY_PTR(qcrowdata->nqrows_, quadcol);
