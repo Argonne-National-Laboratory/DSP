@@ -92,8 +92,8 @@ public:
 	/** print quadratic constraints for given params */
 	DSP_RTN_CODE printQuadRows (QcRowDataScen *qcdata);
 
-	/** get parameters for CPX interface */
-	QcRowDataScen * getQRowsCPXParams (int s) {return &QcRowData_[s];}
+	/** get parameters quadratic constraints */
+	QcRowDataScen * getQcRowData (int s) {return &QcRowData_[s];}
 
 	/** get file name */
 	const char * getFileName() const {return filename_;} /* must be the same as getNumScenarios() in StoModel */

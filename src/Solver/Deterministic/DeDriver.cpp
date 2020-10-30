@@ -145,7 +145,7 @@ DSP_RTN_CODE DeDriver::run()
 
 		for (int s = 0; s < qcModel->getNumScenarios(); s++) {
 			
-			QcRowDataScen * qcrowdata = qcModel->getQRowsCPXParams(s);
+			QcRowDataScen * qcrowdata = qcModel->getQcRowData(s);
 
 			if (qcrowdata->nqrows_ > 0)
 				isqcp = true;

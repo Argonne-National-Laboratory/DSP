@@ -347,7 +347,7 @@ DSP_RTN_CODE DdSub::createProblem() {
 			return DSP_RTN_ERR;
 		}
 
-		QcRowDataScen * qcrowdata = qcModel->getQRowsCPXParams(sind_);
+		QcRowDataScen * qcrowdata = qcModel->getQcRowData(sind_);
 		if (qcrowdata->nqrows_ > 0)
 			isqcp = true;
 

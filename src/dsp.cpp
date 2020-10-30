@@ -25,6 +25,7 @@ const char *gDspUsage =
 	"       --smps\t\tSMPS file name without extensions. For example, if your SMPS files are ../test/farmer.cor, ../test/farmer.sto, and ../test/farmer.tim, this value should be ../test/farmer\n"
 	"       --mps\t\tMPS file name\n"
 	"       --dec\t\tDEC file name\n"
+	"       --quad\tQuadratic file name without extension. The Quadratic file should extend the parsed SMPS file and its suffix needs to be .txt in the current version. For example, if your Quadratic file is ../test/farmer.txt, this value should be ../test/farmer\n"
 	"       --soln\t\toptional argument for solution file prefix. For example, if the prefix is given as MySol, then two files MySol.primal.txt and MySol.dual.txt will be written for primal and dual solutions, respectively.\n"
 	"       --param\t\toptional paramater for parameter file name\n"
 	"       --test\t\toptional parameter for testing objective value\n";
