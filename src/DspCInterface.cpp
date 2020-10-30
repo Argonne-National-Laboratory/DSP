@@ -71,7 +71,7 @@ int createModel(DspApiEnv * env, bool isstochastic, bool isquadratic)
 }
 
 /** free API environment */
-void freeEnv(DspApiEnv * env)
+void freeEnv(DspApiEnv * &env)
 {
 	FREE_PTR(env);
 }

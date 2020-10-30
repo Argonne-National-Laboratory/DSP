@@ -32,7 +32,7 @@ DspApiEnv * createEnv(void);
 int createModel(DspApiEnv * env, bool isstochastic, bool isquadratic);
 
 /** free API environment */
-void freeEnv(DspApiEnv * env);
+void freeEnv(DspApiEnv * &env);
 
 /** free model */
 void freeModel(DspApiEnv * env);
