@@ -75,12 +75,6 @@ public:
 	/** solve problem */
 	virtual void solve() = 0;
 
-	/** modify OsiSolverInterface::initialSolve */
-	virtual void QCQPSolve(){};
-
-	/** modify OsiSolverInterface::branchAndBound */
-	virtual void MIQCQPSolve(){};
-
 	virtual void use_simplex() {
 		throw CoinError("Simplex is not supported.", "use_simplex", "DspOsi");
 	}
