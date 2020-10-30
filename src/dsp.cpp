@@ -128,7 +128,7 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 	int ret = 0;
 	bool isroot = true;
 	bool issolved = true;
-	bool isstochastic = true;
+	bool isstochastic = smpsfile != NULL ? true : false;
 	bool isquadratic = quadfile != NULL ? true : false;
 #ifdef DSP_HAS_MPI
 	int comm_rank, comm_size;
@@ -139,9 +139,10 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 
 	if (isroot) cout << "Creating DSP environment\n";
 	DspApiEnv* env = createEnv();
-	
-	bool is_qc = quadfile != NULL ? true : false;
-	createModel(env, is_qc);
+
+	/* create model */
+	ret = createModel(env, isstochastic, isquadratic);
+	if (ret != 0) return ret;
 
 	// Read problem instance from file(s)
 	if (smpsfile != NULL) 

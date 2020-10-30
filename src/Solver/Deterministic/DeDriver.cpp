@@ -189,7 +189,7 @@ DSP_RTN_CODE DeDriver::run()
 		sprintf(lpfilename, "%s.lp", qcModel->getFileName()); 
 		osi_->writeProb(lpfilename, NULL);
 	}
-	
+
 	/** set problem type */
 	osi_->setProbType(isqp, isqcp);
 	

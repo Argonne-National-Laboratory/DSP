@@ -30,7 +30,7 @@ extern "C" {
 DspApiEnv * createEnv(void);
 
 /** create model */
-void createModel(DspApiEnv * env, bool is_qc=false);
+int createModel(DspApiEnv * env, bool isstochastic, bool isquadratic);
 
 /** free API environment */
 void freeEnv(DspApiEnv * &env);

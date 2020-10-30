@@ -50,14 +50,24 @@ DspApiEnv * createEnv(void)
 }
 
 /** create model */
-void createModel(DspApiEnv * env, bool is_qc)
+int createModel(DspApiEnv * env, bool isstochastic, bool isquadratic)
 {
 	if (env->model_ == NULL) {
-		if (is_qc)
-			env->model_ = new DecTssQcModel;
-		else 
-			env->model_ = new DecTssModel;
-	}
+		if (isstochastic) {
+			if (isquadratic)
+				env->model_ = new DecTssQcModel;
+			else 
+				env->model_ = new DecTssModel;
+		} else {
+			if (isquadratic) {
+				cout << "Current version only support quadratic constraints for stochastic models" << endl;
+				return 1;
+			} else {
+				/* nothing to do */
+			}
+		}
+	} 
+	return 0;
 }
 
 /** free API environment */
