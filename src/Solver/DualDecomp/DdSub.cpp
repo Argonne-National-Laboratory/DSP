@@ -361,10 +361,10 @@ DSP_RTN_CODE DdSub::createProblem() {
 		char lpfilename[128];
 		sprintf(lpfilename, "%s_DdWorkerLB_scen%d.lp", qcModel->getFileName(), sind_); 
 		osi_->writeProb(lpfilename, NULL);
-
-		/** set problem type */
-		osi_->setProbType(isqp, isqcp);
 	}
+
+	/** set problem type */
+	osi_->setProbType(isqp, isqcp);
 
     /** set solution gap tolerance */
 	if (nIntegers > 0)

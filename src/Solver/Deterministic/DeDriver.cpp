@@ -182,18 +182,17 @@ DSP_RTN_CODE DeDriver::run()
 			FREE_2D_ARRAY_PTR(qcrowdata->nqrows_, linind);
 			FREE_2D_ARRAY_PTR(qcrowdata->nqrows_, quadrow);
 			FREE_2D_ARRAY_PTR(qcrowdata->nqrows_, quadcol);
-
 		}
 
 		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
 		char lpfilename[128];
 		sprintf(lpfilename, "%s.lp", qcModel->getFileName()); 
 		osi_->writeProb(lpfilename, NULL);
-
-		/** set problem type */
-		osi_->setProbType(isqp, isqcp);
 	}
-
+	
+	/** set problem type */
+	osi_->setProbType(isqp, isqcp);
+	
 	/** set optimality gap tolerance */
 	osi_->setRelMipGap(par_->getDblParam("DE/GAPTOL"));
 
