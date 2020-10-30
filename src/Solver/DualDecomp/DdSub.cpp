@@ -350,11 +350,12 @@ DSP_RTN_CODE DdSub::createProblem() {
         // qcModel->printQuadRows(qcrowdata);
         	
 		osi_->addQuadraticRows(qcrowdata->nqrows_, qcrowdata->linnzcnt_, qcrowdata->quadnzcnt_, qcrowdata->rhs_, qcrowdata->sense_, (const int **) qcrowdata->linind_, (const double **) qcrowdata->linval_, (const int **) qcrowdata->quadrow_, (const int **) qcrowdata->quadcol_, (const double **) qcrowdata->quadval_);
-	
+	#ifdef DSP_DEBUG
 		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
 		char lpfilename[128];
 		sprintf(lpfilename, "%s_DdWorkerLB_scen%d.lp", qcModel->getFileName(), sind_); 
 		osi_->writeProb(lpfilename, NULL);
+	#endif
 	}
 
 	/** set problem type */

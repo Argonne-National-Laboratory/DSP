@@ -4,7 +4,6 @@
 #include "DspCInterface.h"
 #include "Model/TssModel.h"
 #include "Model/DecTssQcModel.h"
-// #include "SolverInterface/DspOsiCpx.h"
 
 int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* paramfile, char* testvalue, char* quadfile);
 int readMpsDec(DspApiEnv* env, char* mpsfile, char* decfile);
@@ -22,11 +21,11 @@ void copyToCharArray (string &stringToCopy, char* &arrayToWrite) {
     strcpy(arrayToWrite, stringToCopy.c_str());
 }
 
-TEST_CASE("Run DSP") {
+TEST_CASE("Test runDSP") {
 	
 	bool isroot = true;
-	/* test with MPI turned off */
-    #undef DSP_HAS_MPI
+/* test with MPI turned off */
+#undef DSP_HAS_MPI
 
     char* algotype = NULL;
     char* smpsfile = NULL;
@@ -40,58 +39,84 @@ TEST_CASE("Run DSP") {
     string paramfile_s = "../test/params_cpx.txt";
     copyToCharArray(paramfile_s, paramfile);
 
-    SECTION ("MPS-DEC Instance") {
+    SECTION ("Solving a MPS-DEC Instance") {
 
         string mpsfile_s = "../examples/mps-dec/noswot.mps";
         string decfile_s = "../examples/mps-dec/noswot.dec";
+		string testvalue_s = "-42";
         copyToCharArray(mpsfile_s, mpsfile);
         copyToCharArray(decfile_s, decfile);
+		copyToCharArray(testvalue_s, testvalue);
 
-        SECTION("DE") {
+        SECTION("with DE") {
             string algotype_s = "de";
             copyToCharArray(algotype_s, algotype);
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
         }
 
-        SECTION("DD") {
+        SECTION("with DD") {
             string algotype_s = "dd";
             copyToCharArray(algotype_s, algotype);
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
         }
 
-        SECTION("DW") {
+        // SECTION("DW") {
+        //     string algotype_s = "dw";
+        //     copyToCharArray(algotype_s, algotype);
+                
+        //     REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+        // }
+    }
+
+    SECTION ("Solving a SMPS Instance") {
+
+        string smpsfile_s = "../examples/smps/farmer";
+		string testvalue_s = "-108389.9994043";
+		copyToCharArray(smpsfile_s, smpsfile);
+		copyToCharArray(testvalue_s, testvalue);
+
+		SECTION("with DE") {
+            string algotype_s = "de";
+            copyToCharArray(algotype_s, algotype);
+            
+            REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+        }
+
+        SECTION("with DD") {
             string algotype_s = "dd";
             copyToCharArray(algotype_s, algotype);
-                
+            
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
         }
-        
-    }
 
-    SECTION ("SMPSFILE") {
+        SECTION("with Quadratic Constraints") {
+			
+			testvalue_s = "-105093";
+			copyToCharArray(testvalue_s, testvalue);
 
-        
-        string smpsfile_s = "../examples/smps/farmer";
-        string algotype_s = "de";
-    
-        copyToCharArray(smpsfile_s, smpsfile);
-        copyToCharArray(algotype_s, algotype);
-
-        REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
-
-        SECTION("QUADFILE") {
-            string quadfile_s = "../examples/quad/farmer.txt";
+            string quadfile_s = "../examples/quad/farmer";
             copyToCharArray(quadfile_s, quadfile);
+			puts(quadfile);
 
-            REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+            SECTION("with DE") {
+				string algotype_s = "de";
+				copyToCharArray(algotype_s, algotype);
+				
+				REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+			}
+
+			SECTION("with DD") {
+				string algotype_s = "dd";
+				copyToCharArray(algotype_s, algotype);
+				
+				REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+			}
         }
-
-        
     }
 
-    #ifdef DSP_HAS_MPI
+#ifdef DSP_HAS_MPI
 		MPI_Finalize();
 #endif
 }
@@ -121,7 +146,6 @@ int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* s
 	// Read problem instance from file(s)
 	if (smpsfile != NULL) 
 	{
-		cout << "reach 280" << endl;
 		if (isroot) cout << "Reading SMPS files: " << smpsfile << endl;
 		ret = readSmps(env, smpsfile);
 		if (ret != 0) return ret;
@@ -134,7 +158,6 @@ int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* s
 		setBlockIds(env, getNumSubproblems(env), true);
 	} else if (mpsfile != NULL && decfile != NULL) 
 	{
-		cout << "reach 154" << endl;
 		if (isroot) 
 		{
 			cout << "Reading MPS file: " << mpsfile << endl;
@@ -144,7 +167,7 @@ int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* s
 		if (ret != 0) return ret;
 		isstochastic = false;
 	}
-	cout << "reach 303" << endl;
+	
 		if (isroot) 
 	if (paramfile != NULL) {
 		if (isroot) cout << "Reading parameter files: " << paramfile << endl;
@@ -422,7 +445,7 @@ int readMpsDec(DspApiEnv* env, char* mpsfile, char* decfile) {
 	ret = parseDecFile(decfile, rows_in_blocks);
 	if (ret != 0) return ret;
 
-	cout <<  "Assign block(s) to each process" << endl;
+	// cout <<  "Assign block(s) to each process" << endl;
 	setBlockIds(env, rows_in_blocks.size() - 1, true);
 
 	vector<int> proc_idx_set;
@@ -430,7 +453,7 @@ int readMpsDec(DspApiEnv* env, char* mpsfile, char* decfile) {
 		proc_idx_set.push_back(env->par_->getIntPtrParam("ARR_PROC_IDX")[s]);
 	}
 
-	cout << "create master block" << endl;
+	// cout << "create master block" << endl;
 	int blockid = 0;
 	createBlockModel(env, p, mps_matrix, 0, rows_in_blocks[0], rowname2index, ctype.c_str(), obj);
 

@@ -127,11 +127,12 @@ bool DecTssQcModel::mapVarnameIndex(map<string, int> &map_varName_index, const c
         return false;
     }
 
-
+#ifdef DSP_DEBUG
     cout << "variable, index" << endl;
     for (auto &v : map_varName_index)
-        cout << v.first << ", " << v.second << endl;
-                             
+    cout << v.first << ", " << v.second << endl;
+#endif              
+
 	return true;
 }
 /** read quadratic data file */
@@ -352,7 +353,7 @@ DSP_RTN_CODE DecTssQcModel::readQuad(const char * smps, const char * filename)
 	    myfile.close();
     } else {
         cout << "Unable to open quad file";
-        return false;
+        return 1;
     }
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
