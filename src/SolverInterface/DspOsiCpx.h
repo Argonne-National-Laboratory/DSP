@@ -137,11 +137,22 @@ public:
 	virtual void switchToMIQCP(void) {
 		DSPdebugMessage("DspOsiCpx::switchToMIQCP()\n");
 
-  			CPXENVptr env = cpx_->getEnvironmentPtr();
-			CPXLPptr lp = cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL);
+  		CPXENVptr env = cpx_->getEnvironmentPtr();
+		CPXLPptr lp = cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL);
 
-			int err = CPXchgprobtype(env, lp, CPXPROB_MIQCP);
-    		checkDsPOsiCpxError(err, "CPXchgprobtype", "switchToMIQCP");
+		int err = CPXchgprobtype(env, lp, CPXPROB_MIQCP);
+    	checkDsPOsiCpxError(err, "CPXchgprobtype", "switchToMIQCP");
+
+		int nc = cpx_->getNumCols();
+    	int *cindarray = new int[nc];
+
+    	for (int i = 0; i < nc; ++i)
+      		cindarray[i] = i;
+
+		err = CPXchgctype(env, lp, nc, cindarray, cpx_->getCtype());
+    	checkDsPOsiCpxError(err, "CPXchgctype", "switchToMIQCP");
+
+    	delete[] cindarray;
   		
 	}
 
@@ -150,13 +161,23 @@ public:
 
 		DSPdebugMessage("DspOsiCpx::switchToMIQP()\n");
 
-  			CPXENVptr env = cpx_->getEnvironmentPtr();
-			CPXLPptr lp = cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL);
+  		CPXENVptr env = cpx_->getEnvironmentPtr();
+		CPXLPptr lp = cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL);
 
-			int err = CPXchgprobtype(env, lp, CPXPROB_MIQP);
-    		checkDsPOsiCpxError(err, "CPXchgprobtype", "switchToMIQP");
-  		
-	}
+		int err = CPXchgprobtype(env, lp, CPXPROB_MIQP);
+    	checkDsPOsiCpxError(err, "CPXchgprobtype", "switchToMIQP");
+
+    	int nc = cpx_->getNumCols();
+    	int *cindarray = new int[nc];
+
+    	for (int i = 0; i < nc; ++i)
+      		cindarray[i] = i;
+
+		err = CPXchgctype(env, lp, nc, cindarray, cpx_->getCtype());
+    	checkDsPOsiCpxError(err, "CPXchgctype", "switchToMIQP");
+
+    	delete[] cindarray;
+  	}
 
 	/** change problem type to QP */
 	void switchToQCP(void)
