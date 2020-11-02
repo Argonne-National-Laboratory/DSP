@@ -62,6 +62,19 @@ int readDro(DspApiEnv * env, const char * dro);
 
 /** load first-stage problem */
 void loadFirstStage(
+ 		DspApiEnv *          env,   /**< pointer to API object */
+ 		const CoinBigIndex * start, /**< start index for each row */
+ 		const int *          index, /**< column indices */
+ 		const double *       value, /**< constraint elements */
+ 		const double *       clbd,  /**< column lower bounds */
+ 		const double *       cubd,  /**< column upper bounds */
+ 		const char *         ctype, /**< column types */
+ 		const double *       obj,   /**< objective coefficients */
+ 		const double *       rlbd,  /**< row lower bounds */
+ 		const double *       rubd   /**< row upper bounds */);
+
+/** load first-stage problem with quadratic objective */
+void loadQuadraticFirstStage(
 		DspApiEnv *          env,   /**< pointer to API object */
 		const CoinBigIndex * start, /**< start index for each row */
 		const int *          index, /**< column indices */
@@ -70,11 +83,30 @@ void loadFirstStage(
 		const double *       cubd,  /**< column upper bounds */
 		const char *         ctype, /**< column types */
 		const double *       obj,   /**< objective coefficients */
+		const int * 		 qrowindex,/**< start index for first-stage quadratic objective */
+		const int *			 qcolindex,/**< quadratic objective column indices */
+		const double *		 qvalue,/**< quadratic objective elements */
+		const CoinBigIndex	 qnum,	/**< number of quadratic elements */
 		const double *       rlbd,  /**< row lower bounds */
 		const double *       rubd   /**< row upper bounds */);
 
-/** load first-stage problem */
+/** load second-stage problem */
 void loadSecondStage(
+ 		DspApiEnv *          env,   /**< pointer to API object */
+ 		const int            s,     /**< scenario index */
+ 		const double         prob,  /**< probability */
+ 		const CoinBigIndex * start, /**< start index for each row */
+ 		const int *          index, /**< column indices */
+ 		const double *       value, /**< constraint elements */
+ 		const double *       clbd,  /**< column lower bounds */
+ 		const double *       cubd,  /**< column upper bounds */
+ 		const char *         ctype, /**< column types */
+ 		const double *       obj,   /**< objective coefficients */
+ 		const double *       rlbd,  /**< row lower bounds */
+ 		const double *       rubd   /**< row upper bounds */);
+
+/** load second-stage problem */
+void loadQuadraticSecondStage(
 		DspApiEnv *          env,   /**< pointer to API object */
 		const int            s,     /**< scenario index */
 		const double         prob,  /**< probability */
@@ -85,8 +117,12 @@ void loadSecondStage(
 		const double *       cubd,  /**< column upper bounds */
 		const char *         ctype, /**< column types */
 		const double *       obj,   /**< objective coefficients */
+		const int * 		 qrowindex,/**< start index for first-stage quadratic objective */
+		const int *			 qcolindex,/**< quadratic objective column indices */
+		const double *		 qvalue,/**< quadratic objective elements */
+		const CoinBigIndex	 qnum,	/**< number of quadratic elements */
 		const double *       rlbd,  /**< row lower bounds */
-		const double *       rubd   /**< row upper bounds */);
+		const double *       rubd   /**< row upper bounds */);		
 
 /** load block problems */
 void loadBlockProblem(

@@ -34,6 +34,10 @@ public:
 		throw CoinError("Quadratic objective is not supported.", "loadQuadraticObjective", "DspOsi");
 	}
 
+	virtual void writeMps(const char *filename){
+		si_->writeMps(filename);
+	}
+
 	/** solve problem */
 	virtual void solve() = 0;
 
