@@ -122,7 +122,7 @@ DSP_RTN_CODE DeDriver::run()
 	if (qobj != NULL){
 		osi_->loadQuadraticObjective(*qobj);
 	}
-	osi_->writeMps("farmer111");
+	
 	for (int j = 0; j < mat->getNumCols(); j++)
 	{
 		if (ctype[j] != 'C')
