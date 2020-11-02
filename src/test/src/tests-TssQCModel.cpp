@@ -27,6 +27,8 @@ TEST_CASE("Test runDSP") {
 /* test with MPI turned off */
 #undef DSP_HAS_MPI
 
+#ifdef DSP_HAS_SCIP
+
     char* algotype = NULL;
     char* smpsfile = NULL;
     char* mpsfile = NULL;
@@ -115,6 +117,7 @@ TEST_CASE("Test runDSP") {
 			}
         }
     }
+#endif
 
 #ifdef DSP_HAS_MPI
 		MPI_Finalize();
