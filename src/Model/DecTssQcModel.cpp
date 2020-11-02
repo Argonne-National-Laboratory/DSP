@@ -418,8 +418,6 @@ DSP_RTN_CODE DecTssQcModel::loadQuadraticRows(
 
     BGN_TRY_CATCH
 
-	assert(nqrows == nqrows_[s]);
-	
 	/** allocate values */
 	for (int k = 0; k < nqrows; k++) 
 	{
