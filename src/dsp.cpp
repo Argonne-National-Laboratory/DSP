@@ -297,7 +297,7 @@ int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* s
 					if ((val - primobj) / (fabs(val) + 1.e-10) > test_tolerance || (dualobj - val) / (fabs(val) + 1.e-10) > test_tolerance)
 						ret = 1;
 				} else {
-					if ((primobj - val) / (fabs(val) + 1.e-10) > test_tolerance || (val - dualobj) / (fabs(val) + 1.e-10) + test_tolerance)
+					if ((primobj - val) / (fabs(val) + 1.e-10) > test_tolerance || (val - dualobj) / (fabs(val) + 1.e-10) > test_tolerance)
 						ret = 1;
 				}
 			}
