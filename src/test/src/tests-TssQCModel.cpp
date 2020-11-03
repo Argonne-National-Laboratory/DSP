@@ -16,7 +16,11 @@ const double test_tolerance = 1.0e-2;
 void printCoreRows (DspApiEnv * env);
 
 void copyToCharArray (string &stringToCopy, char* &arrayToWrite) {
-                
+    
+	if (arrayToWrite != NULL) {
+		free(arrayToWrite);
+		arrayToWrite = NULL;
+	}
     arrayToWrite = new char [stringToCopy.length()];
     strcpy(arrayToWrite, stringToCopy.c_str());
 }
@@ -27,7 +31,6 @@ TEST_CASE("Test runDSP") {
 /* test with MPI turned off */
 #undef DSP_HAS_MPI
 
-#ifdef DSP_HAS_SCIP
 
     char* algotype = NULL;
     char* smpsfile = NULL;
@@ -37,6 +40,8 @@ TEST_CASE("Test runDSP") {
     char* paramfile = NULL;
     char* testvalue = NULL;
     char* quadfile = NULL;
+
+#ifdef DSP_HAS_SCIP
 
     string paramfile_s = "../test/params_cpx.txt";
     copyToCharArray(paramfile_s, paramfile);
@@ -103,6 +108,111 @@ TEST_CASE("Test runDSP") {
 			puts(quadfile);
 
             SECTION("with DE") {
+				string algotype_s = "de";
+				copyToCharArray(algotype_s, algotype);
+				
+				REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+			}
+
+			SECTION("with DD") {
+				string algotype_s = "dd";
+				copyToCharArray(algotype_s, algotype);
+				
+				REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+			}
+        }
+    }
+#endif
+
+#ifdef DSP_HAS_CPX
+
+
+    string paramfile_s = "../test/params_cpx.txt";
+    copyToCharArray(paramfile_s, paramfile);
+
+    SECTION ("Solving a MPS-DEC Instance") {
+
+        string mpsfile_s = "../examples/mps-dec/noswot.mps";
+        string decfile_s = "../examples/mps-dec/noswot.dec";
+		string testvalue_s = "-42";
+        copyToCharArray(mpsfile_s, mpsfile);
+        copyToCharArray(decfile_s, decfile);
+		copyToCharArray(testvalue_s, testvalue);
+
+        SECTION("with DE") {
+            string algotype_s = "de";
+            copyToCharArray(algotype_s, algotype);
+            
+            REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+        }
+
+        SECTION("with DD") {
+            string algotype_s = "dd";
+            copyToCharArray(algotype_s, algotype);
+            
+            REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+        }
+
+        // SECTION("DW") {
+        //     string algotype_s = "dw";
+        //     copyToCharArray(algotype_s, algotype);
+                
+        //     REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+        // }
+    }
+
+    SECTION ("Solving a SMPS Instance") {
+
+        string smpsfile_s = "../examples/smps/farmer";
+		string testvalue_s = "-108389.9994043";
+		copyToCharArray(smpsfile_s, smpsfile);
+		copyToCharArray(testvalue_s, testvalue);
+
+		SECTION("with DE") {
+            string algotype_s = "de";
+            copyToCharArray(algotype_s, algotype);
+            
+            REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+        }
+
+        SECTION("with DD") {
+            string algotype_s = "dd";
+            copyToCharArray(algotype_s, algotype);
+            
+            REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+        }
+
+        SECTION("with Quadratic Constraints") {
+			
+			testvalue_s = "-105093";
+			copyToCharArray(testvalue_s, testvalue);
+
+            string quadfile_s = "../examples/quad/farmer";
+            copyToCharArray(quadfile_s, quadfile);
+			puts(quadfile);
+
+            SECTION("with DE") {
+				string algotype_s = "de";
+				copyToCharArray(algotype_s, algotype);
+				
+				REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+			}
+
+			SECTION("with DD") {
+				string algotype_s = "dd";
+				copyToCharArray(algotype_s, algotype);
+				
+				REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+			}
+
+			testvalue_s = "-44147.4";
+			copyToCharArray(testvalue_s, testvalue);
+
+			quadfile_s = "../examples/quad/farmer2";
+            copyToCharArray(quadfile_s, quadfile);
+			puts(quadfile);
+
+			SECTION("with DE") {
 				string algotype_s = "de";
 				copyToCharArray(algotype_s, algotype);
 				
