@@ -52,7 +52,7 @@ TEST_CASE("Test runDSP") {
 
 #ifdef DSP_HAS_SCIP
 
-    paramfile_s = "../test/params_cpx.txt";
+    paramfile_s = "../test/params_scip.txt";
     copyToCharArray(paramfile_s, paramfile);
 
     SECTION ("Solving a MPS-DEC Instance") {
@@ -135,7 +135,6 @@ TEST_CASE("Test runDSP") {
 
 #ifdef DSP_HAS_CPX
 
-
     paramfile_s = "../test/params_cpx.txt";
     copyToCharArray(paramfile_s, paramfile);
 
@@ -193,46 +192,50 @@ TEST_CASE("Test runDSP") {
 
         SECTION("with Quadratic Constraints") {
 			
-			testvalue_s = "-105093";
-			copyToCharArray(testvalue_s, testvalue);
+			SECTION("farmer1") {
+				testvalue_s = "-105093";
+				copyToCharArray(testvalue_s, testvalue);
 
-            quadfile_s = "../examples/quad/farmer";
-            copyToCharArray(quadfile_s, quadfile);
-			puts(quadfile);
+				quadfile_s = "../examples/quad/farmer";
+				copyToCharArray(quadfile_s, quadfile);
+				puts(quadfile);
 
-            SECTION("with DE") {
-				algotype_s = "de";
-				copyToCharArray(algotype_s, algotype);
-				
-				REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+				SECTION("with DE") {
+					algotype_s = "de";
+					copyToCharArray(algotype_s, algotype);
+					
+					REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+				}
+
+				SECTION("with DD") {
+					algotype_s = "dd";
+					copyToCharArray(algotype_s, algotype);
+					
+					REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+				}
 			}
 
-			SECTION("with DD") {
-				algotype_s = "dd";
-				copyToCharArray(algotype_s, algotype);
-				
-				REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
-			}
+			SECTION("farmer2") {
+				testvalue_s = "-44147.4";
+				copyToCharArray(testvalue_s, testvalue);
 
-			testvalue_s = "-44147.4";
-			copyToCharArray(testvalue_s, testvalue);
+				quadfile_s = "../examples/quad/farmer2";
+				copyToCharArray(quadfile_s, quadfile);
+				puts(quadfile);
 
-			quadfile_s = "../examples/quad/farmer2";
-            copyToCharArray(quadfile_s, quadfile);
-			puts(quadfile);
+				SECTION("with DE") {
+					algotype_s = "de";
+					copyToCharArray(algotype_s, algotype);
+					
+					REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+				}
 
-			SECTION("with DE") {
-				algotype_s = "de";
-				copyToCharArray(algotype_s, algotype);
-				
-				REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
-			}
-
-			SECTION("with DD") {
-				algotype_s = "dd";
-				copyToCharArray(algotype_s, algotype);
-				
-				REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+				SECTION("with DD") {
+					algotype_s = "dd";
+					copyToCharArray(algotype_s, algotype);
+					
+					REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+				}
 			}
         }
     }
@@ -427,7 +430,7 @@ int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* s
 					if ((val - primobj) / (fabs(val) + 1.e-10) > test_tolerance || (dualobj - val) / (fabs(val) + 1.e-10) > test_tolerance)
 						ret = 1;
 				} else {
-					if ((primobj - val) / (fabs(val) + 1.e-10) > test_tolerance || (val - dualobj) / (fabs(val) + 1.e-10) + test_tolerance)
+					if ((primobj - val) / (fabs(val) + 1.e-10) > test_tolerance || (val - dualobj) / (fabs(val) + 1.e-10) > test_tolerance)
 						ret = 1;
 				}
 			}
