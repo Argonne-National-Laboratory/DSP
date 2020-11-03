@@ -4,7 +4,6 @@
  *  Created on: Oct 27, 2020
  *      Author: geunyeongbyeon
  */
-
 #include "Utility/DspMessage.h"
 #include "Model/DecTssQcModel.h"
 
@@ -161,14 +160,13 @@ DSP_RTN_CODE DecTssQcModel::readQuad(const char * smps, const char * filename)
 	int sind;
 	bool end_of_scen_data = false;
 
-	map<string, int> map_qrowName_index;
 	map<string, int>::iterator it;
-	vector<char> qrow_sense;
 
 	/* allocate memory */
 	setQcDimensions();
 
 	if (myfile.is_open()) {
+		
 		while (myfile >> item) {
 		
 			if (item.find("NAME") != string::npos) 
@@ -178,24 +176,19 @@ DSP_RTN_CODE DecTssQcModel::readQuad(const char * smps, const char * filename)
 			else if (item.find("SCEN") != string::npos) 
 			{	
 				/** start reading quad constr data for some scenario */		
-				if (nscen_ < 0)
-				{
-					char msg[128];
-					sprintf(msg, "NSCEN should be provided before SCEN\n");
-					throw msg;
-				}
-
 				while (1) {
 					
 					myfile >> sind;
 					QcRowData_[sind].nqrows_ = 0;
+					vector<char> qrow_sense;
+					map<string, int> map_qrowName_index;
 
 					myfile >> item;
 					if (item.find("QUADROWS") == string::npos) {
 						char msg[128];
 						sprintf(msg, "Quadratic Constraints Data for each SCEN should be provided in this order: QUADROWS, LINTERMS, QUADTERMS, RHS\n");
 						throw msg;
-					} 
+					}
 			
 					/** read row data */
 					while (1) 
@@ -225,108 +218,22 @@ DSP_RTN_CODE DecTssQcModel::readQuad(const char * smps, const char * filename)
 				
 					setQcDimensions(sind, QcRowData_[sind].nqrows_);
 
-				/** read sense_ */
-				for (int i = 0; i < QcRowData_[sind].nqrows_; i++) {
-					QcRowData_[sind].sense_[i] = qrow_sense[i];
-				}
-
-				/** read linind_, linval_ */
-				vector<vector<int>> linind(QcRowData_[sind].nqrows_);
-				vector<vector<double>> linval(QcRowData_[sind].nqrows_);
-				
-				while (1) {
-					myfile >> item;
-
-					if (item.find("QUADTERMS") != string::npos)
-						break;
-				
-					it = map_qrowName_index.find(item);
-
-					if (it == map_qrowName_index.end()) 
-					{
-						char msg[128];
-						sprintf(msg, "All rows should be declared before SCEN data\n");
-						throw msg; 
-					} else 
-					{
-						myfile >> name >> val;
-						linind[map_qrowName_index[item]].push_back(map_varName_index[name]);
-						linval[map_qrowName_index[item]].push_back(val);
-					}
-				}
-			
-				for (i = 0; i < QcRowData_[sind].nqrows_; i++)
-				{
-					assert(linind[i].size() == linval[i].size());
-					QcRowData_[sind].linnzcnt_[i] = linval[i].size();
-					QcRowData_[sind].linind_[i] = new int [QcRowData_[sind].linnzcnt_[i]];
-					QcRowData_[sind].linval_[i] = new double [QcRowData_[sind].linnzcnt_[i]];
-
-					for (j = 0; j < QcRowData_[sind].linnzcnt_[i]; j++) 
-					{
-						QcRowData_[sind].linind_[i][j] = linind[i][j];
-						QcRowData_[sind].linval_[i][j] = linval[i][j];
-					}
-				}
-
-				/** read quadrow_, quadcol_, quadval_ */
-				vector<vector<int>> quadrow(QcRowData_[sind].nqrows_);
-				vector<vector<int>> quadcol(QcRowData_[sind].nqrows_);
-				vector<vector<double>> quadval(QcRowData_[sind].nqrows_);	
-
-				while (1) {
-					myfile >> item;
-
-					if (item.find("RHS") != string::npos)
-						break;
-
-					it = map_qrowName_index.find(item);
-
-					if (it == map_qrowName_index.end()) 
-					{
-						char msg[128];
-						sprintf(msg, "All rows should be declared before SCEN data\n");
-						throw msg; 
-					} else 
-					{
-						myfile >> name >> name2 >> val;
-						quadrow[map_qrowName_index[item]].push_back(map_varName_index[name]);
-						quadcol[map_qrowName_index[item]].push_back(map_varName_index[name2]);
-						quadval[map_qrowName_index[item]].push_back(val);
+					/** read sense_ */
+					for (int i = 0; i < QcRowData_[sind].nqrows_; i++) {
+						QcRowData_[sind].sense_[i] = qrow_sense[i];
 					}
 
-				}
+					/** read linind_, linval_ */
+					vector<vector<int>> linind(QcRowData_[sind].nqrows_);
+					vector<vector<double>> linval(QcRowData_[sind].nqrows_);
+					
+					while (1) {
+						myfile >> item;
 
-				for (i = 0; i < QcRowData_[sind].nqrows_; i++)
-				{
-					assert(quadrow[i].size() == quadcol[i].size());
-					assert(quadrow[i].size() == quadval[i].size());
-					QcRowData_[sind].quadnzcnt_[i] = quadrow[i].size();
-					QcRowData_[sind].quadrow_[i] = new int [QcRowData_[sind].quadnzcnt_[i]];
-					QcRowData_[sind].quadcol_[i] = new int [QcRowData_[sind].quadnzcnt_[i]];
-					QcRowData_[sind].quadval_[i] = new double [QcRowData_[sind].quadnzcnt_[i]];
-
-					for (j = 0; j < QcRowData_[sind].quadnzcnt_[i]; j++) 
-					{
-						QcRowData_[sind].quadrow_[i][j] = quadrow[i][j];
-						QcRowData_[sind].quadcol_[i][j] = quadcol[i][j];
-						QcRowData_[sind].quadval_[i][j] = quadval[i][j];
-					}
-				}
-
-				/** read rhs_ */
-				while (1) {
-					myfile >> item;
-
-					if (item.find("SCEN") != string::npos)
-						break;
-					else if (item.find("ENDATA") != string::npos) 
-					{
-						end_of_scen_data = true;
-						break;
-					}
-				
-					it = map_qrowName_index.find(item);
+						if (item.find("QUADTERMS") != string::npos)
+							break;
+					
+						it = map_qrowName_index.find(item);
 
 						if (it == map_qrowName_index.end()) 
 						{
@@ -335,9 +242,95 @@ DSP_RTN_CODE DecTssQcModel::readQuad(const char * smps, const char * filename)
 							throw msg; 
 						} else 
 						{
-							myfile >> val;
-							QcRowData_[sind].rhs_[map_qrowName_index[item]] = val;
+							myfile >> name >> val;
+							linind[map_qrowName_index[item]].push_back(map_varName_index[name]);
+							linval[map_qrowName_index[item]].push_back(val);
 						}
+					}
+			
+					for (i = 0; i < QcRowData_[sind].nqrows_; i++)
+					{
+						assert(linind[i].size() == linval[i].size());
+						QcRowData_[sind].linnzcnt_[i] = linval[i].size();
+						QcRowData_[sind].linind_[i] = new int [QcRowData_[sind].linnzcnt_[i]];
+						QcRowData_[sind].linval_[i] = new double [QcRowData_[sind].linnzcnt_[i]];
+
+						for (j = 0; j < QcRowData_[sind].linnzcnt_[i]; j++) 
+						{
+							QcRowData_[sind].linind_[i][j] = linind[i][j];
+							QcRowData_[sind].linval_[i][j] = linval[i][j];
+						}
+					}
+
+					/** read quadrow_, quadcol_, quadval_ */
+					vector<vector<int>> quadrow(QcRowData_[sind].nqrows_);
+					vector<vector<int>> quadcol(QcRowData_[sind].nqrows_);
+					vector<vector<double>> quadval(QcRowData_[sind].nqrows_);	
+
+					while (1) {
+						myfile >> item;
+
+						if (item.find("RHS") != string::npos)
+							break;
+
+						it = map_qrowName_index.find(item);
+
+						if (it == map_qrowName_index.end()) 
+						{
+							char msg[128];
+							sprintf(msg, "All rows should be declared before SCEN data\n");
+							throw msg; 
+						} else 
+						{
+							myfile >> name >> name2 >> val;
+							quadrow[map_qrowName_index[item]].push_back(map_varName_index[name]);
+							quadcol[map_qrowName_index[item]].push_back(map_varName_index[name2]);
+							quadval[map_qrowName_index[item]].push_back(val);
+						}
+
+					}
+
+					for (i = 0; i < QcRowData_[sind].nqrows_; i++)
+					{
+						assert(quadrow[i].size() == quadcol[i].size());
+						assert(quadrow[i].size() == quadval[i].size());
+						QcRowData_[sind].quadnzcnt_[i] = quadrow[i].size();
+						QcRowData_[sind].quadrow_[i] = new int [QcRowData_[sind].quadnzcnt_[i]];
+						QcRowData_[sind].quadcol_[i] = new int [QcRowData_[sind].quadnzcnt_[i]];
+						QcRowData_[sind].quadval_[i] = new double [QcRowData_[sind].quadnzcnt_[i]];
+
+						for (j = 0; j < QcRowData_[sind].quadnzcnt_[i]; j++) 
+						{
+							QcRowData_[sind].quadrow_[i][j] = quadrow[i][j];
+							QcRowData_[sind].quadcol_[i][j] = quadcol[i][j];
+							QcRowData_[sind].quadval_[i][j] = quadval[i][j];
+						}
+					}
+
+					/** read rhs_ */
+					while (1) {
+						myfile >> item;
+
+						if (item.find("SCEN") != string::npos)
+							break;
+						else if (item.find("ENDATA") != string::npos) 
+						{
+							end_of_scen_data = true;
+							break;
+						}
+					
+						it = map_qrowName_index.find(item);
+
+							if (it == map_qrowName_index.end()) 
+							{
+								char msg[128];
+								sprintf(msg, "All rows should be declared before SCEN data\n");
+								throw msg; 
+							} else 
+							{
+								myfile >> val;
+								QcRowData_[sind].rhs_[map_qrowName_index[item]] = val;
+							}
 					}
 
 					if (end_of_scen_data)

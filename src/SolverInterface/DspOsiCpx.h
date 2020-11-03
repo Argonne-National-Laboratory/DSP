@@ -4,9 +4,11 @@
  * 12/12/2019
  * Kibaek Kim
  */
- 
+  
 #ifndef SRC_SOLVERINTERFACE_DSPOSICPX_H_
 #define SRC_SOLVERINTERFACE_DSPOSICPX_H_
+
+// #define DSP_DEBUG
 
 #ifdef DSP_HAS_CPX
 
@@ -189,17 +191,23 @@ public:
 	virtual void solve() 
 	{
 		if (!isqp_ && !isqcp_) {
-			if (ismip_) {
+			if (si_->getNumIntegers() > 0) {
+				DSPdebugMessage("DspOsiCpx::solve(), si_->branchAndBound() \n");
 				si_->branchAndBound();
+				ismip_ = true;
 			} else {
+				DSPdebugMessage("DspOsiCpx::solve(), si_->initialSolve() \n");
 				si_->initialSolve();
+				ismip_ = false;
 			}
 		}
 		else 
 		{
 			if (ismip_) {
+				DSPdebugMessage("DspOsiCpx::solve(), MIQCQPSolve() \n");
 				MIQCQPSolve();
 			} else {
+				DSPdebugMessage("DspOsiCpx::solve(), QCQPSolve() \n");
 				QCQPSolve();
 			}	
 		}
