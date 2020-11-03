@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+// #define DSP_DEBUG
 
 #include <cstdlib>
 #include <cstdio>
@@ -198,20 +198,59 @@ int readQuad(DspApiEnv * env, const char * smps, const char * quad)
 void loadFirstStage(
 		DspApiEnv *          env,   /**< pointer to API object */
 		const CoinBigIndex * start, /**< start index for each row */
+ 		const int *          index, /**< column indices */
+ 		const double *       value, /**< constraint elements */
+ 		const double *       clbd,  /**< column lower bounds */
+ 		const double *       cubd,  /**< column upper bounds */
+ 		const char *         ctype, /**< column types */
+ 		const double *       obj,   /**< objective coefficients */
+ 		const double *       rlbd,  /**< row lower bounds */
+ 		const double *       rubd   /**< row upper bounds */)
+{
+ 	getTssModel(env)->loadFirstStage(start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
+}
+
+/** load first-stage problem with quadratic objective */
+void loadQuadraticFirstStage(
+		DspApiEnv *          env,   /**< pointer to API object */
+		const CoinBigIndex * start, /**< start index for each row */
 		const int *          index, /**< column indices */
 		const double *       value, /**< constraint elements */
 		const double *       clbd,  /**< column lower bounds */
 		const double *       cubd,  /**< column upper bounds */
 		const char *         ctype, /**< column types */
 		const double *       obj,   /**< objective coefficients */
+		const int * 		 qrowindex,/**< start index for first-stage quadratic objective */
+		const int *			 qcolindex,/**< quadratic objective column indices */
+		const double *		 qvalue,/**< quadratic objective elements */
+		const CoinBigIndex	 qnum,	/**< number of quadratic elements */
 		const double *       rlbd,  /**< row lower bounds */
 		const double *       rubd   /**< row upper bounds */)
 {
-	getTssModel(env)->loadFirstStage(start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
+	getTssModel(env)->loadFirstStage(start, index, value, clbd, cubd, ctype, obj, qrowindex, qcolindex, qvalue, qnum, rlbd, rubd);
 }
+
 
 /** load second-stage problem */
 void loadSecondStage(
+ 		DspApiEnv *          env,   /**< pointer to API object */
+ 		const int            s,     /**< scenario index */
+ 		const double         prob,  /**< probability */
+ 		const CoinBigIndex * start, /**< start index for each row */
+ 		const int *          index, /**< column indices */
+ 		const double *       value, /**< constraint elements */
+ 		const double *       clbd,  /**< column lower bounds */
+ 		const double *       cubd,  /**< column upper bounds */
+ 		const char *         ctype, /**< column types */
+ 		const double *       obj,   /**< objective coefficients */
+ 		const double *       rlbd,  /**< row lower bounds */
+ 		const double *       rubd   /**< row upper bounds */)
+{
+ 	getTssModel(env)->loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
+}
+
+/** load second-stage problem */
+void loadQuadraticSecondStage(
 		DspApiEnv *          env,   /**< pointer to API object */
 		const int            s,     /**< scenario index */
 		const double         prob,  /**< probability */
@@ -222,10 +261,14 @@ void loadSecondStage(
 		const double *       cubd,  /**< column upper bounds */
 		const char *         ctype, /**< column types */
 		const double *       obj,   /**< objective coefficients */
+		const int * 		 qrowindex,/**< start index for first-stage quadratic objective */
+		const int *			 qcolindex,/**< quadratic objective column indices */
+		const double *		 qvalue,/**< quadratic objective elements */
+		const CoinBigIndex	 qnum,	/**< number of quadratic elements */
 		const double *       rlbd,  /**< row lower bounds */
 		const double *       rubd   /**< row upper bounds */)
 {
-	getTssModel(env)->loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
+	getTssModel(env)->loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, qrowindex, qcolindex, qvalue, qnum, rlbd, rubd);
 }
 
 /**
@@ -373,6 +416,7 @@ void solveBd(DspApiEnv * env)
 
 	DecTssModel* dec = new DecTssModel(*getTssModel(env));
 	BdDriverSerial * bd = new BdDriverSerial(dec, env->par_, env->message_);
+	
 	env->solver_ = bd;
 	DSPdebugMessage("Created a serial Benders object\n");
 
@@ -481,7 +525,8 @@ void solveBdMpi(
 	}
 
 	//DSPdebugMessage("Creating a MPI Benders object (comm %d)\n", comm);
-	BdDriverMpi * bd = new BdDriverMpi(new DecTssModel(*getTssModel(env)), env->par_, env->message_, comm);
+	BdDriverMpi * bd = new BdDriverMpi(new DecTssModel(*getTssModel(env)), env->par_, env->message_, comm); //this line cause segment fault
+	//BdDriverMpi * bd = new BdDriverMpi(env->model_, env->par_, env->message_, comm);
 	env->solver_ = bd;
 
 	double * obj_aux  = NULL;

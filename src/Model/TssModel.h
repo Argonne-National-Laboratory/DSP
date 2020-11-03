@@ -8,7 +8,7 @@
 #ifndef TSSMODEL_H_
 #define TSSMODEL_H_
 
-//#define TSSMODEL_DEBUG
+#define TSSMODEL_DEBUG
 
 #include "StoModel.h"
 #include "DetModel.h"
@@ -35,6 +35,12 @@ public:
 			double *& obj_reco,           /**< [out] objective coefficients */
 			bool adjustProbability = true);
 
+	DSP_RTN_CODE copyRecoObj(
+			int scen,                     /**< [in] scenario index */
+			double *& obj_reco,           /**< [out] objective coefficients */
+			CoinPackedMatrix *& qobj_reco_coupling,/**< [out] coupling quadratric coefficients (y^2}*/
+			CoinPackedMatrix *& qobj_reco_ncoupling, /**< [out] non-coupling quadratic coefficients (xy) */
+			bool adjustProbability = true);
 	/** for C API functions */
 
 public:
@@ -61,7 +67,23 @@ public:
 			const double *       rlbd,  /**< row lower bounds */
 			const double *       rubd   /**< row upper bounds */);
 
-	/** load first-stage problem */
+	/** load first-stage problem with quadratic objectives */
+	DSP_RTN_CODE loadFirstStage(
+			const CoinBigIndex * start, /**< start index for each row */
+			const int *          index, /**< column indices */
+			const double *       value, /**< constraint elements */
+			const double *       clbd,  /**< column lower bounds */
+			const double *       cubd,  /**< column upper bounds */
+			const char *         ctype, /**< column types */
+			const double *       obj,   /**< objective coefficients */
+			const int * 		 qobjrowindex, /**< quadratic objective row indices */
+			const int *			 qobjcolindex, /**< quadratic objective column indices */
+			const double *		 qobjvalue, /**< quadratic objective constraint elements value */
+			const int 			 numq,  /**< number of quadratic terms */
+			const double *       rlbd,  /**< row lower bounds */
+			const double *       rubd   /**< row upper bounds */);
+
+	/** load second-stage problem */
 	DSP_RTN_CODE loadSecondStage(
 			const int            s,     /**< scenario index */
 			const double         prob,  /**< probability */
@@ -72,6 +94,23 @@ public:
 			const double *       cubd,  /**< column upper bounds */
 			const char *         ctype, /**< column types */
 			const double *       obj,   /**< objective coefficients */
+			const double *       rlbd,  /**< row lower bounds */
+			const double *       rubd   /**< row upper bounds */);
+
+	DSP_RTN_CODE loadSecondStage(
+			const int            s,     /**< scenario index */
+			const double         prob,  /**< probability */
+			const CoinBigIndex * start, /**< start index for each row */
+			const int *          index, /**< column indices */
+			const double *       value, /**< constraint elements */
+			const double *       clbd,  /**< column lower bounds */
+			const double *       cubd,  /**< column upper bounds */
+			const char *         ctype, /**< column types */
+			const double *       obj,   /**< objective coefficients */
+			const int * 		 qobjrowindex, /**< quadratic objective row indices */
+			const int *			 qobjcolindex, /**< quadratic objective column indices */
+			const double *		 qobjvalue, /**< quadratic objective constraint elements value */
+			const int 			 numq,  /**< number of quadratic terms */
 			const double *       rlbd,  /**< row lower bounds */
 			const double *       rubd   /**< row upper bounds */);
 };

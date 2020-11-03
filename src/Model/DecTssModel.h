@@ -69,6 +69,7 @@ public:
 	/**
 	 * Returns the first-stage variable indices.
 	 */
+	//Dont need this argument int s
 	const int * getSubproblemCouplingColIndices(int s);
 
 	/**
@@ -99,6 +100,7 @@ public:
 	/**
 	 * This considers a dual decomposition and returns the number of first-stage variables copied for each scenario s.
 	 */
+	// int s is not needed
 	int getNumSubproblemCouplingRows(int s) {return getNumCols(0);}
 
 	/**
@@ -146,6 +148,8 @@ public:
 	bool isStochastic() {return true;}
 	bool isQuadratic() {return false;}
 
+	virtual bool isQCQP() {return TssModel::isQCQP();}
+
 	// The following functions are for distributionally robust variant.
 	// TODO: Better to create a new inhereted class?
 	virtual void setDro(bool yes) { TssModel::setDro(yes); }
@@ -170,6 +174,22 @@ public:
 		double *& rlbd,              /**< [out] row lower bounds */
 		double *& rubd               /**< [out] row upper bounds */);
 
+	DSP_RTN_CODE decompose(
+		int size,                    /**< [in] size of subproblem subset */
+		int * scen,                  /**< [in] subset of scenarios */
+		int naux,                    /**< [in] number of auxiliary columns */
+		double * clbd_aux,           /**< [in] lower bounds for auxiliary columns */
+		double * cubd_aux,           /**< [in] upper bounds for auxiliary columns */
+		double * obj_aux,            /**< [in] objective coefficients for auxiliary columns */
+		CoinPackedMatrix *& mat,     /**< [out] constraint matrix */
+		double *& clbd,              /**< [out] column lower bounds */
+		double *& cubd,              /**< [out] column upper bounds */
+		char   *& ctype,             /**< [out] column types */
+		double *& obj,               /**< [out] objective coefficients */
+		CoinPackedMatrix *&qobj,	 /**< [out] quadratic objective coefficients */
+		double *& rlbd,              /**< [out] row lower bounds */
+		double *& rubd               /**< [out] row upper bounds */);
+
 	DSP_RTN_CODE decomposeCoupling(
 		int size,                    /**< [in] size of subproblem subset */
 		int * subprobs,              /**< [in] subset of subproblems */
@@ -191,6 +211,17 @@ public:
 		double *& rlbd,          /**< [out] row lower bounds */
 		double *& rubd           /**< [out] row upper bounds */);
 
+	DSP_RTN_CODE copySubprob(
+		int subprob,             /**< [in] subproblem index */
+		CoinPackedMatrix *& mat, /**< [out] constraint matrix [A^k B^k] */
+		double *& clbd,          /**< [out] column lower bounds of y */
+		double *& cubd,          /**< [out] column upper bounds of y */
+		char   *& ctype,         /**< [out] column types of y */
+		double *& obj,           /**< [out] objective coefficients for y */
+		CoinPackedMatrix *& qobj,/**< [out] quadratic objective coefficients for y */
+		double *& rlbd,          /**< [out] row lower bounds */
+		double *& rubd           /**< [out] row upper bounds */);
+
 	DSP_RTN_CODE copyRecoProb(
 		int scen,                      /**< [in] scenario index */
 		CoinPackedMatrix *& mat_tech,  /**< [out] technology matrix (A matrix) */
@@ -203,12 +234,36 @@ public:
 		double *& rubd_reco,           /**< [out] row upper bounds */
 		bool adjust_probability = true /**< [in] adjust probability */);
 
+	DSP_RTN_CODE copyRecoProb(
+		int scen,                     /**< [in] scenario index */
+		CoinPackedMatrix *& mat_tech, /**< [out] technology matrix (A matrix) */
+		CoinPackedMatrix *& mat_reco, /**< [out] recourse matrix (B matrix) */
+		double *& clbd_reco,          /**< [out] column lower bounds of y */
+		double *& cubd_reco,          /**< [out] column upper bounds of y */
+		char   *& ctype_reco,         /**< [out] column types of y */
+		double *& obj_reco,           /**< [out] objective coefficients for y */
+		CoinPackedMatrix *& qobj_reco_coupling,/**< [out] coupling quadratric coefficients (y^2}*/
+		CoinPackedMatrix *& qobj_reco_ncoupling, /**< [out] non-coupling quadratic coefficients (xy) */
+		double *& rlbd_reco,          /**< [out] row lower bounds */
+		double *& rubd_reco,          /**< [out] row upper bounds */
+		bool adjust_probability = true /**< [in] adjust probability */);
+
 	DSP_RTN_CODE getFullModel(
 		CoinPackedMatrix *& mat, /**< [out] constraint matrix */
 		double *& clbd,          /**< [out] column lower bounds */
 		double *& cubd,          /**< [out] column upper bounds */
 		char   *& ctype,         /**< [out] column types */
 		double *& obj,           /**< [out] objective coefficients */
+		double *& rlbd,          /**< [out] row lower bounds */
+		double *& rubd           /**< [out] row upper bounds */);
+
+	DSP_RTN_CODE getFullModel(
+		CoinPackedMatrix *& mat, /**< [out] constraint matrix */
+		double *& clbd,          /**< [out] column lower bounds */
+		double *& cubd,          /**< [out] column upper bounds */
+		char   *& ctype,         /**< [out] column types */
+		double *& obj,           /**< [out] objective coefficients */
+		CoinPackedMatrix *& qobj,/**< [out] quadratic objective coefficient */
 		double *& rlbd,          /**< [out] row lower bounds */
 		double *& rubd           /**< [out] row upper bounds */);
 
