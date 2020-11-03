@@ -373,7 +373,17 @@ int readMpsDec(DspApiEnv* env, char* mpsfile, char* decfile) {
 	int ret = 0;
 	// Read .mps file
 	CoinMpsIO p;
+	//CoinBigIndex *qcolumnStart = NULL;
+	//int *qcolumn2 = NULL;
+	//double *qelements = NULL;
+	//int isQCQP=0;
+	/** No check is made for duplicates or non-triangular if checkSymmetry==0.
+    *   If 1 checks lower triangular (so off diagonal should be 2*Q)
+    *   if 2 makes lower triangular and assumes full Q (but adds off diagonals
+	*/
+	//int checkSymmetry = 0;
 	p.readMps(mpsfile);
+	//isQCQP = p.readQuadraticMps(mpsfile, qcolumnStart, qcolumn2, qelements, checkSymmetry); 
 	const CoinPackedMatrix* mps_matrix = p.getMatrixByRow();
 	int ncols = p.getNumCols();
 	const double* obj = p.getObjCoefficients();

@@ -10,6 +10,7 @@
 
 #include "Utility/DspRtnCodes.h"
 #include "OsiSolverInterface.hpp"
+#include "OsiCuts.hpp"
 
 class DspOsi {
 public:
@@ -100,6 +101,15 @@ public:
 
 	/** set relative MIP gap */
 	virtual void setRelMipGap(double tol) {}
+
+	/** add one lazy constraint */
+	virtual void addLazyConstr(
+		int lazylen,
+		const int *lazyind,
+		const double *lazyval,
+		char lazysense,
+		double lazyrhs
+	);
 
 	OsiSolverInterface *si_;
 };

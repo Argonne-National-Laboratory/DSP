@@ -298,6 +298,16 @@ public:
     	}
 	}
 
+	virtual void addLazyConstr(int lazylen,	const int *lazyind,	const double *lazyval, char lazysense, double lazyrhs){
+		try{
+			GUROBI_CALL("addLazyConstr", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
+			GUROBI_CALL("addLazyConstr", GRBcblazy(cbdata, lazylen, lazyind, lazyval, lazysense, lazyrhs));
+		}
+		catch(const CoinError& e){
+        	e.print();
+    	}
+	}
+
     OsiGrbSolverInterface* grb_;   
 };
 
