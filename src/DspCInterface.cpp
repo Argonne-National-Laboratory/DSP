@@ -271,6 +271,27 @@ void loadQuadraticSecondStage(
 	getTssModel(env)->loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, qrowindex, qcolindex, qvalue, qnum, rlbd, rubd);
 }
 
+/** load quadratic constraints to the second stage */
+void loadQuadraticRows(
+		DspApiEnv *         env,  	 	/**< pointer to API object */
+        const int           s,     		/**< scenario index */
+		const int 			nqrows,		/**< number of quadratic constraints */
+        const int *         linnzcnt,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+        const int *        	quadnzcnt,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+		const double *		rhs, 		/**< constraint rhs of each constraint */
+		const int *			sense, 		/**< constraint sense of each constraint */
+		const int *         linstart,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+		const int *         linind, 	/**< indices for the linear part */
+		const double *      linval, 	/**< nonzero coefficient of the linear part */
+		const int *        	quadstart,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+		const int *       	quadrow,  	/**< indices for the quadratic part */
+		const int *       	quadcol,  	/**< indices for the quadratic part */
+		const double *      quadval 	/**< nonzero coefficient of the quadratic part */ )
+{
+	getDecTssQcModel(env)->loadQuadraticRows(s, nqrows, linnzcnt, quadnzcnt, rhs, sense, linstart, linind, linval, quadstart, quadrow, quadcol, quadval);
+}
+
+
 /**
  * The following function allows to read the model by blocks. This
  * is particularly useful for distributed memory computing.

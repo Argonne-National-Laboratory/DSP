@@ -41,36 +41,45 @@ TEST_CASE("Test runDSP") {
     char* testvalue = NULL;
     char* quadfile = NULL;
 
+	string algotype_s;
+	string smpsfile_s;
+	string mpsfile_s;
+	string decfile_s;
+	string solnfile_s;
+	string paramfile_s;
+	string testvalue_s;
+	string quadfile_s;
+
 #ifdef DSP_HAS_SCIP
 
-    string paramfile_s = "../test/params_cpx.txt";
+    paramfile_s = "../test/params_cpx.txt";
     copyToCharArray(paramfile_s, paramfile);
 
     SECTION ("Solving a MPS-DEC Instance") {
 
-        string mpsfile_s = "../examples/mps-dec/noswot.mps";
-        string decfile_s = "../examples/mps-dec/noswot.dec";
-		string testvalue_s = "-42";
+        mpsfile_s = "../examples/mps-dec/noswot.mps";
+        decfile_s = "../examples/mps-dec/noswot.dec";
+		testvalue_s = "-42";
         copyToCharArray(mpsfile_s, mpsfile);
         copyToCharArray(decfile_s, decfile);
 		copyToCharArray(testvalue_s, testvalue);
 
         SECTION("with DE") {
-            string algotype_s = "de";
+            algotype_s = "de";
             copyToCharArray(algotype_s, algotype);
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
         }
 
         SECTION("with DD") {
-            string algotype_s = "dd";
+            algotype_s = "dd";
             copyToCharArray(algotype_s, algotype);
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
         }
 
         // SECTION("DW") {
-        //     string algotype_s = "dw";
+        //     algotype_s = "dw";
         //     copyToCharArray(algotype_s, algotype);
                 
         //     REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
@@ -79,20 +88,20 @@ TEST_CASE("Test runDSP") {
 
     SECTION ("Solving a SMPS Instance") {
 
-        string smpsfile_s = "../examples/smps/farmer";
-		string testvalue_s = "-108389.9994043";
+        smpsfile_s = "../examples/smps/farmer";
+		testvalue_s = "-108389.9994043";
 		copyToCharArray(smpsfile_s, smpsfile);
 		copyToCharArray(testvalue_s, testvalue);
 
 		SECTION("with DE") {
-            string algotype_s = "de";
+            algotype_s = "de";
             copyToCharArray(algotype_s, algotype);
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
         }
 
         SECTION("with DD") {
-            string algotype_s = "dd";
+            algotype_s = "dd";
             copyToCharArray(algotype_s, algotype);
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
@@ -103,19 +112,19 @@ TEST_CASE("Test runDSP") {
 			testvalue_s = "-105093";
 			copyToCharArray(testvalue_s, testvalue);
 
-            string quadfile_s = "../examples/quad/farmer";
+            quadfile_s = "../examples/quad/farmer";
             copyToCharArray(quadfile_s, quadfile);
 			puts(quadfile);
 
             SECTION("with DE") {
-				string algotype_s = "de";
+				algotype_s = "de";
 				copyToCharArray(algotype_s, algotype);
 				
 				REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
 			}
 
 			SECTION("with DD") {
-				string algotype_s = "dd";
+				algotype_s = "dd";
 				copyToCharArray(algotype_s, algotype);
 				
 				REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
@@ -127,34 +136,34 @@ TEST_CASE("Test runDSP") {
 #ifdef DSP_HAS_CPX
 
 
-    string paramfile_s = "../test/params_cpx.txt";
+    paramfile_s = "../test/params_cpx.txt";
     copyToCharArray(paramfile_s, paramfile);
 
     SECTION ("Solving a MPS-DEC Instance") {
 
-        string mpsfile_s = "../examples/mps-dec/noswot.mps";
-        string decfile_s = "../examples/mps-dec/noswot.dec";
-		string testvalue_s = "-42";
+        mpsfile_s = "../examples/mps-dec/noswot.mps";
+        decfile_s = "../examples/mps-dec/noswot.dec";
+		testvalue_s = "-42";
         copyToCharArray(mpsfile_s, mpsfile);
         copyToCharArray(decfile_s, decfile);
 		copyToCharArray(testvalue_s, testvalue);
 
         SECTION("with DE") {
-            string algotype_s = "de";
+            algotype_s = "de";
             copyToCharArray(algotype_s, algotype);
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
         }
 
         SECTION("with DD") {
-            string algotype_s = "dd";
+            algotype_s = "dd";
             copyToCharArray(algotype_s, algotype);
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
         }
 
         // SECTION("DW") {
-        //     string algotype_s = "dw";
+        //     algotype_s = "dw";
         //     copyToCharArray(algotype_s, algotype);
                 
         //     REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
@@ -163,20 +172,20 @@ TEST_CASE("Test runDSP") {
 
     SECTION ("Solving a SMPS Instance") {
 
-        string smpsfile_s = "../examples/smps/farmer";
-		string testvalue_s = "-108389.9994043";
+        smpsfile_s = "../examples/smps/farmer";
+		testvalue_s = "-108389.9994043";
 		copyToCharArray(smpsfile_s, smpsfile);
 		copyToCharArray(testvalue_s, testvalue);
 
 		SECTION("with DE") {
-            string algotype_s = "de";
+            algotype_s = "de";
             copyToCharArray(algotype_s, algotype);
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
         }
 
         SECTION("with DD") {
-            string algotype_s = "dd";
+            algotype_s = "dd";
             copyToCharArray(algotype_s, algotype);
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
@@ -187,19 +196,19 @@ TEST_CASE("Test runDSP") {
 			testvalue_s = "-105093";
 			copyToCharArray(testvalue_s, testvalue);
 
-            string quadfile_s = "../examples/quad/farmer";
+            quadfile_s = "../examples/quad/farmer";
             copyToCharArray(quadfile_s, quadfile);
 			puts(quadfile);
 
             SECTION("with DE") {
-				string algotype_s = "de";
+				algotype_s = "de";
 				copyToCharArray(algotype_s, algotype);
 				
 				REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
 			}
 
 			SECTION("with DD") {
-				string algotype_s = "dd";
+				algotype_s = "dd";
 				copyToCharArray(algotype_s, algotype);
 				
 				REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
@@ -213,14 +222,14 @@ TEST_CASE("Test runDSP") {
 			puts(quadfile);
 
 			SECTION("with DE") {
-				string algotype_s = "de";
+				algotype_s = "de";
 				copyToCharArray(algotype_s, algotype);
 				
 				REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
 			}
 
 			SECTION("with DD") {
-				string algotype_s = "dd";
+				algotype_s = "dd";
 				copyToCharArray(algotype_s, algotype);
 				
 				REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
