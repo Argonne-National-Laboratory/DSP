@@ -84,6 +84,8 @@ const double rubd[3] = {INFINITY, INFINITY, INFINITY};
 
 TEST_CASE("Extensive Formulation for MIQP")
 {
+    #ifdef DSP_HAS_GRB
+
     DspApiEnv *env = createEnv();
     /** set number of scenarios */
     setNumberOfScenarios(env, NS);
@@ -239,4 +241,5 @@ TEST_CASE("Extensive Formulation for MIQP")
             }
         }
     }
+    #endif
 }
