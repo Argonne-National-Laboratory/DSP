@@ -163,7 +163,7 @@ DSP_RTN_CODE DecTssQcModel::readQuad(const char * smps, const char * filename)
 	map<string, int>::iterator it;
 
 	/* allocate memory */
-	setQcDimensions();
+	setQcRowDataDimensions();
 
 	if (myfile.is_open()) {
 		

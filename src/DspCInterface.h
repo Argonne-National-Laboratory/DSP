@@ -63,6 +63,12 @@ void setDimensions(
 		const int   ncols2, /**< number of second-stage columns */
 		const int   nrows2  /**< number of second-stage rows */);
 
+/** set DecTssQcModel::QcRowData dimensions */
+void setQcRowDataDimensions(DspApiEnv * env);
+
+/** set quadratic constraint dimensions */
+void setQcDimensions(DspApiEnv * env, int s, int nqrows);
+
 /** read smps files */
 int readSmps(DspApiEnv * env, const char * smps);
 
