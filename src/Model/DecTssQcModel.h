@@ -63,7 +63,7 @@ public:
 	DSP_RTN_CODE readQuad(const char * smps, const char * filename);
 
 	/** set dimensions for quadratic constraints */
-    void setQcDimensions(){QcRowData_.resize(nscen_);};
+    void setQcRowDataDimensions(){QcRowData_.resize(nscen_);};
 	DSP_RTN_CODE setQcDimensions(int * nqrows);
 	DSP_RTN_CODE setQcDimensions(int s, int nqrows);
 

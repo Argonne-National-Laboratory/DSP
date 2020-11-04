@@ -176,6 +176,18 @@ void setDimensions(
 	getTssModel(env)->setDimensions(ncols1, nrows1, ncols2, nrows2);
 }
 
+/** set DecTssQcModel::QcRowData dimensions */
+void setQcRowDataDimensions(DspApiEnv * env)
+{
+	getDecTssQcModel(env)->setQcRowDataDimensions();
+}
+
+/** set quadratic constraint dimensions */
+void setQcDimensions(DspApiEnv * env, int s, int nqrows) 
+{
+	getDecTssQcModel(env)->setQcDimensions(s, nqrows);
+}
+
 /** read smps files */
 int readSmps(DspApiEnv * env, const char * smps)
 {
