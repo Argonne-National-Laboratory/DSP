@@ -31,16 +31,6 @@ TEST_CASE("Test runDSP") {
 /* test with MPI turned off */
 #undef DSP_HAS_MPI
 
-#define FREE_MEMORY	\
-	free(algotype);	\
-	free(smpsfile);	\
-	free(mpsfile);	\
-	free(decfile);	\
-	free(solnfile);	\
-	free(paramfile);	\
-	free(testvalue);	\
-	free(quadfile);
-
     char* algotype = NULL;
     char* smpsfile = NULL;
     char* mpsfile = NULL;
@@ -79,7 +69,7 @@ TEST_CASE("Test runDSP") {
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
 
-			FREE_MEMORY
+			free(algotype)
         }
 
         SECTION("with DD") {
@@ -88,7 +78,7 @@ TEST_CASE("Test runDSP") {
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
 
-			FREE_MEMORY
+			free(algotype)
         }
 
         // SECTION("DW") {
@@ -98,32 +88,38 @@ TEST_CASE("Test runDSP") {
         //     REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
         // }
 		
-		FREE_MEMORY
+		free(mpsfile);
+		free(decfile);
+		free(testvalue);
     }
 
     SECTION ("Solving a SMPS Instance") {
 
         smpsfile_s = "../examples/smps/farmer";
-		testvalue_s = "-108389.9994043";
 		copyToCharArray(smpsfile_s, smpsfile);
-		copyToCharArray(testvalue_s, testvalue);
 
 		SECTION("with DE") {
             algotype_s = "de";
+			testvalue_s = "-108389.9994043";
             copyToCharArray(algotype_s, algotype);
+			copyToCharArray(testvalue_s, testvalue);
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
 
-			FREE_MEMORY
+			free(algotype);
+			free(testvalue);
         }
 
         SECTION("with DD") {
             algotype_s = "dd";
+			testvalue_s = "-108389.9994043";
             copyToCharArray(algotype_s, algotype);
+			copyToCharArray(testvalue_s, testvalue);
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
 
-			FREE_MEMORY
+			free(algotype);
+			free(testvalue);
         }
 
         SECTION("with Quadratic Constraints") {
@@ -141,7 +137,7 @@ TEST_CASE("Test runDSP") {
 				
 				REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
 
-				FREE_MEMORY
+				free(algotype)
 			}
 
 			SECTION("with DD") {
@@ -150,10 +146,16 @@ TEST_CASE("Test runDSP") {
 				
 				REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
 
-				FREE_MEMORY
+				free(algotype)
 			}
+			
+			free(quadfile);
+			free(testvalue);
         }
+		free(smpsfile);
     }
+
+	free(paramfile);
 #endif
 
 #ifdef DSP_HAS_CPX
@@ -176,7 +178,7 @@ TEST_CASE("Test runDSP") {
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
 
-			FREE_MEMORY
+			free(algotype);
         }
 
         SECTION("with DD") {
@@ -185,7 +187,7 @@ TEST_CASE("Test runDSP") {
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
 
-			FREE_MEMORY
+			free(algotype);
         }
 
         // SECTION("DW") {
@@ -194,31 +196,38 @@ TEST_CASE("Test runDSP") {
                 
         //     REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
         // }
+		free(mpsfile);
+		free(decfile);
+		free(testvalue);
     }
 
     SECTION ("Solving a SMPS Instance") {
 
         smpsfile_s = "../examples/smps/farmer";
-		testvalue_s = "-108389.9994043";
 		copyToCharArray(smpsfile_s, smpsfile);
-		copyToCharArray(testvalue_s, testvalue);
-
+		
 		SECTION("with DE") {
             algotype_s = "de";
+			testvalue_s = "-108389.9994043";
             copyToCharArray(algotype_s, algotype);
+			copyToCharArray(testvalue_s, testvalue);
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
 
-			FREE_MEMORY
+			free(algotype);
+			free(testvalue);
         }
 
         SECTION("with DD") {
             algotype_s = "dd";
+			testvalue_s = "-108389.9994043";
             copyToCharArray(algotype_s, algotype);
+			copyToCharArray(testvalue_s, testvalue);
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
 
-			FREE_MEMORY
+			free(algotype);
+			free(testvalue);
         }
 
         SECTION("with Quadratic Constraints") {
@@ -237,7 +246,7 @@ TEST_CASE("Test runDSP") {
 					
 					REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
 
-					FREE_MEMORY
+					free(algotype);
 				}
 
 				SECTION("with DD") {
@@ -246,8 +255,11 @@ TEST_CASE("Test runDSP") {
 					
 					REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
 
-					FREE_MEMORY
+					free(algotype);
 				}
+
+				free(testvalue);
+				free(quadfile);
 			}
 
 			SECTION("farmer2") {
@@ -264,7 +276,7 @@ TEST_CASE("Test runDSP") {
 					
 					REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
 
-					FREE_MEMORY
+					free(algotype);
 				}
 
 				SECTION("with DD") {
@@ -273,11 +285,17 @@ TEST_CASE("Test runDSP") {
 					
 					REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
 
-					FREE_MEMORY
+					free(algotype);
 				}
+
+				free(testvalue);
+				free(quadfile);
 			}
+			
         }
+		free(smpsfile);
     }
+	free(paramfile);
 #endif
 
 #ifdef DSP_HAS_MPI
