@@ -3,6 +3,7 @@ set(TEST_SRC
     tests-main.cpp
     src/tests-DspCInterface.cpp
     src/tests-TssQCModel.cpp
+    src/tests-MIQP.cpp
 )
 
 include_directories(.)
