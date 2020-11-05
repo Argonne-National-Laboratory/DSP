@@ -69,7 +69,7 @@ TEST_CASE("Test runDSP") {
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
 
-			free(algotype)
+			free(algotype);
         }
 
         SECTION("with DD") {
@@ -78,7 +78,7 @@ TEST_CASE("Test runDSP") {
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
 
-			free(algotype)
+			free(algotype);
         }
 
         // SECTION("DW") {
@@ -137,7 +137,7 @@ TEST_CASE("Test runDSP") {
 				
 				REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
 
-				free(algotype)
+				free(algotype);
 			}
 
 			SECTION("with DD") {
@@ -146,7 +146,7 @@ TEST_CASE("Test runDSP") {
 				
 				REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
 
-				free(algotype)
+				free(algotype);
 			}
 			
 			free(quadfile);
