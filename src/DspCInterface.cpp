@@ -13,7 +13,7 @@
 #include "DspApiEnv.h"
 #include "DspCInterface.h"
 #include "Utility/DspMacros.h"
-#include "Model/DecTssModel.h"
+#include "Model/DecTssQcModel.h"
 #include "Model/DecBlkModel.h"
 
 #include "Solver/Deterministic/DeDriver.h"
@@ -49,8 +49,29 @@ DspApiEnv * createEnv(void)
 	return new DspApiEnv;
 }
 
+/** create model */
+int createModel(DspApiEnv * env, bool isstochastic, bool isquadratic)
+{
+	if (env->model_ == NULL) {
+		if (isstochastic) {
+			if (isquadratic)
+				env->model_ = new DecTssQcModel;
+			else 
+				env->model_ = new DecTssModel;
+		} else {
+			if (isquadratic) {
+				cout << "Current version only support quadratic constraints for stochastic models" << endl;
+				return 1;
+			} else {
+				/* nothing to do */
+			}
+		}
+	} 
+	return 0;
+}
+
 /** free API environment */
-void freeEnv(DspApiEnv * env)
+void freeEnv(DspApiEnv * &env)
 {
 	FREE_PTR(env);
 }
@@ -69,12 +90,14 @@ void freeSolver(DspApiEnv * env)
 	FREE_PTR(env->solver_);
 }
 
-/** If current model is stochastic, return the model as a TssModel object. If no model exists, create one. */
+/** If current model is stochastic, return the model as a TssModel object. */
 TssModel * getTssModel(DspApiEnv * env)
-{
+{	
 	if (env->model_ == NULL)
-		env->model_ = new DecTssModel;
-	/** TODO: Should fail gracefully */
+	{
+		printf("Error: env->model_ should be initialized using createModel function");
+		return NULL;
+	}
 	if (env->model_->isStochastic())
 	{
 		TssModel * tss;
@@ -92,6 +115,37 @@ TssModel * getTssModel(DspApiEnv * env)
 	else
 	{
 		printf("Error: Attempted to access feature only supported by stochastic models with a general decomposition model\n");
+		return NULL;
+	}
+}
+
+/** If current model is quadratic, return the model as a QcModel object. */
+DecTssQcModel * getDecTssQcModel(DspApiEnv * env)
+// QcModel * getQcModel(DspApiEnv * env)
+{
+	if (env->model_ == NULL)
+	{
+		printf("Error: env->model_ should be initialized using createModel function");
+		return NULL;
+	}
+	
+	if (env->model_->isQuadratic())
+	{
+		DecTssQcModel * qc;
+		try
+		{
+			qc = dynamic_cast<DecTssQcModel *>(env->model_);
+		}
+		catch (const std::bad_cast& e)
+		{
+			printf("Error: Model claims to be quadratic when it is not");
+			return NULL;
+		}
+		return qc;
+	}
+	else
+	{
+		printf("Error: Attempted to access feature only supported by quadratic models with a general two-stage decomposition model\n");
 		return NULL;
 	}
 }
@@ -122,6 +176,18 @@ void setDimensions(
 	getTssModel(env)->setDimensions(ncols1, nrows1, ncols2, nrows2);
 }
 
+/** set DecTssQcModel::QcRowData dimensions */
+void setQcRowDataDimensions(DspApiEnv * env)
+{
+	getDecTssQcModel(env)->setQcRowDataDimensions();
+}
+
+/** set quadratic constraint dimensions */
+void setQcDimensions(DspApiEnv * env, int s, int nqrows) 
+{
+	getDecTssQcModel(env)->setQcDimensions(s, nqrows);
+}
+
 /** read smps files */
 int readSmps(DspApiEnv * env, const char * smps)
 {
@@ -132,6 +198,12 @@ int readSmps(DspApiEnv * env, const char * smps)
 int readDro(DspApiEnv * env, const char * dro)
 {
 	return getTssModel(env)->readDro(dro);
+}
+
+/** read quad files */
+int readQuad(DspApiEnv * env, const char * smps, const char * quad)
+{
+	return getDecTssQcModel(env)->readQuad(smps, quad);
 }
 
 /** load first-stage problem */
@@ -210,6 +282,27 @@ void loadQuadraticSecondStage(
 {
 	getTssModel(env)->loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, qrowindex, qcolindex, qvalue, qnum, rlbd, rubd);
 }
+
+/** load quadratic constraints to the second stage */
+void loadQuadraticRows(
+		DspApiEnv *         env,  	 	/**< pointer to API object */
+        const int           s,     		/**< scenario index */
+		const int 			nqrows,		/**< number of quadratic constraints */
+        const int *         linnzcnt,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+        const int *        	quadnzcnt,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+		const double *		rhs, 		/**< constraint rhs of each constraint */
+		const int *			sense, 		/**< constraint sense of each constraint */
+		const int *         linstart,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+		const int *         linind, 	/**< indices for the linear part */
+		const double *      linval, 	/**< nonzero coefficient of the linear part */
+		const int *        	quadstart,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+		const int *       	quadrow,  	/**< indices for the quadratic part */
+		const int *       	quadcol,  	/**< indices for the quadratic part */
+		const double *      quadval 	/**< nonzero coefficient of the quadratic part */ )
+{
+	getDecTssQcModel(env)->loadQuadraticRows(s, nqrows, linnzcnt, quadnzcnt, rhs, sense, linstart, linind, linval, quadstart, quadrow, quadcol, quadval);
+}
+
 
 /**
  * The following function allows to read the model by blocks. This
@@ -317,8 +410,7 @@ void solveDd(DspApiEnv * env)
 	freeSolver(env);
 
 	env->solver_ = new DdDriverSerial(env->model_, env->par_, env->message_);
-	
-	DSP_RTN_CHECK_THROW(env->solver_->init());
+ 	DSP_RTN_CHECK_THROW(env->solver_->init());
 	DSP_RTN_CHECK_THROW(dynamic_cast<DdDriverSerial*>(env->solver_)->run());
 	DSP_RTN_CHECK_THROW(env->solver_->finalize());
 
@@ -607,6 +699,13 @@ int getTotalNumRows(DspApiEnv * env)
 {
 	DSP_API_CHECK_MODEL(-1);
 	return getModelPtr(env)->getFullModelNumRows();
+}
+
+/** get number of quadratic rows */
+int getNumQRows(DspApiEnv * env, int s)
+{
+	DSP_API_CHECK_MODEL(-1);
+	return getDecTssQcModel(env)->getNumQRows(s);
 }
 
 /** get total number of columns */

@@ -18,6 +18,8 @@
 #include "DspApiEnv.h"
 
 class TssModel;
+class DecTssModel;
+class DecTssQcModel;
 
 #ifdef __cplusplus
 extern "C" {
@@ -26,8 +28,11 @@ extern "C" {
 /** create API environment */
 DspApiEnv * createEnv(void);
 
+/** create model */
+int createModel(DspApiEnv * env, bool isstochastic, bool isquadratic);
+
 /** free API environment */
-void freeEnv(DspApiEnv * env);
+void freeEnv(DspApiEnv * &env);
 
 /** free model */
 void freeModel(DspApiEnv * env);
@@ -37,6 +42,9 @@ void freeSolver(DspApiEnv * env);
 
 /** If current model is stochastic, return the model as a TssModel object. If no model exists, create one. */
 TssModel * getTssModel(DspApiEnv * env);
+
+/** If current model is quadratic, return the model as a QcModel object. */
+DecTssQcModel * getDecTssQcModel(DspApiEnv * env);
 
 /** get model pointer */
 DecModel * getModelPtr(DspApiEnv * env);
@@ -54,11 +62,20 @@ void setDimensions(
 		const int   ncols2, /**< number of second-stage columns */
 		const int   nrows2  /**< number of second-stage rows */);
 
+/** set DecTssQcModel::QcRowData dimensions */
+void setQcRowDataDimensions(DspApiEnv * env);
+
+/** set quadratic constraint dimensions */
+void setQcDimensions(DspApiEnv * env, int s, int nqrows);
+
 /** read smps files */
 int readSmps(DspApiEnv * env, const char * smps);
 
 /** read dro files */
 int readDro(DspApiEnv * env, const char * dro);
+
+/** read quad files */
+int readQuad(DspApiEnv * env, const char * smps, const char * quad);
 
 /** load first-stage problem */
 void loadFirstStage(
@@ -123,6 +140,23 @@ void loadQuadraticSecondStage(
 		const CoinBigIndex	 qnum,	/**< number of quadratic elements */
 		const double *       rlbd,  /**< row lower bounds */
 		const double *       rubd   /**< row upper bounds */);		
+
+/** load quadratic constraints to the second stage */
+void loadQuadraticRows(
+		DspApiEnv *         env, 	  	/**< pointer to API object */
+        const int           s,     		/**< scenario index */
+		const int 			nqrows,		/**< number of quadratic constraints */
+        const int *         linnzcnt,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+        const int *        	quadnzcnt,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+		const double *		rhs, 		/**< constraint rhs of each constraint */
+		const int *			sense, 		/**< constraint sense of each constraint */
+		const int *         linstart,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+		const int *         linind, 	/**< indices for the linear part */
+		const double *      linval, 	/**< nonzero coefficient of the linear part */
+		const int *        	quadstart,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+		const int *       	quadrow,  	/**< indices for the quadratic part */
+		const int *       	quadcol,  	/**< indices for the quadratic part */
+		const double *      quadval 	/**< nonzero coefficient of the quadratic part */ );
 
 /** load block problems */
 void loadBlockProblem(
@@ -217,6 +251,9 @@ int getNumIntegers(DspApiEnv * env, int stage);
 
 /** get Total number of row */
 int getTotalNumRows(DspApiEnv * env);
+
+/** get number of quadratic rows */
+int getNumQRows(DspApiEnv * env, int s);
 
 /** get number of columns */
 int getTotalNumCols(DspApiEnv * env);

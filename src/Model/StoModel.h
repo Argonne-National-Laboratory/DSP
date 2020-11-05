@@ -88,6 +88,9 @@ public:
 	/** get initial solutions */
 	const Solutions getInitialSolutions() {return init_solutions_;}
 
+	/** get core coefficeints for a given stage */
+	const CoinPackedVector * getRowCore(int i) {return rows_core_[i];}
+
 	/** set initial solutions */
 	void setSolution(
 			int      size,    /**< size of array */

@@ -146,6 +146,7 @@ public:
 	bool nonanticipativity() {return true;}
 
 	bool isStochastic() {return true;}
+	bool isQuadratic() {return false;}
 
 	virtual bool isQCQP() {return TssModel::isQCQP();}
 

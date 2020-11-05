@@ -9,7 +9,8 @@
 
 #include "Utility/DspMacros.h"
 #include "Utility/DspMessage.h"
-#include "Model/TssModel.h"
+// #include "Model/TssModel.h"
+#include "Model/DecTssQcModel.h"
 #include "Solver/DualDecomp/DdSub.h"
 #include "SolverInterface/DspOsiClp.h"
 #include "SolverInterface/DspOsiCpx.h"
@@ -92,8 +93,10 @@ DSP_RTN_CODE DdSub::solve()
 	bool dualinfeas = false;
 
 	while (1) {
-		osi_->solve();
-	
+		
+		/** solve */
+		osi_->solve();	
+
 		/** check status. there might be unexpected results. */
 		status_ = osi_->status();
 		DSPdebugMessage("solution status %d\n", status_);
@@ -177,6 +180,9 @@ DSP_RTN_CODE DdSub::createProblem() {
     double cubd_aux[1];
     double obj_aux[1];
     int cpl_ncols;
+
+	bool isqp = false;
+	bool isqcp = false;
 
     BGN_TRY_CATCH
 
@@ -320,6 +326,40 @@ DSP_RTN_CODE DdSub::createProblem() {
 			getSiPtr()->setInteger(j);
 	}
     DSPdebug(mat->verifyMtx(4));
+
+	/** add quadratic constraints */
+	if (model_->isQuadratic())
+	{
+		DecTssQcModel * qcModel;
+		try
+		{
+			qcModel = dynamic_cast<DecTssQcModel *>(model_);
+		}
+		catch (const std::bad_cast& e)
+		{
+			printf("Model claims to be quadratic when it is not");
+			return DSP_RTN_ERR;
+		}
+
+		QcRowDataScen * qcrowdata = qcModel->getQcRowData(sind_);
+		if (qcrowdata->nqrows_ > 0)
+			isqcp = true;
+
+		/* print qcrowdata to test whether it is successfully received or not */
+        // qcModel->printQuadRows(sind_);
+        // qcModel->printQuadRows(qcrowdata);
+        	
+		osi_->addQuadraticRows(qcrowdata->nqrows_, qcrowdata->linnzcnt_, qcrowdata->quadnzcnt_, qcrowdata->rhs_, qcrowdata->sense_, (const int **) qcrowdata->linind_, (const double **) qcrowdata->linval_, (const int **) qcrowdata->quadrow_, (const int **) qcrowdata->quadcol_, (const double **) qcrowdata->quadval_);
+	#ifdef DSP_DEBUG
+		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
+		char lpfilename[128];
+		sprintf(lpfilename, "%s_DdWorkerLB_scen%d.lp", qcModel->getFileName(), sind_); 
+		osi_->writeProb(lpfilename, NULL);
+	#endif
+	}
+
+	/** set problem type */
+	osi_->setProbType(isqp, isqcp);
 
     /** set solution gap tolerance */
 	if (nIntegers > 0)

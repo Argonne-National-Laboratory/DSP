@@ -4,9 +4,9 @@
  *  Created on: Feb 17, 2016
  *      Author: kibaekkim
  */
-//#define DSP_DEBUG
+// #define DSP_DEBUG
 
-#include "Model/TssModel.h"
+#include "Model/DecTssQcModel.h"
 #include "Solver/Deterministic/DeDriver.h"
 #include "SolverInterface/DspOsiCpx.h"
 #include "SolverInterface/DspOsiGrb.h"
@@ -60,6 +60,9 @@ DSP_RTN_CODE DeDriver::run()
 	char *   ctype  = NULL;
 	double * rlbd   = NULL;
 	double * rubd   = NULL;
+
+	bool isqp = false;
+	bool isqcp = false;
 
 	BGN_TRY_CATCH
 
@@ -129,6 +132,71 @@ DSP_RTN_CODE DeDriver::run()
 			osi_->si_->setInteger(j);
 	}
 
+	/** add quadratic constraints */
+	if (model_->isQuadratic())
+	{
+		DecTssQcModel * qcModel;
+		try
+		{
+			qcModel = dynamic_cast<DecTssQcModel *>(model_);
+		}
+		catch (const std::bad_cast& e)
+		{
+			printf("Model claims to be quadratic when it is not");
+			return DSP_RTN_ERR;
+		}
+
+		for (int s = 0; s < qcModel->getNumScenarios(); s++) {
+			
+			QcRowDataScen * qcrowdata = qcModel->getQcRowData(s);
+
+			if (qcrowdata->nqrows_ > 0)
+				isqcp = true;
+
+			/* print qcrowdata to test whether it is successfully received or not */
+        	// qcModel->printQuadRows(s);
+        	// qcModel->printQuadRows(qcrowdata);
+
+			/* adjust indices for second stage variables */
+			int ** linind = new int * [qcrowdata->nqrows_];
+			int ** quadrow = new int * [qcrowdata->nqrows_];
+			int ** quadcol = new int * [qcrowdata->nqrows_];
+			
+			for (int i = 0; i < qcrowdata->nqrows_; i++)
+			{	
+				linind[i] = new int [qcrowdata->linnzcnt_[i]];
+				quadrow[i] = new int [qcrowdata->quadnzcnt_[i]];
+				quadcol[i] = new int [qcrowdata->quadnzcnt_[i]];
+
+				for (int j = 0; j < qcrowdata->linnzcnt_[i]; j++) 
+				{
+					linind[i][j] = qcModel->getNumCols(1) * s + qcrowdata->linind_[i][j];
+				}
+
+				for (int j = 0; j < qcrowdata->quadnzcnt_[i]; j++) 
+				{
+					quadrow[i][j] = qcModel->getNumCols(1) * s + qcrowdata->quadrow_[i][j];
+					quadcol[i][j] = qcModel->getNumCols(1) * s + qcrowdata->quadcol_[i][j];
+				}
+			}
+        	
+			osi_->addQuadraticRows(qcrowdata->nqrows_, qcrowdata->linnzcnt_, qcrowdata->quadnzcnt_, qcrowdata->rhs_, qcrowdata->sense_, (const int **) linind, (const double **) qcrowdata->linval_, (const int **) quadrow, (const int **) quadcol, (const double **) qcrowdata->quadval_);
+
+			FREE_2D_ARRAY_PTR(qcrowdata->nqrows_, linind);
+			FREE_2D_ARRAY_PTR(qcrowdata->nqrows_, quadrow);
+			FREE_2D_ARRAY_PTR(qcrowdata->nqrows_, quadcol);
+		}
+#ifdef DSP_DEBUG
+		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
+		char lpfilename[128];
+		sprintf(lpfilename, "%s.lp", qcModel->getFileName()); 
+		osi_->writeProb(lpfilename, NULL);
+#endif
+	}
+
+	/** set problem type */
+	osi_->setProbType(isqp, isqcp);
+	
 	/** set optimality gap tolerance */
 	osi_->setRelMipGap(par_->getDblParam("DE/GAPTOL"));
 
@@ -144,7 +212,7 @@ DSP_RTN_CODE DeDriver::run()
 	walltime_ = CoinGetTimeOfDay();
 
 	/** solve */
-	solve();
+	solve();	
 
 	/** toc */
 	cputime_  = CoinCpuTime() - cputime_;

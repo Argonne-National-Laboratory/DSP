@@ -1,119 +1,264 @@
-/*
- * dsp.cpp
- *
- *  Created on: Feb 21, 2018
- *      Author: Kibaek Kim
- */
+// tests-BlkModel.cpp
+#include "catch.hpp"
 
-#include <iostream>
-#include "CoinMpsIO.hpp"
 #include "DspCInterface.h"
+#include "Model/TssModel.h"
+#include "Model/DecTssQcModel.h"
 
-const char* gDspUsage = 
-	"Not enough or invalid arguments, please try again.\n\n"
-	"Usage: --algo <de,bd,dd,drbd,drdd,dw> --smps <smps file> --mps <mps file> --dec <dec file> [--soln <solution file prefix> --param <param file> --test <benchmark objective value>]\n\n"
-	"       --algo\tchoice of algorithms.\n"
-	"             \tde: deterministic equivalent form\n"
-	"             \tbd: Benders decomposition\n"
-	"             \tdd: dual decomposition\n"
-	"             \tdrbd: distributionally robust bd\n"
-	"             \tdrdd: distributionally robust dd\n"
-	"             \tdw: Dantzig-Wolfe decomposition with branch-and-bound\n"
-	"       --smps\tSMPS file name without extensions. For example, if your SMPS files are ../test/farmer.cor, ../test/farmer.sto, and ../test/farmer.tim, this value should be ../test/farmer\n"
-	"       --mps\tMPS file name\n"
-	"       --dec\tDEC file name\n"
-	"       --quad\tQuadratic file name without extension. The Quadratic file should extend the parsed SMPS file and its suffix needs to be .txt in the current version. For example, if your Quadratic file is ../test/farmer.txt, this value should be ../test/farmer\n"
-	"       --soln\toptional argument for solution file prefix. For example, if the prefix is given as MySol, then two files MySol.primal.txt and MySol.dual.txt will be written for primal and dual solutions, respectively.\n"
-	"       --param\toptional paramater for parameter file name\n"
-	"       --test\toptional parameter for testing objective value\n";
-
-void setBlockIds(DspApiEnv* env, int nsubprobs, bool master_has_subblocks);
 int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* paramfile, char* testvalue, char* quadfile);
 int readMpsDec(DspApiEnv* env, char* mpsfile, char* decfile);
 int parseDecFile(char* decfile, vector<vector<string> >& rows_in_blocks);
+void setBlockIds(DspApiEnv* env, int nsubprobs, bool master_has_subblocks);
 void createBlockModel(DspApiEnv* env, CoinMpsIO& p, const CoinPackedMatrix* mat, 
 	int blockid, vector<string>& rows_in_block, map<string,int>& rowname2index, 
 	const char* ctype, const double* obj);
-
 const double test_tolerance = 1.0e-2;
+void printCoreRows (DspApiEnv * env);
 
-/*
- This will compile a stand-alone binary file that reads problem instances.
-*/
-int main(int argc, char* argv[]) {
+void copyToCharArray (string &stringToCopy, char* &arrayToWrite) {
+    
+	if (arrayToWrite != NULL) {
+		delete[] arrayToWrite;
+		arrayToWrite = NULL;
+	}
+    arrayToWrite = new char [stringToCopy.length()+1];
+    strcpy(arrayToWrite, stringToCopy.c_str());
+}
 
+TEST_CASE("Test runDSP") {
+	
 	bool isroot = true;
-#ifdef DSP_HAS_MPI
-	int comm_rank;
-	MPI_Init(&argc, &argv);
-	MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
-	isroot = comm_rank == 0 ? true : false;
-#define EXIT_WITH_MSG \
-	if(isroot) cout << gDspUsage; \
-	MPI_Finalize(); \
-	exit(0); 
-#else
-#define EXIT_WITH_MSG \
-	if(isroot) cout << gDspUsage; \
-	exit(0); 
+/* test with MPI turned off */
+#undef DSP_HAS_MPI
+
+    char* algotype = NULL;
+    char* smpsfile = NULL;
+    char* mpsfile = NULL;
+    char* decfile = NULL;
+    char* solnfile = NULL;
+    char* paramfile = NULL;
+    char* testvalue = NULL;
+    char* quadfile = NULL;
+
+	string algotype_s;
+	string smpsfile_s;
+	string mpsfile_s;
+	string decfile_s;
+	string solnfile_s;
+	string paramfile_s;
+	string testvalue_s;
+	string quadfile_s;
+
+#ifdef DSP_HAS_SCIP
+
+    paramfile_s = "../test/params_scip.txt";
+    copyToCharArray(paramfile_s, paramfile);
+
+    SECTION ("Solving a MPS-DEC Instance") {
+
+        mpsfile_s = "../examples/mps-dec/noswot.mps";
+        decfile_s = "../examples/mps-dec/noswot.dec";
+		testvalue_s = "-42";
+        copyToCharArray(mpsfile_s, mpsfile);
+        copyToCharArray(decfile_s, decfile);
+		copyToCharArray(testvalue_s, testvalue);
+
+        SECTION("with DE") {
+            algotype_s = "de";
+            copyToCharArray(algotype_s, algotype);
+            
+            REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+        }
+
+        SECTION("with DD") {
+            algotype_s = "dd";
+            copyToCharArray(algotype_s, algotype);
+            
+            REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+        }
+
+        // SECTION("DW") {
+        //     algotype_s = "dw";
+        //     copyToCharArray(algotype_s, algotype);
+                
+        //     REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+        // }
+
+    }
+
+    SECTION ("Solving a SMPS Instance") {
+
+        smpsfile_s = "../examples/smps/farmer";
+		copyToCharArray(smpsfile_s, smpsfile);
+
+		SECTION("with DE") {
+            algotype_s = "de";
+			testvalue_s = "-108389.9994043";
+            copyToCharArray(algotype_s, algotype);
+			copyToCharArray(testvalue_s, testvalue);
+            
+            REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+        }
+
+        SECTION("with DD") {
+            algotype_s = "dd";
+			testvalue_s = "-108389.9994043";
+            copyToCharArray(algotype_s, algotype);
+			copyToCharArray(testvalue_s, testvalue);
+            
+            REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+        }
+
+        SECTION("with Quadratic Constraints") {
+			
+			testvalue_s = "-105093";
+			copyToCharArray(testvalue_s, testvalue);
+
+            quadfile_s = "../examples/quad/farmer";
+            copyToCharArray(quadfile_s, quadfile);
+			puts(quadfile);
+
+            SECTION("with DE") {
+				algotype_s = "de";
+				copyToCharArray(algotype_s, algotype);
+				
+				REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+			}
+
+			SECTION("with DD") {
+				algotype_s = "dd";
+				copyToCharArray(algotype_s, algotype);
+				
+				REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+			}
+        }
+    }
 #endif
 
+#ifdef DSP_HAS_CPX
 
-	if (argc < 5) {
-		EXIT_WITH_MSG
-	} else {
-		char* algotype = NULL;
-		char* smpsfile = NULL;
-		char* mpsfile = NULL;
-		char* decfile = NULL;
-		char* solnfile = NULL;
-		char* paramfile = NULL;
-		char* testvalue = NULL;
-		char* quadfile = NULL;
-		for (int i = 1; i < argc; i += 2) {
-			if (i + 1 != argc) {
-				if (string(argv[i]) == "--algo") {
-					algotype = argv[i+1];
-				} else if (string(argv[i]) == "--smps") {
-					smpsfile = argv[i+1];
-				} else if (string(argv[i]) == "--mps") {
-					mpsfile = argv[i+1];
-				} else if (string(argv[i]) == "--dec") {
-					decfile = argv[i+1];
-				} else if (string(argv[i]) == "--soln") {
-					solnfile = argv[i+1];
-				} else if (string(argv[i]) == "--param") {
-					paramfile = argv[i+1];
-				} else if (string(argv[i]) == "--test") {
-					testvalue = argv[i+1];
-				} else if (string(argv[i]) == "--quad") {
-					quadfile = argv[i+1];
-				} else {
-					EXIT_WITH_MSG
+    paramfile_s = "../test/params_cpx.txt";
+    copyToCharArray(paramfile_s, paramfile);
+
+    SECTION ("Solving a MPS-DEC Instance") {
+
+        mpsfile_s = "../examples/mps-dec/noswot.mps";
+        decfile_s = "../examples/mps-dec/noswot.dec";
+		testvalue_s = "-42";
+        copyToCharArray(mpsfile_s, mpsfile);
+        copyToCharArray(decfile_s, decfile);
+		copyToCharArray(testvalue_s, testvalue);
+
+        SECTION("with DE") {
+            algotype_s = "de";
+            copyToCharArray(algotype_s, algotype);
+            
+            REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+        }
+
+        SECTION("with DD") {
+            algotype_s = "dd";
+            copyToCharArray(algotype_s, algotype);
+            
+            REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+        }
+
+        // SECTION("DW") {
+        //     algotype_s = "dw";
+        //     copyToCharArray(algotype_s, algotype);
+                
+        //     REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+        // }
+		
+    }
+
+    SECTION ("Solving a SMPS Instance") {
+
+        smpsfile_s = "../examples/smps/farmer";
+		copyToCharArray(smpsfile_s, smpsfile);
+		
+		SECTION("with DE") {
+            algotype_s = "de";
+			testvalue_s = "-108389.9994043";
+            copyToCharArray(algotype_s, algotype);
+			copyToCharArray(testvalue_s, testvalue);
+            
+            REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+        }
+
+        SECTION("with DD") {
+            algotype_s = "dd";
+			testvalue_s = "-108389.9994043";
+            copyToCharArray(algotype_s, algotype);
+			copyToCharArray(testvalue_s, testvalue);
+            
+            REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+        }
+
+        SECTION("with Quadratic Constraints") {
+			
+			SECTION("farmer1") {
+				testvalue_s = "-105093";
+				copyToCharArray(testvalue_s, testvalue);
+
+				quadfile_s = "../examples/quad/farmer";
+				copyToCharArray(quadfile_s, quadfile);
+				puts(quadfile);
+
+				SECTION("with DE") {
+					algotype_s = "de";
+					copyToCharArray(algotype_s, algotype);
+					
+					REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+				}
+
+				SECTION("with DD") {
+					algotype_s = "dd";
+					copyToCharArray(algotype_s, algotype);
+					
+					REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
 				}
 			}
-		}
 
-		// algotype is required.
-		if (algotype == NULL) {
-			EXIT_WITH_MSG
-		}
+			SECTION("farmer2") {
+				testvalue_s = "-44147.4";
+				copyToCharArray(testvalue_s, testvalue);
 
-		// Either smps or mps/dec files are required.
-		if (smpsfile == NULL && (mpsfile == NULL || decfile == NULL)) {
-			EXIT_WITH_MSG
-		}
+				quadfile_s = "../examples/quad/farmer2";
+				copyToCharArray(quadfile_s, quadfile);
+				puts(quadfile);
 
-		// run dsp
-		int ret = runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile);
+				SECTION("with DE") {
+					algotype_s = "de";
+					copyToCharArray(algotype_s, algotype);
+					
+					REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+				}
+
+				SECTION("with DD") {
+					algotype_s = "dd";
+					copyToCharArray(algotype_s, algotype);
+					
+					REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
+				}
+			}
+        }
+    }
+#endif
+
+	delete[] algotype;
+	delete[] mpsfile;
+	delete[] decfile;
+	delete[] smpsfile;
+	delete[] testvalue;
+	delete[] paramfile;
+	delete[] quadfile;
 
 #ifdef DSP_HAS_MPI
 		MPI_Finalize();
 #endif
-		return ret;
-	}
-#undef EXIT_WITH_MSG
 }
+
 
 int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* paramfile, char* testvalue, char* quadfile) {
 
@@ -161,6 +306,7 @@ int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* s
 		isstochastic = false;
 	}
 	
+		if (isroot) 
 	if (paramfile != NULL) {
 		if (isroot) cout << "Reading parameter files: " << paramfile << endl;
 		readParamFile(env, paramfile);
@@ -424,20 +570,20 @@ int readMpsDec(DspApiEnv* env, char* mpsfile, char* decfile) {
 		else
 			ctype.push_back('I');
 
-	//cout << "Creating hash table for matrix rows ... ";
+	// cout << "Creating hash table for matrix rows ... ";
 	map<string, int> rowname2index;
 	for (int i = 0; i < p.getNumRows(); ++i)
 		rowname2index[string(p.rowName(i))] = i;
-	//cout << "done!" << endl;
+	// cout << "done!" << endl;
 
 	// Read .dec file
 	// For each block, the following vector stores the corresponding rows.
-	//cout << "Parsing .dec file ... ";
+	// cout << "Parsing .dec file ... ";
 	vector<vector<string> > rows_in_blocks;
 	ret = parseDecFile(decfile, rows_in_blocks);
 	if (ret != 0) return ret;
 
-	// Assign block(s) to each process
+	// cout <<  "Assign block(s) to each process" << endl;
 	setBlockIds(env, rows_in_blocks.size() - 1, true);
 
 	vector<int> proc_idx_set;
@@ -445,7 +591,7 @@ int readMpsDec(DspApiEnv* env, char* mpsfile, char* decfile) {
 		proc_idx_set.push_back(env->par_->getIntPtrParam("ARR_PROC_IDX")[s]);
 	}
 
-	// For master block
+	// cout << "create master block" << endl;
 	int blockid = 0;
 	createBlockModel(env, p, mps_matrix, 0, rows_in_blocks[0], rowname2index, ctype.c_str(), obj);
 
@@ -549,3 +695,38 @@ void createBlockModel(DspApiEnv* env, CoinMpsIO& p, const CoinPackedMatrix* mat,
 	//cout << "done!" << endl;
 }
 
+void printCoreRows (DspApiEnv * env) {
+    
+    TssModel * tss = getTssModel(env);
+	cout << "number of stages: " << tss->getNumStages() << endl;
+	cout << "row data: " << endl;
+	    
+    int i, j, k, s;
+	for (s = 0; s < tss->getNumStages(); ++s)
+	{
+        cout << "stage " << s << ": " << endl; 
+		
+        double * rlbd_core = new double [tss->getNumRows(s)];
+        double * rubd_core = new double [tss->getNumRows(s)];
+        tss->copyCoreRowLower(rlbd_core, s);
+        tss->copyCoreRowUpper(rubd_core, s);
+
+        for (j = 0; j < tss->getNumRows(s); ++j)
+		{
+            if (s == 0) i = j;
+            else i = j + tss->getNumRows(s-1);
+
+            const CoinPackedVector * row = tss->getRowCore(i);
+
+            cout << "constr " << j << " : " << rlbd_core[j] << " <= ";
+
+            int nTerms = row->getNumElements();
+
+            for (k = 0; k < nTerms-1; k++) {
+				cout << row->getElements()[k] << " * " << row->getIndices()[k] << " + ";
+			}
+		    cout << row->getElements()[nTerms-1] << " * " << row->getIndices()[nTerms-1] << " <= " << rubd_core[j];
+			cout << endl;
+		}
+	}
+}

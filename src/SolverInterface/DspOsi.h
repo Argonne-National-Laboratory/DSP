@@ -15,10 +15,16 @@ class DspOsi {
 public:
 
 	/** default constructor */
-	DspOsi() {}
+	DspOsi() :
+	ismip_(false),
+	isqp_(false),
+	isqcp_(false) {}
 
 	/** copy constructor */
-	DspOsi(const DspOsi& rhs) {}
+	DspOsi(const DspOsi& rhs) : 
+	ismip_(rhs.ismip_),
+	isqp_(rhs.isqp_),
+	isqcp_(rhs.isqcp_) {}
 
 	/** clone constructor */
 	virtual DspOsi* clone() const = 0;
@@ -33,6 +39,38 @@ public:
 	virtual void loadQuadraticObjective(const CoinPackedMatrix &mat) {
 		throw CoinError("Quadratic objective is not supported.", "loadQuadraticObjective", "DspOsi");
 	}
+
+	/** load quadratic constrs */
+	virtual void addQuadraticRows(int nqrows, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int const ** linind, double const ** linval, 
+										int const ** quadrow, int const ** quadcol, double const ** quadval) {};
+
+	/** throw error */
+	virtual inline void checkDspOsiError(int err, std::string solverfuncname, std::string dsposimethod){};
+
+	/** write problem file */
+	virtual void writeProb(char const * filename_str, char const * filetype_str) {};
+
+	/** set problem type */
+	virtual void setProbType(bool isqp, bool isqcp) {
+		
+		if (si_->getNumIntegers() > 0)
+			ismip_ = true;
+		
+		isqp_ = isqp;
+		isqcp_ = isqcp;
+	}
+
+	/** change problem type to MIQCP */
+	virtual void switchToMIQCP(void){};
+
+	/** change problem type to MIQP */
+	virtual void switchToMIQP(void){};
+
+	/** change problem type to QCP */
+	virtual void switchToQCP(void){};
+
+	/** change problem type to QP */
+	virtual void switchToQP(void){};
 
 	virtual void writeMps(const char *filename){
 		si_->writeMps(filename);
@@ -102,6 +140,12 @@ public:
 	virtual void setRelMipGap(double tol) {}
 
 	OsiSolverInterface *si_;
+	
+	/** Stores whether CPLEX' prob type is currently set to mixed-integer program */
+	mutable bool ismip_;
+	/** Stores whether CPLEX' prob type is currently set to (MI)QP or (MI)QCP */
+	mutable bool isqp_;
+	mutable bool isqcp_;
 };
 
 #endif /* SRC_SOLVERINTERFACE_DSPOSI_H_ */
