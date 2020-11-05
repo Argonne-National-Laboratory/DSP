@@ -68,12 +68,6 @@ TEST_CASE("Test runDSP") {
             copyToCharArray(algotype_s, algotype);
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
-
-			delete[] algotype;
-			delete[] mpsfile;
-			delete[] decfile;
-			delete[] testvalue;
-			delete[] paramfile;
         }
 
         SECTION("with DD") {
@@ -81,12 +75,6 @@ TEST_CASE("Test runDSP") {
             copyToCharArray(algotype_s, algotype);
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
-
-			delete[] algotype;
-			delete[] mpsfile;
-			delete[] decfile;
-			delete[] testvalue;
-			delete[] paramfile;
         }
 
         // SECTION("DW") {
@@ -110,11 +98,6 @@ TEST_CASE("Test runDSP") {
 			copyToCharArray(testvalue_s, testvalue);
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
-
-			delete[] algotype;
-			delete[] smpsfile;
-			delete[] testvalue;
-			delete[] paramfile;
         }
 
         SECTION("with DD") {
@@ -124,11 +107,6 @@ TEST_CASE("Test runDSP") {
 			copyToCharArray(testvalue_s, testvalue);
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
-
-			delete[] algotype;
-			delete[] smpsfile;
-			delete[] testvalue;
-			delete[] paramfile;
         }
 
         SECTION("with Quadratic Constraints") {
@@ -145,12 +123,6 @@ TEST_CASE("Test runDSP") {
 				copyToCharArray(algotype_s, algotype);
 				
 				REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
-
-				delete[] algotype;
-				delete[] smpsfile;
-				delete[] testvalue;
-				delete[] paramfile;
-				delete[] quadfile;
 			}
 
 			SECTION("with DD") {
@@ -158,12 +130,6 @@ TEST_CASE("Test runDSP") {
 				copyToCharArray(algotype_s, algotype);
 				
 				REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
-
-				delete[] algotype;
-				delete[] smpsfile;
-				delete[] testvalue;
-				delete[] paramfile;
-				delete[] quadfile;
 			}
         }
     }
@@ -188,12 +154,6 @@ TEST_CASE("Test runDSP") {
             copyToCharArray(algotype_s, algotype);
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
-
-			delete[] algotype;
-			delete[] mpsfile;
-			delete[] decfile;
-			delete[] testvalue;
-			delete[] paramfile;
         }
 
         SECTION("with DD") {
@@ -201,12 +161,6 @@ TEST_CASE("Test runDSP") {
             copyToCharArray(algotype_s, algotype);
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
-
-			delete[] algotype;
-			delete[] mpsfile;
-			delete[] decfile;
-			delete[] testvalue;
-			delete[] paramfile;
         }
 
         // SECTION("DW") {
@@ -230,11 +184,6 @@ TEST_CASE("Test runDSP") {
 			copyToCharArray(testvalue_s, testvalue);
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
-
-			delete[] algotype;
-			delete[] smpsfile;
-			delete[] testvalue;
-			delete[] paramfile;
         }
 
         SECTION("with DD") {
@@ -244,11 +193,6 @@ TEST_CASE("Test runDSP") {
 			copyToCharArray(testvalue_s, testvalue);
             
             REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
-
-			delete[] algotype;
-			delete[] smpsfile;
-			delete[] testvalue;
-			delete[] paramfile;
         }
 
         SECTION("with Quadratic Constraints") {
@@ -266,12 +210,6 @@ TEST_CASE("Test runDSP") {
 					copyToCharArray(algotype_s, algotype);
 					
 					REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
-
-					delete[] algotype;
-					delete[] smpsfile;
-					delete[] quadfile;
-					delete[] testvalue;
-					delete[] paramfile;
 				}
 
 				SECTION("with DD") {
@@ -279,12 +217,6 @@ TEST_CASE("Test runDSP") {
 					copyToCharArray(algotype_s, algotype);
 					
 					REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
-
-					delete[] algotype;
-					delete[] smpsfile;
-					delete[] quadfile;
-					delete[] testvalue;
-					delete[] paramfile;
 				}
 			}
 
@@ -301,12 +233,6 @@ TEST_CASE("Test runDSP") {
 					copyToCharArray(algotype_s, algotype);
 					
 					REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
-
-					delete[] algotype;
-					delete[] smpsfile;
-					delete[] quadfile;
-					delete[] testvalue;
-					delete[] paramfile;
 				}
 
 				SECTION("with DD") {
@@ -314,17 +240,19 @@ TEST_CASE("Test runDSP") {
 					copyToCharArray(algotype_s, algotype);
 					
 					REQUIRE(runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, quadfile) == 0);
-
-					delete[] algotype;
-					delete[] smpsfile;
-					delete[] quadfile;
-					delete[] testvalue;
-					delete[] paramfile;
 				}
 			}
         }
     }
 #endif
+
+	delete[] algotype;
+	delete[] mpsfile;
+	delete[] decfile;
+	delete[] smpsfile;
+	delete[] testvalue;
+	delete[] paramfile;
+	delete[] quadfile;
 
 #ifdef DSP_HAS_MPI
 		MPI_Finalize();
