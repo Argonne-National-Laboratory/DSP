@@ -33,7 +33,7 @@ For two-stage stochastic programs, each block is represented by a scenario subpr
 Stochastic programs can be read from [SMPS](https://ieeexplore.ieee.org/abstract/document/8142546) files or our C API functions (or Julia package [DSPopt.jl](https://github.com/kibaekkim/DSPopt.jl)).
 For generic optimization problems, each block can be specified by [mps-dec](https://gcg.or.rwth-aachen.de/doc/reader__dec_8h.html) files or our C API functions (or Julia package DSPopt.jl).
 
-> NOTE: A **distributionally robust** variant of dual decomposition is available for the problems given in SMPS files and `.dro` file.
+> NOTE: A **distributionally robust** variant of dual decomposition is available for the problems given in SMPS files and optionally with `.dro` file.
 
 For more technical details, please refer the following papers.
 
@@ -47,7 +47,7 @@ For more technical details, please refer the following papers.
 This solves the integer Benders decomposition of stochastic programming problems with the lower bound initialized by the dual decomposition.
 Integer Benders decomposition runs when the first stage is a pure-binary program and the second stage is a mixed-integer program.
 
-> NOTE: A **distributionally robust** variant of Benders decomposition is available for the problems given in SMPS files and `.dro` file.
+> NOTE: A **distributionally robust** variant of Benders decomposition is available for the problems given in SMPS files and optionally with `.dro` file.
 
 > Note: When the first stage is not a pure-binary program, any second-stage integer variables will be relaxed.
 
