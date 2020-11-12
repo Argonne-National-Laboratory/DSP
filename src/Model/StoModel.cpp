@@ -526,6 +526,11 @@ DSP_RTN_CODE StoModel::setWassersteinAmbiguitySet(double lp_norm, double eps)
 		}
 	}
 
+	/** Quadratic equations
+	 * TODO: The quadratic objective function and constraints need to be considered.
+	 * - https://github.com/Argonne-National-Laboratory/DSP/issues/155
+	 */
+
 	printf("[DRO] Set %d reference scenarios.\n", nrefs_);
 	printf("[DRO] Computed the Wasserstein distances with %f-norm.\n", lp_norm);
 
