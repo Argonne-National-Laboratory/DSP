@@ -6,6 +6,7 @@
  */
 
 //#define DSP_DEBUG
+#include "DspConfig.h"
 #include "AlpsKnowledgeBrokerSerial.h"
 #include "Model/TssModel.h"
 #include "Solver/DantzigWolfe/DwSolverMpi.h"
@@ -34,6 +35,9 @@ DwSolverMpi::~DwSolverMpi() {
 
 DSP_RTN_CODE DwSolverMpi::init() {
 	BGN_TRY_CATCH
+
+	if (comm_rank_ == 0)
+		show_copyright();
 
 	/** create worker */
 	if (model_->isStochastic()) {

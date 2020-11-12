@@ -6,6 +6,7 @@
  */
 
 //#define DSP_DEBUG
+#include "DspConfig.h"
 #include "Solver/Benders/BdDriverMpi.h"
 #include "Solver/DualDecomp/DdDriverMpi.h"
 
@@ -31,6 +32,9 @@ BdDriverMpi::~BdDriverMpi() {}
 DSP_RTN_CODE BdDriverMpi::init()
 {
 	BGN_TRY_CATCH
+
+	if (comm_rank_ == 0)
+		show_copyright();
 
 	/** allocate memory for primal solution */
 	primsol_.resize(model_->getFullModelNumCols());

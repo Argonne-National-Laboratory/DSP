@@ -5,6 +5,7 @@
  *      Author: Kibaek Kim
  */
 
+#include "DspConfig.h"
 #include <iostream>
 #include "CoinMpsIO.hpp"
 #include "DspCInterface.h"
@@ -40,6 +41,8 @@ const double test_tolerance = 1.0e-2;
  This will compile a stand-alone binary file that reads problem instances.
 */
 int main(int argc, char* argv[]) {
+
+	show_copyright();
 
 	bool isroot = true;
 #ifdef DSP_HAS_MPI
