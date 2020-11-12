@@ -11,7 +11,7 @@
 
 const char *gDspUsage =
 	"Not enough or invalid arguments, please try again.\n\n"
-	"Usage: --algo <de,bd,dd,drbd,drdd,dw> --smps <smps file> --mps <mps file> --dec <dec file> [--soln <solution file prefix> --param <param file> --test <benchmark objective value>]\n\n"
+	"Usage: --algo <de,bd,dd,drbd,drdd,dw> [--wassnorm <number> --wasseps <number>] --smps <smps file> --mps <mps file> --dec <dec file> [--soln <solution file prefix> --param <param file> --test <benchmark objective value>]\n\n"
 	"       --algo\t\tchoice of algorithms.\n"
 	"             \t\tde: deterministic equivalent form\n"
 	"             \t\tbd: Benders decomposition\n"
