@@ -198,12 +198,23 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 			{
 				char drofile[128];
 				sprintf(drofile, "%s.dro", smpsfile);
-				if (isroot)
-					cout << "Reading DRO file: " << drofile << endl;
 
-				int ret = readDro(env, drofile);
-				if (ret != 0)
-					return ret;
+				ifstream drof(drofile);
+				if (drof.good())
+				{
+					drof.close();
+					if (isroot)
+						cout << "Reading DRO file: " << drofile << endl;
+
+					int ret = readDro(env, drofile);
+					if (ret != 0)
+						return ret;
+				} else {
+					cerr << "!! Cannot find DRO input\n" 
+							"!! Please provide either options or .dro file"
+						 << endl;
+					return -1;
+				}
 			}
 
 			if (isroot)
@@ -229,12 +240,25 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 			{
 				char drofile[128];
 				sprintf(drofile, "%s.dro", smpsfile);
-				if (isroot)
-					cout << "Reading DRO file: " << drofile << endl;
 
-				int ret = readDro(env, drofile);
-				if (ret != 0)
-					return ret;
+				ifstream drof(drofile);
+				if (drof.good())
+				{
+					drof.close();
+					if (isroot)
+						cout << "Reading DRO file: " << drofile << endl;
+
+					int ret = readDro(env, drofile);
+					if (ret != 0)
+						return ret;
+				}
+				else
+				{
+					cerr << "!! Cannot find DRO input\n" 
+							"!! Please provide either options or .dro file"
+						 << endl;
+					return -1;
+				}
 			}
 
 			if (isroot)
