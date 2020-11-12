@@ -9,25 +9,27 @@
 #include "CoinMpsIO.hpp"
 #include "DspCInterface.h"
 
-const char* gDspUsage = 
+const char *gDspUsage =
 	"Not enough or invalid arguments, please try again.\n\n"
 	"Usage: --algo <de,bd,dd,drbd,drdd,dw> --smps <smps file> --mps <mps file> --dec <dec file> [--soln <solution file prefix> --param <param file> --test <benchmark objective value>]\n\n"
-	"       --algo\tchoice of algorithms.\n"
-	"             \tde: deterministic equivalent form\n"
-	"             \tbd: Benders decomposition\n"
-	"             \tdd: dual decomposition\n"
-	"             \tdrbd: distributionally robust bd\n"
-	"             \tdrdd: distributionally robust dd\n"
-	"             \tdw: Dantzig-Wolfe decomposition with branch-and-bound\n"
-	"       --smps\tSMPS file name without extensions. For example, if your SMPS files are ../test/farmer.cor, ../test/farmer.sto, and ../test/farmer.tim, this value should be ../test/farmer\n"
-	"       --mps\tMPS file name\n"
-	"       --dec\tDEC file name\n"
-	"       --soln\toptional argument for solution file prefix. For example, if the prefix is given as MySol, then two files MySol.primal.txt and MySol.dual.txt will be written for primal and dual solutions, respectively.\n"
-	"       --param\toptional paramater for parameter file name\n"
-	"       --test\toptional parameter for testing objective value\n";
+	"       --algo\t\tchoice of algorithms.\n"
+	"             \t\tde: deterministic equivalent form\n"
+	"             \t\tbd: Benders decomposition\n"
+	"             \t\tdd: dual decomposition\n"
+	"             \t\tdrbd: distributionally robust bd\n"
+	"             \t\tdrdd: distributionally robust dd\n"
+	"             \t\tdw: Dantzig-Wolfe decomposition with branch-and-bound\n"
+	"       --wassnorm\tWasserstein distance norm (> 0.0)\n"
+	"       --wasseps\tWasserstein distance limit (>= 0.0)\n"
+	"       --smps\t\tSMPS file name without extensions. For example, if your SMPS files are ../test/farmer.cor, ../test/farmer.sto, and ../test/farmer.tim, this value should be ../test/farmer\n"
+	"       --mps\t\tMPS file name\n"
+	"       --dec\t\tDEC file name\n"
+	"       --soln\t\toptional argument for solution file prefix. For example, if the prefix is given as MySol, then two files MySol.primal.txt and MySol.dual.txt will be written for primal and dual solutions, respectively.\n"
+	"       --param\t\toptional paramater for parameter file name\n"
+	"       --test\t\toptional parameter for testing objective value\n";
 
 void setBlockIds(DspApiEnv* env, int nsubprobs, bool master_has_subblocks);
-int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* paramfile, char* testvalue);
+int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *solnfile, char *paramfile, char *testvalue, double wassparams[2]);
 int readMpsDec(DspApiEnv* env, char* mpsfile, char* decfile);
 int parseDecFile(char* decfile, vector<vector<string> >& rows_in_blocks);
 void createBlockModel(DspApiEnv* env, CoinMpsIO& p, const CoinPackedMatrix* mat, 
@@ -68,23 +70,29 @@ int main(int argc, char* argv[]) {
 		char* solnfile = NULL;
 		char* paramfile = NULL;
 		char* testvalue = NULL;
+		double wassparams[2] = {-1.0, -1.0};
 		for (int i = 1; i < argc; i += 2) {
 			if (i + 1 != argc) {
-				if (string(argv[i]) == "--algo") {
+				if (string(argv[i]) == "--algo")
 					algotype = argv[i+1];
-				} else if (string(argv[i]) == "--smps") {
+				else if (string(argv[i]) == "--wassnorm")
+					wassparams[0] = atof(argv[i + 1]);
+				else if (string(argv[i]) == "--wasseps")
+					wassparams[1] = atof(argv[i + 1]);
+				else if (string(argv[i]) == "--smps")
 					smpsfile = argv[i+1];
-				} else if (string(argv[i]) == "--mps") {
+				else if (string(argv[i]) == "--mps")
 					mpsfile = argv[i+1];
-				} else if (string(argv[i]) == "--dec") {
+				else if (string(argv[i]) == "--dec")
 					decfile = argv[i+1];
-				} else if (string(argv[i]) == "--soln") {
+				else if (string(argv[i]) == "--soln")
 					solnfile = argv[i+1];
-				} else if (string(argv[i]) == "--param") {
+				else if (string(argv[i]) == "--param")
 					paramfile = argv[i+1];
-				} else if (string(argv[i]) == "--test") {
+				else if (string(argv[i]) == "--test")
 					testvalue = argv[i+1];
-				} else {
+				else
+				{
 					EXIT_WITH_MSG
 				}
 			}
@@ -101,7 +109,7 @@ int main(int argc, char* argv[]) {
 		}
 
 		// run dsp
-		int ret = runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue);
+		int ret = runDsp(algotype, smpsfile, mpsfile, decfile, solnfile, paramfile, testvalue, wassparams);
 
 #ifdef DSP_HAS_MPI
 		MPI_Finalize();
@@ -111,7 +119,8 @@ int main(int argc, char* argv[]) {
 #undef EXIT_WITH_MSG
 }
 
-int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* paramfile, char* testvalue) {
+int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *solnfile, char *paramfile, char *testvalue, double wassparams[2])
+{
 
 	int ret = 0;
 	bool isroot = true;
@@ -181,12 +190,21 @@ int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* s
 	else if (string(algotype) == "drbd")
 	{
 		if (isstochastic) {
-			char drofile[128];
-			sprintf(drofile, "%s.dro", smpsfile);
-			if (isroot) cout << "Reading DRO file: " << drofile << endl;
+			if (wassparams[0] > 0 && wassparams[1] >= 0.0)
+			{
+				setWassersteinAmbiguitySet(env, wassparams[0], wassparams[1]);
+			}
+			else
+			{
+				char drofile[128];
+				sprintf(drofile, "%s.dro", smpsfile);
+				if (isroot)
+					cout << "Reading DRO file: " << drofile << endl;
 
-			int ret = readDro(env, drofile);
-			if (ret != 0) return ret;
+				int ret = readDro(env, drofile);
+				if (ret != 0)
+					return ret;
+			}
 
 			if (isroot)
 				cout << "Run distributionally robust Benders decomposition" << endl;
@@ -203,12 +221,21 @@ int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* s
 	else if (string(algotype) == "drdd")
 	{
 		if (isstochastic) {
-			char drofile[128];
-			sprintf(drofile, "%s.dro", smpsfile);
-			if (isroot) cout << "Reading DRO file: " << drofile << endl;
+			if (wassparams[0] > 0 && wassparams[1] >= 0.0)
+			{
+				setWassersteinAmbiguitySet(env, wassparams[0], wassparams[1]);
+			}
+			else
+			{
+				char drofile[128];
+				sprintf(drofile, "%s.dro", smpsfile);
+				if (isroot)
+					cout << "Reading DRO file: " << drofile << endl;
 
-			int ret = readDro(env, drofile);
-			if (ret != 0) return ret;
+				int ret = readDro(env, drofile);
+				if (ret != 0)
+					return ret;
+			}
 
 			if (isroot)
 				cout << "Run distributionally robust dual decomposition" << endl;
