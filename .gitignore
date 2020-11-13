@@ -1,3 +1,4 @@
+.vscode
 CMakeCache.txt
 Makefile
 cmake_install.cmake
@@ -11,5 +12,4 @@ build_master
 build/*
 build_merge/*
 extra/glpk*
-examples/smps/cplex.log
-examples/dro/cplex.log
+cplex.log

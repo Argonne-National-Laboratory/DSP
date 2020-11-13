@@ -5,6 +5,7 @@
  *      Author: kibaekkim
  */
 
+#include "DspConfig.h"
 #include "AlpsKnowledgeBrokerSerial.h"
 #include "Model/TssModel.h"
 #include "Solver/DantzigWolfe/DwSolverSerial.h"
@@ -45,6 +46,8 @@ DwSolverSerial::~DwSolverSerial() {
 
 DSP_RTN_CODE DwSolverSerial::init() {
 	BGN_TRY_CATCH
+
+	show_copyright();
 
 	/** set parameter */
 	par_->setIntPtrParamSize("ARR_PROC_IDX", model_->getNumSubproblems());

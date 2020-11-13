@@ -6,6 +6,7 @@
  */
 
 // #define DSP_DEBUG
+#include "DspConfig.h"
 #include "DdDriverMpi.h"
 #include "Solver/DualDecomp/DdMWSync.h"
 #include "Solver/DualDecomp/DdMWAsync.h"
@@ -39,6 +40,9 @@ comm_size_(rhs.comm_size_) {}
 DSP_RTN_CODE DdDriverMpi::init()
 {
 	BGN_TRY_CATCH
+
+	if (comm_rank_ == 0)
+		show_copyright();
 
 	/** create Master-Worker framework */
 	if (comm_size_ > 1)
