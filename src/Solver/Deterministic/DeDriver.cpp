@@ -5,6 +5,7 @@
  *      Author: kibaekkim
  */
 
+#include "DspConfig.h"
 #include "Model/TssModel.h"
 #include "Solver/Deterministic/DeDriver.h"
 #include "SolverInterface/DspOsiCpx.h"
@@ -27,6 +28,8 @@ DeDriver::~DeDriver()
 DSP_RTN_CODE DeDriver::init()
 {
 	BGN_TRY_CATCH
+
+	show_copyright();
 
 	primsol_.resize(model_->getFullModelNumCols());
 
