@@ -299,39 +299,74 @@ public:
 	}
 
 	/** generate lazy call back function for general */
-	virtual int generateCuts(int size,  /**< [in] size of x */
-	 	double *x, /**< [in] master solution */
-	 	OsiCuts *cuts /**< [out] cuts generated */)
-	{
-		if (cutsToAdd_->sizeCuts() <= 0) return;
-	 	try{
-         	GUROBI_CALL("generateCuts", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
+	// virtual int generateCuts(int size,  /**< [in] size of x */
+	//  	double *x, /**< [in] master solution */
+	//  	OsiCuts *cuts /**< [out] cuts generated */)
+	// {
+	// 	if (cutsToAdd_->sizeCuts() <= 0) return;
+	// 	for (int i = cutsToAdd_->sizeCuts() - 1; i >= 0; --i)
+	// 	{
+	// 		OsiRowCut * rc = cutsToAdd_->rowCutPtr(i);
+	// 		if (!rc) continue;
+	// 		const CoinPackedVector row = rc->row();
+	// 		if (row.getNumElements() == 0) continue;
 
+	// 		/** is optimality cut? */
+	// 		DSPdebug(rc->print());
+	// 		DSPdebugMessage("row.getNumElements() %d\n", row.getNumElements());
+	// 		bool isOptimalityCut = row.getIndices()[row.getNumElements() - 1] == nvars_ - 1;
+
+	// 		/** calculate efficacy */
+	// 	//		DspMessage::printArray(size, x);
+	// 		double efficacy = rc->violated(x);
+	// 		if (isOptimalityCut) efficacy /= row.twoNorm();
+
+	// 		/** determine if efficacious */
+	// 		if (efficacy <= 1.e-6)
+	// 			continue;
+	// 		else if (efficacy > maxEfficacy)
+	// 		{
+	// 			maxEfficaciousCut = i;
+	// 			maxEfficacy = efficacy;
+	// 		}
+	// 	}
+	//  	try{
+    //      	GUROBI_CALL("generateCuts", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
+
+	//  	}
+	//  	catch(const CoinError& e){
+    //      	e.print();
+    //  	}
+	// }
+
+	/** set callback functions 
+	 * usrhandlr: OsiCut class, specific cuts to be added
+	*/
+	virtual void setCallbackFunc(Osicut usrhandlr){
+	 	try{
+	 		GUROBI_CALL("setCallbackFunc", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
+	 		GUROBI_CALL("setCallbackFunc", GRBsetcallbackfunc(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), Benderscut, usrhandlr));
 	 	}
 	 	catch(const CoinError& e){
          	e.print();
      	}
 	}
-	/** set callback functions */
-	// virtual void setCallbackFunc(){
-	// 	try{
-	// 		GUROBI_CALL("setCallbackFunc", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
-	// 		GUROBI_CALL("setCallbackFunc", GRBsetcallbackfunc(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), func, usrhandlr));
-	// 	}
-	// 	catch(const CoinError& e){
-    //     	e.print();
-    // 	}
-	// }
 
-	// Benderscuts(GRBmodel *model, void *cbdata, int where, void *usrdata){
+	int Benderscuts(GRBmodel *model, void *cbdata, int where, void *usrdata){
 
-	// 	/** optimality cuts */
-
-	// 	if (where == DSP_STAT_PRIM_FEASIBLE){
-	// 		/** add optimality cuts */
-	// 		GUROBI_CALL("Benderscuts", GRBcblazy(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), len, ind, val, sense, rhs));
-	// 	}
-	// }
+	 	/** add cuts */
+		Osicuts *bdcut = dynamic_cast<Osicuts*>(usrdata);
+		cutsToAdd_->insert(bdcut);
+	 	if (where == DSP_STAT_PRIM_FEASIBLE){
+	 		/** add optimality cuts */
+			int len=bdcut->row().getNumElements();
+			int *ind=bdcut->row().getIndice();
+			double *val=bdcut->row().getElements();
+			char sense='L';
+			double rhs=bdcut->rhs();
+	 		GUROBI_CALL("Benderscuts", GRBcblazy(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), len, ind, val, sense, rhs));
+	 	}
+	}
 
     OsiGrbSolverInterface* grb_;   
 };
