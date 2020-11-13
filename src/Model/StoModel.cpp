@@ -489,7 +489,6 @@ DSP_RTN_CODE StoModel::setWassersteinAmbiguitySet(double lp_norm, double eps)
 			refs_probability_[r] = prob_[s];
 			wass_dist_[r] = new double[nscen_];
 			CoinZeroN(wass_dist_[r], nscen_);
-			assert(mat_scen_[s]->getNumCols() == ncols_[1]);
 			assert(mat_scen_[s]->getNumRows() == nrows_[1]);
 
 			/** Compute the distances.
@@ -515,7 +514,7 @@ DSP_RTN_CODE StoModel::setWassersteinAmbiguitySet(double lp_norm, double eps)
 						wass_dist_[r][ss] += pow(fabs((*rlbd_scen_[s])[i] - (*rlbd_scen_[ss])[i]), lp_norm);
 					if ((*rubd_scen_[s])[i] < 1.e+20 && (*rubd_scen_[ss])[i] < 1.e+20)
 						wass_dist_[r][ss] += pow(fabs((*rubd_scen_[s])[i] - (*rubd_scen_[ss])[i]), lp_norm);
-					for (int j = 0; j < ncols_[1]; ++j)
+					for (int j = 0; j < mat_scen_[s]->getNumCols(); ++j)
 					{
 						wass_dist_[r][ss] += pow(fabs(mat_scen_[s]->getCoefficient(i, j) - mat_scen_[ss]->getCoefficient(i, j)), lp_norm);
 					}
