@@ -298,15 +298,40 @@ public:
     	}
 	}
 
-	virtual void addLazyConstr(int lazylen,	const int *lazyind,	const double *lazyval, char lazysense, double lazyrhs){
-		try{
-			GUROBI_CALL("addLazyConstr", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
-			GUROBI_CALL("addLazyConstr", GRBcblazy(cbdata, lazylen, lazyind, lazyval, lazysense, lazyrhs));
-		}
-		catch(const CoinError& e){
-        	e.print();
-    	}
+	/** generate lazy call back function for general */
+	virtual int generateCuts(int size,  /**< [in] size of x */
+	 	double *x, /**< [in] master solution */
+	 	OsiCuts *cuts /**< [out] cuts generated */)
+	{
+		if (cutsToAdd_->sizeCuts() <= 0) return;
+	 	try{
+         	GUROBI_CALL("generateCuts", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
+
+	 	}
+	 	catch(const CoinError& e){
+         	e.print();
+     	}
 	}
+	/** set callback functions */
+	// virtual void setCallbackFunc(){
+	// 	try{
+	// 		GUROBI_CALL("setCallbackFunc", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
+	// 		GUROBI_CALL("setCallbackFunc", GRBsetcallbackfunc(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), func, usrhandlr));
+	// 	}
+	// 	catch(const CoinError& e){
+    //     	e.print();
+    // 	}
+	// }
+
+	// Benderscuts(GRBmodel *model, void *cbdata, int where, void *usrdata){
+
+	// 	/** optimality cuts */
+
+	// 	if (where == DSP_STAT_PRIM_FEASIBLE){
+	// 		/** add optimality cuts */
+	// 		GUROBI_CALL("Benderscuts", GRBcblazy(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), len, ind, val, sense, rhs));
+	// 	}
+	// }
 
     OsiGrbSolverInterface* grb_;   
 };

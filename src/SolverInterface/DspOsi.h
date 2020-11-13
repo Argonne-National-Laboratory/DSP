@@ -102,16 +102,14 @@ public:
 	/** set relative MIP gap */
 	virtual void setRelMipGap(double tol) {}
 
-	/** add one lazy constraint */
-	virtual void addLazyConstr(
-		int lazylen,
-		const int *lazyind,
-		const double *lazyval,
-		char lazysense,
-		double lazyrhs
-	);
-
+	/** generate lazy call back function for general */
+	//virtual int generateCuts(void *cbdata, int where, void *userdata){}
+	/** set callback functions */
+	//virtual void setCallbackFunc()
 	OsiSolverInterface *si_;
+
+	/** To store cuts added */
+	OsiCuts *cutsToAdd_;
 };
 
 #endif /* SRC_SOLVERINTERFACE_DSPOSI_H_ */
