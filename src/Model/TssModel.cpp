@@ -145,7 +145,7 @@ DSP_RTN_CODE TssModel::loadFirstStage(
 		const double *       rubd   /**< row upper bounds */)
 {
 	BGN_TRY_CATCH
-
+	
 	if (ncols_ == NULL || ncols_[0] <= 0)
 	{
 		printf("Error: invalid number of columns.\n");
@@ -177,9 +177,12 @@ DSP_RTN_CODE TssModel::loadFirstStage(
 			nints_core_++;
 
 			/** set bounds for binary variables */
-			if (ctype_core_[0][j] == 'B') {
-				clbd_core_[0][j] = 0.0;
-				cubd_core_[0][j] = 1.0;
+			if (ctype_core_[1][j] == 'B') {
+				/* only when bounds are not specified */
+				if (clbd_core_[1][j] < 0)
+					clbd_core_[1][j] = 0.0;
+				else if (cubd_core_[1][j] > 1) 
+					cubd_core_[1][j] = 1.0;
 			}
 		}
 	}
@@ -275,7 +278,7 @@ DSP_RTN_CODE TssModel::loadSecondStage(
             printf("Error: invalid scenario index.\n");
             return DSP_RTN_ERR;
         }
-		
+
         /** allocate values */
         prob_[s] = prob;
         CoinCopyN(clbd, ncols_[1], clbd_core_[1]);
@@ -295,8 +298,11 @@ DSP_RTN_CODE TssModel::loadSecondStage(
 
 					/** set bounds for binary variables */
 					if (ctype_core_[1][j] == 'B') {
-						clbd_core_[1][j] = 0.0;
-						cubd_core_[1][j] = 1.0;
+						/* only when bounds are not specified */
+						if (clbd_core_[1][j] < 0)
+							clbd_core_[1][j] = 0.0;
+						else if (cubd_core_[1][j] > 1) 
+							cubd_core_[1][j] = 1.0;
 					}
                 }
             }
