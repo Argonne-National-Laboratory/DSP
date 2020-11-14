@@ -278,7 +278,7 @@ DSP_RTN_CODE TssModel::loadSecondStage(
             printf("Error: invalid scenario index.\n");
             return DSP_RTN_ERR;
         }
-		
+
         /** allocate values */
         prob_[s] = prob;
         CoinCopyN(clbd, ncols_[1], clbd_core_[1]);
