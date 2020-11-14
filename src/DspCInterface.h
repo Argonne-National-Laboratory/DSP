@@ -148,8 +148,19 @@ void solveBdMpi(
 /** read parameter file */
 void readParamFile(DspApiEnv * env, const char * param_file);
 
+/** 
+ * Set the Wasserstein ambiguity set for distributionally robust optimization.
+ * This should be used for stochastic programming models, where the probabilities
+ * are used as the empirical references of the Wasserstein distance.
+ * 
+ * @param env pointer to API object
+ * @param lp_norm use the distance norm of p
+ * @param eps maximum distance size
+ */
+void setWassersteinAmbiguitySet(DspApiEnv *env, double lp_norm, double eps);
+
 /** set boolean parameter */
-void setBoolParam(DspApiEnv * env, const char * name, bool value);
+void setBoolParam(DspApiEnv *env, const char *name, bool value);
 
 /** set integer parameter */
 void setIntParam(DspApiEnv * env, const char * name, int value);

@@ -464,6 +464,15 @@ void readParamFile(DspApiEnv * env, const char * param_file)
 	env->par_->readParamFile(param_file);
 }
 
+void setWassersteinAmbiguitySet(DspApiEnv *env, double lp_norm, double eps)
+{
+	DSP_API_CHECK_ENV();
+	BGN_TRY_CATCH
+	DSP_API_CHECK_MODEL();
+	DSP_RTN_CHECK_THROW(getTssModel(env)->setWassersteinAmbiguitySet(lp_norm, eps));
+	END_TRY_CATCH(;)
+}
+
 /** set boolean parameter */
 void setBoolParam(DspApiEnv * env, const char * name, bool value)
 {
