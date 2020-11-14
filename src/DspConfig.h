@@ -5,8 +5,8 @@
  * So it is based on symantic versioning.
  */
 #define DSP_VERSION_MAJOR 1
-#define DSP_VERSION_MINOR 2
-#define DSP_VERSION_PATCH 2
+#define DSP_VERSION_MINOR 3
+#define DSP_VERSION_PATCH 0
 
 #include <stdio.h>
 
