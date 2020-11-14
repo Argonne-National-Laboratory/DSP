@@ -1,0 +1,5 @@
+TIME          drdcap243_300_1_5bins
+PERIODS       IMPLICIT
+    x2[1,1,1]  CON1      PERIOD1
+    y[0,1,1]  CON7      PERIOD2
+ENDATA
