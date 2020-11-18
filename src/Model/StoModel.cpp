@@ -462,7 +462,7 @@ DSP_RTN_CODE StoModel::setWassersteinAmbiguitySet(double lp_norm, double eps)
 		return DSP_RTN_ERR;
 	}
 
-	wass_eps_ = eps;
+	wass_eps_ = pow(eps, lp_norm);
 	isdro_ = true;
 
 	/** Count the number of reference scenarios.
@@ -502,28 +502,39 @@ DSP_RTN_CODE StoModel::setWassersteinAmbiguitySet(double lp_norm, double eps)
 			{
 				for (int j = 0; j < ncols_[1]; ++j)
 				{
-					wass_dist_[r][ss] += pow(fabs((*obj_scen_[s])[j] - (*obj_scen_[ss])[j]), lp_norm);
+					wass_dist_[r][ss] += pow(fabs((*obj_scen_[s])[j] - (*obj_scen_[ss])[j]), 2);
 					if ((*clbd_scen_[s])[j] > -1.e+20 && (*clbd_scen_[ss])[j] > -1.e+20)
-						wass_dist_[r][ss] += pow(fabs((*clbd_scen_[s])[j] - (*clbd_scen_[ss])[j]), lp_norm);
+						wass_dist_[r][ss] += pow(fabs((*clbd_scen_[s])[j] - (*clbd_scen_[ss])[j]), 2);
 					if ((*cubd_scen_[s])[j] < 1.e+20 && (*cubd_scen_[ss])[j] < 1.e+20)
-						wass_dist_[r][ss] += pow(fabs((*cubd_scen_[s])[j] - (*cubd_scen_[ss])[j]), lp_norm);
+						wass_dist_[r][ss] += pow(fabs((*cubd_scen_[s])[j] - (*cubd_scen_[ss])[j]), 2);
 				}
 				for (int i = 0; i < nrows_[1]; ++i)
 				{
 					if ((*rlbd_scen_[s])[i] > -1.e+20 && (*rlbd_scen_[ss])[i] > -1.e+20)
-						wass_dist_[r][ss] += pow(fabs((*rlbd_scen_[s])[i] - (*rlbd_scen_[ss])[i]), lp_norm);
+						wass_dist_[r][ss] += pow(fabs((*rlbd_scen_[s])[i] - (*rlbd_scen_[ss])[i]), 2);
 					if ((*rubd_scen_[s])[i] < 1.e+20 && (*rubd_scen_[ss])[i] < 1.e+20)
-						wass_dist_[r][ss] += pow(fabs((*rubd_scen_[s])[i] - (*rubd_scen_[ss])[i]), lp_norm);
+						wass_dist_[r][ss] += pow(fabs((*rubd_scen_[s])[i] - (*rubd_scen_[ss])[i]), 2);
 					for (int j = 0; j < mat_scen_[s]->getNumCols(); ++j)
 					{
-						wass_dist_[r][ss] += pow(fabs(mat_scen_[s]->getCoefficient(i, j) - mat_scen_[ss]->getCoefficient(i, j)), lp_norm);
+						wass_dist_[r][ss] += pow(fabs(mat_scen_[s]->getCoefficient(i, j) - mat_scen_[ss]->getCoefficient(i, j)), 2);
 					}
 				}
-				wass_dist_[r][ss] = pow(wass_dist_[r][ss], 1.0 / lp_norm);
+				wass_dist_[r][ss] = pow(wass_dist_[r][ss], lp_norm / 2.0);
 			}
 			r++;
 		}
 	}
+
+	/** scaling vector */
+	double scaling_constant = pow(wass_eps_, 2);
+	for (int r = 0; r < nrefs_; ++r)
+		for (int s = 0; s < nscen_; ++s)
+			scaling_constant += pow(wass_dist_[r][s], 2);
+	scaling_constant = sqrt(scaling_constant);
+	wass_eps_ /= scaling_constant;
+	for (int r = 0; r < nrefs_; ++r)
+		for (int s = 0; s < nscen_; ++s)
+			wass_dist_[r][s] /= scaling_constant;
 
 	/** Quadratic equations
 	 * TODO: The quadratic objective function and constraints need to be considered.
