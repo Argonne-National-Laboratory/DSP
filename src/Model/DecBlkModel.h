@@ -71,8 +71,7 @@ public:
 	bool nonanticipativity() {return false;}
 
 	bool isStochastic() {return false;}
-	bool isQuadratic() {return false;}
-	bool isQCQP() {return false;}
+	bool isQuadratic() { return false; }
 	virtual void setDro(bool yes) { ; }
 	bool isDro() {return false;}
 	int getNumReferences() {return 0;}

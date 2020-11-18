@@ -148,8 +148,6 @@ public:
 	bool isStochastic() {return true;}
 	bool isQuadratic() {return false;}
 
-	virtual bool isQCQP() {return TssModel::isQCQP();}
-
 	// The following functions are for distributionally robust variant.
 	// TODO: Better to create a new inhereted class?
 	virtual void setDro(bool yes) { TssModel::setDro(yes); }

@@ -217,8 +217,8 @@ DSP_RTN_CODE TssModel::loadFirstStage(
 		loadFirstStage(start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
 		return DSP_RTN_OK;
 	}
-	else{
-		isQCQP_=1;
+	else
+	{
 		loadFirstStage(start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
 		/** load quadratic objective */
 		qobj_core_[0] = new CoinPackedMatrix(false, qobjrowindex, qobjcolindex, qobjvalue, numq);
@@ -372,8 +372,8 @@ DSP_RTN_CODE TssModel::loadSecondStage(
 	if (qobjrowindex == NULL||qobjcolindex == NULL||qobjvalue == NULL || qnum == 0){
 		loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
 	}
-	else{
-		isQCQP_=1;
+	else
+	{
 		loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
 
 		/** allocate memory for qobj_core_[1] */
