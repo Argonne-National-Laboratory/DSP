@@ -12,19 +12,21 @@ Running the file without any argument will display available arguments for the r
 ```
 
 ```shell
-Usage: --algo <de,bd,dd,drbd,drdd,dw> --smps <smps file> --mps <mps file> --dec <dec file> [--soln <solution file prefix> --param <param file> --test <benchmark objective value>]
+Usage: --algo <de,bd,dd,drbd,drdd,dw> [--wassnorm <number> --wasseps <number>] --smps <smps file> --mps <mps file> --dec <dec file> [--soln <solution file prefix> --param <param file> --test <benchmark objective value>]
 
-       --algo	choice of algorithms.
-                de: deterministic equivalent form
-                bd: Benders decomposition
-                dd: dual decomposition
-                drbd: distributionally robust bd
-                drdd: distributionally robust dd
-                dw: Dantzig-Wolfe decomposition with branch-and-bound
-       --smps	SMPS file name without extensions. For example, if your SMPS files are ../test/farmer.cor, ../test/farmer.sto, and ../test/farmer.tim, this value should be ../test/farmer
-       --mps	MPS file name
-       --dec	DEC file name
-       --soln	optional argument for solution file prefix. For example, if the prefix is given as MySol, then two files MySol.primal.txt and MySol.dual.txt will be written for primal and dual solutions, respectively.
+       --algo        choice of algorithms.
+                     de: deterministic equivalent form
+                     bd: Benders decomposition
+                     dd: dual decomposition
+                     drbd: distributionally robust bd
+                     drdd: distributionally robust dd
+                     dw: Dantzig-Wolfe decomposition with branch-and-bound
+       --wassnorm    Wasserstein distance norm (> 0.0)
+       --wasseps     Wasserstein distance limit (>= 0.0)
+       --smps        SMPS file name without extensions. For example, if your SMPS files are ../test/farmer.cor, ../test/farmer.sto, and ../test/farmer.tim, this value should be ../test/farmer
+       --mps         MPS file name
+       --dec         DEC file name
+       --soln        optional argument for solution file prefix. For example, if the prefix is given as MySol, then two files MySol.primal.txt and MySol.dual.txt will be written for primal and dual solutions, respectively.
        --param	optional paramater for parameter file name
 ```
 
@@ -33,7 +35,7 @@ Usage: --algo <de,bd,dd,drbd,drdd,dw> --smps <smps file> --mps <mps file> --dec 
 `runDsp` can read problem from
 
 - [SMPS](https://ieeexplore.ieee.org/abstract/document/8142546) files: This input should consist of three files with extensions: `.cor`, `.tim`, and `sto`.
-- `.dro` file: For `--algo dro`, `runDsp` requires `.dro` file, in addition to SMPS files, that defines the Wasserstein uncertainty set.
+- (optional) `.dro` file: For `--algo dr*`, `runDsp` requires either `--wassnorm` and `--wasseps` arguments or `.dro` file, in addition to SMPS files, that defines the Wasserstein uncertainty set.
 - [MPS and DEC files](https://gcg.or.rwth-aachen.de/doc/reader__dec_8h.html): This input should consist of two files, which can be given to options `--mps` and `--dec`.
 
 DSP has a number of parameters for algorithms.

@@ -468,6 +468,98 @@ void StoModel::setSolution(int size, double * solution)
 		init_solutions_.push_back(new CoinPackedVector(size, solution));
 }
 
+DSP_RTN_CODE StoModel::setWassersteinAmbiguitySet(double lp_norm, double eps)
+{
+	if (nstgs_ == 0)
+	{
+		std::cerr << "No stochastic problem is loaded." << std::endl;
+		return DSP_RTN_ERR;
+	}
+	if (ncols_[0] == 0)
+	{
+		std::cerr << "No stochastic programming variable is loaded." << std::endl;
+		return DSP_RTN_ERR;
+	}
+	if (nscen_ == 0)
+	{
+		std::cerr << "No scenario is loaded." << std::endl;
+		return DSP_RTN_ERR;
+	}
+
+	wass_eps_ = eps;
+	isdro_ = true;
+
+	/** Count the number of reference scenarios.
+	 * We take all scenarios with nonzero probabilities as the references (a.k.a. 
+	 * empirical observations).
+	 */
+	nrefs_ = 0;
+	for (int s = 0; s < nscen_; ++s)
+	{
+		if (prob_[s] > 0)
+			nrefs_++;
+	}
+
+	refs_probability_ = new double[nrefs_];
+	wass_dist_ = new double *[nrefs_];
+
+	/** Compute the Wasserstein distances of lp_norm,
+	 * and assign the reference probabilities.
+	 */
+	for (int s = 0, r = 0; s < nscen_; ++s)
+	{
+		if (prob_[s] > 0)
+		{
+			refs_probability_[r] = prob_[s];
+			wass_dist_[r] = new double[nscen_];
+			CoinZeroN(wass_dist_[r], nscen_);
+			assert(mat_scen_[s]->getNumRows() == nrows_[1]);
+
+			/** Compute the distances.
+			 * 
+			 * TODO: Can we do in parallel?
+			 * The relevant issues need addressed first: 
+			 * - https://github.com/kibaekkim/DSPopt.jl/issues/14
+			 * - https://github.com/Argonne-National-Laboratory/DSP/issues/50
+			 */
+			for (int ss = 0; ss < nscen_; ++ss)
+			{
+				for (int j = 0; j < ncols_[1]; ++j)
+				{
+					wass_dist_[r][ss] += pow(fabs((*obj_scen_[s])[j] - (*obj_scen_[ss])[j]), lp_norm);
+					if ((*clbd_scen_[s])[j] > -1.e+20 && (*clbd_scen_[ss])[j] > -1.e+20)
+						wass_dist_[r][ss] += pow(fabs((*clbd_scen_[s])[j] - (*clbd_scen_[ss])[j]), lp_norm);
+					if ((*cubd_scen_[s])[j] < 1.e+20 && (*cubd_scen_[ss])[j] < 1.e+20)
+						wass_dist_[r][ss] += pow(fabs((*cubd_scen_[s])[j] - (*cubd_scen_[ss])[j]), lp_norm);
+				}
+				for (int i = 0; i < nrows_[1]; ++i)
+				{
+					if ((*rlbd_scen_[s])[i] > -1.e+20 && (*rlbd_scen_[ss])[i] > -1.e+20)
+						wass_dist_[r][ss] += pow(fabs((*rlbd_scen_[s])[i] - (*rlbd_scen_[ss])[i]), lp_norm);
+					if ((*rubd_scen_[s])[i] < 1.e+20 && (*rubd_scen_[ss])[i] < 1.e+20)
+						wass_dist_[r][ss] += pow(fabs((*rubd_scen_[s])[i] - (*rubd_scen_[ss])[i]), lp_norm);
+					for (int j = 0; j < mat_scen_[s]->getNumCols(); ++j)
+					{
+						wass_dist_[r][ss] += pow(fabs(mat_scen_[s]->getCoefficient(i, j) - mat_scen_[ss]->getCoefficient(i, j)), lp_norm);
+					}
+				}
+				wass_dist_[r][ss] = pow(wass_dist_[r][ss], 1.0 / lp_norm);
+			}
+			r++;
+		}
+	}
+
+	/** Quadratic equations
+	 * TODO: The quadratic objective function and constraints need to be considered.
+	 * - https://github.com/Argonne-National-Laboratory/DSP/issues/155
+	 */
+
+	printf("[DRO] Set %d reference scenarios.\n", nrefs_);
+	printf("[DRO] Computed the Wasserstein distances with %f-norm.\n", lp_norm);
+
+	return DSP_RTN_OK;
+}
+
 /** split core matrix row for a given stage */
 CoinPackedVector * StoModel::splitCoreRowVec(
 		int i,  /**< row index */

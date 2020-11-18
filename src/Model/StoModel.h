@@ -96,6 +96,17 @@ public:
 			int      size,    /**< size of array */
 			double * solution /**< solution */);
 
+	/** 
+	 * Set the Wasserstein ambiguity set for distributionally robust optimization.
+	 * This should be used for stochastic programming models, where the probabilities
+	 * are used as the empirical references of the Wasserstein distance.
+	 * 
+	 * @param lp_norm use the distance norm of p
+	 * @param eps maximum distance size
+	 * @return DSP_RTN_OK if no error
+	 */
+	DSP_RTN_CODE setWassersteinAmbiguitySet(double lp_norm, double eps);
+
 #if 0
 	/** add branching object */
 	void addBranchingHyperplane(int nzcnt, int * indices, double * values, int priority);

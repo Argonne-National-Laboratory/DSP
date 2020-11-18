@@ -6,6 +6,7 @@
  */
 // #define DSP_DEBUG
 
+#include "DspConfig.h"
 #include "Model/DecTssQcModel.h"
 #include "Solver/Deterministic/DeDriver.h"
 #include "SolverInterface/DspOsiCpx.h"
@@ -13,21 +14,24 @@
 #include "SolverInterface/DspOsiScip.h"
 
 DeDriver::DeDriver(
-		DecModel *   model,  /**< model pointer */
-		DspParams *  par,    /**< parameters */
-		DspMessage * message /**< message pointer */):
-DecSolver(model,par,message) {}
+	DecModel *model, /**< model pointer */
+	DspParams *par,	 /**< parameters */
+	DspMessage *message /**< message pointer */) : DecSolver(model, par, message)
+{
+}
 
-DeDriver::DeDriver(const DeDriver& rhs) :
-DecSolver(rhs) {}
+DeDriver::DeDriver(const DeDriver &rhs) : DecSolver(rhs) {}
 
 DeDriver::~DeDriver()
-{}
+{
+}
 
 /** initilize */
 DSP_RTN_CODE DeDriver::init()
 {
 	BGN_TRY_CATCH
+
+	show_copyright();
 
 	primsol_.resize(model_->getFullModelNumCols());
 
@@ -45,21 +49,21 @@ DSP_RTN_CODE DeDriver::run()
 	FREE_ARRAY_PTR(cubd)  \
 	FREE_ARRAY_PTR(ctype) \
 	FREE_ARRAY_PTR(obj)   \
-	FREE_PTR(qobj)		  \
+	FREE_PTR(qobj)        \
 	FREE_ARRAY_PTR(rlbd)  \
 	FREE_ARRAY_PTR(rubd)
 
 	assert(model_);
 
 	/** model info */
-	CoinPackedMatrix * mat = NULL;
-	double * clbd   = NULL;
-	double * cubd   = NULL;
-	double * obj    = NULL;
-	CoinPackedMatrix * qobj = NULL;
-	char *   ctype  = NULL;
-	double * rlbd   = NULL;
-	double * rubd   = NULL;
+	CoinPackedMatrix *mat = NULL;
+	double *clbd = NULL;
+	double *cubd = NULL;
+	double *obj = NULL;
+	CoinPackedMatrix *qobj = NULL;
+	char *ctype = NULL;
+	double *rlbd = NULL;
+	double *rubd = NULL;
 
 	bool isqp = false;
 	bool isqcp = false;
@@ -71,12 +75,12 @@ DSP_RTN_CODE DeDriver::run()
 
 	if (model_->isStochastic())
 	{
-		TssModel * tssModel;
+		TssModel *tssModel;
 		try
 		{
 			tssModel = dynamic_cast<TssModel *>(model_);
 		}
-		catch (const std::bad_cast& e)
+		catch (const std::bad_cast &e)
 		{
 			printf("Model claims to be stochastic when it is not");
 			return DSP_RTN_ERR;
@@ -98,11 +102,12 @@ DSP_RTN_CODE DeDriver::run()
 	else
 	{
 		if (par_->getBoolPtrParam("RELAX_INTEGRALITY")[0] ||
-				par_->getBoolPtrParam("RELAX_INTEGRALITY")[1])
+			par_->getBoolPtrParam("RELAX_INTEGRALITY")[1])
 		{
 			for (int j = 0; j < mat->getNumCols(); j++)
 			{
-				if (ctype[j] != 'C') {
+				if (ctype[j] != 'C')
+				{
 					ctype[j] = 'C';
 				}
 			}
@@ -111,7 +116,8 @@ DSP_RTN_CODE DeDriver::run()
 
 	/** create DspOsi */
 	osi_ = createDspOsi();
-	if (!osi_) throw CoinError("Failed to create DspOsi", "run", "DeDriver");
+	if (!osi_)
+		throw CoinError("Failed to create DspOsi", "run", "DeDriver");
 
 	/** set display */
 	osi_->setLogLevel(par_->getIntParam("DE/SOLVER/LOG_LEVEL"));
@@ -122,10 +128,11 @@ DSP_RTN_CODE DeDriver::run()
 	/** load problem */
 	osi_->si_->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
 	//PRINT_ARRAY_MSG(qobj->getNumElements(), qobj->getElements(), "elements in qobj");
-	if (qobj != NULL){
+	if (qobj != NULL)
+	{
 		osi_->loadQuadraticObjective(*qobj);
 	}
-	
+
 	for (int j = 0; j < mat->getNumCols(); j++)
 	{
 		if (ctype[j] != 'C')
@@ -135,52 +142,53 @@ DSP_RTN_CODE DeDriver::run()
 	/** add quadratic constraints */
 	if (model_->isQuadratic())
 	{
-		DecTssQcModel * qcModel;
+		DecTssQcModel *qcModel;
 		try
 		{
 			qcModel = dynamic_cast<DecTssQcModel *>(model_);
 		}
-		catch (const std::bad_cast& e)
+		catch (const std::bad_cast &e)
 		{
 			printf("Model claims to be quadratic when it is not");
 			return DSP_RTN_ERR;
 		}
 
-		for (int s = 0; s < qcModel->getNumScenarios(); s++) {
-			
-			QcRowDataScen * qcrowdata = qcModel->getQcRowData(s);
+		for (int s = 0; s < qcModel->getNumScenarios(); s++)
+		{
+
+			QcRowDataScen *qcrowdata = qcModel->getQcRowData(s);
 
 			if (qcrowdata->nqrows_ > 0)
 				isqcp = true;
 
 			/* print qcrowdata to test whether it is successfully received or not */
-        	// qcModel->printQuadRows(s);
-        	// qcModel->printQuadRows(qcrowdata);
+			// qcModel->printQuadRows(s);
+			// qcModel->printQuadRows(qcrowdata);
 
 			/* adjust indices for second stage variables */
-			int ** linind = new int * [qcrowdata->nqrows_];
-			int ** quadrow = new int * [qcrowdata->nqrows_];
-			int ** quadcol = new int * [qcrowdata->nqrows_];
-			
-			for (int i = 0; i < qcrowdata->nqrows_; i++)
-			{	
-				linind[i] = new int [qcrowdata->linnzcnt_[i]];
-				quadrow[i] = new int [qcrowdata->quadnzcnt_[i]];
-				quadcol[i] = new int [qcrowdata->quadnzcnt_[i]];
+			int **linind = new int *[qcrowdata->nqrows_];
+			int **quadrow = new int *[qcrowdata->nqrows_];
+			int **quadcol = new int *[qcrowdata->nqrows_];
 
-				for (int j = 0; j < qcrowdata->linnzcnt_[i]; j++) 
+			for (int i = 0; i < qcrowdata->nqrows_; i++)
+			{
+				linind[i] = new int[qcrowdata->linnzcnt_[i]];
+				quadrow[i] = new int[qcrowdata->quadnzcnt_[i]];
+				quadcol[i] = new int[qcrowdata->quadnzcnt_[i]];
+
+				for (int j = 0; j < qcrowdata->linnzcnt_[i]; j++)
 				{
 					linind[i][j] = qcModel->getNumCols(1) * s + qcrowdata->linind_[i][j];
 				}
 
-				for (int j = 0; j < qcrowdata->quadnzcnt_[i]; j++) 
+				for (int j = 0; j < qcrowdata->quadnzcnt_[i]; j++)
 				{
 					quadrow[i][j] = qcModel->getNumCols(1) * s + qcrowdata->quadrow_[i][j];
 					quadcol[i][j] = qcModel->getNumCols(1) * s + qcrowdata->quadcol_[i][j];
 				}
 			}
-        	
-			osi_->addQuadraticRows(qcrowdata->nqrows_, qcrowdata->linnzcnt_, qcrowdata->quadnzcnt_, qcrowdata->rhs_, qcrowdata->sense_, (const int **) linind, (const double **) qcrowdata->linval_, (const int **) quadrow, (const int **) quadcol, (const double **) qcrowdata->quadval_);
+
+			osi_->addQuadraticRows(qcrowdata->nqrows_, qcrowdata->linnzcnt_, qcrowdata->quadnzcnt_, qcrowdata->rhs_, qcrowdata->sense_, (const int **)linind, (const double **)qcrowdata->linval_, (const int **)quadrow, (const int **)quadcol, (const double **)qcrowdata->quadval_);
 
 			FREE_2D_ARRAY_PTR(qcrowdata->nqrows_, linind);
 			FREE_2D_ARRAY_PTR(qcrowdata->nqrows_, quadrow);
@@ -189,33 +197,33 @@ DSP_RTN_CODE DeDriver::run()
 #ifdef DSP_DEBUG
 		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
 		char lpfilename[128];
-		sprintf(lpfilename, "%s.lp", qcModel->getFileName()); 
+		sprintf(lpfilename, "%s.lp", qcModel->getFileName());
 		osi_->writeProb(lpfilename, NULL);
 #endif
 	}
 
 	/** set problem type */
 	osi_->setProbType(isqp, isqcp);
-	
+
 	/** set optimality gap tolerance */
 	osi_->setRelMipGap(par_->getDblParam("DE/GAPTOL"));
 
 	/** time limit */
 	double time_limit = par_->getDblParam("DE/WALL_LIM");
-	osi_->setTimeLimit(CoinMin(time_remains_,time_limit));
+	osi_->setTimeLimit(CoinMin(time_remains_, time_limit));
 
 	/** set node limit */
 	osi_->setNodeLimit(par_->getIntParam("NODE_LIM"));
 
 	/** tic */
-	cputime_  = CoinCpuTime();
+	cputime_ = CoinCpuTime();
 	walltime_ = CoinGetTimeOfDay();
 
 	/** solve */
-	solve();	
+	solve();
 
 	/** toc */
-	cputime_  = CoinCpuTime() - cputime_;
+	cputime_ = CoinCpuTime() - cputime_;
 	walltime_ = CoinGetTimeOfDay() - walltime_;
 
 	/** get solutions */
@@ -224,14 +232,15 @@ DSP_RTN_CODE DeDriver::run()
 		status_ == DSP_STAT_STOPPED_TIME ||
 		status_ == DSP_STAT_STOPPED_NODE ||
 		status_ == DSP_STAT_STOPPED_GAP ||
-	   	status_ == DSP_STAT_LIM_ITERorTIME)
+		status_ == DSP_STAT_LIM_ITERorTIME)
 	{
 		/** objective bounds */
 		bestprimobj_ = osi_->getPrimObjValue();
 		bestdualobj_ = osi_->getDualObjValue();
 
 		/** solution */
-		if (osi_->si_->getColSolution()) {
+		if (osi_->si_->getColSolution())
+		{
 			CoinCopyN(osi_->si_->getColSolution(), osi_->si_->getNumCols(), &primsol_[0]);
 			bestprimsol_ = primsol_;
 		}
@@ -245,23 +254,25 @@ DSP_RTN_CODE DeDriver::run()
 	/** save memory */
 	FREE_MEMORY
 
-	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
+	END_TRY_CATCH_RTN(FREE_MEMORY, DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
 
 #undef FREE_MEMORY
 }
 
-DSP_RTN_CODE DeDriver::solve() {
+DSP_RTN_CODE DeDriver::solve()
+{
 	osi_->solve();
 	return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE DeDriver::finalize() {
+DSP_RTN_CODE DeDriver::finalize()
+{
 	return DSP_RTN_OK;
 }
 
-void DeDriver::writeExtMps(const char * name)
+void DeDriver::writeExtMps(const char *name)
 {
 #define FREE_MEMORY       \
 	FREE_PTR(osi)         \
@@ -276,16 +287,16 @@ void DeDriver::writeExtMps(const char * name)
 	assert(model_);
 
 	/** model info */
-	DspOsi * osi = NULL;
-	CoinPackedMatrix * mat = NULL;
-	double * clbd   = NULL;
-	double * cubd   = NULL;
-	double * obj    = NULL;
-	CoinPackedMatrix * qobj = NULL;
-	char *   ctype  = NULL;
-	double * rlbd   = NULL;
-	double * rubd   = NULL;
-	
+	DspOsi *osi = NULL;
+	CoinPackedMatrix *mat = NULL;
+	double *clbd = NULL;
+	double *cubd = NULL;
+	double *obj = NULL;
+	CoinPackedMatrix *qobj = NULL;
+	char *ctype = NULL;
+	double *rlbd = NULL;
+	double *rubd = NULL;
+
 	BGN_TRY_CATCH
 
 	/** get DE model */
@@ -293,14 +304,16 @@ void DeDriver::writeExtMps(const char * name)
 
 	/** create DspOsi */
 	osi = createDspOsi();
-	if (!osi) throw CoinError("Failed to create DspOsi", "writeExtMps", "DeDriver");
+	if (!osi)
+		throw CoinError("Failed to create DspOsi", "writeExtMps", "DeDriver");
 
 	/** load problem */
 	osi->si_->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
-	if (qobj!=NULL){
+	if (qobj != NULL)
+	{
 		osi->loadQuadraticObjective(*qobj);
 	}
-	
+
 	for (int j = 0; j < mat->getNumCols(); j++)
 	{
 		if (ctype[j] != 'C')
@@ -313,15 +326,17 @@ void DeDriver::writeExtMps(const char * name)
 	/** save memory */
 	FREE_MEMORY
 
-	END_TRY_CATCH_RTN(FREE_MEMORY,;)
+	END_TRY_CATCH_RTN(FREE_MEMORY, ;)
 #undef FREE_MEMORY
 }
 
-DspOsi * DeDriver::createDspOsi() {
-	DspOsi * osi = NULL;
+DspOsi *DeDriver::createDspOsi()
+{
+	DspOsi *osi = NULL;
 	BGN_TRY_CATCH
 
-	switch(par_->getIntParam("DE/SOLVER")) {
+	switch (par_->getIntParam("DE/SOLVER"))
+	{
 	case OsiCpx:
 #ifdef DSP_HAS_CPX
 		osi = new DspOsiCpx();
@@ -348,6 +363,6 @@ DspOsi * DeDriver::createDspOsi() {
 		break;
 	}
 
-	END_TRY_CATCH_RTN(;,osi)
+	END_TRY_CATCH_RTN(;, osi)
 	return osi;
 }
