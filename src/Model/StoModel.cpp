@@ -532,24 +532,24 @@ DSP_RTN_CODE StoModel::setWassersteinAmbiguitySet(double lp_norm, double eps)
 			{
 				for (int j = 0; j < ncols_[1]; ++j)
 				{
-					wass_dist_[r][ss] += pow(fabs((*obj_scen_[s])[j] - (*obj_scen_[ss])[j]), 2);
+					wass_dist_[r][ss] += pow(fabs((*obj_scen_[s])[j] - (*obj_scen_[ss])[j]), lp_norm);
 					if ((*clbd_scen_[s])[j] > -1.e+20 && (*clbd_scen_[ss])[j] > -1.e+20)
-						wass_dist_[r][ss] += pow(fabs((*clbd_scen_[s])[j] - (*clbd_scen_[ss])[j]), 2);
+						wass_dist_[r][ss] += pow(fabs((*clbd_scen_[s])[j] - (*clbd_scen_[ss])[j]), lp_norm);
 					if ((*cubd_scen_[s])[j] < 1.e+20 && (*cubd_scen_[ss])[j] < 1.e+20)
-						wass_dist_[r][ss] += pow(fabs((*cubd_scen_[s])[j] - (*cubd_scen_[ss])[j]), 2);
+						wass_dist_[r][ss] += pow(fabs((*cubd_scen_[s])[j] - (*cubd_scen_[ss])[j]), lp_norm);
 				}
 				for (int i = 0; i < nrows_[1]; ++i)
 				{
 					if ((*rlbd_scen_[s])[i] > -1.e+20 && (*rlbd_scen_[ss])[i] > -1.e+20)
-						wass_dist_[r][ss] += pow(fabs((*rlbd_scen_[s])[i] - (*rlbd_scen_[ss])[i]), 2);
+						wass_dist_[r][ss] += pow(fabs((*rlbd_scen_[s])[i] - (*rlbd_scen_[ss])[i]), lp_norm);
 					if ((*rubd_scen_[s])[i] < 1.e+20 && (*rubd_scen_[ss])[i] < 1.e+20)
-						wass_dist_[r][ss] += pow(fabs((*rubd_scen_[s])[i] - (*rubd_scen_[ss])[i]), 2);
+						wass_dist_[r][ss] += pow(fabs((*rubd_scen_[s])[i] - (*rubd_scen_[ss])[i]), lp_norm);
 					for (int j = 0; j < mat_scen_[s]->getNumCols(); ++j)
 					{
-						wass_dist_[r][ss] += pow(fabs(mat_scen_[s]->getCoefficient(i, j) - mat_scen_[ss]->getCoefficient(i, j)), 2);
+						wass_dist_[r][ss] += pow(fabs(mat_scen_[s]->getCoefficient(i, j) - mat_scen_[ss]->getCoefficient(i, j)), lp_norm);
 					}
 				}
-				wass_dist_[r][ss] = pow(wass_dist_[r][ss], lp_norm / 2.0);
+				wass_dist_[r][ss] = pow(wass_dist_[r][ss], 1.0 / lp_norm);
 			}
 			r++;
 		}
@@ -572,7 +572,7 @@ DSP_RTN_CODE StoModel::setWassersteinAmbiguitySet(double lp_norm, double eps)
 	 */
 
 	printf("[DRO] Set %d reference scenarios.\n", nrefs_);
-	printf("[DRO] Computed the Wasserstein distances of order %f.\n", lp_norm);
+	printf("[DRO] Computed the Wasserstein distances with %f-norm.\n", lp_norm);
 
 	return DSP_RTN_OK;
 }
