@@ -181,10 +181,7 @@ DSP_RTN_CODE DdSub::createProblem() {
     double obj_aux[1];
     int cpl_ncols;
 
-	bool isqp = false;
-	bool isqcp = false;
-
-    BGN_TRY_CATCH
+	BGN_TRY_CATCH
 
     /** parameters */
     parRelaxIntegrality_ = par_->getBoolPtrParam("RELAX_INTEGRALITY");
@@ -341,9 +338,7 @@ DSP_RTN_CODE DdSub::createProblem() {
 			return DSP_RTN_ERR;
 		}
 
-		QcRowDataScen * qcrowdata = qcModel->getQcRowData(sind_);
-		if (qcrowdata->nqrows_ > 0)
-			isqcp = true;
+		QcRowDataScen *qcrowdata = qcModel->getQcRowData(sind_);
 
 		/* print qcrowdata to test whether it is successfully received or not */
         // qcModel->printQuadRows(sind_);
@@ -358,10 +353,7 @@ DSP_RTN_CODE DdSub::createProblem() {
 	#endif
 	}
 
-	/** set problem type */
-	osi_->setProbType(isqp, isqcp);
-
-    /** set solution gap tolerance */
+	/** set solution gap tolerance */
 	if (nIntegers > 0)
 	    osi_->setRelMipGap(gapTol_);
 

@@ -182,11 +182,6 @@ public:
 	 */
 	virtual bool isQuadratic() = 0;
 
-  /*
-	 * If true, this models contains quadratic terms in the objectives or constraints
-	 **/
-	virtual bool isQCQP() = 0;
-	
 	/**
 	 * Set whether this is dro model or not.
 	 */

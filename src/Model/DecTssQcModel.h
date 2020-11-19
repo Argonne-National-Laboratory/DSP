@@ -72,7 +72,7 @@ public:
 
 	/** add quadratic constraints to the second stage problem */
 	DSP_RTN_CODE loadQuadraticRows (
-			const int           s,     		/**< scenario index */
+		const int           s,     		/**< scenario index */
 		const int 			nqrows,
         const int *         linnzcnt,  	/**< number of nonzero coefficients in the linear part of each constraint  */
         const int *        	quadnzcnt,  /**< number of nonzero coefficients in the quadratic part of each constraint  */

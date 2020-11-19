@@ -201,6 +201,10 @@ DSP_RTN_CODE DdMWSerial::run() {
 		DSPdebugMessage("nsubsolution[%d] = %d\n", s, nsubsolution[s]);
 	}
 
+#ifdef DSP_HAS_SCIP
+	if ((parFeasCuts_ >= 0 || parOptCuts_ >= 0) && model_->isDro())
+		message_->print(0, "Cut procedures are not implemented for DRO.\n");
+#endif
 	printHeaderInfo();
 
 	/** reset iteration info */
@@ -252,9 +256,8 @@ DSP_RTN_CODE DdMWSerial::run() {
 			if (parFeasCuts_ >= 0 || parOptCuts_ >= 0)
 			{
 #ifdef DSP_HAS_SCIP
-				if (model_->isDro()) {
-					message_->print(0, "Cut procedures are not implemented for DRO.\n");
-				} else {
+				if (model_->isDro() == false)
+				{
 					DSPdebugMessage("generate Benders cuts\n");
 					cg_status = generateBendersCuts(workercg, coupling_solutions, cuts);
 					/** resolve subproblems? */

@@ -52,8 +52,15 @@ public:
 				for (int k = 0; k < mat.getVectorSize(j); ++k) {
 					int i = mat.getIndices()[mat.getVectorStarts()[j] + k];
 					double v = mat.getElements()[mat.getVectorStarts()[j] + k];
-					CPXchgqpcoef(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL),
+					if (i==j){
+						CPXchgqpcoef(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL),
+						i, j, 2*v);
+					}
+					else{
+						CPXchgqpcoef(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL),
 						i, j, v);
+					}
+					
 				}
 			}
 		} else {
@@ -61,12 +68,19 @@ public:
 				for (int k = 0; k < mat.getVectorSize(i); ++k) {
 					int j = mat.getIndices()[mat.getVectorStarts()[i] + k];
 					double v = mat.getElements()[mat.getVectorStarts()[i] + k];
-					CPXchgqpcoef(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL),
+					if (i==j){
+						CPXchgqpcoef(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL),
+						i, j, 2*v);
+					}
+					else{
+						CPXchgqpcoef(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL),
 						i, j, v);
+					}
 				}
 			}
 		}
-    }
+		isqp_ = true;
+	}
 
 	
 	/* For a continuous problem:
@@ -87,13 +101,15 @@ public:
 	virtual void addQuadraticRows(int nqrows, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int const ** linind, double const ** linval, 
 										int const ** quadrow, int const ** quadcol, double const ** quadval) 
 	{
+		if (nqrows > 0)
+			isqcp_ = true;
 		for (int i = 0; i < nqrows; i++) 
 		{
 			int err = CPXaddqconstr(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), linnzcnt[i], quadnzcnt[i], rhs[i], sense[i], 
 				linind[i], linval[i], quadrow[i], quadcol[i], quadval[i], NULL);
 			checkDspOsiError(err, "CPXaddqconstr", "addQuadraticRows");	
 		}
-    }
+	}
 
 	/** throw error */
 	virtual inline void checkDspOsiError(int err, std::string cpxfuncname, std::string dsposimethod) 
@@ -193,12 +209,12 @@ public:
 		if (!isqp_ && !isqcp_) {
 			if (si_->getNumIntegers() > 0) {
 				DSPdebugMessage("DspOsiCpx::solve(), si_->branchAndBound() \n");
-				si_->branchAndBound();
 				ismip_ = true;
+				si_->branchAndBound();
 			} else {
 				DSPdebugMessage("DspOsiCpx::solve(), si_->initialSolve() \n");
-				si_->initialSolve();
 				ismip_ = false;
+				si_->initialSolve();
 			}
 		}
 		else 

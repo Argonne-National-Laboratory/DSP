@@ -96,6 +96,17 @@ public:
 			int      size,    /**< size of array */
 			double * solution /**< solution */);
 
+	/** 
+	 * Set the Wasserstein ambiguity set for distributionally robust optimization.
+	 * This should be used for stochastic programming models, where the probabilities
+	 * are used as the empirical references of the Wasserstein distance.
+	 * 
+	 * @param lp_norm use the distance norm of p
+	 * @param eps maximum distance size
+	 * @return DSP_RTN_OK if no error
+	 */
+	DSP_RTN_CODE setWassersteinAmbiguitySet(double lp_norm, double eps);
+
 #if 0
 	/** add branching object */
 	void addBranchingHyperplane(int nzcnt, int * indices, double * values, int priority);
@@ -180,8 +191,6 @@ public:
 			int offset,   /**< offset by which indices are shifted */
 			int start = 0 /**< index only after which indices are shifted */);
 
-	virtual bool isQCQP() {return isQCQP_;}
-
 	// The following functions are for distributionally robust variant.
 	// TODO: Better to create a new inhereted class?
 	virtual void setDro(bool yes) { isdro_ = yes; }
@@ -238,8 +247,7 @@ protected:
 
 	bool fromSMPS_; /**< problem was read from SMPS files? */
 
-	bool isdro_;                /**< is this distributionally robust? */
-	bool isQCQP_ = 0;			/**< quadratic terms in the problem? */
+	bool isdro_;				/**< is this distributionally robust? */
 	int nrefs_;                 /**< number of reference scenarios for DRO */
 	double wass_eps_;           /**< size of the Wasserstein ball */
 	double ** wass_dist_;       /**< Wasserstein distances between two realizations */
