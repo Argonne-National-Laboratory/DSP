@@ -67,9 +67,6 @@ DSP_RTN_CODE DeDriver::run()
 	double *rlbd = NULL;
 	double *rubd = NULL;
 
-	bool isqp = false;
-	bool isqcp = false;
-
 	BGN_TRY_CATCH
 
 	/** get DE model */
@@ -133,7 +130,6 @@ DSP_RTN_CODE DeDriver::run()
 	if (qobj != NULL)
 	{
 		osi_->loadQuadraticObjective(*qobj);
-		isqp=true;
 	}
 
 	for (int j = 0; j < mat->getNumCols(); j++)
@@ -160,9 +156,6 @@ DSP_RTN_CODE DeDriver::run()
 		{
 
 			QcRowDataScen *qcrowdata = qcModel->getQcRowData(s);
-
-			if (qcrowdata->nqrows_ > 0)
-				isqcp = true;
 
 			/* print qcrowdata to test whether it is successfully received or not */
 			// qcModel->printQuadRows(s);
@@ -204,9 +197,6 @@ DSP_RTN_CODE DeDriver::run()
 		osi_->writeProb(lpfilename, NULL);
 #endif
 	}
-
-	/** set problem type */
-	osi_->setProbType(isqp, isqcp);
 
 	/** set optimality gap tolerance */
 	osi_->setRelMipGap(par_->getDblParam("DE/GAPTOL"));

@@ -106,8 +106,6 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 		printf("This is not a stochastic programming problem.\n");
 		return DSP_RTN_ERR;
 	}
-	vector<bool> isqp = vector<bool> (nsubprobs, false);
-	vector<bool> isqcp = vector<bool> (nsubprobs, false);
 
 	/** allocate memory */
 	mat_mp_ = new CoinPackedMatrix *[nsubprobs];
@@ -179,9 +177,6 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 
 			QcRowDataScen * qcrowdata = qcModel->getQcRowData(s);
 
-			if (qcrowdata->nqrows_ > 0)
-				isqcp[s] = true;
-
 			/* print qcrowdata to test whether it is successfully received or not */
         	// qcModel->printQuadRows(s);
         	// qcModel->printQuadRows(qcrowdata);
@@ -229,9 +224,6 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 			FREE_2D_ARRAY_PTR(qcrowdata->nqrows_, quadcol);
 		}
 
-		/** set problem type */
-		osi_[s]->setProbType(isqp[s], isqcp[s]);
-		
 		FREE_MEMORY
 
     }
