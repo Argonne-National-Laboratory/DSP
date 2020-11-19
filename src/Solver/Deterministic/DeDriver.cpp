@@ -189,7 +189,7 @@ DSP_RTN_CODE DeDriver::run()
 #ifdef DSP_DEBUG
 		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
 		char lpfilename[128];
-		sprintf(lpfilename, "%s.lp", qcModel->getFileName()); 
+		sprintf(lpfilename, "DeDriver_model.lp"); 
 		osi_->writeProb(lpfilename, NULL);
 #endif
 	}

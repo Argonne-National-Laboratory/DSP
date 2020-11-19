@@ -337,7 +337,8 @@ public:
 				if (stat == CPX_STAT_INForUNBD && presolve) 
 				{
 					CPXsetintparam(env, CPX_PARAM_PREIND, CPX_OFF);
-				}
+				} else 
+					break;
 				resolved = true;
 			}
 		}
