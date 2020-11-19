@@ -139,11 +139,11 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 			}
 		}
 
-		for (int j = 0; j < mat_reco->getNumCols(); ++j)
-			if (ctype_reco[j] != 'C') {
-				has_integer = true;
-				break;
-			}
+		// for (int j = 0; j < mat_reco->getNumCols(); ++j)
+		// 	if (ctype_reco[j] != 'C') {
+		// 		has_integer = true;
+		// 		break;
+		// 	}
 
 		/** creating solver interface */
 		osi_[s] = createDspOsi();
@@ -220,7 +220,7 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 #ifdef DSP_DEBUG
 			/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
 			char lpfilename[128];
-			sprintf(lpfilename, "%s_DdWorkerUB_scen%d.lp", qcModel->getFileName(), s); 
+			sprintf(lpfilename, "DdWorkerUB_scen%d.lp", s); 
 			osi_[s]->writeProb(lpfilename, NULL);
 #endif
 			FREE_2D_ARRAY_PTR(qcrowdata->nqrows_, linind);
@@ -324,7 +324,7 @@ double DdWorkerUB::evaluate(int n, double* solution) {
 
 	CoinPackedVector *s = new CoinPackedVector(indices.size(), &indices[0], &elements[0]);
 	double ub = evaluate(s);
-	
+
 	delete s;
 
 	return ub;
@@ -353,6 +353,12 @@ double DdWorkerUB::evaluate(CoinPackedVector* solution) {
 
 	/** allocate memory */
 	x = solution->denseVector(tss->getNumCols(0));
+	
+#ifdef DSP_DEBUG
+		for (int i = 0; i < tss->getNumCols(0); i++)
+			cout << "x[" << i << "] : " << x[i] << endl; 
+#endif
+	
 	for (int s = nsubprobs - 1; s >= 0; --s) {
 		/** calculate Tx */
 		Tx = new double [mat_mp_[s]->getNumRows()];
@@ -372,6 +378,13 @@ double DdWorkerUB::evaluate(CoinPackedVector* solution) {
 		cx_weighted += cx * tss->getProbability()[par_->getIntPtrParam("ARR_PROC_IDX")[s]];
 
 		FREE_ARRAY_PTR(Tx)
+
+#ifdef DSP_DEBUG
+			/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
+			char lpfilename[128];
+			sprintf(lpfilename, "DdWorkerUB_scen%d.lp", s); 
+			osi_[s]->writeProb(lpfilename, NULL);
+#endif
 	}
 	DSPdebugMessage("cx_weighted %e\n", cx_weighted);
 
@@ -436,6 +449,7 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 		case DSP_STAT_STOPPED_GAP:
 		case DSP_STAT_STOPPED_NODE:
 		case DSP_STAT_STOPPED_TIME:
+		case DSP_STAT_FEASIBLE:
 			break;
 		default:
 			status_ = DSP_STAT_MW_STOP;
@@ -445,6 +459,7 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 			break;
 		}
 		if (status_ == DSP_STAT_MW_STOP) {
+			DSPdebugMessage("status_ (dsp) = DSP_STAT_MW_STOP_, status (osi) =%d\n", status);
 			primobj = COIN_DBL_MAX;
 			dualobj = -COIN_DBL_MAX;
 			break;

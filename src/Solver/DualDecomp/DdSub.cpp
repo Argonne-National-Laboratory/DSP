@@ -348,7 +348,7 @@ DSP_RTN_CODE DdSub::createProblem() {
 	#ifdef DSP_DEBUG
 		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
 		char lpfilename[128];
-		sprintf(lpfilename, "%s_DdWorkerLB_scen%d.lp", qcModel->getFileName(), sind_); 
+		sprintf(lpfilename, "DdWorkerLB_scen%d.lp", sind_); 
 		osi_->writeProb(lpfilename, NULL);
 	#endif
 	}
@@ -455,6 +455,13 @@ DSP_RTN_CODE DdSub::updateProblem(
 	/** update primal bound (bounds of auxiliary constraint) */
 	if (primal_bound < COIN_DBL_MAX)
 		getSiPtr()->setColUpper(ncols - 1, primal_bound);//getSiPtr()->setColBounds(ncols - 1, primal_bound, primal_bound);
+
+#ifdef DSP_DEBUG
+		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
+		char lpfilename[128];
+		sprintf(lpfilename, "DdWorkerLB_scen%d.lp", sind_); 
+		osi_->writeProb(lpfilename, NULL);
+#endif
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
