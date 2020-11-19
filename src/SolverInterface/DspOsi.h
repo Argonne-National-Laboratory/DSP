@@ -50,16 +50,6 @@ public:
 	/** write problem file */
 	virtual void writeProb(char const * filename_str, char const * filetype_str) {};
 
-	/** set problem type */
-	virtual void setProbType(bool isqp, bool isqcp) {
-		
-		if (si_->getNumIntegers() > 0)
-			ismip_ = true;
-		
-		isqp_ = isqp;
-		isqcp_ = isqcp;
-	}
-
 	/** change problem type to MIQCP */
 	virtual void switchToMIQCP(void){};
 
