@@ -413,6 +413,17 @@ DSP_RTN_CODE DdSub::addCutGenerator() {
 		}
 	}
 #endif
+
+#ifdef DSP_HAS_GRB
+ 	if (par_->getIntParam("DD/SUB/SOLVER") == OsiGrb) {
+ 		DspOsiGrb * osigrb = dynamic_cast<DspOsiGrb*>(osi_);
+ 		//OsiGrbSolverInterface *si = osigrb->grb_;
+ 		if (si){
+			 /** set call back function */
+			 osigrb->setCallbackFunc();
+		 }
+ 	} 
+#endif
 	END_TRY_CATCH_RTN(;, DSP_RTN_ERR)
 
     return DSP_RTN_OK;

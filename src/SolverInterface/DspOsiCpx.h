@@ -199,16 +199,16 @@ public:
 		CPXsetdblparam(cpx_->getEnvironmentPtr(), CPX_PARAM_EPGAP, tol);
 	}
 
-	virtual void addLazyConstr(
-		int lazylen,
-		const int *lazyind,
-		const double *lazyval,
-		char lazysense,
-		double lazyrhs
-	){
-		int lazybeg[1] = {0};
-		CPXaddlazyconstraints(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), 1, lazylen, lazyrhs, lazysense, lazybeg, lazyind, lazyval, NULL);
-	}
+	// virtual void addLazyConstr(
+	// 	int lazylen,
+	// 	const int *lazyind,
+	// 	const double *lazyval,
+	// 	char lazysense,
+	// 	double lazyrhs
+	// ){
+	// 	int lazybeg[1] = {0};
+	// 	CPXaddlazyconstraints(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), 1, lazylen, lazyrhs, lazysense, lazybeg, lazyind, lazyval, NULL);
+	// }
     OsiCpxSolverInterface* cpx_;   
 };
 
