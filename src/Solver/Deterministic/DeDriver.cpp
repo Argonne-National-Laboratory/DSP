@@ -133,6 +133,7 @@ DSP_RTN_CODE DeDriver::run()
 	if (qobj != NULL)
 	{
 		osi_->loadQuadraticObjective(*qobj);
+		isqp=true;
 	}
 
 	for (int j = 0; j < mat->getNumCols(); j++)

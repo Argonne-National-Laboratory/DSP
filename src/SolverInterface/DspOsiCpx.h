@@ -8,7 +8,7 @@
 #ifndef SRC_SOLVERINTERFACE_DSPOSICPX_H_
 #define SRC_SOLVERINTERFACE_DSPOSICPX_H_
 
-// #define DSP_DEBUG
+ #define DSP_DEBUG
 
 #ifdef DSP_HAS_CPX
 
@@ -52,8 +52,15 @@ public:
 				for (int k = 0; k < mat.getVectorSize(j); ++k) {
 					int i = mat.getIndices()[mat.getVectorStarts()[j] + k];
 					double v = mat.getElements()[mat.getVectorStarts()[j] + k];
-					CPXchgqpcoef(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL),
+					if (i==j){
+						CPXchgqpcoef(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL),
+						i, j, 2*v);
+					}
+					else{
+						CPXchgqpcoef(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL),
 						i, j, v);
+					}
+					
 				}
 			}
 		} else {
@@ -61,8 +68,14 @@ public:
 				for (int k = 0; k < mat.getVectorSize(i); ++k) {
 					int j = mat.getIndices()[mat.getVectorStarts()[i] + k];
 					double v = mat.getElements()[mat.getVectorStarts()[i] + k];
-					CPXchgqpcoef(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL),
+					if (i==j){
+						CPXchgqpcoef(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL),
+						i, j, 2*v);
+					}
+					else{
+						CPXchgqpcoef(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL),
 						i, j, v);
+					}
 				}
 			}
 		}
