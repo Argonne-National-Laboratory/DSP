@@ -45,7 +45,10 @@ jobs:
           make -j
           make install
       - name: Unit test
-        run: ./src/test/UnitTests
+        run: |
+          echo $PWD
+          cd $GITHUB_WORKSPACE/build
+          ./src/test/UnitTests
       - name: Test
         run: ctest
       - uses: codecov/codecov-action@v1
