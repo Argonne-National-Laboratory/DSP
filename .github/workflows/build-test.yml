@@ -26,24 +26,21 @@ jobs:
           path: DSPThirdPartyLibs
           ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
           lfs: true
-      - name: Configure DSPThirdPartyLibs
+      - name: Run cmake and build
         env:
           MYOS: ${{ matrix.os }}
+          CC: ${{ matrix.compiler }}
           FC: gfortran-9
         run: |
           cd DSPThirdPartyLibs
           ./github.sh
-          if [ ${{ matrix.os }} == ubuntu-18.04 ]; then echo "LD_LIBRARY_PATH=$PWD/lib:$(dirname `$FC --print-file-name libgfortran.so`):$LD_LIBRARY_PATH" >> $GITHUB_ENV; fi
-          if [ ${{ matrix.os }} == macos-latest ]; then echo "DYLD_LIBRARY_PATH=$PWD/lib:$(dirname `$FC --print-file-name libgfortran.dylib`):$DYLD_LIBRARY_PATH" >> $GITHUB_ENV; fi
+          if [ ${{ matrix.os }} == ubuntu-18.04 ]; then export LD_LIBRARY_PATH=$PWD/lib:$(dirname `$FC --print-file-name libgfortran.so`):$LD_LIBRARY_PATH; echo $LD_LIBRARY_PATH; fi
+          if [ ${{ matrix.os }} == macos-latest ]; then export DYLD_LIBRARY_PATH=$PWD/lib:$(dirname `$FC --print-file-name libgfortran.dylib`):$DYLD_LIBRARY_PATH; echo $DYLD_LIBRARY_PATH; fi
           cd ..
-      - name: Run cmake and build
-        run: |
           mkdir build
           cd build
-          export CC=${{ matrix.compiler }}
           if [ ${{ matrix.compiler }} == gcc ]; then export CXX=g++; fi
           if [ ${{ matrix.compiler }} == clang ]; then export CXX=clang++; fi
-          export FC=gfortran-9
           cmake .. -DUNIT_TESTING=ON -DCODE_COVERAGE=ON -DCMAKE_BUILD_TYPE=DEBUG
           make -j
           make install
