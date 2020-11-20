@@ -221,8 +221,6 @@ DSP_RTN_CODE DdDroWorkerUB::solve()
 			break;
 		}
 
-		primobj += osi_[s]->getPrimObjValue();
-		dualobj += osi_[s]->getDualObjValue();
 		CoinCopyN(osi_[s]->si_->getColSolution(), osi_[s]->si_->getNumCols(), &primsols_[s][0]);
 		total_cputime += CoinCpuTime() - cputime;
 		total_walltime += CoinGetTimeOfDay() - walltime;
@@ -231,12 +229,16 @@ DSP_RTN_CODE DdDroWorkerUB::solve()
 		time_remains_ -= CoinGetTimeOfDay() - walltime;
 	}
 
+	cputime = CoinCpuTime();
+	walltime = CoinGetTimeOfDay();
+
 	/** solve the DRO UB problem */
-	if (model_->isDro() && status_ != DSP_STAT_MW_STOP)
+	if (status_ != DSP_STAT_MW_STOP)
 	{
 		assert(nsubprobs == model_->getNumSubproblems());
 		for (int k = 0; k < nsubprobs; ++k)
 		{
+			printf("rlbd[%d] = %e\n", k * model_->getNumReferences(), osi_[k]->si_->getObjValue());
 			for (int s = 0; s < model_->getNumReferences(); ++s)
 			{
 				osi_dro_->si_->setRowLower(k * model_->getNumReferences() + s, osi_[k]->si_->getObjValue());
@@ -247,10 +249,12 @@ DSP_RTN_CODE DdDroWorkerUB::solve()
 		if (osi_dro_->si_->isProvenOptimal())
 		{
 			primobj = osi_dro_->getPrimObjValue();
+			dualobj = osi_dro_->getPrimObjValue();
 		}
 		else
 		{
 			primobj = COIN_DBL_MAX;
+			dualobj = -COIN_DBL_MAX;
 		}
 	}
 
@@ -258,6 +262,10 @@ DSP_RTN_CODE DdDroWorkerUB::solve()
 	ub_ = primobj;
 	DSPdebugMessage("ub_ = %e\n", ub_);
 	DSPdebugMessage("status_ %d\n", status_);
+
+	total_cputime += CoinCpuTime() - cputime;
+	total_walltime += CoinGetTimeOfDay() - walltime;
+	time_remains_ -= CoinGetTimeOfDay() - walltime;
 
 	/** update statistics */
 	s_statuses_.push_back(status_);

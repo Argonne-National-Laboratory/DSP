@@ -2,7 +2,6 @@
 #define SRC_SOLVER_DUALDECOMP_DDDROWORKERUB_H_
 
 #include "Solver/DualDecomp/DdWorkerUB.h"
-#include "SolverInterface/DspOsi.h"
 
 /** A worker class for solving upper bounding subproblems 
  *  for the distributionally robust optimization. 
@@ -46,7 +45,7 @@ public:
 	/** create problem */
 	virtual DSP_RTN_CODE createProblem();
 
-private:
+protected:
 	DspOsi *osi_dro_; /**< solver interface for DRO upper bound */
 };
 

@@ -161,6 +161,7 @@ if (MPI_CXX_FOUND)
         Solver/DualDecomp/DdMWAsyncDyn.cpp
         Solver/DualDecomp/DdMWPara.cpp
         Solver/DualDecomp/DdMWSync.cpp
+        Solver/DualDecomp/DdDroWorkerUBMpi.cpp
         Utility/DspMpi.cpp
     )
     if(SCIPLIB)
