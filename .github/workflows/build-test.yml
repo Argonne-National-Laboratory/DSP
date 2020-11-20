@@ -29,8 +29,9 @@ jobs:
       - name: Configure DSPThirdPartyLibs
         env:
           MYOS: ${{ matrix.os }}
-          FC: gfortran
+          FC: gfortran-9
         run: |
+          alias gfortran='$FC'
           cd DSPThirdPartyLibs
           ./github.sh
           if [ ${{ matrix.os }} == ubuntu-18.04 ]; then echo "LD_LIBRARY_PATH=$PWD/lib:$(dirname `gfortran --print-file-name libgfortran.so`):$LD_LIBRARY_PATH" >> $GITHUB_ENV; fi
@@ -43,7 +44,7 @@ jobs:
           export CC=${{ matrix.compiler }}
           if [ ${{ matrix.compiler }} == gcc ]; then export CXX=g++; fi
           if [ ${{ matrix.compiler }} == clang ]; then export CXX=clang++; fi
-          export FC=gfortran
+          export FC=gfortran-9
           cmake .. -DUNIT_TESTING=ON -DCODE_COVERAGE=ON -DCMAKE_BUILD_TYPE=DEBUG
           make -j
           make install
