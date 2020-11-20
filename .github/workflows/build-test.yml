@@ -31,11 +31,10 @@ jobs:
           MYOS: ${{ matrix.os }}
           FC: gfortran-9
         run: |
-          alias gfortran='$FC'
           cd DSPThirdPartyLibs
           ./github.sh
-          if [ ${{ matrix.os }} == ubuntu-18.04 ]; then echo "LD_LIBRARY_PATH=$PWD/lib:$(dirname `gfortran --print-file-name libgfortran.so`):$LD_LIBRARY_PATH" >> $GITHUB_ENV; fi
-          if [ ${{ matrix.os }} == macos-latest ]; then echo "DYLD_LIBRARY_PATH=$PWD/lib:$(dirname `gfortran --print-file-name libgfortran.dylib`):$DYLD_LIBRARY_PATH" >> $GITHUB_ENV; fi
+          if [ ${{ matrix.os }} == ubuntu-18.04 ]; then echo "LD_LIBRARY_PATH=$PWD/lib:$(dirname `$FC --print-file-name libgfortran.so`):$LD_LIBRARY_PATH" >> $GITHUB_ENV; fi
+          if [ ${{ matrix.os }} == macos-latest ]; then echo "DYLD_LIBRARY_PATH=$PWD/lib:$(dirname `$FC --print-file-name libgfortran.dylib`):$DYLD_LIBRARY_PATH" >> $GITHUB_ENV; fi
           cd ..
       - name: Run cmake and build
         run: |
