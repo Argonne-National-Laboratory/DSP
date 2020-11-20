@@ -1,0 +1,49 @@
+name: Build test
+
+on: [push, pull_request]
+
+jobs:
+  test-github-cpuonly:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-18.04]
+        compiler: [g++, clang++] 
+
+    steps:
+      - name: Set my secrets
+        uses: webfactory/ssh-agent@v0.4.1
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Checkout DSP
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Checkout DSPThirdPartyLibs
+        uses: actions/checkout@v2
+        with:
+          repository: kibaekkim/DSPThirdPartyLibs
+          path: DSPThirdPartyLibs
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          lfs: true
+      - name: Configure DSPThirdPartyLibs
+        run: |
+          cd DSPThirdPartyLibs
+          ./github.sh
+          if [ ${{ matrix.os }} == ubuntu-18.04 ]; then echo "LD_LIBRARY_PATH=$PWD/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV; fi
+          if [ ${{ matrix.os }} == macos-latest ]; then echo "DYLD_LIBRARY_PATH=$PWD/lib:$DYLD_LIBRARY_PATH" >> $GITHUB_ENV; fi
+          cd ..
+      - name: Run cmake and build
+        run: |
+          mkdir build
+          cd build
+          cmake .. -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} -DUNIT_TESTING=ON -DCODE_COVERAGE=ON -DCMAKE_BUILD_TYPE=DEBUG
+          make -j
+          make install
+      - name: Unit test
+        run: ./src/test/UnitTests
+      - name: Test
+        run: ctest
+      - uses: codecov/codecov-action@v1
+        with:
+          file: lcov.info
