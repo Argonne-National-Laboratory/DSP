@@ -542,7 +542,7 @@ DSP_RTN_CODE StoModel::setWassersteinAmbiguitySet(double lp_norm, double eps)
 	 */
 
 	printf("[DRO] Set %d reference scenarios.\n", nrefs_);
-	printf("[DRO] Computed the Wasserstein distances with %f-norm.\n", lp_norm);
+	printf("[DRO] Computed the Wasserstein distances of order %f.\n", lp_norm);
 
 	return DSP_RTN_OK;
 }
