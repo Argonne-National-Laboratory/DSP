@@ -51,6 +51,8 @@ jobs:
           ctest
           if [ ${{ matrix.os }} == ubuntu-18.04 ] && [ ${{ matrix.compiler }} == gcc ]
           then
+            sudo apt-get update -y
+            sudo apt-get install -y lcov
             lcov --capture --directory . --output-file coverage.info
             lcov --remove coverage.info '/usr/*' --output-file coverage.info
           fi
