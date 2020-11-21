@@ -34,8 +34,6 @@ jobs:
         run: |
           cd DSPThirdPartyLibs
           ./github.sh
-          if [ ${{ matrix.os }} == ubuntu-18.04 ]; then export LD_LIBRARY_PATH=$PWD/lib:$(dirname `$FC --print-file-name libgfortran.so`):$LD_LIBRARY_PATH; echo $LD_LIBRARY_PATH; fi
-          if [ ${{ matrix.os }} == macos-latest ]; then export DYLD_LIBRARY_PATH=$PWD/lib:$(dirname `$FC --print-file-name libgfortran.dylib`):$DYLD_LIBRARY_PATH; echo $DYLD_LIBRARY_PATH; fi
           cd ..
           mkdir build
           cd build
