@@ -26,7 +26,7 @@ jobs:
           path: DSPThirdPartyLibs
           ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
           lfs: true
-      - name: Run cmake and build
+      - name: Run cmake, build, and test
         env:
           MYOS: ${{ matrix.os }}
           CC: ${{ matrix.compiler }}
@@ -44,13 +44,16 @@ jobs:
           cmake .. -DUNIT_TESTING=ON -DCODE_COVERAGE=ON -DCMAKE_BUILD_TYPE=DEBUG
           make -j
           make install
-      - name: Unit test
+      - name: Run test
         run: |
-          echo $PWD
-          cd $GITHUB_WORKSPACE/build
+          cd build
           ./src/test/UnitTests
-      - name: Test
-        run: ctest
+          ctest
+          if [ ${{ matrix.os }} == ubuntu-18.04 ] && [ ${{ matrix.compiler }} == gcc ]
+          then
+            lcov --capture --directory . --output-file coverage.info
+            lcov --remove coverage.info '/usr/*' --output-file coverage.info
+          fi
       - uses: codecov/codecov-action@v1
         with:
-          file: lcov.info
+          file: ./build/coverage.info
