@@ -9,6 +9,7 @@ jobs:
       matrix:
         os: [macos-latest, ubuntu-18.04]
         compiler: [gcc, clang] 
+      fail-fast: false
 
     steps:
       - name: Install extra libraries
