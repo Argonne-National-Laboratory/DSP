@@ -11,6 +11,20 @@ jobs:
         compiler: [gcc, clang] 
 
     steps:
+      - name: Install extra libraries
+        run: |
+          if [ ${{ matrix.os }} == ubuntu-18.04 ] && [ ${{ matrix.compiler }} == gcc ]
+          then
+            sudo apt-get update -y
+            sudo apt-get install -y lcov
+            lcov --capture --directory . --output-file coverage.info
+            lcov --remove coverage.info '/usr/*' --output-file coverage.info
+          fi
+          if [ ${{ matrix.os }} == macos-latest ]
+          then
+            brew update
+            brew install tbb
+          fi
       - name: Set my secrets
         uses: webfactory/ssh-agent@v0.4.1
         with:
@@ -34,8 +48,16 @@ jobs:
         run: |
           cd DSPThirdPartyLibs
           ./github.sh
-          if [ ${{ matrix.os }} == ubuntu-18.04 ]; then export LD_LIBRARY_PATH=$PWD/lib:$(dirname `$FC --print-file-name libgfortran.so`):$LD_LIBRARY_PATH; echo $LD_LIBRARY_PATH; fi
-          if [ ${{ matrix.os }} == macos-latest ]; then export DYLD_LIBRARY_PATH=$PWD/lib:$(dirname `$FC --print-file-name libgfortran.dylib`):$DYLD_LIBRARY_PATH; echo $DYLD_LIBRARY_PATH; fi
+          if [ ${{ matrix.os }} == ubuntu-18.04 ]
+          then
+            export LD_LIBRARY_PATH=$PWD/lib:$(dirname `$FC --print-file-name libgfortran.so`):$LD_LIBRARY_PATH
+            echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          fi
+          if [ ${{ matrix.os }} == macos-latest ]
+          then
+            export DYLD_LIBRARY_PATH=$PWD/lib:$(dirname `$FC --print-file-name libgfortran.dylib`):$DYLD_LIBRARY_PATH
+            echo "DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
+          fi
           cd ..
           mkdir build
           cd build
@@ -46,16 +68,11 @@ jobs:
           make install
       - name: Run test
         run: |
+          if [ ${{ matrix.os }} == ubuntu-18.04 ]; then export LD_LIBRARY_PATH=${{ env.LD_LIBRARY_PATH }}; fi
+          if [ ${{ matrix.os }} == macos-latest ]; then export DYLD_LIBRARY_PATH=${{ env.DYLD_LIBRARY_PATH }}; fi
           cd build
           ./src/test/UnitTests
           ctest
-          if [ ${{ matrix.os }} == ubuntu-18.04 ] && [ ${{ matrix.compiler }} == gcc ]
-          then
-            sudo apt-get update -y
-            sudo apt-get install -y lcov
-            lcov --capture --directory . --output-file coverage.info
-            lcov --remove coverage.info '/usr/*' --output-file coverage.info
-          fi
       - uses: codecov/codecov-action@v1
         with:
           file: ./build/coverage.info
