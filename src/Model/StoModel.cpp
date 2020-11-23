@@ -496,7 +496,6 @@ DSP_RTN_CODE StoModel::setWassersteinAmbiguitySet(double lp_norm, double eps)
 			 * TODO: Can we do in parallel?
 			 * The relevant issues need addressed first: 
 			 * - https://github.com/kibaekkim/DSPopt.jl/issues/14
-			 * - https://github.com/Argonne-National-Laboratory/DSP/issues/50
 			 */
 			for (int ss = 0; ss < nscen_; ++ss)
 			{
