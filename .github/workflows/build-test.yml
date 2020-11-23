@@ -17,8 +17,6 @@ jobs:
           then
             sudo apt-get update -y
             sudo apt-get install -y lcov
-            lcov --capture --directory . --output-file coverage.info
-            lcov --remove coverage.info '/usr/*' --output-file coverage.info
           fi
           if [ ${{ matrix.os }} == macos-latest ]
           then
@@ -73,6 +71,11 @@ jobs:
           cd build
           ./src/test/UnitTests
           ctest
+          if [ ${{ matrix.os }} == ubuntu-18.04 ] && [ ${{ matrix.compiler }} == gcc ]
+          then
+            lcov --capture --directory . --output-file coverage.info
+            lcov --remove coverage.info '/usr/*' --output-file coverage.info
+          fi
       - uses: codecov/codecov-action@v1
         with:
           file: ./build/coverage.info
