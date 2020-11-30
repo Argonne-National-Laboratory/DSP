@@ -33,12 +33,10 @@ jobs:
         with:
           submodules: true
       - name: Checkout DSPThirdPartyLibs
-        uses: actions/checkout@v2
-        with:
-          repository: kibaekkim/DSPThirdPartyLibs
-          path: DSPThirdPartyLibs
-          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
-          lfs: true
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan xgitlab.cels.anl.gov >> ~/.ssh/known_hosts
+          git clone git@xgitlab.cels.anl.gov:kimk/DSPThirdPartyLibs.git
       - name: Run cmake, build, and test
         env:
           MYOS: ${{ matrix.os }}
