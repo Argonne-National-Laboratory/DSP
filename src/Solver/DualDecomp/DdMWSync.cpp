@@ -82,7 +82,10 @@ DSP_RTN_CODE DdMWSync::init()
 			if (parEvalUb_ >= 0)
 			{
 				DSPdebugMessage("Rank %d creates a worker for upper bounds.\n", comm_rank_);
-				worker_.push_back(new DdWorkerUB(model_, par_, message_));
+				if (model_->isDro())
+					worker_.push_back(new DdDroWorkerUBMpi(lb_comm_, model_, par_, message_));
+				else
+					worker_.push_back(new DdWorkerUB(model_, par_, message_));
 			}
 		}
 		/** initialize workers */
@@ -217,6 +220,7 @@ DSP_RTN_CODE DdMWSync::runMaster()
 	 *   [for each subproblem]
 	 *   1 theta
 	 *   2 lambda
+	 *   3 P (probability for the subproblem)
 	 */
 	int size_of_sendbuf;     /**< MPI_Scatterv: size of send buffer pointer */
 	double * sendbuf = NULL; /**< MPI_Scatterv: send buffer */
@@ -237,6 +241,7 @@ DSP_RTN_CODE DdMWSync::runMaster()
 
 	const double * thetas  = NULL; /**< of master problem */
 	double **      lambdas = NULL; /**< of master problem */
+	const double *Ps = NULL;	   /**< of DRO master problem */
 
 	int * nsubsolution = NULL; /**< size of subproblem solution for each scenario */
 
@@ -244,11 +249,26 @@ DSP_RTN_CODE DdMWSync::runMaster()
 	Solutions dummy_solutions;
 	std::vector<double> dummy_double_array;
 
+	TssModel *tss = NULL;
+
 	/** Benders cuts */
 	OsiCuts cuts, emptycuts;
 	int cg_status = DSP_STAT_MW_CONTINUE;
 
 	BGN_TRY_CATCH
+
+	if (model_->isStochastic())
+	{
+		try
+		{
+			tss = dynamic_cast<TssModel *>(model_);
+		}
+		catch (const std::bad_cast &e)
+		{
+			printf("Error: Model claims to be stochastic when it is not\n");
+			return DSP_RTN_ERR;
+		}
+	}
 
 	/** collect timing results */
 	double mt_total = 0.0; /**< total time */
@@ -264,11 +284,16 @@ DSP_RTN_CODE DdMWSync::runMaster()
 	nsubsolution = new int [model_->getNumSubproblems()];
 	if (model_->isDro()) {
 		TssModel* tss = dynamic_cast<TssModel*>(model_);
-		CoinFillN(nsubsolution, model_->getNumSubproblems(), tss->getNumCols(0)+tss->getNumCols(1));
+		CoinFillN(
+			nsubsolution,
+			model_->getNumSubproblems(),
+			tss->getNumCols(0) + tss->getNumCols(1) + 1); // +1 for auxiliary variable
 	} else {
 		for (int s = 0; s < model_->getNumSubproblems(); ++s)
 			nsubsolution[s] = model_->getNumSubproblemCouplingCols(s);
 	}
+	// DSPdebugMessage("Master:\n");
+	// DSPdebug(message_->printArray(model_->getNumSubproblems(), nsubsolution));
 
 	/** allocate memory for buffer sizes and displacements */
 	scounts = new int [subcomm_size_];
@@ -283,7 +308,12 @@ DSP_RTN_CODE DdMWSync::runMaster()
 	{
 		scounts[i] = 0;
 		for (int j = 0; j < nsubprobs_[i]; ++j)
-			scounts[i] += 1 + model_->getNumSubproblemCouplingRows(subprob_indices_[subprob_displs_[i]+j]);
+		{
+			scounts[i] += 1																					// theta
+						  + model_->getNumSubproblemCouplingRows(subprob_indices_[subprob_displs_[i] + j]); // lambda
+			if (model_->isStochastic())
+				scounts[i] += 1; // P
+		}
 		sdispls[i] = i == 0 ? 0 : sdispls[i-1] + scounts[i-1];
 		size_of_sendbuf += scounts[i];
 	}
@@ -345,7 +375,7 @@ DSP_RTN_CODE DdMWSync::runMaster()
 				master->subdualobj_[sindex] = recvbuf[pos++];
 				CoinCopyN(recvbuf + pos,
 						nsubsolution[s], master->subsolution_[sindex]);
-				pos += model_->getNumSubproblemCouplingCols(sindex);
+				pos += nsubsolution[sindex];
 				DSPdebugMessage("-> master, subprob %d primobj %+e\n", sindex, master->subprimobj_[sindex]);
 			}
 		}
@@ -427,6 +457,17 @@ DSP_RTN_CODE DdMWSync::runMaster()
 			lambdas[i] = master_primsol + j;
 			j += model_->getNumSubproblemCouplingRows(i);
 		}
+		if (model_->isStochastic())
+		{
+			if (model_->isDro())
+			{
+				Ps = master_primsol + master_->getNumCols() - tss->getNumScenarios();
+			}
+			else
+			{
+				Ps = tss->getProbability();
+			}
+		}
 		master_primsol = NULL;
 
 		/** create send buffer */
@@ -439,12 +480,14 @@ DSP_RTN_CODE DdMWSync::runMaster()
 				CoinCopyN(lambdas[subprob_index],
 						model_->getNumSubproblemCouplingRows(subprob_index), sendbuf + pos);
 				pos += model_->getNumSubproblemCouplingRows(subprob_index);
+				if (model_->isStochastic())
+					sendbuf[pos++] = Ps[subprob_index];
 			}
 		}
 
-		DSPdebugMessage2("master send buffer:\n");
-		DSPdebug2(for (int i = 0; i < subcomm_size_; ++i) {
-			DSPdebugMessage2("  rank %d:\n", i);
+		DSPdebugMessage("master send buffer:\n");
+		DSPdebug(for (int i = 0; i < subcomm_size_; ++i) {
+			DSPdebugMessage("  rank %d (size %d):\n", i, scounts[i]);
 			message_->printArray(scounts[i], sendbuf + sdispls[i]);
 		});
 
@@ -510,12 +553,9 @@ DSP_RTN_CODE DdMWSync::runWorker()
 #define FREE_MEMORY         \
 	FREE_ARRAY_PTR(sendbuf) \
 	FREE_ARRAY_PTR(recvbuf) \
-	FREE_ARRAY_PTR(nsubsolution) \
-	Ps = NULL;
+	FREE_ARRAY_PTR(nsubsolution)
 
 #define SIG_BREAK if (signal == DSP_STAT_MW_STOP) break;
-
-	const double * Ps = NULL; /**< of DRO master problem */
 
 	/** MPI_Gatherv message:
 	 *   [for each subproblem]
@@ -531,6 +571,7 @@ DSP_RTN_CODE DdMWSync::runWorker()
 	 *   [for each subproblem]
 	 *   1 theta
 	 *   2 lambda
+	 *   3 P (probability for the subproblem)
 	 */
 	double * recvbuf = NULL; /**< MPI_Scatterv: receive buffer */
 	int      rcount  = 0;    /**< MPI_Scatterv: receive buffer size */
@@ -582,6 +623,8 @@ DSP_RTN_CODE DdMWSync::runWorker()
 		for (int s = 0; s < narrprocidx; ++s)
 			nsubsolution[s] = workerlb->subprobs_[s]->ncols_coupling_;
 	}
+	// DSPdebugMessage("Worker %d:\n", comm_rank_);
+	// DSPdebug(message_->printArray(narrprocidx, nsubsolution));
 
 	/** calculate size of send buffer */
 	for (int i = 0; i < narrprocidx; ++i)
@@ -590,6 +633,8 @@ DSP_RTN_CODE DdMWSync::runWorker()
 	/** calculate size of receive buffer */
 	for (int i = 0; i < narrprocidx; ++i)
 		rcount += 1 + model_->getNumSubproblemCouplingRows(arrprocidx[i]);
+	if (model_->isStochastic())
+		rcount += narrprocidx;
 
 	/** allocate memory for message buffers */
 	sendbuf = new double [scount];
@@ -618,10 +663,11 @@ DSP_RTN_CODE DdMWSync::runWorker()
 				sendbuf[pos++] = workerlb->subprobs_[s]->getPrimalObjective();
 				sendbuf[pos++] = workerlb->subprobs_[s]->getDualObjective();
 				CoinCopyN(workerlb->subprobs_[s]->getSiPtr()->getColSolution(), nsubsolution[s], sendbuf + pos);
-				pos += model_->getNumSubproblemCouplingCols(workerlb->subprobs_[s]->sind_);
-				DSPdebugMessage("MW -> worker %d, subprob %d primobj %+e dualobj %+e\n",
-						comm_rank_, workerlb->subprobs_[s]->sind_,
-						workerlb->subprobs_[s]->getPrimalObjective(), workerlb->subprobs_[s]->getDualObjective());
+				pos += nsubsolution[s];
+				DSPdebugMessage("MW -> worker %d, subprob %d primobj %+e dualobj %+e num_coupling_cols %d\n",
+										comm_rank_, workerlb->subprobs_[s]->sind_,
+										workerlb->subprobs_[s]->getPrimalObjective(), workerlb->subprobs_[s]->getDualObjective(),
+										nsubsolution[s]);
 			}
 #ifdef DSP_DEBUG2
 			for (int i = 0; i < lb_comm_size_; ++i)
@@ -696,39 +742,40 @@ DSP_RTN_CODE DdMWSync::runWorker()
 				DSPdebugMessage("Worker received message (%d):\n", rcount);
 				DSPdebug(message_->printArray(rcount, recvbuf));
 
-				if (model_->isStochastic()) {
-					if (model_->isDro()) {
-						/** TODO: need to implement parallel DRO */
-						//Ps = master_primsol + master_->getNumCols() - tss->getNumScenarios();
-						throw CoinError("DRO is not supported.", "ruwnWorker", "DdMWSync");
-					} else {
-						Ps = tss->getProbability();
-					}
-				}
-
-				/** parse message */
+				/** Parse recvbuf to thetas, lambdas, Ps 
+				 * `recvbuf` contains the master solution of the form
+				 * [theta_s1, lambda_s1, P_s1, theta_s2, lambda_s2, P_s2, ...],
+				 * where P_s1, P_s2, .. are received for stochastic model only.
+				*/
 				int sindex = -1;
 				double probability = -1.0;
+				double *lambda = NULL;
 				for (int s = 0, pos = 0; s < narrprocidx; ++s)
 				{
 					sindex = workerlb->subprobs_[s]->sind_;
 					workerlb->subprobs_[s]->theta_ = recvbuf[pos++];
+					lambda = recvbuf + pos;
+					pos += model_->getNumSubproblemCouplingRows(sindex);
 					if (model_->isStochastic()) {
-						probability = Ps[sindex];
+						probability = recvbuf[pos++];
+						assert(probability >= 0.0);
+						assert(probability <= 1.0);
 					}
-					workerlb->subprobs_[s]->updateProblem(recvbuf + pos, probability, bestprimalobj);
+					workerlb->subprobs_[s]->updateProblem(lambda, probability, bestprimalobj);
 					/** apply Benders cuts */
 					if (parFeasCuts_ >= 0 || parOptCuts_ >= 0)
 					{
 						workerlb->subprobs_[s]->pushCuts(cutsToAdd_);
 						DSPdebugMessage("Rank %d pushed %d Benders cuts.\n", comm_rank_, cutsToAdd_->sizeCuts());
 					}
-					pos += model_->getNumSubproblemCouplingRows(workerlb->subprobs_[s]->sind_);
 				}
 			}
 		}
 	}
 
+	/** This does the post-solve processing
+	 * in order to return the best feasible solution.
+	 */
 	if (parEvalUb_ >= 0 && model_->isStochastic()) {
 		TssModel* tss = dynamic_cast<TssModel*>(model_);
 		DdWorkerUB * workerub = NULL;
@@ -741,7 +788,10 @@ DSP_RTN_CODE DdMWSync::runWorker()
 		/** get WorkerUB pointer */
 		for (unsigned i = 0; i < worker_.size(); ++i)
 			if (worker_[i]->getType() == DdWorker::UB) {
-				workerub = dynamic_cast<DdWorkerUB*>(worker_[i]);
+				if (model_->isDro())
+					workerub = dynamic_cast<DdDroWorkerUBMpi *>(worker_[i]);
+				else
+					workerub = dynamic_cast<DdWorkerUB *>(worker_[i]);
 				break;
 			}
 
@@ -875,7 +925,10 @@ DSP_RTN_CODE DdMWSync::calculateUpperbound(
 	{
 		if (worker_[i]->getType() == DdWorker::UB)
 		{
-			workerub = dynamic_cast<DdWorkerUB*>(worker_[i]);
+			if (model_->isDro())
+				workerub = dynamic_cast<DdDroWorkerUBMpi *>(worker_[i]);
+			else
+				workerub = dynamic_cast<DdWorkerUB *>(worker_[i]);
 			DSPdebugMessage("Rank %d works for upper bounds.\n", comm_rank_);
 			break;
 		}
@@ -1058,6 +1111,7 @@ DSP_RTN_CODE DdMWSync::syncUpperbound(
 	FREE_MEMORY
 
 	return DSP_RTN_OK;
+#undef FREE_MEMORY
 }
 
 DSP_RTN_CODE DdMWSync::scatterCouplingSolutions(Solutions & solutions) {

@@ -73,7 +73,8 @@ public:
 	{
 		for (int i = 0, j = 0; i < n; ++i)
 		{
-			if (fabs(values[i]) < 1.0e-10) continue;
+			if (values[i] == 0)
+				continue;
 			if (j > 0 && j % 5 == 0) printf("\n");
 			printf("  [%6d] %+10d", i, values[i]);
 			j++;
