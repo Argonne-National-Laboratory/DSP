@@ -520,7 +520,6 @@ DSP_RTN_CODE StoModel::setWassersteinAmbiguitySet(double lp_norm, double eps)
 			 * TODO: Can we do in parallel?
 			 * The relevant issues need addressed first: 
 			 * - https://github.com/kibaekkim/DSPopt.jl/issues/14
-			 * - https://github.com/Argonne-National-Laboratory/DSP/issues/50
 			 */
 			for (int ss = 0; ss < nscen_; ++ss)
 			{
@@ -566,7 +565,7 @@ DSP_RTN_CODE StoModel::setWassersteinAmbiguitySet(double lp_norm, double eps)
 	 */
 
 	printf("[DRO] Set %d reference scenarios.\n", nrefs_);
-	printf("[DRO] Computed the Wasserstein distances with %f-norm.\n", lp_norm);
+	printf("[DRO] Computed the Wasserstein distances of order %f.\n", lp_norm);
 
 	return DSP_RTN_OK;
 }

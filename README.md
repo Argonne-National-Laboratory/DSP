@@ -5,7 +5,7 @@ Release: ![GitHub tag (latest SemVer)](https://img.shields.io/github/v/tag/Argon
 
 Documentation: [![Documentation Status](https://readthedocs.org/projects/dsp/badge/?version=master)](https://dsp.readthedocs.io/?badge=master)
 
-Status: [![Build Status](https://travis-ci.org/Argonne-National-Laboratory/DSP.svg?branch=master)](https://travis-ci.org/Argonne-National-Laboratory/DSP)
+Status: ![Build Status](https://github.com/Argonne-National-Laboratory/DSP/workflows/Build%20test/badge.svg)
 [![codecov](https://codecov.io/gh/Argonne-National-Laboratory/DSP/branch/master/graph/badge.svg)](https://codecov.io/gh/Argonne-National-Laboratory/DSP)
 
 --------
