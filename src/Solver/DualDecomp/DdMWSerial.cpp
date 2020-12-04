@@ -226,6 +226,7 @@ DSP_RTN_CODE DdMWSerial::run() {
 		workerlb->setTimeLimit(remainingTime());
 
 		/** Solve subproblems */
+		DSPdebugMessage("Start solving the workerlb problem\n");
 		DSP_RTN_CHECK_THROW(workerlb->solve());
 
 		/** update master */
@@ -397,6 +398,7 @@ DSP_RTN_CODE DdMWSerial::run() {
 			}
 			// DSPdebugMessage("s = %d, probability = %e, lambdas = \n", s, probability);
 			// DspMessage::printArray(model_->getNumSubproblemCouplingRows(sindex), lambdas[sindex]);
+			DSPdebugMessage("update workerlb problem.\n");
 			workerlb->subprobs_[s]->updateProblem(lambdas[sindex], probability, master_->bestprimobj_);
 			/** apply Benders cuts */
 			if (parFeasCuts_ >= 0 || parOptCuts_ >= 0)

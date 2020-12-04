@@ -13,3 +13,4 @@ build/*
 build_merge/*
 extra/glpk*
 cplex.log
+UserConfig.cmake

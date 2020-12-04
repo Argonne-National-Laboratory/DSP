@@ -17,6 +17,46 @@
 #include "Utility/DspMacros.h"
 #include "Utility/DspRtnCodes.h"
 
+/** quadratic row infomration for a scenario */
+struct QuadRowData {
+	int				nqrows; 		/** number of quadratic rows for a scenario  */
+    int *         	linnzcnt;  		/** number of nonzero coefficients in the linear part of each constraint  */
+    int *        	quadnzcnt;  	/** number of nonzero coefficients in the quadratic part of each constraint  */
+	double *		rhs; 			/** constraint rhs of each constraint */
+	int *			sense; 			/** constraint sense of each constraint */
+	int **        	linind; 		/** indices for the linear part */
+	double **      	linval; 		/** nonzero coefficient of the linear part */
+	int **      	quadrow;  		/** indices for the quadratic part */
+	int **      	quadcol;  		/** indices for the quadratic part */
+	double **     	quadval; 		/** nonzero coefficient of the quadratic part */ 
+
+	QuadRowData(){
+		nqrows = 0;
+		linnzcnt = NULL;
+		quadnzcnt = NULL;
+		rhs = NULL;
+		sense = NULL;
+		linind = NULL;
+		linval = NULL;
+		quadrow = NULL;
+		quadcol = NULL;
+		quadval = NULL;
+	}
+	~QuadRowData(){
+		if (nqrows > 0) {
+			FREE_ARRAY_PTR(linnzcnt);
+			FREE_ARRAY_PTR(quadnzcnt);
+			FREE_ARRAY_PTR(rhs);
+			FREE_ARRAY_PTR(sense);
+
+			FREE_2D_ARRAY_PTR(nqrows, linind);
+			FREE_2D_ARRAY_PTR(nqrows, linval);
+			FREE_2D_ARRAY_PTR(nqrows, quadrow);
+			FREE_2D_ARRAY_PTR(nqrows, quadcol);
+			FREE_2D_ARRAY_PTR(nqrows, quadval);
+		}
+	}
+};
 
 /*
  * This class is a wrapper for SMI, which reads and writes SMPS files.
@@ -47,7 +87,17 @@ public:
 	/** read DRO file */
 	DSP_RTN_CODE readDro(const char * filename);
 
+	/** construct a map that maps variable names to their indices */
+	bool mapVarnameIndex(map<string, int> &map_varName_index, const char * corefilename);
+
+	/** read quadratic data file, extending the smps file */
+	DSP_RTN_CODE readQuad(const char * smps, const char * filename);
+
 	void __printData();
+
+	/* print quadratic rows of scenario s, if s == -1, print quadratic rows in core */
+	DSP_RTN_CODE printQuadRows (const int s);
+	DSP_RTN_CODE printQuadRows (const QuadRowData *qc);
 
 public:
 
@@ -72,6 +122,12 @@ public:
 	/** get number of integer variables in core */
 	int getNumCoreIntegers() const {return nints_core_;}
 
+	/** get number of quadratic constraints in core */
+	int getNumCoreQRows() {return qc_row_core_->nqrows;}
+	
+	/** get number of quadratic constraints of a scenario*/
+	int getNumScenQRows(int scen) {return qc_row_scen_[scen].nqrows;}
+	
 	/** get objective function coefficients for a given stage */
 	const double * getObjCore(int stage) {return obj_core_[stage];}
 
@@ -90,6 +146,15 @@ public:
 
 	/** get core coefficeints for a given stage */
 	const CoinPackedVector * getRowCore(int i) {return rows_core_[i];}
+
+	/** get parameters for quadratic constraints in core*/
+	QuadRowData * getQuaraticsRowCore() const {return qc_row_core_;}
+
+	/** get parameters for quadratic constraints in a scenario */
+	QuadRowData * getQuaraticsRowScenario(int s) const {return &qc_row_scen_[s];}
+
+	bool hasQuadraticRowCore() const {return qc_row_core_->nqrows > 0 ? true : false;};
+	bool hasQuadraticRowScenario(int s) const {return qc_row_scen_[s].nqrows > 0 ? true : false;};
 
 	/** set initial solutions */
 	void setSolution(
@@ -227,6 +292,7 @@ protected:
 	double ** rlbd_core_;           /**< row lower bounds for each stage */
 	double ** rubd_core_;           /**< row upper bounds for each stage */
 	char **   ctype_core_;          /**< column types for each stage */
+	QuadRowData * qc_row_core_;		/**< parameters for quadratic rows in core: current version only accept noncoupling quadratic rows */
 
 	/*
 	 * Random data only (no core data)
@@ -240,6 +306,7 @@ protected:
 	CoinPackedMatrix ** qobj_scen_; /**< quadratic objective coefficients for each scenario */
 	CoinPackedVector ** rlbd_scen_; /**< row lower bounds for each scenario */
 	CoinPackedVector ** rubd_scen_; /**< row upper bounds for each scenario */
+	QuadRowData * qc_row_scen_;		/**< parameters for quadratic rows in scenarios: current version only accept noncoupling quadratic rows */
 
 	StoScenMap scen2stg_; /** map from scenario to stage */
 
