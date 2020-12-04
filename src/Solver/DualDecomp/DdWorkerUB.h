@@ -46,11 +46,9 @@ public:
 	/** A virtual memeber for finalizing solver. */
 	virtual DSP_RTN_CODE finalize() {return DSP_RTN_OK;}
 
-public:
-
 	/** evaluate solution */
-	double evaluate(CoinPackedVector * solution);
-	double evaluate(int n, double * solution);
+	virtual double evaluate(CoinPackedVector *solution);
+	virtual double evaluate(int n, double *solution);
 
 	virtual int getType() {return UB;}
 
@@ -66,14 +64,12 @@ public:
 	double bestub_; /**< best upper bound */
 	std::vector<std::vector<double> > primsols_; /**< primal solution for each subproblem */
 
-private:
-
+protected:
 	CoinPackedMatrix ** mat_mp_;
 	double** rlbd_org_; /**< original row lower bounds for each subproblem */
 	double** rubd_org_; /**< original row upper bounds for each subproblem */
 
-	DspOsi ** osi_;    /**< solver interface for each subproblem */
-	DspOsi * osi_dro_; /**< solver interface for DRO upper bound */
+	DspOsi **osi_; /**< solver interface for each subproblem */
 	double ub_; /**< upper bound */
 };
 

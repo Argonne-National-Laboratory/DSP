@@ -345,7 +345,11 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 
 			if (isroot)
 				cout << "Run distributionally robust dual decomposition" << endl;
+#ifdef DSP_HAS_MPI
+			solveDdMpi(env, MPI_COMM_WORLD);
+#else
 			solveDd(env);
+#endif
 		}
 		else
 		{

@@ -16,17 +16,18 @@
 #include "Solver/DualDecomp/DdMasterSubgrad.h"
 
 DdMWSerial::DdMWSerial(
-		DecModel *   model,  /**< model pointer */
-		DspParams *  par,    /**< parameters */
-		DspMessage * message /**< message pointer */):
-DdMW(model, par, message) {}
+	DecModel *model, /**< model pointer */
+	DspParams *par,	 /**< parameters */
+	DspMessage *message /**< message pointer */) : DdMW(model, par, message)
+{
+}
 
-DdMWSerial::DdMWSerial(const DdMWSerial& rhs) :
-DdMW(rhs) {}
+DdMWSerial::DdMWSerial(const DdMWSerial &rhs) : DdMW(rhs) {}
 
 DdMWSerial::~DdMWSerial() {}
 
-DSP_RTN_CODE DdMWSerial::init() {
+DSP_RTN_CODE DdMWSerial::init()
+{
 	BGN_TRY_CATCH
 
 	DdMW::init();
@@ -65,7 +66,8 @@ DSP_RTN_CODE DdMWSerial::init() {
 #ifdef DSP_HAS_SCIP
 	if (par_->getIntParam("DD/SUB/SOLVER") == OsiScip && (parFeasCuts_ >= 0 || parOptCuts_ >= 0))
 		worker_.push_back(new DdWorkerCGBd(model_, par_, message_));
-	else {
+	else
+	{
 		message_->print(0, "No Benders cut is generated.\n");
 		parFeasCuts_ = -1;
 		parOptCuts_ = -1;
@@ -73,17 +75,23 @@ DSP_RTN_CODE DdMWSerial::init() {
 #endif
 	/** create UB worker */
 	if (parEvalUb_ >= 0)
-		worker_.push_back(new DdWorkerUB(model_, par_, message_));
+	{
+		if (model_->isDro())
+			worker_.push_back(new DdDroWorkerUB(model_, par_, message_));
+		else
+			worker_.push_back(new DdWorkerUB(model_, par_, message_));
+	}
 	/** initialize workers */
 	for (unsigned i = 0; i < worker_.size(); ++i)
 		worker_[i]->init();
 
-	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+	END_TRY_CATCH_RTN(;, DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE DdMWSerial::finalize() {
+DSP_RTN_CODE DdMWSerial::finalize()
+{
 	BGN_TRY_CATCH
 
 #if 0
@@ -125,31 +133,32 @@ DSP_RTN_CODE DdMWSerial::finalize() {
 	/** finalize master-worker */
 	DdMW::finalize();
 
-	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+	END_TRY_CATCH_RTN(;, DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE DdMWSerial::run() {
-#define FREE_MEMORY \
-	FREE_ARRAY_PTR(lambdas) \
+DSP_RTN_CODE DdMWSerial::run()
+{
+#define FREE_MEMORY              \
+	FREE_ARRAY_PTR(lambdas)      \
 	FREE_ARRAY_PTR(nsubsolution) \
-	thetas = NULL; \
+	thetas = NULL;               \
 	Ps = NULL;
 
-	const double * thetas  = NULL; /**< of master problem */
-	double **      lambdas = NULL; /**< of master problem */
-	const double * Ps      = NULL; /**< of DRO master problem */
+	const double *thetas = NULL; /**< of master problem */
+	double **lambdas = NULL;	 /**< of master problem */
+	const double *Ps = NULL;	 /**< of DRO master problem */
 
-	int * nsubsolution = NULL; /**< size of subproblem solution */
+	int *nsubsolution = NULL; /**< size of subproblem solution */
 
 	/** pointers to workers */
-	DdWorkerLB * workerlb = NULL;
+	DdWorkerLB *workerlb = NULL;
 #ifdef DSP_HAS_SCIP
-	DdWorkerCGBd * workercg = NULL;
+	DdWorkerCGBd *workercg = NULL;
 #endif
-	DdWorkerUB * workerub = NULL;
-	TssModel* tss = NULL;
+	DdWorkerUB *workerub = NULL;
+	TssModel *tss = NULL;
 
 	Solutions coupling_solutions; /**< coupling solutions */
 
@@ -159,44 +168,49 @@ DSP_RTN_CODE DdMWSerial::run() {
 
 	BGN_TRY_CATCH
 
-	if (model_->isStochastic()) {
-		try {
-			tss = dynamic_cast<TssModel*>(model_);
-		} catch (const std::bad_cast &e) {
+	if (model_->isStochastic())
+	{
+		try
+		{
+			tss = dynamic_cast<TssModel *>(model_);
+		}
+		catch (const std::bad_cast &e)
+		{
 			printf("Error: Model claims to be stochastic when it is not\n");
-            return DSP_RTN_ERR;
+			return DSP_RTN_ERR;
 		}
 	}
 
 	/** retrieve DdWorker pointers */
 	for (unsigned i = 0; i < worker_.size(); ++i)
 	{
-		switch(worker_[i]->getType())
+		switch (worker_[i]->getType())
 		{
 		case DdWorker::LB:
-			workerlb = dynamic_cast<DdWorkerLB*>(worker_[i]);
+			workerlb = dynamic_cast<DdWorkerLB *>(worker_[i]);
 			break;
 		case DdWorker::CGBd:
 #ifdef DSP_HAS_SCIP
-			workercg = dynamic_cast<DdWorkerCGBd*>(worker_[i]);
+			workercg = dynamic_cast<DdWorkerCGBd *>(worker_[i]);
 #endif
 			break;
 		case DdWorker::UB:
-			workerub = dynamic_cast<DdWorkerUB*>(worker_[i]);
+			workerub = dynamic_cast<DdWorkerUB *>(worker_[i]);
 			break;
 		default:
 			message_->print(0, "Unknown worker type (%d).\n", worker_[i]->getType());
 			break;
 		}
 	}
-	assert(workerlb!=NULL);
+	assert(workerlb != NULL);
 
 	/** allocate memory for lambdas */
 	/** NOTE: lambdas will be used as shallow pointers. */
-	lambdas = new double * [model_->getNumSubproblems()];
+	lambdas = new double *[model_->getNumSubproblems()];
 
-	nsubsolution = new int [model_->getNumSubproblems()];
-	for (int s = 0; s < model_->getNumSubproblems(); ++s) {
+	nsubsolution = new int[model_->getNumSubproblems()];
+	for (int s = 0; s < model_->getNumSubproblems(); ++s)
+	{
 		nsubsolution[s] = workerlb->subprobs_[s]->getNumCols();
 		DSPdebugMessage("nsubsolution[%d] = %d\n", s, nsubsolution[s]);
 	}
@@ -208,7 +222,7 @@ DSP_RTN_CODE DdMWSerial::run() {
 	printHeaderInfo();
 
 	/** reset iteration info */
-	itercnt_   = 0;
+	itercnt_ = 0;
 	iterstime_ = CoinGetTimeOfDay();
 
 	/**
@@ -238,14 +252,14 @@ DSP_RTN_CODE DdMWSerial::run() {
 			master_->subprimobj_[sindex] = workerlb->subprobs_[s]->getPrimalObjective();
 			master_->subdualobj_[sindex] = workerlb->subprobs_[s]->getDualObjective();
 			CoinCopyN(workerlb->subprobs_[s]->getPrimalSolution(),
-					nsubsolution[s], master_->subsolution_[sindex]);
+					  nsubsolution[s], master_->subsolution_[sindex]);
 			subprimobj += workerlb->subprobs_[s]->getPrimalObjective();
 			subdualobj += workerlb->subprobs_[s]->getDualObjective();
 			DSPdebugMessage("Scenario %d, primobj %+e, dualobj %+e, primobj_sum %+e, dualobj_sum %+e\n",
-					workerlb->subprobs_[s]->sind_,
-					workerlb->subprobs_[s]->getPrimalObjective(),
-					workerlb->subprobs_[s]->getDualObjective(),
-					subprimobj, subdualobj);
+							workerlb->subprobs_[s]->sind_,
+							workerlb->subprobs_[s]->getPrimalObjective(),
+							workerlb->subprobs_[s]->getDualObjective(),
+							subprimobj, subdualobj);
 		}
 
 		if (parEvalUb_ >= 0 || parFeasCuts_ >= 0 || parOptCuts_ >= 0)
@@ -271,7 +285,7 @@ DSP_RTN_CODE DdMWSerial::run() {
 					/** move cuts to a global pool */
 					for (int i = 0; i < cuts.sizeCuts(); ++i)
 					{
-						OsiRowCut * rc = cuts.rowCutPtr(i);
+						OsiRowCut *rc = cuts.rowCutPtr(i);
 						cutsToAdd_->insert(rc);
 					}
 					cuts.dumpCuts();
@@ -288,7 +302,8 @@ DSP_RTN_CODE DdMWSerial::run() {
 				double oldub = master_->bestprimobj_;
 				for (unsigned i = 0; i < coupling_solutions.size(); ++i)
 				{
-					if (remainingTime() < 0) break;
+					if (remainingTime() < 0)
+						break;
 					/** set time limit */
 					workerub->setTimeLimit(remainingTime());
 					/** evaluate upper bounds */
@@ -303,10 +318,11 @@ DSP_RTN_CODE DdMWSerial::run() {
 				if (oldub > master_->bestprimobj_)
 				{
 					itercode_ = 'P';
-					DSPdebugMessage("model_->getNumCouplingCols() [%d] <= master_->bestprimsol_.size() [%d]", 
-						model_->getNumCouplingCols(), (int)master_->bestprimsol_.size());
-					assert(model_->getNumCouplingCols()<=master_->bestprimsol_.size());
-					for (int j = 0; j < model_->getNumCouplingCols(); ++j) {
+					DSPdebugMessage("model_->getNumCouplingCols() [%d] <= master_->bestprimsol_.size() [%d]",
+									model_->getNumCouplingCols(), (int)master_->bestprimsol_.size());
+					assert(model_->getNumCouplingCols() <= master_->bestprimsol_.size());
+					for (int j = 0; j < model_->getNumCouplingCols(); ++j)
+					{
 						master_->bestprimsol_[j] = (*coupling_solutions[bestprimsol])[j];
 					}
 				}
@@ -316,13 +332,14 @@ DSP_RTN_CODE DdMWSerial::run() {
 		}
 
 		/** update problem */
-#ifdef DSP_DEBUG		
+#ifdef DSP_DEBUG
 		DSPdebugMessage("subdualobj_:\n");
 		DspMessage::printArray(master_->subdualobj_.size(), &(master_->subdualobj_[0]));
 #endif
 		double olddual = master_->bestdualobj_;
 		master_->updateProblem();
-		if (olddual < master_->bestdualobj_) {
+		if (olddual < master_->bestdualobj_)
+		{
 			itercode_ = itercode_ == 'P' ? 'B' : 'D';
 		}
 
@@ -369,18 +386,22 @@ DSP_RTN_CODE DdMWSerial::run() {
 		itercnt_++;
 
 		/** retrieve master solution by part */
-		double * master_primsol = const_cast<double*>(master_->getPrimalSolution());
-		thetas  = master_primsol;
+		double *master_primsol = const_cast<double *>(master_->getPrimalSolution());
+		thetas = master_primsol;
 		for (int i = 0, j = model_->getNumSubproblems(); i < model_->getNumSubproblems(); ++i)
 		{
 			/** shallow copy */
 			lambdas[i] = master_primsol + j;
 			j += model_->getNumSubproblemCouplingRows(i);
 		}
-		if (model_->isStochastic()) {
-			if (model_->isDro()) {
+		if (model_->isStochastic())
+		{
+			if (model_->isDro())
+			{
 				Ps = master_primsol + master_->getNumCols() - tss->getNumScenarios();
-			} else {
+			}
+			else
+			{
 				Ps = tss->getProbability();
 			}
 		}
@@ -393,7 +414,8 @@ DSP_RTN_CODE DdMWSerial::run() {
 		{
 			sindex = workerlb->subprobs_[s]->sind_;
 			workerlb->subprobs_[s]->theta_ = thetas[sindex];
-			if (model_->isStochastic()) {
+			if (model_->isStochastic())
+			{
 				probability = Ps[sindex];
 			}
 			// DSPdebugMessage("s = %d, probability = %e, lambdas = \n", s, probability);
@@ -409,19 +431,22 @@ DSP_RTN_CODE DdMWSerial::run() {
 		}
 	}
 
-	if (parEvalUb_ >= 0 && model_->isStochastic()) {
-		DdWorkerUB * workerub = NULL;
+	if (parEvalUb_ >= 0 && model_->isStochastic())
+	{
+		DdWorkerUB *workerub = NULL;
 		for (unsigned i = 0; i < worker_.size(); ++i)
-			if (worker_[i]->getType() == DdWorker::UB) {
-				workerub = dynamic_cast<DdWorkerUB*>(worker_[i]);
+			if (worker_[i]->getType() == DdWorker::UB)
+			{
+				workerub = dynamic_cast<DdWorkerUB *>(worker_[i]);
 				break;
 			}
-		
+
 		/** evaluate UB to get primal solution for each scenario */
 		workerub->evaluate(model_->getNumCouplingCols(), &master_->bestprimsol_[0]);
-		for (int s = 0; s < tss->getNumScenarios(); ++s) {
-			CoinCopyN(workerub->primsols_[s].data(), tss->getNumCols(1), 
-				&master_->bestprimsol_[tss->getNumCols(0) + s * tss->getNumCols(1)]);
+		for (int s = 0; s < tss->getNumScenarios(); ++s)
+		{
+			CoinCopyN(workerub->primsols_[s].data(), tss->getNumCols(1),
+					  &master_->bestprimsol_[tss->getNumCols(0) + s * tss->getNumCols(1)]);
 			//DspMessage::printArray(tss->getNumCols(1), workerub->primsols_[s]);
 		}
 		DSPdebugMessage2("primsol_:\n");
@@ -432,7 +457,7 @@ DSP_RTN_CODE DdMWSerial::run() {
 	for (int i = 0; i < model_->getNumSubproblems(); ++i)
 		lambdas[i] = NULL;
 
-	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
+	END_TRY_CATCH_RTN(FREE_MEMORY, DSP_RTN_ERR)
 
 	FREE_MEMORY
 
@@ -443,16 +468,17 @@ DSP_RTN_CODE DdMWSerial::run() {
 #ifdef DSP_HAS_SCIP
 
 DSP_RTN_CODE DdMWSerial::generateBendersCuts(
-		DdWorkerCGBd * workercg, /**< CG worker pointer */
-		Solutions solutions, /**< solutions at which cuts are generated */
-		OsiCuts& cuts)
+	DdWorkerCGBd *workercg, /**< CG worker pointer */
+	Solutions solutions,	/**< solutions at which cuts are generated */
+	OsiCuts &cuts)
 {
 #define FREE_MEMORY \
 	FREE_ARRAY_PTR(aggcut)
 
 	int ret = DSP_STAT_MW_CONTINUE;
 
-	if (solutions.size() == 0) return ret;
+	if (solutions.size() == 0)
+		return ret;
 	if (model_->isStochastic() == false)
 	{
 		message_->print(0, "This problem is not a stochastic program. Benders cut option is valid only for stochastic programming.\n");
@@ -462,8 +488,8 @@ DSP_RTN_CODE DdMWSerial::generateBendersCuts(
 	}
 
 	vector<int> cuttype;
-	TssModel * tssmodel = NULL;
-	double * aggcut = NULL;
+	TssModel *tssmodel = NULL;
+	double *aggcut = NULL;
 	double aggrhs;
 
 	BGN_TRY_CATCH
@@ -473,10 +499,10 @@ DSP_RTN_CODE DdMWSerial::generateBendersCuts(
 	double walltime = CoinGetTimeOfDay();
 
 	/** downcast to TssModel */
-	tssmodel = dynamic_cast<TssModel*>(model_);
+	tssmodel = dynamic_cast<TssModel *>(model_);
 
 	/** allocate memory */
-	aggcut = new double [tssmodel->getNumCols(0) + 1];
+	aggcut = new double[tssmodel->getNumCols(0) + 1];
 
 	/** generate cuts */
 	for (unsigned i = 0; i < solutions.size(); ++i)
@@ -487,7 +513,7 @@ DSP_RTN_CODE DdMWSerial::generateBendersCuts(
 		/** generate cuts at a solution */
 		DSP_RTN_CHECK_THROW(workercg->generateCuts(solutions[i], &localcuts, cuttype));
 		DSPdebugMessage("Benders cut generator generated %d cuts for solution %d.\n",
-				localcuts.sizeCuts(), i);
+						localcuts.sizeCuts(), i);
 		DSPdebug(message_->printArray(solutions[i]));
 
 		/** check if there exists a feasibility cut */
@@ -518,7 +544,7 @@ DSP_RTN_CODE DdMWSerial::generateBendersCuts(
 
 				for (int j = 0; j < localcuts.sizeCuts(); ++j)
 				{
-					OsiRowCut * rc = localcuts.rowCutPtr(j);
+					OsiRowCut *rc = localcuts.rowCutPtr(j);
 					CoinPackedVector cutrow = rc->row();
 					for (int k = 0; k < cutrow.getNumElements(); ++k)
 						aggcut[cutrow.getIndices()[k]] += cutrow.getElements()[k];
@@ -547,7 +573,7 @@ DSP_RTN_CODE DdMWSerial::generateBendersCuts(
 				/** copy cut pointers */
 				for (int j = 0; j < localcuts.sizeCuts(); ++j)
 				{
-					OsiRowCut * rc = localcuts.rowCutPtr(j);
+					OsiRowCut *rc = localcuts.rowCutPtr(j);
 					DSPdebug2(rc->print());
 					cuts.insertIfNotDuplicate(*rc);
 
@@ -560,7 +586,7 @@ DSP_RTN_CODE DdMWSerial::generateBendersCuts(
 		/** free cuts */
 		for (int j = 0; j < localcuts.sizeCuts(); ++j)
 		{
-			OsiRowCut * rc = localcuts.rowCutPtr(j);
+			OsiRowCut *rc = localcuts.rowCutPtr(j);
 			FREE_PTR(rc);
 		}
 		localcuts.dumpCuts();
@@ -573,7 +599,7 @@ DSP_RTN_CODE DdMWSerial::generateBendersCuts(
 	workercg->s_cputimes_.push_back(CoinCpuTime() - cputime);
 	workercg->s_walltimes_.push_back(CoinGetTimeOfDay() - walltime);
 
-	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
+	END_TRY_CATCH_RTN(FREE_MEMORY, DSP_RTN_ERR)
 
 	FREE_MEMORY
 
@@ -582,7 +608,6 @@ DSP_RTN_CODE DdMWSerial::generateBendersCuts(
 }
 
 #endif
-
 
 //#ifdef DSP_HAS_GRB
 
@@ -593,7 +618,7 @@ DSP_RTN_CODE DdMWSerial::generateBendersCuts(
 // {
 //   	#define FREE_MEMORY\
 //   	FREE_ARRAY_PTR(aggcut)
-	
+
 //   	int ret = DSP_STAT_MW_CONTINUE;
 
 //   	if (solutions.size() == 0) return ret;
