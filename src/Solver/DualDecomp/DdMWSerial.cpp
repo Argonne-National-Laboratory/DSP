@@ -227,6 +227,7 @@ DSP_RTN_CODE DdMWSerial::run()
 		workerlb->setTimeLimit(remainingTime());
 
 		/** Solve subproblems */
+		DSPdebugMessage("Start solving the workerlb problem\n");
 		DSP_RTN_CHECK_THROW(workerlb->solve());
 
 		/** update master */

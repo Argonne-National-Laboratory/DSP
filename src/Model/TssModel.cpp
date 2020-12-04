@@ -57,6 +57,10 @@ DSP_RTN_CODE TssModel::setNumberOfScenarios(int nscen)
 	rlbd_scen_  = new CoinPackedVector * [nscen_];
 	rubd_scen_  = new CoinPackedVector * [nscen_];
 
+	/* data for quadratic constraints */
+	qc_row_core_ = new QuadRowData;
+	qc_row_scen_ = new QuadRowData[nscen_];
+
 	/** initialize memory */
 	for (int s = 0; s < nstgs_; ++s)
 	{
@@ -235,6 +239,89 @@ DSP_RTN_CODE TssModel::loadFirstStage(
 	return DSP_RTN_OK;
 }
 
+DSP_RTN_CODE TssModel::loadFirstStage(
+		const CoinBigIndex * start, /**< start index for each row */
+		const int *          index, /**< column indices */
+		const double *       value, /**< constraint elements */
+		const double *       clbd,  /**< column lower bounds */
+		const double *       cubd,  /**< column upper bounds */
+		const char *         ctype, /**< column types */
+		const double *       obj,   /**< objective coefficients */
+		const int * 		 qobjrowindex, /**< quadratic objective row indices */
+		const int *			 qobjcolindex, /**< quadratic objective column indices */
+		const double *		 qobjvalue, /**< quadratic objective constraint elements value */
+		const int 			 numq,  /**< number of quadratic terms */
+		const double *       rlbd,  /**< row lower bounds */
+		const double *       rubd,   /**< row upper bounds */
+		const int 			nqrows, /**< number of quadratic rows */
+		const int *         linnzcnt,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+		const int *        	quadnzcnt,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+		const double *		rhs, 		/**< constraint rhs of each constraint */
+		const int *			sense, 		/**< constraint sense of each constraint */
+		const int *         linstart,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+		const int *         linind, 	/**< indices for the linear part */
+		const double *      linval, 	/**< nonzero coefficient of the linear part */
+		const int *        	quadstart,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+		const int *       	quadrow,  	/**< indices for the quadratic part */
+		const int *       	quadcol,  	/**< indices for the quadratic part */
+		const double *      quadval 	/**< nonzero coefficient of the quadratic part */)
+{
+	BGN_TRY_CATCH
+	loadFirstStage(start, index, value, clbd, cubd, ctype, obj, qobjrowindex, qobjcolindex, qobjvalue, numq, rlbd, rubd);
+
+	if (nqrows > 0) {
+		/* allocate memory for quadratic constraints */
+		qc_row_core_->nqrows = nqrows;
+		qc_row_core_->linnzcnt = new int [nqrows];
+		qc_row_core_->quadnzcnt = new int [nqrows];
+		qc_row_core_->rhs = new double [nqrows];
+		qc_row_core_->sense = new int [nqrows];
+		qc_row_core_->linind = new int * [nqrows];
+		qc_row_core_->linval = new double * [nqrows];
+		qc_row_core_->quadrow = new int * [nqrows];
+		qc_row_core_->quadcol = new int * [nqrows];
+		qc_row_core_->quadval = new double * [nqrows];
+
+		/** allocate values */
+		for (int k = 0; k < nqrows; k++) 
+		{
+			qc_row_core_->linnzcnt[k] = linnzcnt[k];
+			qc_row_core_->quadnzcnt[k] = quadnzcnt[k];
+			qc_row_core_->rhs[k] = rhs[k];
+			qc_row_core_->sense[k] = sense[k];
+
+			qc_row_core_->linind[k] = new int [linnzcnt[k]];
+			qc_row_core_->linval[k] = new double [linnzcnt[k]];
+
+			qc_row_core_->quadrow[k] = new int [quadnzcnt[k]];
+			qc_row_core_->quadcol[k] = new int [quadnzcnt[k]];
+			qc_row_core_->quadval[k] = new double [quadnzcnt[k]];
+
+			for (int t = 0; t < qc_row_core_->linnzcnt[k]; t++) 
+			{
+				qc_row_core_->linind[k][t] = linind[linstart[k] + t];
+				qc_row_core_->linval[k][t] = linval[linstart[k] + t];
+			}
+			
+			for (int t = 0; t < qc_row_core_->quadnzcnt[k]; t++) 
+			{
+				qc_row_core_->quadrow[k][t] = quadrow[quadstart[k] + t];
+				qc_row_core_->quadcol[k][t] = quadcol[quadstart[k] + t];
+				qc_row_core_->quadval[k][t] = quadval[quadstart[k] + t];
+			}
+		}
+	}
+	
+	#ifdef DSP_DEBUG
+		printQuadRows(-1);
+	#endif
+
+	DSPdebugMessage("load first stage with quadratic constraints\n");
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
+}
+
 /** load second-stage problem */
 DSP_RTN_CODE TssModel::loadSecondStage(
         const int s,               /**< scenario index */
@@ -392,6 +479,90 @@ DSP_RTN_CODE TssModel::loadSecondStage(
 		DSPdebug(qobj_scen_[s]->verifyMtx(4));
 	}
 	DSPdebugMessage("load second stage with quadratic objective\n");
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
+};
+
+DSP_RTN_CODE TssModel::loadSecondStage(
+			const int            s,     /**< scenario index */
+			const double         prob,  /**< probability */
+			const CoinBigIndex * start, /**< start index for each row */
+			const int *          index, /**< column indices */
+			const double *       value, /**< constraint elements */
+			const double *       clbd,  /**< column lower bounds */
+			const double *       cubd,  /**< column upper bounds */
+			const char *         ctype, /**< column types */
+			const double *       obj,   /**< objective coefficients */
+			const int * 		 qobjrowindex, /**< quadratic objective row indices */
+			const int *			 qobjcolindex, /**< quadratic objective column indices */
+			const double *		 qobjvalue, /**< quadratic objective constraint elements value */
+			const CoinBigIndex 	 qnum,  /**< number of quadratic terms */
+			const double *       rlbd,  /**< row lower bounds */
+			const double *       rubd,   /**< row upper bounds */
+			const int 			nqrows, /**< number of quadratic rows */
+        	const int *         linnzcnt,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+        	const int *        	quadnzcnt,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+			const double *		rhs, 		/**< constraint rhs of each constraint */
+			const int *			sense, 		/**< constraint sense of each constraint */
+			const int *         linstart,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+			const int *         linind, 	/**< indices for the linear part */
+			const double *      linval, 	/**< nonzero coefficient of the linear part */
+			const int *        	quadstart,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+			const int *       	quadrow,  	/**< indices for the quadratic part */
+			const int *       	quadcol,  	/**< indices for the quadratic part */
+			const double *      quadval 	/**< nonzero coefficient of the quadratic part */)
+{
+	BGN_TRY_CATCH
+	loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, qobjrowindex, qobjcolindex, qobjvalue, qnum, rlbd, rubd);
+	
+	if (nqrows > 0) {
+		/* allocate memory for quadratic constraints */
+		qc_row_scen_[s].nqrows = nqrows;
+		qc_row_scen_[s].linnzcnt = new int [nqrows];
+		qc_row_scen_[s].quadnzcnt = new int [nqrows];
+		qc_row_scen_[s].rhs = new double [nqrows];
+		qc_row_scen_[s].sense = new int [nqrows];
+		qc_row_scen_[s].linind = new int * [nqrows];
+		qc_row_scen_[s].linval = new double * [nqrows];
+		qc_row_scen_[s].quadrow = new int * [nqrows];
+		qc_row_scen_[s].quadcol = new int * [nqrows];
+		qc_row_scen_[s].quadval = new double * [nqrows];
+
+		/** allocate values */
+		for (int k = 0; k < nqrows; k++) 
+		{
+			qc_row_scen_[s].linnzcnt[k] = linnzcnt[k];
+			qc_row_scen_[s].quadnzcnt[k] = quadnzcnt[k];
+			qc_row_scen_[s].rhs[k] = rhs[k];
+			qc_row_scen_[s].sense[k] = sense[k];
+
+			qc_row_scen_[s].linind[k] = new int [linnzcnt[k]];
+			qc_row_scen_[s].linval[k] = new double [linnzcnt[k]];
+
+			qc_row_scen_[s].quadrow[k] = new int [quadnzcnt[k]];
+			qc_row_scen_[s].quadcol[k] = new int [quadnzcnt[k]];
+			qc_row_scen_[s].quadval[k] = new double [quadnzcnt[k]];
+
+			for (int t = 0; t < qc_row_scen_[s].linnzcnt[k]; t++) 
+			{
+				qc_row_scen_[s].linind[k][t] = linind[linstart[k] + t];
+				qc_row_scen_[s].linval[k][t] = linval[linstart[k] + t];
+			}
+			
+			for (int t = 0; t < qc_row_scen_[s].quadnzcnt[k]; t++) 
+			{
+				qc_row_scen_[s].quadrow[k][t] = quadrow[quadstart[k] + t];
+				qc_row_scen_[s].quadcol[k][t] = quadcol[quadstart[k] + t];
+				qc_row_scen_[s].quadval[k][t] = quadval[quadstart[k] + t];
+			}
+		}
+		#ifdef DSP_DEBUG
+		printQuadRows(s);
+		#endif
+	}
+	
+	DSPdebugMessage("load second stage with quadratic constraints\n");
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;

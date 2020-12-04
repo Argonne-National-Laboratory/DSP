@@ -3,7 +3,7 @@
 
 #include "DspCInterface.h"
 #include "Model/TssModel.h"
-#include "Model/DecTssQcModel.h"
+// #include "Model/DecTssQcModel.h"
 
 int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* solnfile, char* paramfile, char* testvalue, char* quadfile);
 int readMpsDec(DspApiEnv* env, char* mpsfile, char* decfile);
@@ -266,7 +266,7 @@ int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* s
 	bool isroot = true;
 	bool issolved = true;
 	bool isstochastic = smpsfile != NULL ? true : false;
-	bool isquadratic = quadfile != NULL ? true : false;
+
 #ifdef DSP_HAS_MPI
 	int comm_rank, comm_size;
 	MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
@@ -278,7 +278,7 @@ int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* s
 	DspApiEnv* env = createEnv();
 
 	/* create model */
-	ret = createModel(env, isstochastic, isquadratic);
+	ret = createModel(env, isstochastic);
 	if (ret != 0) return ret;
 
 	// Read problem instance from file(s)

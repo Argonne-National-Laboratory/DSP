@@ -7,7 +7,7 @@
 // #define DSP_DEBUG
 
 #include "DspConfig.h"
-#include "Model/DecTssQcModel.h"
+#include "Model/DecTssModel.h"
 #include "Solver/Deterministic/DeDriver.h"
 #include "SolverInterface/DspOsiCpx.h"
 #include "SolverInterface/DspOsiGrb.h"
@@ -54,7 +54,13 @@ DSP_RTN_CODE DeDriver::run()
 	FREE_PTR(qobj)        \
 	FREE_ARRAY_PTR(rlbd)  \
 	FREE_ARRAY_PTR(rubd)
-
+#define FREE_QC_MEMORY       \
+	FREE_ARRAY_PTR(qc_row_scen)   \
+	FREE_ARRAY_PTR(linind)   \
+	FREE_ARRAY_PTR(quadrow)   \
+	FREE_ARRAY_PTR(quadcol)   \
+	FREE_ARRAY_PTR(has_qc_rows_scen)
+	
 	assert(model_);
 
 	/** model info */
@@ -65,8 +71,18 @@ DSP_RTN_CODE DeDriver::run()
 	CoinPackedMatrix *qobj = NULL;
 	char *ctype = NULL;
 	double *rlbd = NULL;
-	double *rubd = NULL;
-
+	double *rubd = NULL;	
+	
+	/* quadratic row data */
+	QuadRowData * qc_row_core = NULL; 
+	bool has_qc_rows_core = false;
+	int nscen = 0;
+	QuadRowData ** qc_row_scen = NULL; 
+	int ***linind = NULL;
+	int ***quadrow = NULL;
+	int ***quadcol = NULL;
+	bool *has_qc_rows_scen = NULL;
+	
 	BGN_TRY_CATCH
 
 	/** get DE model */
@@ -85,6 +101,8 @@ DSP_RTN_CODE DeDriver::run()
 			return DSP_RTN_ERR;
 		}
 
+		nscen = tssModel->getNumScenarios();
+
 		/** relax integrality? */
 		if (par_->getBoolPtrParam("RELAX_INTEGRALITY")[0])
 		{
@@ -96,6 +114,60 @@ DSP_RTN_CODE DeDriver::run()
 		if (par_->getBoolPtrParam("RELAX_INTEGRALITY")[1])
 		{
 			CoinFillN(ctype + tssModel->getNumCols(0), tssModel->getNumScenarios() * tssModel->getNumCols(1), 'C');
+		}
+
+		/** get quadratic rows data in core */
+		if (tssModel->hasQuadraticRowCore()) {
+			qc_row_core = tssModel->getQuaraticsRowCore();
+			has_qc_rows_core = true;
+		}
+
+		/** get quadratic rows data for scenarios */
+		qc_row_scen = new QuadRowData * [nscen];
+		linind = new int ** [nscen];
+		quadrow = new int ** [nscen];
+		quadcol = new int ** [nscen];
+		has_qc_rows_scen = new bool [nscen];
+		
+		for (int s = 0; s < nscen; s++)
+		{
+			if (tssModel->hasQuadraticRowScenario(s)) {
+				
+				has_qc_rows_scen[s] = true;
+				qc_row_scen[s] = tssModel->getQuaraticsRowScenario(s);
+#ifdef DSP_DEBUG
+				/* print qc_row_scen to test whether it is successfully received or not */
+				tssModel->printQuadRows(s);
+				tssModel->printQuadRows(qc_row_scen[s]);
+#endif
+				/* adjust indices for second stage variables */
+				int nqrow = qc_row_scen[s]->nqrows;
+				linind[s] = new int *[nqrow];
+				quadrow[s] = new int *[nqrow];
+				quadcol[s] = new int *[nqrow];
+
+				for (int i = 0; i < nqrow; i++)
+				{
+					int linnzcnt = qc_row_scen[s]->linnzcnt[i];
+					int quadnzcnt = qc_row_scen[s]->quadnzcnt[i];
+					
+					linind[s][i] = new int[linnzcnt];
+					quadrow[s][i] = new int[quadnzcnt];
+					quadcol[s][i] = new int[quadnzcnt];
+
+					for (int j = 0; j < linnzcnt; j++)
+					{
+						linind[s][i][j] = tssModel->getNumCols(1) * s + qc_row_scen[s]->linind[i][j];
+					}
+
+					for (int j = 0; j < quadnzcnt; j++)
+					{
+						quadrow[s][i][j] = tssModel->getNumCols(1) * s + qc_row_scen[s]->quadrow[i][j];
+						quadcol[s][i][j] = tssModel->getNumCols(1) * s + qc_row_scen[s]->quadcol[i][j];
+					}
+				}
+			} else 
+				has_qc_rows_scen[s] = false;
 		}
 	}
 	else
@@ -130,6 +202,21 @@ DSP_RTN_CODE DeDriver::run()
 	if (qobj != NULL)
 	{
 		osi_->loadQuadraticObjective(*qobj);
+	}
+	/* add quadratic rows */
+	if (model_->isStochastic()){
+		if (has_qc_rows_core) {
+			osi_->addQuadraticRows(qc_row_core->nqrows, qc_row_core->linnzcnt, qc_row_core->quadnzcnt, qc_row_core->rhs, qc_row_core->sense, (const int **) qc_row_core->linind, (const double **) qc_row_core->linval, (const int **) qc_row_core->quadrow, (const int **) qc_row_core->quadcol, (const double **)qc_row_core->quadval);
+		}
+		for (int s = 0; s < nscen; s++) {
+			if (has_qc_rows_scen[s]) {
+				osi_->addQuadraticRows(qc_row_scen[s]->nqrows, qc_row_scen[s]->linnzcnt, qc_row_scen[s]->quadnzcnt, qc_row_scen[s]->rhs, qc_row_scen[s]->sense, (const int **) linind[s], (const double **) qc_row_scen[s]->linval, (const int **) quadrow[s], (const int **) quadcol[s], (const double **)qc_row_scen[s]->quadval);
+
+				FREE_2D_ARRAY_PTR(qc_row_scen[s]->nqrows, linind[s]);
+				FREE_2D_ARRAY_PTR(qc_row_scen[s]->nqrows, quadrow[s]);
+				FREE_2D_ARRAY_PTR(qc_row_scen[s]->nqrows, quadcol[s]);
+			}
+		}
 	}
 
 	for (int j = 0; j < mat->getNumCols(); j++)
@@ -211,16 +298,19 @@ DSP_RTN_CODE DeDriver::run()
 	/** tic */
 	cputime_ = CoinCpuTime();
 	walltime_ = CoinGetTimeOfDay();
-
+	
+	DSPdebugMessage("start solving the deterministic model\n");
 	/** solve */
 	solve();
-
+	DSPdebugMessage("solved the deterministic model\n");
+	
 	/** toc */
 	cputime_ = CoinCpuTime() - cputime_;
 	walltime_ = CoinGetTimeOfDay() - walltime_;
 
 	/** get solutions */
 	status_ = osi_->status();
+	DSPdebugMessage("optimization status: %d\n", status_);
 	if (status_ == DSP_STAT_OPTIMAL ||
 		status_ == DSP_STAT_STOPPED_TIME ||
 		status_ == DSP_STAT_STOPPED_NODE ||
@@ -230,6 +320,7 @@ DSP_RTN_CODE DeDriver::run()
 		/** objective bounds */
 		bestprimobj_ = osi_->getPrimObjValue();
 		bestdualobj_ = osi_->getDualObjValue();
+		DSPdebugMessage("bestprimobj_=%f, bestdualobj_=%f\n", bestprimobj_, bestdualobj_);
 
 		/** solution */
 		if (osi_->si_->getColSolution())
@@ -240,24 +331,32 @@ DSP_RTN_CODE DeDriver::run()
 			// make sure that the solution vector has enough space.
 			if (primsol_.size() < osi_->si_->getNumCols())
 				primsol_.resize(osi_->si_->getNumCols());
+			DspMessage::printArray(osi_->si_->getNumCols(), osi_->si_->getColSolution());
+			
 			CoinCopyN(osi_->si_->getColSolution(), osi_->si_->getNumCols(), &primsol_[0]);
 			bestprimsol_ = primsol_;
 		}
-
+		
 		/** statistics */
 		numIterations_ = osi_->si_->getIterationCount();
-		numNodes_ = osi_->getNumNodes();
+		DSPdebugMessage("numIterations_=%d\n", numIterations_);
+		if (osi_->isMip())
+			numNodes_ = osi_->getNumNodes();
+		DSPdebugMessage("numNodes_=%d\n", numNodes_);
 	}
 	// osi_->si_->writeMps("dsp");
 
 	/** save memory */
 	FREE_MEMORY
+	if (model_->isStochastic())
+		FREE_QC_MEMORY
 
 	END_TRY_CATCH_RTN(FREE_MEMORY, DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
 
 #undef FREE_MEMORY
+#undef FREE_QC_MEMORY
 }
 
 DSP_RTN_CODE DeDriver::solve()

@@ -4,7 +4,7 @@
  *  Created on: Sep 22, 2014
  *      Author: kibaekkim
  */
-
+// #define DSP_DEBUG
 #include "CoinHelperFunctions.hpp"
 #include "StoModel.h"
 
@@ -35,6 +35,8 @@ StoModel::StoModel() :
 		qobj_scen_(NULL),
 		rlbd_scen_(NULL),
 		rubd_scen_(NULL),
+		qc_row_core_(NULL),
+		qc_row_scen_(NULL),
 		fromSMPS_(false),
 		isdro_(false),
 		nrefs_(0),
@@ -57,7 +59,8 @@ StoModel::StoModel(const StoModel & rhs) :
 		nrefs_(rhs.nrefs_),
 		wass_eps_(rhs.wass_eps_),
 		wass_dist_(rhs.wass_dist_),
-		refs_probability_(rhs.refs_probability_)
+		refs_probability_(rhs.refs_probability_),
+		qc_row_core_(rhs.qc_row_core_)
 {
 	/** allocate memory */
 	nrows_      = new int [nstgs_];
@@ -81,6 +84,7 @@ StoModel::StoModel(const StoModel & rhs) :
 	qobj_scen_  = new CoinPackedMatrix * [nscen_];
 	rlbd_scen_  = new CoinPackedVector * [nscen_];
 	rubd_scen_  = new CoinPackedVector * [nscen_];
+	qc_row_scen_ = new QuadRowData [nscen_];
 
 	/** copy */
 	CoinCopyN(rhs.nrows_, nstgs_, nrows_);
@@ -116,6 +120,7 @@ StoModel::StoModel(const StoModel & rhs) :
 	}
 	for (int i = nscen_ - 1; i >= 0; --i)
 	{
+		qc_row_scen_[i] = rhs.qc_row_scen_[i];
 		prob_[i] = rhs.prob_[i];
 		if (rhs.mat_scen_[i])
 			mat_scen_[i] = new CoinPackedMatrix(*(rhs.mat_scen_[i]));
@@ -177,6 +182,8 @@ StoModel::~StoModel()
 	FREE_2D_PTR(nscen_, qobj_scen_);
 	FREE_2D_PTR(nscen_, rlbd_scen_);
 	FREE_2D_PTR(nscen_, rubd_scen_);
+	FREE_PTR(qc_row_core_);
+	FREE_ARRAY_PTR(qc_row_scen_);
 	scen2stg_.clear();
 	nscen_ = 0;
 	nstgs_ = 0;
@@ -243,6 +250,8 @@ DSP_RTN_CODE StoModel::readSmps(const char * filename)
 	qobj_scen_  = new CoinPackedMatrix * [nscen_];
 	rlbd_scen_  = new CoinPackedVector * [nscen_];
 	rubd_scen_  = new CoinPackedVector * [nscen_];
+	qc_row_core_ = new QuadRowData;
+	qc_row_scen_ = new QuadRowData [nscen_];
 
 	for (i=0; i<nstgs_;i++){
 		qobj_core_[i]=NULL;
@@ -465,6 +474,365 @@ DSP_RTN_CODE StoModel::readDro(const char * filename)
 void StoModel::setProbability(double *probability)
 {
 	CoinCopyN(probability, nscen_, prob_);
+}
+
+/** read quadratic data file */
+DSP_RTN_CODE StoModel::readQuad(const char * smps, const char * filename)
+{
+	BGN_TRY_CATCH
+
+	map<string, int> map_varName_index;
+
+	if (!mapVarnameIndex(map_varName_index, smps)) 
+	{
+		char msg[128];
+		sprintf(msg, "Unable to map variables to their indices\n");
+		throw msg;
+	}
+
+	char quadfile[128];
+	sprintf(quadfile, "%s.txt", filename); 
+	ifstream myfile(quadfile);
+
+	string item;
+	string name, name2; 
+	double val;
+	int i, j;
+	int sind;
+	bool end_of_scen_data = false;
+
+	map<string, int>::iterator it;
+
+	if (myfile.is_open()) {
+		
+		while (myfile >> item) {
+		
+			if (item.find("NAME") != string::npos) 
+			{
+				myfile >> item;
+			} 
+			else if (item.find("SCEN") != string::npos) 
+			{	
+				/** start reading quad constr data for some scenario */		
+				while (1) {
+					
+					myfile >> sind;
+					vector<char> qrow_sense;
+					map<string, int> map_qrowName_index;
+
+					myfile >> item;
+					if (item.find("QUADROWS") == string::npos) {
+						char msg[128];
+						sprintf(msg, "Quadratic Constraints Data for each SCEN should be provided in this order: QUADROWS, LINTERMS, QUADTERMS, RHS\n");
+						throw msg;
+					}
+
+					/** read row data */
+					int nqrows = 0;
+					while (1) 
+					{
+						myfile >> item;
+						if (item.find("LINTERMS") != string::npos)
+							break;
+						else if (item == "G")
+							qrow_sense.push_back('G');
+						else if (item == "L")
+							qrow_sense.push_back('L');
+						else {
+							char msg[128];
+							sprintf(msg, "Quadratic constraints sense must be 'G' or 'L'\n");
+							throw msg;
+						}
+						myfile >> name;
+						map_qrowName_index[name] = nqrows;
+						nqrows++;
+					}
+
+					/** allocate memory */
+					assert(nqrows == qrow_sense.size());
+					assert(nqrows == map_qrowName_index.size());
+
+					/** read linind_, linval_ */
+					vector<vector<int>> linind(nqrows);
+					vector<vector<double>> linval(nqrows);
+					
+					while (1) {
+						myfile >> item;
+
+						if (item.find("QUADTERMS") != string::npos)
+							break;
+					
+						it = map_qrowName_index.find(item);
+
+						if (it == map_qrowName_index.end()) 
+						{
+							char msg[128];
+							sprintf(msg, "All rows should be declared before SCEN data\n");
+							throw msg; 
+						} else 
+						{
+							myfile >> name >> val;
+							linind[map_qrowName_index[item]].push_back(map_varName_index[name]);
+							linval[map_qrowName_index[item]].push_back(val);
+						}
+					}
+					
+					/** read quadrow_, quadcol_, quadval_ */
+					vector<vector<int>> quadrow(nqrows);
+					vector<vector<int>> quadcol(nqrows);
+					vector<vector<double>> quadval(nqrows);	
+
+					while (1) {
+						myfile >> item;
+
+						if (item.find("RHS") != string::npos)
+							break;
+
+						it = map_qrowName_index.find(item);
+
+						if (it == map_qrowName_index.end()) 
+						{
+							char msg[128];
+							sprintf(msg, "All rows should be declared before SCEN data\n");
+							throw msg; 
+						} else 
+						{
+							myfile >> name >> name2 >> val;
+							quadrow[map_qrowName_index[item]].push_back(map_varName_index[name]);
+							quadcol[map_qrowName_index[item]].push_back(map_varName_index[name2]);
+							quadval[map_qrowName_index[item]].push_back(val);
+						}
+					}
+
+					if (sind < 0) {
+						/* if sind == -1, it is qc data for core */
+						qc_row_core_->nqrows = nqrows;
+						qc_row_core_->linnzcnt = new int [nqrows];
+						qc_row_core_->quadnzcnt = new int [nqrows];
+						qc_row_core_->rhs = new double [nqrows];
+						qc_row_core_->sense = new int [nqrows];
+						qc_row_core_->linind = new int * [nqrows];
+						qc_row_core_->linval = new double * [nqrows];
+						qc_row_core_->quadrow = new int * [nqrows];
+						qc_row_core_->quadcol = new int * [nqrows];
+						qc_row_core_->quadval = new double * [nqrows];
+						
+						/** read sense_ */
+						for (i = 0; i < nqrows; i++) {
+							qc_row_core_->sense[i] = qrow_sense[i];
+						
+							assert(linind[i].size() == linval[i].size());
+							qc_row_core_->linnzcnt[i] = linval[i].size();
+							qc_row_core_->linind[i] = new int [qc_row_core_->linnzcnt[i]];
+							qc_row_core_->linval[i] = new double [qc_row_core_->linnzcnt[i]];
+
+							assert(quadrow[i].size() == quadcol[i].size());
+							assert(quadrow[i].size() == quadval[i].size());
+							qc_row_core_->quadnzcnt[i] = quadrow[i].size();
+							qc_row_core_->quadrow[i] = new int [qc_row_core_->quadnzcnt[i]];
+							qc_row_core_->quadcol[i] = new int [qc_row_core_->quadnzcnt[i]];
+							qc_row_core_->quadval[i] = new double [qc_row_core_->quadnzcnt[i]];
+
+							for (j = 0; j < qc_row_core_->linnzcnt[i]; j++) 
+							{
+								qc_row_core_->linind[i][j] = linind[i][j];
+								qc_row_core_->linval[i][j] = linval[i][j];
+							}
+
+							for (j = 0; j < qc_row_core_->quadnzcnt[i]; j++) 
+							{
+								qc_row_core_->quadrow[i][j] = quadrow[i][j];
+								qc_row_core_->quadcol[i][j] = quadcol[i][j];
+								qc_row_core_->quadval[i][j] = quadval[i][j];
+							}
+						}
+					} else {
+						qc_row_scen_[sind].nqrows = nqrows;
+						qc_row_scen_[sind].linnzcnt = new int [nqrows];
+						qc_row_scen_[sind].quadnzcnt = new int [nqrows];
+						qc_row_scen_[sind].rhs = new double [nqrows];
+						qc_row_scen_[sind].sense = new int [nqrows];
+						qc_row_scen_[sind].linind = new int * [nqrows];
+						qc_row_scen_[sind].linval = new double * [nqrows];
+						qc_row_scen_[sind].quadrow = new int * [nqrows];
+						qc_row_scen_[sind].quadcol = new int * [nqrows];
+						qc_row_scen_[sind].quadval = new double * [nqrows];
+						
+						/** read sense_ */
+						for (i = 0; i < nqrows; i++) {
+							qc_row_scen_[sind].sense[i] = qrow_sense[i];
+
+							assert(linind[i].size() == linval[i].size());
+							qc_row_scen_[sind].linnzcnt[i] = linval[i].size();
+							qc_row_scen_[sind].linind[i] = new int [qc_row_scen_[sind].linnzcnt[i]];
+							qc_row_scen_[sind].linval[i] = new double [qc_row_scen_[sind].linnzcnt[i]];
+
+							assert(quadrow[i].size() == quadcol[i].size());
+							assert(quadrow[i].size() == quadval[i].size());
+							qc_row_scen_[sind].quadnzcnt[i] = quadrow[i].size();
+							qc_row_scen_[sind].quadrow[i] = new int [qc_row_scen_[sind].quadnzcnt[i]];
+							qc_row_scen_[sind].quadcol[i] = new int [qc_row_scen_[sind].quadnzcnt[i]];
+							qc_row_scen_[sind].quadval[i] = new double [qc_row_scen_[sind].quadnzcnt[i]];
+
+							for (j = 0; j < qc_row_scen_[sind].linnzcnt[i]; j++) 
+							{
+								qc_row_scen_[sind].linind[i][j] = linind[i][j];
+								qc_row_scen_[sind].linval[i][j] = linval[i][j];
+							}
+
+							for (j = 0; j < qc_row_scen_[sind].quadnzcnt[i]; j++) 
+							{
+								qc_row_scen_[sind].quadrow[i][j] = quadrow[i][j];
+								qc_row_scen_[sind].quadcol[i][j] = quadcol[i][j];
+								qc_row_scen_[sind].quadval[i][j] = quadval[i][j];
+							}
+						}
+					}
+
+					/** read rhs_ */
+					while (1) {
+						myfile >> item;
+
+						if (item.find("SCEN") != string::npos)
+							break;
+						else if (item.find("ENDATA") != string::npos) 
+						{
+							end_of_scen_data = true;
+							break;
+						}
+					
+						it = map_qrowName_index.find(item);
+
+							if (it == map_qrowName_index.end()) 
+							{
+								char msg[128];
+								sprintf(msg, "All rows should be declared before SCEN data\n");
+								throw msg; 
+							} else 
+							{
+								myfile >> val;
+								if (sind < 0)
+									qc_row_core_->rhs[map_qrowName_index[item]] = val;
+								else 
+									qc_row_scen_[sind].rhs[map_qrowName_index[item]] = val;
+							}
+					}
+					#ifdef DSP_DEBUG
+						printQuadRows(sind);
+					#endif
+					if (end_of_scen_data) 
+						break;
+				}
+			} else 
+			{
+				char msg[128];
+				sprintf(msg, "Quadratic data file encountered unexpected input: %s\n", item.c_str());
+				throw msg;
+			}
+		}
+	    myfile.close();
+    } else {
+        cout << "Unable to open quad file";
+        return 1;
+    }
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
+}
+
+/** construct a map that maps variable names to their indices */
+bool StoModel::mapVarnameIndex(map<string, int> &map_varName_index, const char * smps) 
+{
+	char core[128];
+	sprintf(core, "%s.cor", smps); 
+	ifstream corefile (core);
+
+	string name, item;
+
+	map_varName_index.clear();
+    int nvars = 0;
+	vector<string> rowNames;
+
+	map<string, int>::iterator map_it;
+    vector<string>::iterator vec_it;
+
+    bool foundColumns = false;
+
+    if (corefile.is_open()) {
+        
+	    while (corefile >> item) {
+		
+            if (item.find("ROWS") != string::npos) {
+			
+                while (1) {
+			        corefile >> item >> name;
+
+                    if (item.find("COLUMNS") != string::npos) {
+                        foundColumns = true;
+                        map_varName_index[name] = nvars;
+                        nvars++;
+                        break;
+                    }
+
+                    if (name == "ENDATA" || item == "ENDATA") {
+                        cout << "Encountered ENDATA before reading Columns" << endl;
+                        break;
+                    }
+
+			        rowNames.push_back(name);
+                }
+		
+                if (foundColumns) {
+                
+                    while(1) {
+				
+	        			corefile >> name >> item;
+				
+			        	vec_it = find(rowNames.begin(), rowNames.end(), name);
+				        if (vec_it == rowNames.end()) 
+				        {
+					        /** var term */
+					        corefile >> item;
+
+					        if (name.find("RHS") != string::npos)
+						        break;
+					
+					        map_it = map_varName_index.find(name);
+  					        if (map_it == map_varName_index.end())
+    					    {
+    					        map_varName_index[name] = nvars;
+                                nvars++;
+					        }
+				        } else 
+				        {
+					        /* constraint term
+					        * does not do anything */
+				        }
+			        }
+		        } else {
+                    cout << "Columns data should follow Rows data" << endl;
+                    break;
+                }
+            }
+
+		if (item.find("ENDATA") != string::npos) 
+			break;
+        
+	    }
+    corefile.close();
+    } else {
+        cout << "Unable to open core file";
+        return false;
+    }
+
+#ifdef DSP_DEBUG
+    cout << "variable, index" << endl;
+    for (auto &v : map_varName_index)
+    cout << v.first << ", " << v.second << endl;
+#endif              
+
+	return true;
 }
 
 void StoModel::setSolution(int size, double * solution)
@@ -1050,6 +1418,81 @@ void StoModel::__printData()
 	}
 
 	printf("\n### END of printing StoModel data ###\n");
+}
+
+DSP_RTN_CODE StoModel::printQuadRows(const int s)
+{
+	BGN_TRY_CATCH
+
+	if (s < 0) {
+		for (int i = 0; i < qc_row_core_->nqrows; i++) 
+		{
+			cout << "Core " << i << "th quad constr: ";
+			for (int lt = 0; lt < qc_row_core_->linnzcnt[i]; lt++)
+			{
+				cout << qc_row_core_->linval[i][lt] << " x" << qc_row_core_->linind[i][lt] << " + ";
+			}
+			for (int qt = 0; qt < qc_row_core_->quadnzcnt[i]-1; qt++)
+			{
+				cout << qc_row_core_->quadval[i][qt] << " x" << qc_row_core_->quadrow[i][qt] << " x" << qc_row_core_->quadcol[i][qt] << " + ";
+			}
+			cout << qc_row_core_->quadval[i][qc_row_core_->quadnzcnt[i]-1] << " x" << qc_row_core_->quadrow[i][qc_row_core_->quadnzcnt[i]-1] << " x" << qc_row_core_->quadcol[i][qc_row_core_->quadnzcnt[i]-1];
+			if (qc_row_core_->sense[i] == 'L')
+				cout << " <= " << qc_row_core_->rhs[i] << endl;
+			else 
+				cout << " >= " << qc_row_core_->rhs[i] << endl;
+		}
+	} else {
+		for (int i = 0; i < qc_row_scen_[s].nqrows; i++) 
+		{
+			cout << "Scen " << s << "th " << i << "th quad constr: ";
+			for (int lt = 0; lt < qc_row_scen_[s].linnzcnt[i]; lt++)
+			{
+				cout << qc_row_scen_[s].linval[i][lt] << " x" << qc_row_scen_[s].linind[i][lt] << " + ";
+			}
+			for (int qt = 0; qt < qc_row_scen_[s].quadnzcnt[i]-1; qt++)
+			{
+				cout << qc_row_scen_[s].quadval[i][qt] << " x" << qc_row_scen_[s].quadrow[i][qt] << " x" << qc_row_scen_[s].quadcol[i][qt] << " + ";
+			}
+			cout << qc_row_scen_[s].quadval[i][qc_row_scen_[s].quadnzcnt[i]-1] << " x" << qc_row_scen_[s].quadrow[i][qc_row_scen_[s].quadnzcnt[i]-1] << " x" << qc_row_scen_[s].quadcol[i][qc_row_scen_[s].quadnzcnt[i]-1];
+			if (qc_row_scen_[s].sense[i] == 'L')
+				cout << " <= " << qc_row_scen_[s].rhs[i] << endl;
+			else 
+				cout << " >= " << qc_row_scen_[s].rhs[i] << endl;
+		}
+	}
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
+}
+
+DSP_RTN_CODE StoModel::printQuadRows(const QuadRowData *qc)
+{
+	BGN_TRY_CATCH
+
+	for (int i = 0; i < qc->nqrows; i++) 
+	{
+		cout << i << "th quad constr: ";
+
+		for (int lt = 0; lt < qc->linnzcnt[i]; lt++)
+		{
+			cout << qc->linval[i][lt] << " x" << qc->linind[i][lt] << " + ";
+		}
+		for (int qt = 0; qt < qc->quadnzcnt[i]-1; qt++)
+		{
+			cout << qc->quadval[i][qt] << " x" << qc->quadrow[i][qt] << " x" << qc->quadcol[i][qt] << " + ";
+		}
+		cout << qc->quadval[i][qc->quadnzcnt[i]-1] << " x" << qc->quadrow[i][qc->quadnzcnt[i]-1] << " x" << qc->quadcol[i][qc->quadnzcnt[i]-1];
+		if (qc->sense[i] == 'L')
+			cout << " <= " << qc->rhs[i] << endl;
+		else 
+			cout << " >= " << qc->rhs[i] << endl;
+	}
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
 }
 
 double StoModel::getWassersteinDist(int i, int j) {

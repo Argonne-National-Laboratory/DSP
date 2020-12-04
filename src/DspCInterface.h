@@ -20,7 +20,6 @@
 
 class TssModel;
 class DecTssModel;
-class DecTssQcModel;
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,7 +29,7 @@ extern "C" {
 DspApiEnv * createEnv(void);
 
 /** create model */
-int createModel(DspApiEnv * env, bool isstochastic, bool isquadratic);
+int createModel(DspApiEnv * env, bool isstochastic);
 
 /** free API environment */
 void freeEnv(DspApiEnv * &env);
@@ -43,9 +42,6 @@ void freeSolver(DspApiEnv * env);
 
 /** If current model is stochastic, return the model as a TssModel object. If no model exists, create one. */
 TssModel * getTssModel(DspApiEnv * env);
-
-/** If current model is quadratic, return the model as a QcModel object. */
-DecTssQcModel * getDecTssQcModel(DspApiEnv * env);
 
 /** get model pointer */
 DecModel * getModelPtr(DspApiEnv * env);
@@ -62,12 +58,6 @@ void setDimensions(
 		const int   nrows1, /**< number of first-stage rows */
 		const int   ncols2, /**< number of second-stage columns */
 		const int   nrows2  /**< number of second-stage rows */);
-
-/** set DecTssQcModel::QcRowData dimensions */
-void setQcRowDataDimensions(DspApiEnv * env);
-
-/** set quadratic constraint dimensions */
-void setQcDimensions(DspApiEnv * env, int s, int nqrows);
 
 /** read smps files */
 int readSmps(DspApiEnv * env, const char * smps);
@@ -108,6 +98,35 @@ void loadQuadraticFirstStage(
 		const double *       rlbd,  /**< row lower bounds */
 		const double *       rubd   /**< row upper bounds */);
 
+/** load first-stage problem with quadratic objective and constraints*/
+void loadQCQPFirstStage(
+			DspApiEnv *          env,   	/**< pointer to API object */
+			const CoinBigIndex * start, 	/**< start index for each row */
+			const int *          index, 	/**< column indices */
+			const double *       value, 	/**< constraint elements */
+			const double *       clbd,  	/**< column lower bounds */
+			const double *       cubd,  	/**< column upper bounds */
+			const char *         ctype, 	/**< column types */
+			const double *       obj,   	/**< objective coefficients */
+			const int * 		 qobjrowindex, /**< quadratic objective row indices */
+			const int *			 qobjcolindex, /**< quadratic objective column indices */
+			const double *		 qobjvalue, /**< quadratic objective constraint elements value */
+			const CoinBigIndex 	 qobjnum,  	/**< number of quadratic terms in the objective */
+			const double *       rlbd,  	/**< row lower bounds */
+			const double *       rubd,   	/**< row upper bounds */
+			const int 			nqrows, 	/**< number of quadratic rows */
+        	const int *         linnzcnt,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+        	const int *        	quadnzcnt,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+			const double *		rhs, 		/**< constraint rhs of each constraint */
+			const int *			sense, 		/**< constraint sense of each constraint */
+			const int *         linstart,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+			const int *         linind, 	/**< indices for the linear part */
+			const double *      linval, 	/**< nonzero coefficient of the linear part */
+			const int *        	quadstart,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+			const int *       	quadrow,  	/**< indices for the quadratic part */
+			const int *       	quadcol,  	/**< indices for the quadratic part */
+			const double *      quadval 	/**< nonzero coefficient of the quadratic part */);
+
 /** load second-stage problem */
 void loadSecondStage(
  		DspApiEnv *          env,   /**< pointer to API object */
@@ -143,21 +162,35 @@ void loadQuadraticSecondStage(
 		const double *       rubd   /**< row upper bounds */);		
 
 /** load quadratic constraints to the second stage */
-void loadQuadraticRows(
-		DspApiEnv *         env, 	  	/**< pointer to API object */
-        const int           s,     		/**< scenario index */
-		const int 			nqrows,		/**< number of quadratic constraints */
-        const int *         linnzcnt,  	/**< number of nonzero coefficients in the linear part of each constraint  */
-        const int *        	quadnzcnt,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
-		const double *		rhs, 		/**< constraint rhs of each constraint */
-		const int *			sense, 		/**< constraint sense of each constraint */
-		const int *         linstart,  	/**< number of nonzero coefficients in the linear part of each constraint  */
-		const int *         linind, 	/**< indices for the linear part */
-		const double *      linval, 	/**< nonzero coefficient of the linear part */
-		const int *        	quadstart,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
-		const int *       	quadrow,  	/**< indices for the quadratic part */
-		const int *       	quadcol,  	/**< indices for the quadratic part */
-		const double *      quadval 	/**< nonzero coefficient of the quadratic part */ );
+void loadQCQPSecondStage(
+			DspApiEnv *          env,   	/**< pointer to API object */
+			const int            s,     	/**< scenario index */
+			const double         prob,  	/**< probability */
+			const CoinBigIndex * start, 	/**< start index for each row */
+			const int *          index, 	/**< column indices */
+			const double *       value, 	/**< constraint elements */
+			const double *       clbd,  	/**< column lower bounds */
+			const double *       cubd,  	/**< column upper bounds */
+			const char *         ctype, 	/**< column types */
+			const double *       obj,   	/**< objective coefficients */
+			const int * 		 qobjrowindex, /**< quadratic objective row indices */
+			const int *			 qobjcolindex, /**< quadratic objective column indices */
+			const double *		 qobjvalue, /**< quadratic objective constraint elements value */
+			const CoinBigIndex 	 qnum,  	/**< number of quadratic terms */
+			const double *       rlbd,  	/**< row lower bounds */
+			const double *       rubd,   	/**< row upper bounds */
+			const int 			nqrows, 	/**< number of quadratic rows */
+        	const int *         linnzcnt,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+        	const int *        	quadnzcnt,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+			const double *		rhs, 		/**< constraint rhs of each constraint */
+			const int *			sense, 		/**< constraint sense of each constraint */
+			const int *         linstart,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+			const int *         linind, 	/**< indices for the linear part */
+			const double *      linval, 	/**< nonzero coefficient of the linear part */
+			const int *        	quadstart,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+			const int *       	quadrow,  	/**< indices for the quadratic part */
+			const int *       	quadcol,  	/**< indices for the quadratic part */
+			const double *      quadval 	/**< nonzero coefficient of the quadratic part */);
 
 /** load block problems */
 void loadBlockProblem(
