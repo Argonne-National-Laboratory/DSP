@@ -9,8 +9,7 @@
 
 #include "Utility/DspMacros.h"
 #include "Utility/DspMessage.h"
-// #include "Model/TssModel.h"
-#include "Model/DecTssQcModel.h"
+#include "Model/DecTssModel.h"
 #include "Solver/DualDecomp/DdSub.h"
 #include "SolverInterface/DspOsiClp.h"
 #include "SolverInterface/DspOsiCpx.h"
@@ -180,6 +179,10 @@ DSP_RTN_CODE DdSub::createProblem() {
     double cubd_aux[1];
     double obj_aux[1];
     int cpl_ncols;
+	QuadRowData * qc_row_core; 
+	QuadRowData * qc_row_scen; 
+	bool has_qc_rows_core = false;
+	bool has_qc_rows_scen = false;
 
 	BGN_TRY_CATCH
 
@@ -269,6 +272,30 @@ DSP_RTN_CODE DdSub::createProblem() {
             }
             CoinFillN(ctype + tssModel->getNumCols(0), tssModel->getNumCols(1), 'C');
         }
+
+		/** get quadratic rows data */
+		if (tssModel->hasQuadraticRowCore()) {
+			has_qc_rows_core = true;
+			qc_row_core = tssModel->getQuaraticsRowCore();
+
+		#ifdef DSP_DEBUG
+			/* print qcrowdata to test whether it is successfully received or not */
+			cout << "DdSub's quadratic constraints in core: " << endl;
+			tssModel->printQuadRows(-1);
+			tssModel->printQuadRows(qc_row_core);
+		#endif
+		}
+		if (tssModel->hasQuadraticRowScenario(sind_)) {
+			has_qc_rows_scen = true;
+			qc_row_scen = tssModel->getQuaraticsRowScenario(sind_);
+
+		#ifdef DSP_DEBUG
+			/* print qcrowdata to test whether it is successfully received or not */
+			cout << "DdSub's quadratic constraints in scen: " << endl;
+			tssModel->printQuadRows(sind_);
+			tssModel->printQuadRows(qc_row_scen);
+		#endif
+		}
     } else {
         if (parRelaxIntegrality_[0] || parRelaxIntegrality_[1]) {
             for (int j = 0; j < mat->getNumCols(); j++) {
@@ -318,40 +345,25 @@ DSP_RTN_CODE DdSub::createProblem() {
 	DspMessage::printArray(mat->getNumCols(), obj);
 #endif
     getSiPtr()->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
+	/* add quadratic rows */
+	if (has_qc_rows_core) {
+		osi_->addQuadraticRows(qc_row_core->nqrows, qc_row_core->linnzcnt, qc_row_core->quadnzcnt, qc_row_core->rhs, qc_row_core->sense, (const int **) qc_row_core->linind, (const double **) qc_row_core->linval, (const int **) qc_row_core->quadrow, (const int **) qc_row_core->quadcol, (const double **) qc_row_core->quadval);
+	}
+	if (has_qc_rows_scen) {
+		osi_->addQuadraticRows(qc_row_scen->nqrows, qc_row_scen->linnzcnt, qc_row_scen->quadnzcnt, qc_row_scen->rhs, qc_row_scen->sense, (const int **) qc_row_scen->linind, (const double **) qc_row_scen->linval, (const int **) qc_row_scen->quadrow, (const int **) qc_row_scen->quadcol, (const double **) qc_row_scen->quadval);
+	}
+#ifdef DSP_DEBUG
+		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
+		char lpfilename[128];
+		sprintf(lpfilename, "DdWorkerLB_scen%d.lp", sind_); 
+		osi_->writeProb(lpfilename, NULL);
+#endif
+
 	for (int j = 0; j < mat->getNumCols(); ++j) {
 		if (ctype[j] != 'C')
 			getSiPtr()->setInteger(j);
 	}
     DSPdebug(mat->verifyMtx(4));
-
-	/** add quadratic constraints */
-	if (model_->isQuadratic())
-	{
-		DecTssQcModel * qcModel;
-		try
-		{
-			qcModel = dynamic_cast<DecTssQcModel *>(model_);
-		}
-		catch (const std::bad_cast& e)
-		{
-			printf("Model claims to be quadratic when it is not");
-			return DSP_RTN_ERR;
-		}
-
-		QcRowDataScen *qcrowdata = qcModel->getQcRowData(sind_);
-
-		/* print qcrowdata to test whether it is successfully received or not */
-        // qcModel->printQuadRows(sind_);
-        // qcModel->printQuadRows(qcrowdata);
-        	
-		osi_->addQuadraticRows(qcrowdata->nqrows_, qcrowdata->linnzcnt_, qcrowdata->quadnzcnt_, qcrowdata->rhs_, qcrowdata->sense_, (const int **) qcrowdata->linind_, (const double **) qcrowdata->linval_, (const int **) qcrowdata->quadrow_, (const int **) qcrowdata->quadcol_, (const double **) qcrowdata->quadval_);
-	#ifdef DSP_DEBUG
-		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
-		char lpfilename[128];
-		sprintf(lpfilename, "DdWorkerLB_scen%d.lp", sind_); 
-		osi_->writeProb(lpfilename, NULL);
-	#endif
-	}
 
 	/** set solution gap tolerance */
 	if (nIntegers > 0)
@@ -459,7 +471,7 @@ DSP_RTN_CODE DdSub::updateProblem(
 #ifdef DSP_DEBUG
 		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
 		char lpfilename[128];
-		sprintf(lpfilename, "DdWorkerLB_scen%d.lp", sind_); 
+		sprintf(lpfilename, "DdWorkerLB_scen_update%d.lp", sind_); 
 		osi_->writeProb(lpfilename, NULL);
 #endif
 

@@ -6,7 +6,7 @@
  */
 
 // #define DSP_DEBUG
-#include "Model/DecTssQcModel.h"
+#include "Model/DecTssModel.h"
 #include "Solver/DualDecomp/DdWorkerUB.h"
 #include "SolverInterface/DspOsiCpx.h"
 #include "SolverInterface/DspOsiGrb.h"
@@ -151,50 +151,50 @@ DSP_RTN_CODE DdWorkerUB::createProblem()
 		primsols_[s].resize(osi_[s]->si_->getNumCols());
 
 		/** add quadratic constraints */
-		if (model_->isQuadratic())
+		if (tss->hasQuadraticRowCore()) 
 		{
-			DecTssQcModel *qcModel;
-			try
-			{
-				qcModel = dynamic_cast<DecTssQcModel *>(model_);
-			}
-			catch (const std::bad_cast &e)
-			{
-				printf("Model claims to be quadratic when it is not");
-				return DSP_RTN_ERR;
-			}
+			/* nothing to do since current version only accepts noncoupling quadratic rows
+			 * any coupling solution obtained from each subproblem will satisfy the first stage quadratic rows 
+			 */
+		}
+		if (tss->hasQuadraticRowScenario(s)) 
+		{
+			QuadRowData * qc_row_data = tss->getQuaraticsRowScenario(s);
 
-			QcRowDataScen *qcrowdata = qcModel->getQcRowData(s);
-
-			/* print qcrowdata to test whether it is successfully received or not */
-			// qcModel->printQuadRows(s);
-			// qcModel->printQuadRows(qcrowdata);
-
+#ifdef DSP_DEBUG
+			/* print qc_row_data to test whether it is successfully received or not */
+			tss->printQuadRows(s);
+			tss->printQuadRows(qc_row_data);
+#endif
 			/* Note that current version supports quadratic constraints with only second stage variables */
-			int **linind = new int *[qcrowdata->nqrows_];
-			int **quadrow = new int *[qcrowdata->nqrows_];
-			int **quadcol = new int *[qcrowdata->nqrows_];
+			int nqrow = qc_row_data->nqrows;
+			int ** linind = new int * [nqrow];
+			int ** quadrow = new int * [nqrow];
+			int ** quadcol = new int * [nqrow];
+			
+			for (int i = 0; i < nqrow; i++)
+			{	
+				int linnzcnt = qc_row_data->linnzcnt[i];
+				int quadnzcnt = qc_row_data->quadnzcnt[i];
+				
+				linind[i] = new int [linnzcnt];
+				quadrow[i] = new int [quadnzcnt];
+				quadcol[i] = new int [quadnzcnt];
 
-			for (int i = 0; i < qcrowdata->nqrows_; i++)
-			{
-				linind[i] = new int[qcrowdata->linnzcnt_[i]];
-				quadrow[i] = new int[qcrowdata->quadnzcnt_[i]];
-				quadcol[i] = new int[qcrowdata->quadnzcnt_[i]];
-
-				for (int j = 0; j < qcrowdata->linnzcnt_[i]; j++)
+				for (int j = 0; j < linnzcnt; j++) 
 				{
-					linind[i][j] = qcrowdata->linind_[i][j] - qcModel->getNumCols(0);
+					linind[i][j] = qc_row_data->linind[i][j] - tss->getNumCols(0);
 
 					if (linind[i][j] < 0)
 					{
 						throw "Current version supports quadratic constraints in non-coupling rows only./n";
 					}
 				}
-
-				for (int j = 0; j < qcrowdata->quadnzcnt_[i]; j++)
+        
+				for (int j = 0; j < qc_row_data->quadnzcnt[i]; j++) 
 				{
-					quadrow[i][j] = qcrowdata->quadrow_[i][j] - qcModel->getNumCols(0);
-					quadcol[i][j] = qcrowdata->quadcol_[i][j] - qcModel->getNumCols(0);
+					quadrow[i][j] = qc_row_data->quadrow[i][j] - tss->getNumCols(0);
+					quadcol[i][j] = qc_row_data->quadcol[i][j] - tss->getNumCols(0);
 
 					if (quadrow[i][j] < 0 || quadcol[i][j] < 0)
 					{
@@ -202,17 +202,11 @@ DSP_RTN_CODE DdWorkerUB::createProblem()
 					}
 				}
 			}
-
-			osi_[s]->addQuadraticRows(qcrowdata->nqrows_, qcrowdata->linnzcnt_, qcrowdata->quadnzcnt_, qcrowdata->rhs_, qcrowdata->sense_, (const int **)linind, (const double **)qcrowdata->linval_, (const int **)quadrow, (const int **)quadcol, (const double **)qcrowdata->quadval_);
-#ifdef DSP_DEBUG
-			/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
-			char lpfilename[128];
-			sprintf(lpfilename, "DdWorkerUB_scen%d.lp", s);
-			osi_[s]->writeProb(lpfilename, NULL);
-#endif
-			FREE_2D_ARRAY_PTR(qcrowdata->nqrows_, linind);
-			FREE_2D_ARRAY_PTR(qcrowdata->nqrows_, quadrow);
-			FREE_2D_ARRAY_PTR(qcrowdata->nqrows_, quadcol);
+			osi_[s]->addQuadraticRows(qc_row_data->nqrows, qc_row_data->linnzcnt, qc_row_data->quadnzcnt, qc_row_data->rhs, qc_row_data->sense, (const int **) linind, (const double **) qc_row_data->linval, (const int **) quadrow, (const int **) quadcol, (const double **) qc_row_data->quadval);
+			
+			FREE_2D_ARRAY_PTR(nqrow, linind);
+			FREE_2D_ARRAY_PTR(nqrow, quadrow);
+			FREE_2D_ARRAY_PTR(nqrow, quadcol);
 		}
 
 		FREE_MEMORY
@@ -269,14 +263,10 @@ double DdWorkerUB::evaluate(CoinPackedVector *solution)
 
 	/** allocate memory */
 	x = solution->denseVector(tss->getNumCols(0));
-
-#ifdef DSP_DEBUG
-	for (int i = 0; i < tss->getNumCols(0); i++)
-		cout << "x[" << i << "] : " << x[i] << endl;
-#endif
-
-	for (int s = nsubprobs - 1; s >= 0; --s)
-	{
+  // DSPdebugMessage("x to evaluate:\n");
+	// DspMessage::printArray(tss->getNumCols(0), x);
+	
+	for (int s = nsubprobs - 1; s >= 0; --s) {
 		/** calculate Tx */
 		Tx = new double[mat_mp_[s]->getNumRows()];
 		mat_mp_[s]->times(x, Tx);
@@ -298,10 +288,10 @@ double DdWorkerUB::evaluate(CoinPackedVector *solution)
 		FREE_ARRAY_PTR(Tx)
 
 #ifdef DSP_DEBUG
-		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
-		char lpfilename[128];
-		sprintf(lpfilename, "DdWorkerUB_scen%d.lp", s);
-		osi_[s]->writeProb(lpfilename, NULL);
+      /* write in lp file to see whether the quadratic rows are successfully added to the model or not */
+			char lpfilename[128];
+			sprintf(lpfilename, "DdWorkerUB_scen_updated%d.lp", s); 
+			osi_[s]->writeProb(lpfilename, NULL);
 #endif
 	}
 	DSPdebugMessage("cx_weighted %e\n", cx_weighted);

@@ -144,7 +144,7 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 	bool isroot = true;
 	bool issolved = true;
 	bool isstochastic = smpsfile != NULL ? true : false;
-	bool isquadratic = quadfile != NULL ? true : false;
+	
 #ifdef DSP_HAS_MPI
 	int comm_rank, comm_size;
 	MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
@@ -157,7 +157,7 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 	DspApiEnv *env = createEnv();
 
 	/* create model */
-	ret = createModel(env, isstochastic, isquadratic);
+	ret = createModel(env, isstochastic);
 	if (ret != 0)
 		return ret;
 
@@ -221,6 +221,7 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 			return ret;
 		if (isroot)
 		{
+			cout << "First stage: " << getNumQRows(env, -1) << " quadratic rows" << endl;
 			for (int s = 0; s < getNumScenarios(env); s++)
 				cout << "Second stage: " << getNumQRows(env, s) << " quadratic rows in scenario " << s << endl;
 		}

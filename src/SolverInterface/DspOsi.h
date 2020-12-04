@@ -109,6 +109,9 @@ public:
 	/** get number of branch-and-bound nodes explored */
 	virtual int getNumNodes() {return 0;}
 
+	/** get ismip_ */
+	virtual bool isMip() {return ismip_;}
+
 	/** set log level */
 	virtual void setLogLevel(int level) {
 		si_->messageHandler()->setLogLevel(level);

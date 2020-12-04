@@ -146,7 +146,6 @@ public:
 	bool nonanticipativity() {return true;}
 
 	bool isStochastic() {return true;}
-	bool isQuadratic() {return false;}
 
 	// The following functions are for distributionally robust variant.
 	// TODO: Better to create a new inhereted class?
