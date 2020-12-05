@@ -222,8 +222,7 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 		if (isroot)
 		{
 			cout << "First stage: " << getNumQRows(env, -1) << " quadratic rows" << endl;
-			for (int s = 0; s < getNumScenarios(env); s++)
-				cout << "Second stage: " << getNumQRows(env, s) << " quadratic rows in scenario " << s << endl;
+			cout << "Second stage: " << getNumQRows(env, 0) << " quadratic rows in scenarios" << endl;
 		}
 	}
 

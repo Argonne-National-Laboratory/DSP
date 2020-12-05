@@ -7,6 +7,7 @@
 // #define DSP_DEBUG
 #include "CoinHelperFunctions.hpp"
 #include "StoModel.h"
+#include <sstream>
 
 StoModel::StoModel() :
 		nscen_(0),
@@ -84,7 +85,8 @@ StoModel::StoModel(const StoModel & rhs) :
 	qobj_scen_  = new CoinPackedMatrix * [nscen_];
 	rlbd_scen_  = new CoinPackedVector * [nscen_];
 	rubd_scen_  = new CoinPackedVector * [nscen_];
-	qc_row_scen_ = new QuadRowData [nscen_];
+	qc_row_core_ = new QuadRowData;
+	qc_row_scen_ = new QuadRowData * [nscen_];
 
 	/** copy */
 	CoinCopyN(rhs.nrows_, nstgs_, nrows_);
@@ -118,6 +120,7 @@ StoModel::StoModel(const StoModel & rhs) :
 		CoinCopyN(rhs.rubd_core_[i], nrows_[i], rubd_core_[i]);
 		CoinCopyN(rhs.ctype_core_[i], ncols_[i], ctype_core_[i]);
 	}
+	qc_row_core_ = rhs.qc_row_core_;
 	for (int i = nscen_ - 1; i >= 0; --i)
 	{
 		qc_row_scen_[i] = rhs.qc_row_scen_[i];
@@ -183,7 +186,7 @@ StoModel::~StoModel()
 	FREE_2D_PTR(nscen_, rlbd_scen_);
 	FREE_2D_PTR(nscen_, rubd_scen_);
 	FREE_PTR(qc_row_core_);
-	FREE_ARRAY_PTR(qc_row_scen_);
+	FREE_2D_PTR(nscen_, qc_row_scen_);
 	scen2stg_.clear();
 	nscen_ = 0;
 	nstgs_ = 0;
@@ -250,8 +253,6 @@ DSP_RTN_CODE StoModel::readSmps(const char * filename)
 	qobj_scen_  = new CoinPackedMatrix * [nscen_];
 	rlbd_scen_  = new CoinPackedVector * [nscen_];
 	rubd_scen_  = new CoinPackedVector * [nscen_];
-	qc_row_core_ = new QuadRowData;
-	qc_row_scen_ = new QuadRowData [nscen_];
 
 	for (i=0; i<nstgs_;i++){
 		qobj_core_[i]=NULL;
@@ -471,6 +472,17 @@ DSP_RTN_CODE StoModel::readDro(const char * filename)
 	return DSP_RTN_OK;
 }
 
+/* split a string */
+template <class Container>
+void split(const std::string& str, Container& cont)
+{
+	cont.clear();
+    istringstream iss(str);
+    copy(istream_iterator<std::string>(iss),
+         istream_iterator<std::string>(),
+         back_inserter(cont));
+}
+
 /** read quadratic data file */
 DSP_RTN_CODE StoModel::readQuad(const char * smps, const char * filename)
 {
@@ -485,251 +497,381 @@ DSP_RTN_CODE StoModel::readQuad(const char * smps, const char * filename)
 		throw msg;
 	}
 
-	char quadfile[128];
-	sprintf(quadfile, "%s.txt", filename); 
-	ifstream myfile(quadfile);
+	char quad_cor[128], quad_sto[128], quad_tim[128];
+	sprintf(quad_cor, "%s.cor", filename); 
+	sprintf(quad_sto, "%s.sto", filename); 
+	sprintf(quad_tim, "%s.tim", filename); 
+	ifstream corfile(quad_cor);
+	ifstream stofile(quad_sto);
+	ifstream timfile(quad_tim);
+	
+	/* read core file */
+	string fileName;
+	string rhsName = "NULL";
+	int nqrows = 0;
+	map<string, int> map_qrowName_index;
+	vector<char> sense;
+	vector<double> rhs;
+	vector<vector<int>> linind;
+	vector<vector<double>> linval;
+	vector<vector<int>> quadrow;
+	vector<vector<int>> quadcol;
+	vector<vector<double>> quadval;	
 
-	string item;
-	string name, name2; 
-	double val;
-	int i, j;
-	int sind;
-	bool end_of_scen_data = false;
-
+	string line;
+	vector<string> items;
 	map<string, int>::iterator it;
 
-	if (myfile.is_open()) {
-		
-		while (myfile >> item) {
-		
-			if (item.find("NAME") != string::npos) 
-			{
-				myfile >> item;
-			} 
-			else if (item.find("SCEN") != string::npos) 
-			{	
-				/** start reading quad constr data for some scenario */		
-				while (1) {
-					
-					myfile >> sind;
-					vector<char> qrow_sense;
-					map<string, int> map_qrowName_index;
+	int i,j;
 
-					myfile >> item;
-					if (item.find("QUADROWS") == string::npos) {
+	if (corfile.is_open()) {
+
+		while (getline(corfile, line, '\n')) {
+
+			split(line, items);
+			if (items[0].find("NAME") != string::npos) 
+			{
+				fileName = items[1];
+			}
+			else if (items[0].find("ROWS") != string::npos)
+			{
+				/** read row data */
+				while(getline(corfile, line, '\n')) 
+				{
+					split(line, items);
+					
+					if (items[0].find("COLUMNS") != string::npos || items[0].find("RHS") != string::npos || items[0].find("ENDATA") != string::npos) {
+						long pos = corfile.tellg();
+						int leng = line.length()+1;
+						corfile.seekg(pos-leng);
+						break;
+					}
+					else if (items[0] == "G")
+						sense.push_back('G');
+					else if (items[0] == "L")
+						sense.push_back('L');
+					else {
 						char msg[128];
-						sprintf(msg, "Quadratic Constraints Data for each SCEN should be provided in this order: QUADROWS, LINTERMS, QUADTERMS, RHS\n");
+						sprintf(msg, "Quadratic constraints sense must be 'G' or 'L'\n");
+						throw msg;
+					}
+					map_qrowName_index[items[1]] = nqrows;
+					nqrows++;
+				}
+
+				/** allocate memory */
+				assert(nqrows == sense.size());
+				assert(nqrows == map_qrowName_index.size());
+			}
+			else if (items[0].find("COLUMNS") != string::npos)
+			{
+				/** read linind, linval */
+				linind.resize(nqrows);
+				linval.resize(nqrows);
+				
+				while (getline(corfile, line, '\n')) 
+				{	
+					split(line, items);
+					
+					if (items[0].find("RHS") != string::npos || items[0].find("QCMATRIX") != string::npos || items[0].find("ENDATA") != string::npos) {
+						long pos = corfile.tellg();
+						int leng = line.length()+1;
+						corfile.seekg(pos-leng);
+						break;
+					}
+
+					int nterms = items.size() - 1;
+					if (nterms <= 0 && nterms % 2 != 0) {
+						char msg[128];
+						sprintf(msg, "Each row in the COLUMNS section needs to start with a variable name and is followed by a series of pairs of a row name and its associated coefficient\n");
 						throw msg;
 					}
 
-					/** read row data */
-					int nqrows = 0;
-					while (1) 
-					{
-						myfile >> item;
-						if (item.find("LINTERMS") != string::npos)
-							break;
-						else if (item == "G")
-							qrow_sense.push_back('G');
-						else if (item == "L")
-							qrow_sense.push_back('L');
-						else {
-							char msg[128];
-							sprintf(msg, "Quadratic constraints sense must be 'G' or 'L'\n");
-							throw msg;
-						}
-						myfile >> name;
-						map_qrowName_index[name] = nqrows;
-						nqrows++;
-					}
-
-					/** allocate memory */
-					assert(nqrows == qrow_sense.size());
-					assert(nqrows == map_qrowName_index.size());
-
-					/** read linind_, linval_ */
-					vector<vector<int>> linind(nqrows);
-					vector<vector<double>> linval(nqrows);
-					
-					while (1) {
-						myfile >> item;
-
-						if (item.find("QUADTERMS") != string::npos)
-							break;
-					
-						it = map_qrowName_index.find(item);
-
+					int i = 1;
+					while (i < nterms) {
+						
+						it = map_qrowName_index.find(items[i++]);
 						if (it == map_qrowName_index.end()) 
 						{
 							char msg[128];
-							sprintf(msg, "All rows should be declared before SCEN data\n");
+							sprintf(msg, "All rows should be declared before COLUMNS data\n");
 							throw msg; 
-						} else 
+						} 
+						else 
 						{
-							myfile >> name >> val;
-							linind[map_qrowName_index[item]].push_back(map_varName_index[name]);
-							linval[map_qrowName_index[item]].push_back(val);
+							linind[it->second].push_back(map_varName_index[items[0]]);
+							linval[it->second].push_back(stod(items[i++]));
 						}
 					}
-					
-					/** read quadrow_, quadcol_, quadval_ */
-					vector<vector<int>> quadrow(nqrows);
-					vector<vector<int>> quadcol(nqrows);
-					vector<vector<double>> quadval(nqrows);	
-
-					while (1) {
-						myfile >> item;
-
-						if (item.find("RHS") != string::npos)
-							break;
-
-						it = map_qrowName_index.find(item);
-
-						if (it == map_qrowName_index.end()) 
-						{
-							char msg[128];
-							sprintf(msg, "All rows should be declared before SCEN data\n");
-							throw msg; 
-						} else 
-						{
-							myfile >> name >> name2 >> val;
-							quadrow[map_qrowName_index[item]].push_back(map_varName_index[name]);
-							quadcol[map_qrowName_index[item]].push_back(map_varName_index[name2]);
-							quadval[map_qrowName_index[item]].push_back(val);
-						}
-					}
-
-					if (sind < 0) {
-						/* if sind == -1, it is qc data for core */
-						qc_row_core_->nqrows = nqrows;
-						qc_row_core_->linnzcnt = new int [nqrows];
-						qc_row_core_->quadnzcnt = new int [nqrows];
-						qc_row_core_->rhs = new double [nqrows];
-						qc_row_core_->sense = new int [nqrows];
-						qc_row_core_->linind = new int * [nqrows];
-						qc_row_core_->linval = new double * [nqrows];
-						qc_row_core_->quadrow = new int * [nqrows];
-						qc_row_core_->quadcol = new int * [nqrows];
-						qc_row_core_->quadval = new double * [nqrows];
-						
-						/** read sense_ */
-						for (i = 0; i < nqrows; i++) {
-							qc_row_core_->sense[i] = qrow_sense[i];
-						
-							assert(linind[i].size() == linval[i].size());
-							qc_row_core_->linnzcnt[i] = linval[i].size();
-							qc_row_core_->linind[i] = new int [qc_row_core_->linnzcnt[i]];
-							qc_row_core_->linval[i] = new double [qc_row_core_->linnzcnt[i]];
-
-							assert(quadrow[i].size() == quadcol[i].size());
-							assert(quadrow[i].size() == quadval[i].size());
-							qc_row_core_->quadnzcnt[i] = quadrow[i].size();
-							qc_row_core_->quadrow[i] = new int [qc_row_core_->quadnzcnt[i]];
-							qc_row_core_->quadcol[i] = new int [qc_row_core_->quadnzcnt[i]];
-							qc_row_core_->quadval[i] = new double [qc_row_core_->quadnzcnt[i]];
-
-							for (j = 0; j < qc_row_core_->linnzcnt[i]; j++) 
-							{
-								qc_row_core_->linind[i][j] = linind[i][j];
-								qc_row_core_->linval[i][j] = linval[i][j];
-							}
-
-							for (j = 0; j < qc_row_core_->quadnzcnt[i]; j++) 
-							{
-								qc_row_core_->quadrow[i][j] = quadrow[i][j];
-								qc_row_core_->quadcol[i][j] = quadcol[i][j];
-								qc_row_core_->quadval[i][j] = quadval[i][j];
-							}
-						}
-					} else {
-						qc_row_scen_[sind].nqrows = nqrows;
-						qc_row_scen_[sind].linnzcnt = new int [nqrows];
-						qc_row_scen_[sind].quadnzcnt = new int [nqrows];
-						qc_row_scen_[sind].rhs = new double [nqrows];
-						qc_row_scen_[sind].sense = new int [nqrows];
-						qc_row_scen_[sind].linind = new int * [nqrows];
-						qc_row_scen_[sind].linval = new double * [nqrows];
-						qc_row_scen_[sind].quadrow = new int * [nqrows];
-						qc_row_scen_[sind].quadcol = new int * [nqrows];
-						qc_row_scen_[sind].quadval = new double * [nqrows];
-						
-						/** read sense_ */
-						for (i = 0; i < nqrows; i++) {
-							qc_row_scen_[sind].sense[i] = qrow_sense[i];
-
-							assert(linind[i].size() == linval[i].size());
-							qc_row_scen_[sind].linnzcnt[i] = linval[i].size();
-							qc_row_scen_[sind].linind[i] = new int [qc_row_scen_[sind].linnzcnt[i]];
-							qc_row_scen_[sind].linval[i] = new double [qc_row_scen_[sind].linnzcnt[i]];
-
-							assert(quadrow[i].size() == quadcol[i].size());
-							assert(quadrow[i].size() == quadval[i].size());
-							qc_row_scen_[sind].quadnzcnt[i] = quadrow[i].size();
-							qc_row_scen_[sind].quadrow[i] = new int [qc_row_scen_[sind].quadnzcnt[i]];
-							qc_row_scen_[sind].quadcol[i] = new int [qc_row_scen_[sind].quadnzcnt[i]];
-							qc_row_scen_[sind].quadval[i] = new double [qc_row_scen_[sind].quadnzcnt[i]];
-
-							for (j = 0; j < qc_row_scen_[sind].linnzcnt[i]; j++) 
-							{
-								qc_row_scen_[sind].linind[i][j] = linind[i][j];
-								qc_row_scen_[sind].linval[i][j] = linval[i][j];
-							}
-
-							for (j = 0; j < qc_row_scen_[sind].quadnzcnt[i]; j++) 
-							{
-								qc_row_scen_[sind].quadrow[i][j] = quadrow[i][j];
-								qc_row_scen_[sind].quadcol[i][j] = quadcol[i][j];
-								qc_row_scen_[sind].quadval[i][j] = quadval[i][j];
-							}
-						}
-					}
-
-					/** read rhs_ */
-					while (1) {
-						myfile >> item;
-
-						if (item.find("SCEN") != string::npos)
-							break;
-						else if (item.find("ENDATA") != string::npos) 
-						{
-							end_of_scen_data = true;
-							break;
-						}
-					
-						it = map_qrowName_index.find(item);
-
-							if (it == map_qrowName_index.end()) 
-							{
-								char msg[128];
-								sprintf(msg, "All rows should be declared before SCEN data\n");
-								throw msg; 
-							} else 
-							{
-								myfile >> val;
-								if (sind < 0)
-									qc_row_core_->rhs[map_qrowName_index[item]] = val;
-								else 
-									qc_row_scen_[sind].rhs[map_qrowName_index[item]] = val;
-							}
-					}
-					#ifdef DSP_DEBUG
-						printQuadRows(sind);
-					#endif
-					if (end_of_scen_data) 
-						break;
 				}
-			} else 
+			}
+			else if (items[0].find("RHS") != string::npos)
 			{
+				/** read rhs_ */
+				rhs.resize(nqrows);
+				while (getline(corfile, line, '\n')) {
+					
+					split(line, items);
+					
+					if (items[0].find("QCMATRIX") != string::npos || items[0].find("ENDATA") != string::npos || items[0].find("COLUMNS") != string::npos || items[0].find("ROWS") != string::npos){
+						long pos = corfile.tellg();
+						int leng = line.length()+1;
+						corfile.seekg(pos-leng);
+						break;
+					}
+					
+					if (rhsName == "NULL")
+						rhsName = items[0];
+
+					it = map_qrowName_index.find(items[1]);
+					if (it == map_qrowName_index.end()) 
+					{
+						char msg[128];
+						sprintf(msg, "All rows should be declared before RHS data\n");
+						throw msg; 
+					} 
+					else 
+					{
+						rhs[it->second] = stod(items[2]);
+					}
+				}
+			}
+			else if (items[0].find("QCMATRIX") != string::npos) 
+			{	
+				/** start reading quad term data */		
+				quadrow.resize(nqrows);
+				quadcol.resize(nqrows);
+				quadval.resize(nqrows);	
+
+				it = map_qrowName_index.find(items[1]);
+				if (it == map_qrowName_index.end()) 
+				{
+					char msg[128];
+					sprintf(msg, "All rows should be declared before QCMATRIX data\n");
+					throw msg; 
+				} 
+				else
+				{
+					/** read quadrow_, quadcol_, quadval_ */
+					while (getline(corfile, line, '\n')) {
+						split(line, items);
+						
+						if (items[0].find("QCMATRIX") != string::npos || items[0].find("ENDATA") != string::npos || items[0].find("RHS") != string::npos){
+							long pos = corfile.tellg();
+							int leng = line.length()+1;
+							corfile.seekg(pos-leng);
+							break;
+						}
+
+						quadrow[it->second].push_back(map_varName_index[items[0]]);
+						quadcol[it->second].push_back(map_varName_index[items[1]]);
+						quadval[it->second].push_back(stod(items[2]));
+					}
+				}
+			}
+			else if (items[0].find("ENDATA") != string::npos) 
+			{
+				break;
+			}
+			else {
 				char msg[128];
-				sprintf(msg, "Quadratic data file encountered unexpected input: %s\n", item.c_str());
+				sprintf(msg, "Quadratic data file encountered unexpected input: %s\n", line.c_str());
 				throw msg;
 			}
 		}
-	    myfile.close();
+	    corfile.close();
     } else {
-        cout << "Unable to open quad file";
+        cout << "Unable to open quad core file";
         return 1;
     }
+
+	/* read time file */
+	map<string, int> map_stgName_index;
+	vector<int> rstart(nstgs_);	
+	if (timfile.is_open()) {
+		while(getline(timfile, line)) 
+		{
+			split(line, items);
+			if (items[0].find("PERIODS") != string::npos) 
+				break;
+		}
+		
+		int nstg = 0;
+		
+		while(getline(timfile, line)) {
+			
+			if (line.find("ENDATA") != string::npos)
+				break;
+			
+			split(line, items);
+			
+			map_stgName_index[items[1]] = nstg;
+			it = map_qrowName_index.find(items[0]);
+			if (it == map_qrowName_index.end()) 
+			{
+				char msg[128];
+				sprintf(msg, "There is an undeclared row in time file.\n");
+				throw msg; 
+			} 
+			else 
+			{
+				rstart[nstg] = it->second;
+			}
+
+			nstg++;
+		}
+		if (nstg != nstgs_){
+			char msg[128];
+			sprintf(msg, "number of stages of smps data and that of quad data do not match in time file.\n");
+			throw msg; 
+		}
+			
+		timfile.close();
+    } else {
+        cout << "Unable to open quad time file";
+        return 1;
+	}
+
+	/* store data in StoModel */
+	int nqrows_core = rstart[1] - rstart[0];
+	int nqrows_scen = nqrows - rstart[1];
+	qc_row_core_ = new QuadRowData(nqrows_core, rstart[0], sense, rhs, linind, linval, quadrow, quadcol, quadval);
+	qc_row_scen_ = new QuadRowData * [nscen_];
+	for (int s = 0; s < nscen_; s++) 
+	{	
+		qc_row_scen_[s] = new QuadRowData(nqrows_scen, rstart[1], sense, rhs, linind, linval, quadrow, quadcol, quadval);
+	}	
+
+	if (stofile.is_open()) {
+		while(getline(stofile, line)) 
+		{
+			split(line, items);
+			
+			if (items[0].find("SCENARIOS") != string::npos) 
+				break;
+		}
+		
+		int nscen = 0;
+		while(getline(stofile, line)) {
+			
+			if (line.find("ENDATA") != string::npos)
+				break;
+			
+			split(line, items);
+			
+			if (items[0] == "SC") {
+
+				it = map_stgName_index.find(items[4]);
+				if (it == map_stgName_index.end()) 
+				{
+					char msg[128];
+					sprintf(msg, "There is an undeclared stage name in stofile.\n");
+					throw msg; 
+				} 
+				int stg = it->second;
+				QuadRowData *qc = qc_row_scen_[nscen];
+				nscen++;
+				
+				while(getline(stofile, line)) {
+					split(line, items);
+					
+					if (items[0].find("SC") != string::npos || items[0].find("ENDATA") != string::npos){
+						long pos = stofile.tellg();
+						int leng = line.length()+1;
+						stofile.seekg(pos-leng);
+						break;
+					}
+
+					string rname;
+					if (items.size() == 3) {
+						/* linterm or rhs */
+						it = map_qrowName_index.find(items[1]);
+					} else if (items.size() == 4) {
+						/* quadterm */
+						it = map_qrowName_index.find(items[2]);
+					} else {
+						char msg[128];
+						sprintf(msg, "There is an error in stofile.\n");
+						throw msg; 
+					}
+					
+					if (it == map_stgName_index.end()) 
+					{
+						char msg[128];
+						sprintf(msg, "There is an undeclared stage name in stofile.\n");
+						throw msg; 
+					}
+					int row_index = it->second - rstart[stg];
+					bool found = false;
+					if (items.size() == 3) 
+					{
+						if (items[0].find(rhsName) == string::npos) {
+							it = map_varName_index.find(items[0]);
+							if (it == map_varName_index.end()) 
+							{
+								char msg[128];
+								sprintf(msg, "There is an undeclared variable name in stofile.\n");
+								throw msg; 
+							}
+							/* linterm */
+							for (i = 0; i < qc->linnzcnt[row_index]; i++) {
+								if (qc->linind[row_index][i] == it->second) {
+									qc->linval[row_index][i] = stod(items[2]);
+									found = true;
+									break;
+								}
+							}
+						} else {
+							qc->rhs[row_index] = stod(items[2]);
+							found = true;
+						}
+					}
+					else if (items.size() == 4) {
+						/* quadterm */
+						vector<int> var_index(2);
+						for (j = 0; j < 2; j++) {
+							it = map_varName_index.find(items[j]);
+							if (it == map_varName_index.end()) 
+							{
+								char msg[128];
+								sprintf(msg, "There is an undeclared variable name in stofile.\n");
+								throw msg; 
+							}
+							else var_index[j] = it->second;
+						}
+						for (i = 0; i < qc->quadnzcnt[row_index]; i++) 
+						{	
+							if (qc->quadrow[row_index][i] == var_index[0] && qc->quadcol[row_index][i] == var_index[1]) 
+							{
+								qc->quadval[row_index][i] = stod(items[3]);
+								found = true;
+								break;
+							}
+						}
+					}
+					if (!found) {
+						char msg[128];
+						sprintf(msg, "constraint structure in stofile must agree with corfile.\n");
+						throw msg; 
+					}
+				}
+			}
+		}
+		if (nscen != nscen_){
+			char msg[128];
+			sprintf(msg, "number of scenarios of smps data and that of quad data do not match in stofile.\n");
+			throw msg; 
+		}
+		stofile.close();
+    } else {
+        cout << "Unable to open quad stochastic file";
+        return 1;
+	}
+	#ifdef DSP_DEBUG
+		printQuadRows(-1);
+		for (i = 0; i < nscen_; i++)
+			printQuadRows(i);	
+	#endif
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -1406,42 +1548,29 @@ DSP_RTN_CODE StoModel::printQuadRows(const int s)
 {
 	BGN_TRY_CATCH
 
+	QuadRowData *qc;
 	if (s < 0) {
-		for (int i = 0; i < qc_row_core_->nqrows; i++) 
-		{
-			cout << "Core " << i << "th quad constr: ";
-			for (int lt = 0; lt < qc_row_core_->linnzcnt[i]; lt++)
-			{
-				cout << qc_row_core_->linval[i][lt] << " x" << qc_row_core_->linind[i][lt] << " + ";
-			}
-			for (int qt = 0; qt < qc_row_core_->quadnzcnt[i]-1; qt++)
-			{
-				cout << qc_row_core_->quadval[i][qt] << " x" << qc_row_core_->quadrow[i][qt] << " x" << qc_row_core_->quadcol[i][qt] << " + ";
-			}
-			cout << qc_row_core_->quadval[i][qc_row_core_->quadnzcnt[i]-1] << " x" << qc_row_core_->quadrow[i][qc_row_core_->quadnzcnt[i]-1] << " x" << qc_row_core_->quadcol[i][qc_row_core_->quadnzcnt[i]-1];
-			if (qc_row_core_->sense[i] == 'L')
-				cout << " <= " << qc_row_core_->rhs[i] << endl;
-			else 
-				cout << " >= " << qc_row_core_->rhs[i] << endl;
-		}
+		qc = qc_row_core_;
+		cout << "Core quad constr: ";
 	} else {
-		for (int i = 0; i < qc_row_scen_[s].nqrows; i++) 
+		qc = qc_row_scen_[s];
+		cout << "Scen " << s << " quad constr: ";
+	}
+	for (int i = 0; i < qc->nqrows; i++) 
+	{
+		for (int lt = 0; lt < qc->linnzcnt[i]; lt++)
 		{
-			cout << "Scen " << s << "th " << i << "th quad constr: ";
-			for (int lt = 0; lt < qc_row_scen_[s].linnzcnt[i]; lt++)
-			{
-				cout << qc_row_scen_[s].linval[i][lt] << " x" << qc_row_scen_[s].linind[i][lt] << " + ";
-			}
-			for (int qt = 0; qt < qc_row_scen_[s].quadnzcnt[i]-1; qt++)
-			{
-				cout << qc_row_scen_[s].quadval[i][qt] << " x" << qc_row_scen_[s].quadrow[i][qt] << " x" << qc_row_scen_[s].quadcol[i][qt] << " + ";
-			}
-			cout << qc_row_scen_[s].quadval[i][qc_row_scen_[s].quadnzcnt[i]-1] << " x" << qc_row_scen_[s].quadrow[i][qc_row_scen_[s].quadnzcnt[i]-1] << " x" << qc_row_scen_[s].quadcol[i][qc_row_scen_[s].quadnzcnt[i]-1];
-			if (qc_row_scen_[s].sense[i] == 'L')
-				cout << " <= " << qc_row_scen_[s].rhs[i] << endl;
-			else 
-				cout << " >= " << qc_row_scen_[s].rhs[i] << endl;
+			cout << qc->linval[i][lt] << " x" << qc->linind[i][lt] << " + ";
 		}
+		for (int qt = 0; qt < qc->quadnzcnt[i]-1; qt++)
+		{
+			cout << qc->quadval[i][qt] << " x" << qc->quadrow[i][qt] << " x" << qc->quadcol[i][qt] << " + ";
+		}
+		cout << qc->quadval[i][qc->quadnzcnt[i]-1] << " x" << qc->quadrow[i][qc->quadnzcnt[i]-1] << " x" << qc->quadcol[i][qc->quadnzcnt[i]-1];
+		if (qc->sense[i] == 'L')
+			cout << " <= " << qc->rhs[i] << endl;
+		else 
+			cout << " >= " << qc->rhs[i] << endl;
 	}
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)

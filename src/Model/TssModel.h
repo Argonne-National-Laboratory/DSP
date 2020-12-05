@@ -8,7 +8,7 @@
 #ifndef TSSMODEL_H_
 #define TSSMODEL_H_
 
-#define TSSMODEL_DEBUG
+// #define TSSMODEL_DEBUG
 
 #include "StoModel.h"
 #include "DetModel.h"
