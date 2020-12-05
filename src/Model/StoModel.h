@@ -42,6 +42,50 @@ struct QuadRowData {
 		quadcol = NULL;
 		quadval = NULL;
 	}
+	QuadRowData(int nqrows_, int rstart, vector<char> sense_, vector<double> rhs_, vector<vector<int>> linind_, vector<vector<double>> linval_, vector<vector<int>> quadrow_, vector<vector<int>> quadcol_, vector<vector<double>> quadval_)
+	{
+		nqrows = nqrows_;
+		if (nqrows > 0) 
+		{
+			linnzcnt = new int [nqrows];
+			quadnzcnt = new int [nqrows];
+			rhs = new double [nqrows];
+			sense = new int [nqrows];
+			linind = new int * [nqrows];
+			linval = new double * [nqrows];
+			quadrow = new int * [nqrows];
+			quadcol = new int * [nqrows];
+			quadval = new double * [nqrows];
+
+			for (int i = 0; i < nqrows; i++) 
+			{
+				sense[i] = sense_[i+rstart];
+				rhs[i] = rhs_[i+rstart];
+				
+				linnzcnt[i] = linval_[i+rstart].size();
+				linind[i] = new int [linnzcnt[i]];
+				linval[i] = new double [linnzcnt[i]];
+
+				quadnzcnt[i] = quadrow_[i+rstart].size();
+				quadrow[i] = new int [quadnzcnt[i]];
+				quadcol[i] = new int [quadnzcnt[i]];
+				quadval[i] = new double [quadnzcnt[i]];
+
+				for (int j = 0; j < linnzcnt[i]; j++) 
+				{
+					linind[i][j] = linind_[i+rstart][j];
+					linval[i][j] = linval_[i+rstart][j];
+				}
+
+				for (int j = 0; j < quadnzcnt[i]; j++) 
+				{
+					quadrow[i][j] = quadrow_[i+rstart][j];
+					quadcol[i][j] = quadcol_[i+rstart][j];
+					quadval[i][j] = quadval_[i+rstart][j];
+				}
+			}
+		}
+	}
 	~QuadRowData(){
 		if (nqrows > 0) {
 			FREE_ARRAY_PTR(linnzcnt);
@@ -126,7 +170,7 @@ public:
 	int getNumCoreQRows() {return qc_row_core_->nqrows;}
 	
 	/** get number of quadratic constraints of a scenario*/
-	int getNumScenQRows(int scen) {return qc_row_scen_[scen].nqrows;}
+	int getNumScenQRows(int scen) {return qc_row_scen_[scen]->nqrows;}
 	
 	/** get objective function coefficients for a given stage */
 	const double * getObjCore(int stage) {return obj_core_[stage];}
@@ -154,10 +198,10 @@ public:
 	QuadRowData * getQuaraticsRowCore() const {return qc_row_core_;}
 
 	/** get parameters for quadratic constraints in a scenario */
-	QuadRowData * getQuaraticsRowScenario(int s) const {return &qc_row_scen_[s];}
+	QuadRowData * getQuaraticsRowScenario(int s) const {return qc_row_scen_[s];}
 
-	bool hasQuadraticRowCore() const {return qc_row_core_->nqrows > 0 ? true : false;};
-	bool hasQuadraticRowScenario(int s) const {return qc_row_scen_[s].nqrows > 0 ? true : false;};
+	bool hasQuadraticRowCore() const {return qc_row_core_ != NULL ? true : false;};
+	bool hasQuadraticRowScenario(int s) const {return qc_row_scen_ != NULL ? true : false;};
 
 	/** set initial solutions */
 	void setSolution(
@@ -314,7 +358,7 @@ protected:
 	CoinPackedMatrix ** qobj_scen_; /**< quadratic objective coefficients for each scenario */
 	CoinPackedVector ** rlbd_scen_; /**< row lower bounds for each scenario */
 	CoinPackedVector ** rubd_scen_; /**< row upper bounds for each scenario */
-	QuadRowData * qc_row_scen_;		/**< parameters for quadratic rows in scenarios: current version only accept noncoupling quadratic rows */
+	QuadRowData ** qc_row_scen_;		/**< parameters for quadratic rows in scenarios: current version only accept noncoupling quadratic rows */
 
 	StoScenMap scen2stg_; /** map from scenario to stage */
 

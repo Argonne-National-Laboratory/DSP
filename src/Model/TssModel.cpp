@@ -59,7 +59,7 @@ DSP_RTN_CODE TssModel::setNumberOfScenarios(int nscen)
 
 	/* data for quadratic constraints */
 	qc_row_core_ = new QuadRowData;
-	qc_row_scen_ = new QuadRowData[nscen_];
+	qc_row_scen_ = new QuadRowData * [nscen_];
 
 	/** initialize memory */
 	for (int s = 0; s < nstgs_; ++s)
@@ -405,7 +405,7 @@ DSP_RTN_CODE TssModel::loadSecondStage(
                 for (int j = start[i]; j < start[i + 1]; ++j) {
                     bool added = false;
                     if (rows_core_[rstart_[1] + i]->findIndex(index[j]) < 0) {
-                        printf(" added index %d element %e to rows_core_[%d]\n", index[j], value[j], rstart_[1]+i);
+                        // printf(" added index %d element %e to rows_core_[%d]\n", index[j], value[j], rstart_[1]+i);
                         rows_core_[rstart_[1] + i]->insert(index[j], 0.);
                         added = true;
                     }
@@ -517,44 +517,45 @@ DSP_RTN_CODE TssModel::loadSecondStage(
 	loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, qobjrowindex, qobjcolindex, qobjvalue, qnum, rlbd, rubd);
 	
 	if (nqrows > 0) {
+		QuadRowData *qc = qc_row_scen_[s];
 		/* allocate memory for quadratic constraints */
-		qc_row_scen_[s].nqrows = nqrows;
-		qc_row_scen_[s].linnzcnt = new int [nqrows];
-		qc_row_scen_[s].quadnzcnt = new int [nqrows];
-		qc_row_scen_[s].rhs = new double [nqrows];
-		qc_row_scen_[s].sense = new int [nqrows];
-		qc_row_scen_[s].linind = new int * [nqrows];
-		qc_row_scen_[s].linval = new double * [nqrows];
-		qc_row_scen_[s].quadrow = new int * [nqrows];
-		qc_row_scen_[s].quadcol = new int * [nqrows];
-		qc_row_scen_[s].quadval = new double * [nqrows];
+		qc->nqrows = nqrows;
+		qc->linnzcnt = new int [nqrows];
+		qc->quadnzcnt = new int [nqrows];
+		qc->rhs = new double [nqrows];
+		qc->sense = new int [nqrows];
+		qc->linind = new int * [nqrows];
+		qc->linval = new double * [nqrows];
+		qc->quadrow = new int * [nqrows];
+		qc->quadcol = new int * [nqrows];
+		qc->quadval = new double * [nqrows];
 
 		/** allocate values */
 		for (int k = 0; k < nqrows; k++) 
 		{
-			qc_row_scen_[s].linnzcnt[k] = linnzcnt[k];
-			qc_row_scen_[s].quadnzcnt[k] = quadnzcnt[k];
-			qc_row_scen_[s].rhs[k] = rhs[k];
-			qc_row_scen_[s].sense[k] = sense[k];
+			qc->linnzcnt[k] = linnzcnt[k];
+			qc->quadnzcnt[k] = quadnzcnt[k];
+			qc->rhs[k] = rhs[k];
+			qc->sense[k] = sense[k];
 
-			qc_row_scen_[s].linind[k] = new int [linnzcnt[k]];
-			qc_row_scen_[s].linval[k] = new double [linnzcnt[k]];
+			qc->linind[k] = new int [linnzcnt[k]];
+			qc->linval[k] = new double [linnzcnt[k]];
 
-			qc_row_scen_[s].quadrow[k] = new int [quadnzcnt[k]];
-			qc_row_scen_[s].quadcol[k] = new int [quadnzcnt[k]];
-			qc_row_scen_[s].quadval[k] = new double [quadnzcnt[k]];
+			qc->quadrow[k] = new int [quadnzcnt[k]];
+			qc->quadcol[k] = new int [quadnzcnt[k]];
+			qc->quadval[k] = new double [quadnzcnt[k]];
 
-			for (int t = 0; t < qc_row_scen_[s].linnzcnt[k]; t++) 
+			for (int t = 0; t < qc->linnzcnt[k]; t++) 
 			{
-				qc_row_scen_[s].linind[k][t] = linind[linstart[k] + t];
-				qc_row_scen_[s].linval[k][t] = linval[linstart[k] + t];
+				qc->linind[k][t] = linind[linstart[k] + t];
+				qc->linval[k][t] = linval[linstart[k] + t];
 			}
 			
-			for (int t = 0; t < qc_row_scen_[s].quadnzcnt[k]; t++) 
+			for (int t = 0; t < qc->quadnzcnt[k]; t++) 
 			{
-				qc_row_scen_[s].quadrow[k][t] = quadrow[quadstart[k] + t];
-				qc_row_scen_[s].quadcol[k][t] = quadcol[quadstart[k] + t];
-				qc_row_scen_[s].quadval[k][t] = quadval[quadstart[k] + t];
+				qc->quadrow[k][t] = quadrow[quadstart[k] + t];
+				qc->quadcol[k][t] = quadcol[quadstart[k] + t];
+				qc->quadval[k][t] = quadval[quadstart[k] + t];
 			}
 		}
 		#ifdef DSP_DEBUG

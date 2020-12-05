@@ -331,10 +331,10 @@ int runDsp(char* algotype, char* smpsfile, char* mpsfile, char* decfile, char* s
 		if (isroot) cout << "Reading Quad files: " << quadfile << endl;
 		ret = readQuad(env, smpsfile, quadfile);
 		if (ret != 0) return ret;
-		if (isroot) 
+		if (isroot)
 		{
-			for (int s = 0; s < getNumScenarios(env); s++)
-				cout << "Second stage: " << getNumQRows(env,s) << " quadratic rows in scenario " << s << endl;
+			cout << "First stage: " << getNumQRows(env, -1) << " quadratic rows" << endl;
+			cout << "Second stage: " << getNumQRows(env, 0) << " quadratic rows in scenarios" << endl;
 		}
 	}
 
