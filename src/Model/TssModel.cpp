@@ -598,7 +598,7 @@ DSP_RTN_CODE TssModel::copyRecoObj(int scen, double *& obj_reco, CoinPackedMatri
 	qobj_reco_ncoupling=new CoinPackedMatrix(false, 0, 0);
 
 	/** copy quadratic objective coefficience to qobj_reco */
-	copyCoreQuadrativeObjective(qobj_reco_coupling, qobj_reco_ncoupling, 1);
+	copyCoreQuadraticObjective(qobj_reco_coupling, qobj_reco_ncoupling, 1);
 	//PRINT_ARRAY_MSG(qobj_reco_ncoupling->getNumElements(), qobj_reco_ncoupling->getElements(), "elements in qobj_reco_ncoupling11");
 	combineRandQuadraticObjective(qobj_reco_coupling, qobj_reco_ncoupling, 1, scen, adjustProbability);
 	//PRINT_ARRAY_MSG(qobj_reco_ncoupling->getNumElements(), qobj_reco_ncoupling->getElements(), "elements in qobj_reco_ncoupling");

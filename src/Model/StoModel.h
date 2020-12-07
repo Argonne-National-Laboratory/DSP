@@ -198,9 +198,9 @@ public:
 	 *  for non-coupling terms, shift indices, start from y,
 	 *  only for two-stage problem
 	*/
-	void copyCoreQuadrativeObjective(
-		CoinPackedMatrix *&qobj_coupling, 
-		CoinPackedMatrix *&qobj_ncoupling, 
+	void copyCoreQuadraticObjective(
+		CoinPackedMatrix *&qobj_coupling,
+		CoinPackedMatrix *&qobj_ncoupling,
 		int stg);
 
 	/** copy core column types */
