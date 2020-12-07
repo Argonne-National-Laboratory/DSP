@@ -49,19 +49,6 @@ DspApiEnv * createEnv(void)
 	return new DspApiEnv;
 }
 
-/** create model */
-int createModel(DspApiEnv * env, bool isstochastic)
-{
-	if (env->model_ == NULL) {
-		if (isstochastic) {
-			env->model_ = new DecTssModel;
-		} else {
-			/* nothing to do */
-		}
-	} 
-	return 0;
-}
-
 /** free API environment */
 void freeEnv(DspApiEnv * &env)
 {
@@ -82,13 +69,12 @@ void freeSolver(DspApiEnv * env)
 	FREE_PTR(env->solver_);
 }
 
-/** If current model is stochastic, return the model as a TssModel object. */
+/** If current model is stochastic, return the model as a TssModel object. If no model exists, create one. */
 TssModel * getTssModel(DspApiEnv * env)
 {	
 	if (env->model_ == NULL)
 	{
-		printf("Error: env->model_ should be initialized using createModel function");
-		return NULL;
+		env->model_ = new DecTssModel;
 	}
 	if (env->model_->isStochastic())
 	{

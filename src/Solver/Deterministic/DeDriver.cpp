@@ -51,9 +51,8 @@ DSP_RTN_CODE DeDriver::run()
 	FREE_ARRAY_PTR(obj)   \
 	FREE_PTR(qobj)        \
 	FREE_ARRAY_PTR(rlbd)  \
-	FREE_ARRAY_PTR(rubd)
-#define FREE_QC_MEMORY       \
-	FREE_ARRAY_PTR(qc_row_scen)   \
+	FREE_ARRAY_PTR(rubd)	\
+	FREE_ARRAY_PTR(qc_row_scen)	\
 	FREE_ARRAY_PTR(linind)   \
 	FREE_ARRAY_PTR(quadrow)   \
 	FREE_ARRAY_PTR(quadcol)   \
@@ -264,7 +263,7 @@ DSP_RTN_CODE DeDriver::run()
 		if (osi_->si_->getColSolution())
 		{
 			DSPdebugMessage("bestprimsol_=\n");
-			DspMessage::printArray(osi_->si_->getNumCols(), osi_->si_->getColSolution());
+			// DspMessage::printArray(osi_->si_->getNumCols(), osi_->si_->getColSolution());
 			
 			CoinCopyN(osi_->si_->getColSolution(), osi_->si_->getNumCols(), &primsol_[0]);
 			bestprimsol_ = primsol_;
@@ -281,15 +280,12 @@ DSP_RTN_CODE DeDriver::run()
 
 	/** save memory */
 	FREE_MEMORY
-	if (model_->isStochastic())
-		FREE_QC_MEMORY
 
 	END_TRY_CATCH_RTN(FREE_MEMORY, DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
 
 #undef FREE_MEMORY
-#undef FREE_QC_MEMORY
 }
 
 DSP_RTN_CODE DeDriver::solve()

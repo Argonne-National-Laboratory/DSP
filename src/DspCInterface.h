@@ -27,9 +27,6 @@ extern "C" {
 /** create API environment */
 DspApiEnv * createEnv(void);
 
-/** create model */
-int createModel(DspApiEnv * env, bool isstochastic);
-
 /** free API environment */
 void freeEnv(DspApiEnv * &env);
 

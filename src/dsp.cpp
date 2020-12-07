@@ -156,11 +156,6 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 		cout << "Creating DSP environment\n";
 	DspApiEnv *env = createEnv();
 
-	/* create model */
-	ret = createModel(env, isstochastic);
-	if (ret != 0)
-		return ret;
-
 	// Read problem instance from file(s)
 	if (smpsfile != NULL)
 	{
