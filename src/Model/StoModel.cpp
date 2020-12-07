@@ -1059,7 +1059,23 @@ DSP_RTN_CODE StoModel::setWassersteinAmbiguitySet(double lp_norm, double eps)
 						wass_dist_[r][ss] += pow(fabs(mat_scen_[s]->getCoefficient(i, j) - mat_scen_[ss]->getCoefficient(i, j)), lp_norm);
 					}
 				}
-				wass_dist_[r][ss] = pow(wass_dist_[r][ss], 1.0 / lp_norm);
+				/* Quadratic constraints */
+				if (hasQuadraticRowScenario(s)) {
+					QuadRowData * qc_s = qc_row_scen_[s];
+					QuadRowData * qc_ss = qc_row_scen_[ss];
+					for (int i = 0; i < qc_s->nqrows; i++) 
+					{
+						wass_dist_[r][ss] += pow(fabs(qc_s->rhs[i] - qc_ss->rhs[i]), 2);
+
+						for (int j = 0; j < qc_s->linnzcnt[i]; j++) {
+							wass_dist_[r][ss] += pow(fabs(qc_s->linval[i][j] - qc_ss->linval[i][j]), 2);
+						}
+						for (int j = 0; j < qc_s->quadnzcnt[i]; j++) {
+							wass_dist_[r][ss] += pow(fabs(qc_s->quadval[i][j] - qc_ss->quadval[i][j]), 2);
+						}
+					}
+				}
+				wass_dist_[r][ss] = pow(wass_dist_[r][ss], lp_norm / 2.0);
 			}
 			r++;
 		}
