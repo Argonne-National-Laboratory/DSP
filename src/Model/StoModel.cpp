@@ -745,10 +745,46 @@ DSP_RTN_CODE StoModel::readQuad(const char * smps, const char * filename)
 	int nqrows_core = rstart[1] - rstart[0];
 	int nqrows_scen = nqrows - rstart[1];
 	qc_row_core_ = new QuadRowData(nqrows_core, rstart[0], sense, rhs, linind, linval, quadrow, quadcol, quadval);
+	/* check whether there is a coupling quadratic row */
+	
+	for (i = 0; i < qc_row_core_->nqrows; i++) {
+		for (j = 0; j < qc_row_core_->linnzcnt[i]; j++) {
+			if (qc_row_core_->linind[i][j] >= ncols_[0]) {
+				char msg[128];
+				sprintf(msg, "There is a second stage var in a linear term of a first stage quadratic row. Coupling quadratic rows are not allowed in the current version.\n");
+				throw msg; 
+			}
+		}
+		for (j = 0; j < qc_row_core_->quadnzcnt[i]; j++) {
+			if (qc_row_core_->quadcol[i][j] >= ncols_[0] || qc_row_core_->quadrow[i][j] >= ncols_[0]) {
+				char msg[128];
+				sprintf(msg, "There is a second stage var in a quadratic term of a first stage quadratic row. Coupling quadratic rows are not allowed in the current version.\n");
+				throw msg; 
+			}
+		}
+	}
 	qc_row_scen_ = new QuadRowData * [nscen_];
 	for (int s = 0; s < nscen_; s++) 
 	{	
 		qc_row_scen_[s] = new QuadRowData(nqrows_scen, rstart[1], sense, rhs, linind, linval, quadrow, quadcol, quadval);
+
+		/* check whether there is a coupling quadratic row */
+		for (i = 0; i < qc_row_scen_[s]->nqrows; i++) {
+			for (j = 0; j < qc_row_scen_[s]->linnzcnt[i]; j++) {
+				if (qc_row_scen_[s]->linind[i][j] < ncols_[0]) {
+					char msg[128];
+					sprintf(msg, "There is a first stage var in a linear term of a second stage quadratic row. Coupling quadratic rows are not allowed in the current version.\n");
+					throw msg; 
+				}
+			}
+			for (j = 0; j < qc_row_scen_[s]->quadnzcnt[i]; j++) {
+				if (qc_row_scen_[s]->quadcol[i][j] < ncols_[0] || qc_row_scen_[s]->quadrow[i][j] < ncols_[0]) {
+					char msg[128];
+					sprintf(msg, "There is a first stage var in a quadratic term of a second stage quadratic row. Coupling quadratic rows are not allowed in the current version.\n");
+					throw msg; 
+				}
+			}
+		}
 	}	
 
 	if (stofile.is_open()) {
