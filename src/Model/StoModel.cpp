@@ -1152,7 +1152,7 @@ void StoModel::copyCoreObjective(double * obj, int stg)
 	}
 }
 
-void StoModel::copyCoreQuadrativeObjective(CoinPackedMatrix * &qobj_coupling, CoinPackedMatrix * &qobj_ncoupling, int stg)
+void StoModel::copyCoreQuadraticObjective(CoinPackedMatrix *&qobj_coupling, CoinPackedMatrix *&qobj_ncoupling, int stg)
 {
 	vector<int> colidx;
 	vector<int> rowidx;

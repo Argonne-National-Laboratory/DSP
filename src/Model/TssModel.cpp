@@ -405,8 +405,8 @@ DSP_RTN_CODE TssModel::loadSecondStage(
                 for (int j = start[i]; j < start[i + 1]; ++j) {
                     bool added = false;
                     if (rows_core_[rstart_[1] + i]->findIndex(index[j]) < 0) {
-                        // printf(" added index %d element %e to rows_core_[%d]\n", index[j], value[j], rstart_[1]+i);
-                        rows_core_[rstart_[1] + i]->insert(index[j], 0.);
+						// printf(" added index %d element %e to rows_core_[%d]\n", index[j], value[j], rstart_[1]+i);
+						rows_core_[rstart_[1] + i]->insert(index[j], 0.);
                         added = true;
                     }
                     if (added) rows_core_[rstart_[1] + i]->sortIncrIndex();
@@ -599,7 +599,7 @@ DSP_RTN_CODE TssModel::copyRecoObj(int scen, double *& obj_reco, CoinPackedMatri
 	qobj_reco_ncoupling=new CoinPackedMatrix(false, 0, 0);
 
 	/** copy quadratic objective coefficience to qobj_reco */
-	copyCoreQuadrativeObjective(qobj_reco_coupling, qobj_reco_ncoupling, 1);
+	copyCoreQuadraticObjective(qobj_reco_coupling, qobj_reco_ncoupling, 1);
 	//PRINT_ARRAY_MSG(qobj_reco_ncoupling->getNumElements(), qobj_reco_ncoupling->getElements(), "elements in qobj_reco_ncoupling11");
 	combineRandQuadraticObjective(qobj_reco_coupling, qobj_reco_ncoupling, 1, scen, adjustProbability);
 	//PRINT_ARRAY_MSG(qobj_reco_ncoupling->getNumElements(), qobj_reco_ncoupling->getElements(), "elements in qobj_reco_ncoupling");
