@@ -287,6 +287,8 @@ public:
 	/** Add a row (constraint) to the problem. */
 	virtual void addRow(const CoinPackedVectorBase& vec, const char rowsen,
 			const double rowrhs, const double rowrng);
+	/** Add quadratic rows (constraint) to the problem. */
+	virtual void addQuadraticRows(int nqrows, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int const ** linind, double const ** linval, int const ** quadrow, int const ** quadcol, double const ** quadval);
 	/** \brief Delete a set of rows (constraints) from the problem.
 
 	 The solver interface for a basis-oriented solver will maintain valid
@@ -495,7 +497,9 @@ protected:
 
 	/** store original rows */
 	int nconss_;
+	int nqconss_;
 	std::vector<SCIP_CONS*> conss_;
+	std::vector<SCIP_CONS*> qconss_;
 	std::vector<double> rlbd_;
 	std::vector<double> rubd_;
 	std::vector<char> sense_;

@@ -98,8 +98,7 @@ public:
 	 * * (For more information about solving a MIQCP, see the website: https://www.ibm.com/support/knowledgecenter/en/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/UsrMan/topics/discr_optim/mip_quadratic/03_introMIQCP.html) 
 	 */
 	/** load quadratic constrs */
-	virtual void addQuadraticRows(int nqrows, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int const ** linind, double const ** linval, 
-										int const ** quadrow, int const ** quadcol, double const ** quadval) 
+	virtual void addQuadraticRows(int nqrows, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int const ** linind, double const ** linval, int const ** quadrow, int const ** quadcol, double const ** quadval)
 	{
 		if (nqrows > 0)
 			isqcp_ = true;
@@ -233,7 +232,6 @@ public:
 	/** modified OsiCpxSolverInterface::initialSolve */
 	void QCQPSolve()
 	{
-
   		if (isqp_)
 		  	switchToQP();
 		else if (isqcp_)

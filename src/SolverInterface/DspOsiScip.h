@@ -40,6 +40,14 @@ public:
         scip_ = NULL;
     }
 
+    virtual void addQuadraticRows(int nqrows, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int const ** linind, double const ** linval, int const ** quadrow, int const ** quadcol, double const ** quadval)
+    {
+        if (nqrows > 0)
+			isqcp_ = true;
+
+		scip_->addQuadraticRows(nqrows, linnzcnt, quadnzcnt, rhs, sense, linind, linval, quadrow, quadcol, quadval);
+    }
+
     /** solve problem */
     virtual void solve() {
         si_->branchAndBound();
