@@ -119,12 +119,18 @@ StoModel::StoModel(const StoModel & rhs) :
 		CoinCopyN(rhs.ctype_core_[i], ncols_[i], ctype_core_[i]);
 	}
 	
-	if (rhs.qc_row_scen_ != NULL)
+	if (rhs.qc_row_scen_ != NULL) 
+	{
 		qc_row_scen_ = new QuadRowData * [nscen_];
+	} 
+	else 
+	{
+		qc_row_scen_ = NULL;
+	}
 
 	for (int i = nscen_ - 1; i >= 0; --i)
 	{
-		if (rhs.hasQuadraticRowScenario(i)) {
+		if (qc_row_scen_) {
 			qc_row_scen_[i] = rhs.qc_row_scen_[i];
 		}
 		prob_[i] = rhs.prob_[i];
