@@ -85,8 +85,6 @@ StoModel::StoModel(const StoModel & rhs) :
 	qobj_scen_  = new CoinPackedMatrix * [nscen_];
 	rlbd_scen_  = new CoinPackedVector * [nscen_];
 	rubd_scen_  = new CoinPackedVector * [nscen_];
-	qc_row_core_ = new QuadRowData;
-	qc_row_scen_ = new QuadRowData * [nscen_];
 
 	/** copy */
 	CoinCopyN(rhs.nrows_, nstgs_, nrows_);
@@ -120,10 +118,14 @@ StoModel::StoModel(const StoModel & rhs) :
 		CoinCopyN(rhs.rubd_core_[i], nrows_[i], rubd_core_[i]);
 		CoinCopyN(rhs.ctype_core_[i], ncols_[i], ctype_core_[i]);
 	}
-	qc_row_core_ = rhs.qc_row_core_;
+	
+	if (rhs.qc_row_scen_ != NULL)
+		qc_row_scen_[i] = new QuadRowData * [nscen_];
 	for (int i = nscen_ - 1; i >= 0; --i)
 	{
-		qc_row_scen_[i] = rhs.qc_row_scen_[i];
+		if (rhs.hasQuadraticRowScenario(i)) {
+			qc_row_scen_[i] = rhs.qc_row_scen_[i];
+		}
 		prob_[i] = rhs.prob_[i];
 		if (rhs.mat_scen_[i])
 			mat_scen_[i] = new CoinPackedMatrix(*(rhs.mat_scen_[i]));
