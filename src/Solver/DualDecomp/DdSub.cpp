@@ -274,7 +274,8 @@ DSP_RTN_CODE DdSub::createProblem() {
         }
 
 		/** get quadratic rows data */
-		if (tssModel->hasQuadraticRowCore()) {
+		if (tssModel->hasQuadraticRowCore()) 
+		{
 			has_qc_rows_core = true;
 			qc_row_core = tssModel->getQuaraticsRowCore();
 
