@@ -200,15 +200,10 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 			return 1;
 		}
 
-#ifndef DSP_HAS_CPX
-		cout << "Current version only support CPLEX for solving quadratic constrained problem" << endl;
+#if !defined DSP_HAS_CPX && DSP_HAS_SCIP
+		cout << "Current version only support CPLEX or SCIP for solving quadratic constrained problem" << endl;
 		return 1;
 #endif
-		/** force to use CPLEX if available */
-		env->par_->setIntParam("DD/MASTER/SOLVER", OsiCpx);
-		env->par_->setIntParam("DD/SUB/SOLVER", OsiCpx);
-		env->par_->setIntParam("DE/SOLVER", OsiCpx);
-
 		if (isroot)
 			cout << "Reading Quad files: " << quadfile << endl;
 		ret = readQuad(env, smpsfile, quadfile);
