@@ -405,8 +405,8 @@ DSP_RTN_CODE TssModel::loadSecondStage(
                 for (int j = start[i]; j < start[i + 1]; ++j) {
                     bool added = false;
                     if (rows_core_[rstart_[1] + i]->findIndex(index[j]) < 0) {
-                        // printf(" added index %d element %e to rows_core_[%d]\n", index[j], value[j], rstart_[1]+i);
-                        rows_core_[rstart_[1] + i]->insert(index[j], 0.);
+						// printf(" added index %d element %e to rows_core_[%d]\n", index[j], value[j], rstart_[1]+i);
+						rows_core_[rstart_[1] + i]->insert(index[j], 0.);
                         added = true;
                     }
                     if (added) rows_core_[rstart_[1] + i]->sortIncrIndex();

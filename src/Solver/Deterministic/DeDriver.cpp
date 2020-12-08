@@ -45,21 +45,21 @@ DSP_RTN_CODE DeDriver::init()
 /** run */
 DSP_RTN_CODE DeDriver::run()
 {
-#define FREE_MEMORY       \
-	FREE_PTR(mat)         \
-	FREE_ARRAY_PTR(clbd)  \
-	FREE_ARRAY_PTR(cubd)  \
-	FREE_ARRAY_PTR(ctype) \
-	FREE_ARRAY_PTR(obj)   \
-	FREE_PTR(qobj)        \
-	FREE_ARRAY_PTR(rlbd)  \
-	FREE_ARRAY_PTR(rubd)	\
-	FREE_ARRAY_PTR(qc_row_scen)	\
-	FREE_ARRAY_PTR(linind)   \
-	FREE_ARRAY_PTR(quadrow)   \
-	FREE_ARRAY_PTR(quadcol)   \
+#define FREE_MEMORY             \
+	FREE_PTR(mat)               \
+	FREE_ARRAY_PTR(clbd)        \
+	FREE_ARRAY_PTR(cubd)        \
+	FREE_ARRAY_PTR(ctype)       \
+	FREE_ARRAY_PTR(obj)         \
+	FREE_PTR(qobj)              \
+	FREE_ARRAY_PTR(rlbd)        \
+	FREE_ARRAY_PTR(rubd)        \
+	FREE_ARRAY_PTR(qc_row_scen) \
+	FREE_ARRAY_PTR(linind)      \
+	FREE_ARRAY_PTR(quadrow)     \
+	FREE_ARRAY_PTR(quadcol)     \
 	FREE_ARRAY_PTR(has_qc_rows_scen)
-	
+
 	assert(model_);
 
 	/** model info */
