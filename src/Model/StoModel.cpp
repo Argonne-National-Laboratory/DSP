@@ -120,7 +120,8 @@ StoModel::StoModel(const StoModel & rhs) :
 	}
 	
 	if (rhs.qc_row_scen_ != NULL)
-		qc_row_scen_[i] = new QuadRowData * [nscen_];
+		qc_row_scen_ = new QuadRowData * [nscen_];
+
 	for (int i = nscen_ - 1; i >= 0; --i)
 	{
 		if (rhs.hasQuadraticRowScenario(i)) {
