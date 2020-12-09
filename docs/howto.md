@@ -11,7 +11,7 @@ Running the file without any argument will display available arguments for the r
 ./runDsp
 ```
 
-```shell
+```
 Usage: --algo <de,bd,dd,drbd,drdd,dw> [--wassnorm <number> --wasseps <number>] --smps <smps file> --mps <mps file> --dec <dec file> [--soln <solution file prefix> --param <param file> --test <benchmark objective value>]
 
        --algo        choice of algorithms.
