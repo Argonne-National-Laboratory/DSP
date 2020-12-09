@@ -40,7 +40,7 @@ public:
         scip_ = NULL;
     }
 
-    virtual void addQuadraticRows(int nqrows, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int const ** linind, double const ** linval, int const ** quadrow, int const ** quadcol, double const ** quadval)
+    virtual void addQuadraticRows(int nqrows, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int ** linind, double ** linval, int ** quadrow, int ** quadcol, double ** quadval)
     {
         if (nqrows > 0)
 			isqcp_ = true;

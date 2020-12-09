@@ -438,7 +438,7 @@ void OsiScipSolverInterface::addRow(
 	addRow(vec, rowlb, rowub);
 }
 
-void OsiScipSolverInterface::addQuadraticRows(int nqrows, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int const ** linind, double const ** linval, int const ** quadrow, int const ** quadcol, double const ** quadval)
+void OsiScipSolverInterface::addQuadraticRows(int nqrows, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int ** linind, double ** linval, int ** quadrow, int ** quadcol, double ** quadval)
 {
 	for (int i = 0; i < nqrows; i++) 
 	{

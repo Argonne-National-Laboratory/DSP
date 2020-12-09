@@ -109,6 +109,18 @@ public:
 		}
     }
     
+	/** load quadratic constrs */
+	virtual void addQuadraticRows(int nqrows, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int ** linind, double ** linval, int ** quadrow, int ** quadcol, double ** quadval)
+	{
+		std::cout << "reach here" << std::endl;
+		if (nqrows > 0)
+			isqcp_ = true;
+		for (int i = 0; i < nqrows; i++) 
+		{
+			GUROBI_CALL("loadQuadraticObjective", GRBaddqconstr(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), linnzcnt[i], linind[i], linval[i], quadnzcnt[i], quadrow[i], quadcol[i], quadval[i], sense[i], rhs[i], NULL));
+		}
+		GUROBI_CALL("loadProblem", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
+	}
 
 	/** solve problem */
 	virtual void solve() {
