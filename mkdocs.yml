@@ -6,8 +6,8 @@ theme:
   features:
     - navigation.instant
   palette:
-    - primary: white
-    - accent: red
+    - primary: blue
+    - accent: blue
   icon:
     repo: fontawesome/brands/github
     logo: octicons/workflow-24
