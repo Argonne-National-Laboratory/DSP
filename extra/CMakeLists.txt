@@ -97,6 +97,7 @@ ExternalProject_Add(Osi
 		${WITH_GUROBI_LIB}
 		${WITH_GUROBI_INCDIR}
 		--disable-cplex-libcheck
+		--disable-gurobi-libcheck
 		ADD_CXXFLAGS=${EXTRA_CXX_FLAGS}
 	BUILD_COMMAND make -j1
 	INSTALL_COMMAND make -j1 install)

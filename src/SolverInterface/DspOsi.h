@@ -41,14 +41,13 @@ public:
 	}
 
 	/** load quadratic constrs */
-	virtual void addQuadraticRows(int nqrows, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int const ** linind, double const ** linval, 
-										int const ** quadrow, int const ** quadcol, double const ** quadval) {};
-
+	virtual void addQuadraticRows(int nqrows, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int ** linind, double ** linval, int ** quadrow, int ** quadcol, double ** quadval){};
+	
 	/** throw error */
 	virtual inline void checkDspOsiError(int err, std::string solverfuncname, std::string dsposimethod){};
 
 	/** write problem file */
-	virtual void writeProb(char const * filename_str, char const * filetype_str) {};
+	virtual void writeProb(char const * filename_str, char const * filetype_str){};
 
 	/** change problem type to MIQCP */
 	virtual void switchToMIQCP(void){};

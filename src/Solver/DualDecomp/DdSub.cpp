@@ -354,10 +354,10 @@ DSP_RTN_CODE DdSub::createProblem() {
     getSiPtr()->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
 	/* add quadratic rows */
 	if (has_qc_rows_core) {
-		osi_->addQuadraticRows(qc_row_core->nqrows, qc_row_core->linnzcnt, qc_row_core->quadnzcnt, qc_row_core->rhs, qc_row_core->sense, (const int **) qc_row_core->linind, (const double **) qc_row_core->linval, (const int **) qc_row_core->quadrow, (const int **) qc_row_core->quadcol, (const double **) qc_row_core->quadval);
+		osi_->addQuadraticRows(qc_row_core->nqrows, qc_row_core->linnzcnt, qc_row_core->quadnzcnt, qc_row_core->rhs, qc_row_core->sense, qc_row_core->linind, qc_row_core->linval, qc_row_core->quadrow, qc_row_core->quadcol, qc_row_core->quadval);
 	}
 	if (has_qc_rows_scen) {
-		osi_->addQuadraticRows(qc_row_scen->nqrows, qc_row_scen->linnzcnt, qc_row_scen->quadnzcnt, qc_row_scen->rhs, qc_row_scen->sense, (const int **) qc_row_scen->linind, (const double **) qc_row_scen->linval, (const int **) qc_row_scen->quadrow, (const int **) qc_row_scen->quadcol, (const double **) qc_row_scen->quadval);
+		osi_->addQuadraticRows(qc_row_scen->nqrows, qc_row_scen->linnzcnt, qc_row_scen->quadnzcnt, qc_row_scen->rhs, qc_row_scen->sense, qc_row_scen->linind, qc_row_scen->linval, qc_row_scen->quadrow, qc_row_scen->quadcol, qc_row_scen->quadval);
 	}
 #ifdef DSP_DEBUG
 		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */

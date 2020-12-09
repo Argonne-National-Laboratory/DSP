@@ -212,8 +212,7 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 					}
 				}
 			}
-        	
-			osi_[s]->addQuadraticRows(qc_row_data->nqrows, qc_row_data->linnzcnt, qc_row_data->quadnzcnt, qc_row_data->rhs, qc_row_data->sense, (const int **) linind, (const double **) qc_row_data->linval, (const int **) quadrow, (const int **) quadcol, (const double **) qc_row_data->quadval);
+			osi_[s]->addQuadraticRows(qc_row_data->nqrows, qc_row_data->linnzcnt, qc_row_data->quadnzcnt, qc_row_data->rhs, qc_row_data->sense, linind, qc_row_data->linval, quadrow, quadcol, qc_row_data->quadval);
 			
 			FREE_2D_ARRAY_PTR(nqrow, linind);
 			FREE_2D_ARRAY_PTR(nqrow, quadrow);

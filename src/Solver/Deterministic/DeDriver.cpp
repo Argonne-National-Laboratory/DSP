@@ -205,12 +205,11 @@ DSP_RTN_CODE DeDriver::run()
 	/* add quadratic rows */
 	if (model_->isStochastic()){
 		if (has_qc_rows_core) {
-			osi_->addQuadraticRows(qc_row_core->nqrows, qc_row_core->linnzcnt, qc_row_core->quadnzcnt, qc_row_core->rhs, qc_row_core->sense, (const int **) qc_row_core->linind, (const double **) qc_row_core->linval, (const int **) qc_row_core->quadrow, (const int **) qc_row_core->quadcol, (const double **)qc_row_core->quadval);
+			osi_->addQuadraticRows(qc_row_core->nqrows, qc_row_core->linnzcnt, qc_row_core->quadnzcnt, qc_row_core->rhs, qc_row_core->sense, qc_row_core->linind, qc_row_core->linval, qc_row_core->quadrow, qc_row_core->quadcol, qc_row_core->quadval);
 		}
 		for (int s = 0; s < nscen; s++) {
 			if (has_qc_rows_scen[s]) {
-				osi_->addQuadraticRows(qc_row_scen[s]->nqrows, qc_row_scen[s]->linnzcnt, qc_row_scen[s]->quadnzcnt, qc_row_scen[s]->rhs, qc_row_scen[s]->sense, (const int **) linind[s], (const double **) qc_row_scen[s]->linval, (const int **) quadrow[s], (const int **) quadcol[s], (const double **)qc_row_scen[s]->quadval);
-
+				osi_->addQuadraticRows(qc_row_scen[s]->nqrows, qc_row_scen[s]->linnzcnt, qc_row_scen[s]->quadnzcnt, qc_row_scen[s]->rhs, qc_row_scen[s]->sense, linind[s], qc_row_scen[s]->linval, quadrow[s], quadcol[s], qc_row_scen[s]->quadval);
 				FREE_2D_ARRAY_PTR(qc_row_scen[s]->nqrows, linind[s]);
 				FREE_2D_ARRAY_PTR(qc_row_scen[s]->nqrows, quadrow[s]);
 				FREE_2D_ARRAY_PTR(qc_row_scen[s]->nqrows, quadcol[s]);
