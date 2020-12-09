@@ -11,7 +11,7 @@ Status: ![Build Status](https://github.com/Argonne-National-Laboratory/DSP/workf
 --------
 
 DSP (**D**ecomposition of **S**tructured **P**rograms) is an open-source and parallel package that implements decomposition
-methods for structured **Mixed-Integer Quadratically Constrained Quadratic Programming (MIQCQP)* problems.
+methods for structured **Mixed-Integer Quadratically Constrained Quadratic Programming (MIQCQP)** problems.
 Structured programming problems refer to the class of problems that embed decomposable structures (e.g., block-angular matrices).
 Multiple decomposition methods can effectively utilize such structures in order to accelerate the solutions.
 
