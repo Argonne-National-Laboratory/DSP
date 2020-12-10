@@ -20,11 +20,12 @@ nav:
   - Getting Started: 
     - Installation: install.md
     - How to Use: howto.md
-    - Examples: examples.md
-  - Parameters: parameters.md
+    - More Examples: examples.md
   - Algorithms: algorithms.md
+  - Parameters: parameters.md
   - API: api.md
   - FAQ: faq.md
+
 markdown_extensions:
   - pymdownx.highlight:
       linenums: true
@@ -35,10 +36,16 @@ markdown_extensions:
   - admonition
   - pymdownx.tabbed
   - def_list
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
   - pymdownx.arithmatex:
       generic: true
   - toc:
       permalink: true
+
+plugins:
+  - git-revision-date
 
 extra_javascript:
   - javascripts/config.js
