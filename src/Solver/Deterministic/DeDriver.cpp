@@ -57,8 +57,7 @@ DSP_RTN_CODE DeDriver::run()
 	FREE_ARRAY_PTR(qc_row_scen) \
 	FREE_ARRAY_PTR(linind)      \
 	FREE_ARRAY_PTR(quadrow)     \
-	FREE_ARRAY_PTR(quadcol)     \
-	FREE_ARRAY_PTR(has_qc_rows_scen)
+	FREE_ARRAY_PTR(quadcol)
 
 	assert(model_);
 
@@ -74,13 +73,11 @@ DSP_RTN_CODE DeDriver::run()
 	
 	/* quadratic row data */
 	QuadRowData * qc_row_core = NULL; 
-	bool has_qc_rows_core = false;
 	int nscen = 0;
 	QuadRowData ** qc_row_scen = NULL; 
 	int ***linind = NULL;
 	int ***quadrow = NULL;
 	int ***quadcol = NULL;
-	bool *has_qc_rows_scen = NULL;
 	
 	BGN_TRY_CATCH
 
@@ -118,21 +115,18 @@ DSP_RTN_CODE DeDriver::run()
 		/** get quadratic rows data in core */
 		if (tssModel->hasQuadraticRowCore()) {
 			qc_row_core = tssModel->getQuaraticsRowCore();
-			has_qc_rows_core = true;
 		}
 
 		/** get quadratic rows data for scenarios */
-		qc_row_scen = new QuadRowData * [nscen];
-		linind = new int ** [nscen];
-		quadrow = new int ** [nscen];
-		quadcol = new int ** [nscen];
-		has_qc_rows_scen = new bool [nscen];
-		
-		for (int s = 0; s < nscen; s++)
+		if (tssModel->hasQuadraticRowScenario()) 
 		{
-			if (tssModel->hasQuadraticRowScenario(s)) {
-				
-				has_qc_rows_scen[s] = true;
+			qc_row_scen = new QuadRowData * [nscen];
+			linind = new int ** [nscen];
+			quadrow = new int ** [nscen];
+			quadcol = new int ** [nscen];
+			
+			for (int s = 0; s < nscen; s++)
+			{	
 				qc_row_scen[s] = tssModel->getQuaraticsRowScenario(s);
 #ifdef DSP_DEBUG
 				/* print qc_row_scen to test whether it is successfully received or not */
@@ -165,8 +159,7 @@ DSP_RTN_CODE DeDriver::run()
 						quadcol[s][i][j] = tssModel->getNumCols(1) * s + qc_row_scen[s]->quadcol[i][j];
 					}
 				}
-			} else 
-				has_qc_rows_scen[s] = false;
+			}
 		}
 	}
 	else
@@ -204,11 +197,12 @@ DSP_RTN_CODE DeDriver::run()
 	}
 	/* add quadratic rows */
 	if (model_->isStochastic()){
-		if (has_qc_rows_core) {
+		if (qc_row_core) {
 			osi_->addQuadraticRows(qc_row_core->nqrows, qc_row_core->linnzcnt, qc_row_core->quadnzcnt, qc_row_core->rhs, qc_row_core->sense, qc_row_core->linind, qc_row_core->linval, qc_row_core->quadrow, qc_row_core->quadcol, qc_row_core->quadval);
 		}
-		for (int s = 0; s < nscen; s++) {
-			if (has_qc_rows_scen[s]) {
+		if (qc_row_scen) {
+			for (int s = 0; s < nscen; s++) 
+			{
 				osi_->addQuadraticRows(qc_row_scen[s]->nqrows, qc_row_scen[s]->linnzcnt, qc_row_scen[s]->quadnzcnt, qc_row_scen[s]->rhs, qc_row_scen[s]->sense, linind[s], qc_row_scen[s]->linval, quadrow[s], quadcol[s], qc_row_scen[s]->quadval);
 				FREE_2D_ARRAY_PTR(qc_row_scen[s]->nqrows, linind[s]);
 				FREE_2D_ARRAY_PTR(qc_row_scen[s]->nqrows, quadrow[s]);
