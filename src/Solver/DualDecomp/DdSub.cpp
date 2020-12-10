@@ -182,10 +182,8 @@ DSP_RTN_CODE DdSub::createProblem() {
     double cubd_aux[1];
     double obj_aux[1];
     int cpl_ncols;
-	QuadRowData * qc_row_core; 
-	QuadRowData * qc_row_scen; 
-	bool has_qc_rows_core = false;
-	bool has_qc_rows_scen = false;
+	QuadRowData *qc_row_core = NULL; 
+	QuadRowData *qc_row_scen = NULL;
 
 	BGN_TRY_CATCH
 
@@ -282,7 +280,6 @@ DSP_RTN_CODE DdSub::createProblem() {
 		/** get quadratic rows data */
 		if (tssModel->hasQuadraticRowCore()) 
 		{
-			has_qc_rows_core = true;
 			qc_row_core = tssModel->getQuaraticsRowCore();
 
 		#ifdef DSP_DEBUG
@@ -292,8 +289,7 @@ DSP_RTN_CODE DdSub::createProblem() {
 			tssModel->printQuadRows(qc_row_core);
 		#endif
 		}
-		if (tssModel->hasQuadraticRowScenario(sind_)) {
-			has_qc_rows_scen = true;
+		if (tssModel->hasQuadraticRowScenario()) {
 			qc_row_scen = tssModel->getQuaraticsRowScenario(sind_);
 
 		#ifdef DSP_DEBUG
@@ -353,12 +349,8 @@ DSP_RTN_CODE DdSub::createProblem() {
 #endif
     getSiPtr()->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
 	/* add quadratic rows */
-	if (has_qc_rows_core) {
-		osi_->addQuadraticRows(qc_row_core->nqrows, qc_row_core->linnzcnt, qc_row_core->quadnzcnt, qc_row_core->rhs, qc_row_core->sense, qc_row_core->linind, qc_row_core->linval, qc_row_core->quadrow, qc_row_core->quadcol, qc_row_core->quadval);
-	}
-	if (has_qc_rows_scen) {
-		osi_->addQuadraticRows(qc_row_scen->nqrows, qc_row_scen->linnzcnt, qc_row_scen->quadnzcnt, qc_row_scen->rhs, qc_row_scen->sense, qc_row_scen->linind, qc_row_scen->linval, qc_row_scen->quadrow, qc_row_scen->quadcol, qc_row_scen->quadval);
-	}
+	if (qc_row_core) osi_->addQuadraticRows(qc_row_core->nqrows, qc_row_core->linnzcnt, qc_row_core->quadnzcnt, qc_row_core->rhs, qc_row_core->sense, qc_row_core->linind, qc_row_core->linval, qc_row_core->quadrow, qc_row_core->quadcol, qc_row_core->quadval);
+	if (qc_row_scen) osi_->addQuadraticRows(qc_row_scen->nqrows, qc_row_scen->linnzcnt, qc_row_scen->quadnzcnt, qc_row_scen->rhs, qc_row_scen->sense, qc_row_scen->linind, qc_row_scen->linval, qc_row_scen->quadrow, qc_row_scen->quadcol, qc_row_scen->quadval);
 #ifdef DSP_DEBUG
 		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
 		char lpfilename[128];

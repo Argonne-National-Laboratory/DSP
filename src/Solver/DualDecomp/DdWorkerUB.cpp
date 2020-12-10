@@ -169,7 +169,7 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 			 * any coupling solution obtained from each subproblem will satisfy the first stage quadratic rows 
 			 */
 		}
-		if (tss->hasQuadraticRowScenario(s)) 
+		if (tss->hasQuadraticRowScenario()) 
 		{
 			QuadRowData * qc_row_data = tss->getQuaraticsRowScenario(s);
 

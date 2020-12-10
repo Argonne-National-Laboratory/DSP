@@ -201,7 +201,7 @@ public:
 	QuadRowData * getQuaraticsRowScenario(int s) const {return qc_row_scen_[s];}
 
 	bool hasQuadraticRowCore() const {return qc_row_core_ != NULL ? true : false;};
-	bool hasQuadraticRowScenario(int s) const {return qc_row_scen_ != NULL ? true : false;};
+	bool hasQuadraticRowScenario() const {return qc_row_scen_ != NULL ? true : false;};
 
 	/** set initial solutions */
 	void setSolution(
