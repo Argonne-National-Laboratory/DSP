@@ -24,7 +24,8 @@ bool DW/HEURISTICS/SMIP false
 changes the value of parameter `LOG_LEVEL` of type `int` to `2`.
 Similarly for the other parameters.
 
-> NOTE: With `#` the third line will be commented out.
+!!! Note
+    With `#` the third line will be commented out.
 
 ## List of Parameters
 

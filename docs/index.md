@@ -23,50 +23,85 @@ $$
 \min_{(x,y_i)\in\mathcal{G}_i, \; i=1,\dots,N} \left\{ f^x(x) + \max_{p\in\mathbb{P}_r^W(\epsilon)} \sum_{i=1}^N p_i f_i^y(y_i) \right\},
 $$
 
-where $\mathbb{P}_r^W(\epsilon)$ is the Wasserstein ambiguity set of order $r$ with size $\epsilon$.
+  where $\mathbb{P}_r^W(\epsilon)$ is the Wasserstein ambiguity set of order $r$ with size $\epsilon$.
 
 - Support for generic decomposable structures (e.g., network topology, time horizon)
 - Parallel solve on a cluster by using MPI library
 - Run in parallel with Julia modeling interface `DSPopt.jl`. A toy example can be simply written in the following few lines:
 
-```julia
-using MPI
-using StructJuMP
-using DSPopt
+=== "Serial Run"
 
-# Comment out this line if you want to run in serial
-MPI.Init()
+    ```julia
+    using StructJuMP
+    using DSPopt
 
-# Initialize DSPopt.jl with the communicator.
-DSPopt.parallelize(MPI.COMM_WORLD)
+    # scenarios
+    xi = [[7,7] [11,11] [13,13]]
 
-xi = [[7,7] [11,11] [13,13]]
+    # create StructuredModel with number of scenarios
+    m = StructuredModel(num_scenarios = 3)
 
-# create StructuredModel with number of scenarios
-m = StructuredModel(num_scenarios = 3)
+    @variable(m, 0 <= x[i=1:2] <= 5, Int)
+    @objective(m, Min, -1.5 * x[1] - 4 * x[2])
+    for s = 1:3
+        # create a StructuredModel linked to m with id s and probability 1/3
+        blk = StructuredModel(parent = m, id = s, prob = 1/3)
+        @variable(blk, y[j=1:4], Bin)
+        @objective(blk, Min, -16 * y[1] + 19 * y[2] + 23 * y[3] + 28 * y[4])
+        @constraint(blk, 2 * y[1] + 3 * y[2] + 4 * y[3] + 5 * y[4] <= xi[1,s] - x[1])
+        @constraint(blk, 6 * y[1] + y[2] + 3 * y[3] + 2 * y[4] <= xi[2,s] - x[2])
+    end
 
-@variable(m, 0 <= x[i=1:2] <= 5, Int)
-@objective(m, Min, -1.5 * x[1] - 4 * x[2])
-for s = 1:3
-    # create a StructuredModel linked to m with id s and probability 1/3
-    blk = StructuredModel(parent = m, id = s, prob = 1/3)
-    @variable(blk, y[j=1:4], Bin)
-    @objective(blk, Min, -16 * y[1] + 19 * y[2] + 23 * y[3] + 28 * y[4])
-    @constraint(blk, 2 * y[1] + 3 * y[2] + 4 * y[3] + 5 * y[4] <= xi[1,s] - x[1])
-    @constraint(blk, 6 * y[1] + y[2] + 3 * y[3] + 2 * y[4] <= xi[2,s] - x[2])
-end
+    # The Wasserstein ambiguity set of order-2 can be imposed with the size limit of 1.0.
+    DSPopt.set(WassersteinSet, 2, 1.0)
 
-# The Wasserstein ambiguity set of order-2 can be imposed with the size limit of 1.0.
-DSPopt.set(WassersteinSet, 2, 1.0)
+    status = optimize!(m, 
+        is_stochastic = true, # Needs to indicate that the model is a stochastic program.
+        solve_type = DSPopt.DW, # see instances(DSPopt.Methods) for other methods
+    )
+    ```
 
-status = optimize!(m, 
-    is_stochastic = true, # Needs to indicate that the model is a stochastic program.
-    solve_type = DSPopt.DW, # see instances(DSPopt.Methods) for other methods
-)
+=== "Paralell Run"
 
-# Comment out this line if you want to run in serial
-MPI.Finalize()
-```
+    ```julia
+    using MPI
+    using StructJuMP
+    using DSPopt
+
+    # Initialize MPI communication
+    MPI.Init()
+
+    # Initialize DSPopt.jl with the communicator.
+    DSPopt.parallelize(MPI.COMM_WORLD)
+
+    # scenarios
+    xi = [[7,7] [11,11] [13,13]]
+
+    # create StructuredModel with number of scenarios
+    m = StructuredModel(num_scenarios = 3)
+
+    @variable(m, 0 <= x[i=1:2] <= 5, Int)
+    @objective(m, Min, -1.5 * x[1] - 4 * x[2])
+    for s = 1:3
+        # create a StructuredModel linked to m with id s and probability 1/3
+        blk = StructuredModel(parent = m, id = s, prob = 1/3)
+        @variable(blk, y[j=1:4], Bin)
+        @objective(blk, Min, -16 * y[1] + 19 * y[2] + 23 * y[3] + 28 * y[4])
+        @constraint(blk, 2 * y[1] + 3 * y[2] + 4 * y[3] + 5 * y[4] <= xi[1,s] - x[1])
+        @constraint(blk, 6 * y[1] + y[2] + 3 * y[3] + 2 * y[4] <= xi[2,s] - x[2])
+    end
+
+    # The Wasserstein ambiguity set of order-2 can be imposed with the size limit of 1.0.
+    DSPopt.set(WassersteinSet, 2, 1.0)
+
+    status = optimize!(m, 
+        is_stochastic = true, # Needs to indicate that the model is a stochastic program.
+        solve_type = DSPopt.DW, # see instances(DSPopt.Methods) for other methods
+    )
+
+    # Finalize MPI communication
+    MPI.Finalize()
+    ```
 
 ## Acknowledgements
 
