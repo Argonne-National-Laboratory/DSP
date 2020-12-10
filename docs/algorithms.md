@@ -1,6 +1,16 @@
-# Algorithms in DSP
+# Algorithms
 
-DSP provides **serial** and **parallel** implementations for the four types of algorithms.
+We describe the algorithm implementations available in `DSP`.
+The following table summarizes the available algorithms with their capabilities.
+
+| Argument | Algorithm                                     | Parallel | MILP  | MIQP | MIQCP |
+| -------- | --------------------------------------------- | :------: | :---: | :--: | :---: |
+| `bd`     | Integer Benders decomposition                 | O        | O     | O    |       |
+| `de`     | Extensive form solve                          |          | O     | O    | O     |
+| `dd`     | Dual decomposition                            | O        | O     | O    | O     |
+| `drbd`   | Distributionally robust Benders decomposition | O        | O     |      |       |
+| `drdd`   | Distributionally robust dual decomposition    | O        | O     |      | O     |
+| `dw`     | Dantzig-Wolfe decomposition                   | O        | O     |      |       |
 
 ## Dantzig-Wolfe Decomposition
 
@@ -21,7 +31,8 @@ For two-stage stochastic programs, each block is represented by a scenario subpr
 Stochastic programs can be read from [SMPS](https://ieeexplore.ieee.org/abstract/document/8142546) files or our C API functions (or Julia package [DSPopt.jl](https://github.com/kibaekkim/DSPopt.jl)).
 For generic optimization problems, each block can be specified by [mps-dec](https://gcg.or.rwth-aachen.de/doc/reader__dec_8h.html) files or our C API functions (or Julia package DSPopt.jl).
 
-> NOTE: A **distributionally robust** variant of dual decomposition is available for the problems given in SMPS files and optionally with `.dro` file.
+!!! check
+    A **distributionally robust** variant of dual decomposition is available with argument `--algo drdd`.
 
 For more technical details, please refer the following papers.
 
@@ -35,15 +46,15 @@ For more technical details, please refer the following papers.
 This solves the integer Benders decomposition of stochastic programming problems with the lower bound initialized by the dual decomposition.
 Integer Benders decomposition runs when the first stage is a pure-binary program and the second stage is a mixed-integer program.
 
-> NOTE: A **distributionally robust** variant of Benders decomposition is available for the problems given in SMPS files and optionally with `.dro` file.
-
-> Note: When the first stage is not a pure-binary program, any second-stage integer variables will be relaxed.
-
-> Note: This algorithm requires SCIP and is available only for stochastic programs.
+!!! check
+    - A **distributionally robust** variant of Benders decomposition is available with argument `--algo drbd`.
+    - When the first stage is not a pure-binary program, any second-stage integer variables will be relaxed.
+    - This algorithm requires SCIP and is available only for stochastic programs.
 
 ## Extensive Form Solver
 
 This reformulates the problem into one large optimization problem and uses available external solver.
 Parallel computing is available only through the external solver (i.e., multi-threading).
 
-> Note: There is no MPI parallelism for this algorithm.
+!!! attention
+    There is no MPI parallelism for this algorithm.
