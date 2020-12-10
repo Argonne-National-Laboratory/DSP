@@ -58,8 +58,8 @@ DSP_RTN_CODE TssModel::setNumberOfScenarios(int nscen)
 	rubd_scen_  = new CoinPackedVector * [nscen_];
 
 	/* data for quadratic constraints */
-	qc_row_core_ = new QuadRowData;
-	qc_row_scen_ = new QuadRowData * [nscen_];
+	qc_row_core_ = NULL;
+	qc_row_scen_ = NULL;
 
 	/** initialize memory */
 	for (int s = 0; s < nstgs_; ++s)
@@ -271,6 +271,8 @@ DSP_RTN_CODE TssModel::loadFirstStage(
 
 	if (nqrows > 0) {
 		/* allocate memory for quadratic constraints */
+		qc_row_core_ = new QuadRowData;
+	
 		qc_row_core_->nqrows = nqrows;
 		qc_row_core_->linnzcnt = new int [nqrows];
 		qc_row_core_->quadnzcnt = new int [nqrows];
@@ -516,9 +518,17 @@ DSP_RTN_CODE TssModel::loadSecondStage(
 	BGN_TRY_CATCH
 	loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, qobjrowindex, qobjcolindex, qobjvalue, qnum, rlbd, rubd);
 	
-	if (nqrows > 0) {
-		QuadRowData *qc = qc_row_scen_[s];
+	if (nqrows > 0) 
+	{
+		DSPdebugMessage("nqrows of %d: %d\n", s, nqrows);
+		
 		/* allocate memory for quadratic constraints */
+		if (!qc_row_scen_) 
+			qc_row_scen_ = new QuadRowData * [nscen_];
+		qc_row_scen_[s] = new QuadRowData;
+		
+		QuadRowData *qc = qc_row_scen_[s];
+
 		qc->nqrows = nqrows;
 		qc->linnzcnt = new int [nqrows];
 		qc->quadnzcnt = new int [nqrows];
