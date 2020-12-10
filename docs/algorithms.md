@@ -3,14 +3,14 @@
 We describe the algorithm implementations available in `DSP`.
 The following table summarizes the available algorithms with their capabilities.
 
-| Argument | Algorithm                                     | Parallel                  | MILP                      | MIQP                      | MIQCP                     |
-| -------- | --------------------------------------------- | ------------------------- | ------------------------- | ------------------------- | ------------------------- |
-| `bd`     | Integer Benders decomposition                 | :fontawesome-solid-check: | :fontawesome-solid-check: | :fontawesome-solid-check: |                           |
-| `de`     | Extensive form solve                          |                           | :fontawesome-solid-check: | :fontawesome-solid-check: | :fontawesome-solid-check: |
-| `dd`     | Dual decomposition                            | :fontawesome-solid-check: | :fontawesome-solid-check: | :fontawesome-solid-check: | :fontawesome-solid-check: |
-| `drbd`   | Distributionally robust Benders decomposition | :fontawesome-solid-check: | :fontawesome-solid-check: |                           |                           |
-| `drdd`   | Distributionally robust dual decomposition    | :fontawesome-solid-check: | :fontawesome-solid-check: |                           | :fontawesome-solid-check: |
-| `dw`     | Dantzig-Wolfe decomposition                   | :fontawesome-solid-check: | :fontawesome-solid-check: |                           |                           |
+| Argument | Algorithm                                     | Parallel | MILP  | MIQP                      | MIQCP                     |
+| -------- | --------------------------------------------- | -------- | ----- | ------------------------- | ------------------------- |
+| `bd`     | Integer Benders decomposition                 | O        | O     | O |                           |
+| `de`     | Extensive form solve                          |                           | O | O | O |
+| `dd`     | Dual decomposition                            | O | O | O | O |
+| `drbd`   | Distributionally robust Benders decomposition | O | O |                           |                           |
+| `drdd`   | Distributionally robust dual decomposition    | O | O |                           | O |
+| `dw`     | Dantzig-Wolfe decomposition                   | O | O |                           |                           |
 
 ## Dantzig-Wolfe Decomposition
 
