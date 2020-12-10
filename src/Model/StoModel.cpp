@@ -1098,7 +1098,7 @@ DSP_RTN_CODE StoModel::setWassersteinAmbiguitySet(double lp_norm, double eps)
 					}
 				}
 				/* Quadratic constraints */
-				if (hasQuadraticRowScenario(s)) {
+				if (hasQuadraticRowScenario()) {
 					QuadRowData * qc_s = qc_row_scen_[s];
 					QuadRowData * qc_ss = qc_row_scen_[ss];
 					for (int i = 0; i < qc_s->nqrows; i++) 
