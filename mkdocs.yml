@@ -36,9 +36,6 @@ markdown_extensions:
   - admonition
   - pymdownx.tabbed
   - def_list
-  - pymdownx.emoji:
-      emoji_index: !!python/name:materialx.emoji.twemoji
-      emoji_generator: !!python/name:materialx.emoji.to_svg
   - pymdownx.arithmatex:
       generic: true
   - toc:
