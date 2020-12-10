@@ -1,10 +1,11 @@
 # Installation
 
-This describes the following:
+`DSP` is an open source and available in a Github repository.
+We describe
 
 * how to correctly clone the repository with submodules
-* the prerequisites for installation
 * how to install DSP and Julia interface
+* the prerequisites for installation
 
 ## Download
 
@@ -26,7 +27,24 @@ You can clone this repository in your preferred directory by typing
 
 ## Build and Setting
 
-Please set `UserConfig.cmake` as follows.
+Please set paths in `UserConfig.cmake` as follows.
+
+```
+set(MA27LIB_DIR     "/path/to/libma27/dir")
+set(CPLEX_LIB_DIR   "/path/to/libcplex/dir")
+set(CPLEX_INC_DIR   "/path/to/ilcplex")
+set(GUROBI_LIB_DIR  "/path/to/libgrb/dir")
+set(GUROBI_INC_DIR  "/path/to/gurobi/include")
+set(SCIPOPT_INC_DIR "/path/to/scip/include")
+set(SCIPOPT_LIB_DIR "/path/to/scip/lib")
+```
+
+!!! info
+    Not every path is required to set in `UserConfig.cmake`. User needs to set whatever they need.
+
+    For example, `MA27LIB_DIR` is required only if user wants to use `OOQP` solver for the Lagrangian master problem in dual decomposition.
+    And, most users are likely to need only one of the solvers: `CPLEX`, `GUROBI`, or `SCIP`.
+
 Assuming that you are at the root directory of DSP, type
 
 ```
@@ -35,8 +53,8 @@ cd build
 cmake ..
 ```
 
-A shared object is installed in ``./lib`` directory. 
-Once the installation has been successfully done, you need to set environment variable ``(DY)LD_LIBRARY_PATH``.
+If everything goes well, you should be able to find these two files: `./bin/runDsp` and `./lib/libDsp.*`.
+Optionally, you can test the build with `ctest`.
 
 ---
 

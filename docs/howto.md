@@ -1,6 +1,11 @@
 # How to Use DSP
 
-Building the DSP source files creates an executable file `./bin/runDsp` and a shared library file.
+There are two ways to use algorithms in `DSP`:
+
+- Executable binary file `runDsp`
+- Callable C functions in shared library `libDsp.so` (or `libDsp.dylib` for Mac)
+
+Building the DSP source files creates an executable file `./bin/runDsp` and a shared library file `./lib/libDsp.*`.
 
 ## Executable file
 
@@ -18,11 +23,32 @@ The executable file `./bin/runDsp` can be run as a command-line tool with the fo
 | `--soln`     | An optional argument for solution file prefix.<br>For example, For example, if `--soln mysoln` is given, `runDsp` will write the following solution files:<ul><li>`mysoln.primobj.txt` for primal objective value</li><li>`mysoln.dualobj.txt` for dual objective value</li><li>`mysoln.primal.txt` for primal variable values in the order of variables defined in the input file, if the primal objective value is less than `1e+20`.</li><li>`mysoln.dual.txt` for dual variable values if `--algo dd` is given.</li></ul> |
 | `--param`    | An optional paramater for parameter file name (see [Parameters](./parameters.md) section)|
 
+
+!!! Example "Your first example!"
+
+    This examples solves the two-stage stochastic mixed-integer linear program (MILP) of `farmer` example by using the (parallel) dual decomposition.
+
+    === "Serial Run"
+
+        ```
+        ./bin/runDsp --algo dd --smps ../examples/smps/farmer
+        ```
+
+    === "Parallel Run"
+
+        ```
+        mpiexec -np 3 ./bin/runDsp --algo dd --smps ../examples/smps/farmer
+        ```
+
+    !!! attention
+
+        Of course, `Parallel Run` is available only if you build `DSP` with MPI library.
+
 ## Shared library
 
 The shared library provides access to C API functions.
 The library needs to be placed in the searchable path.
-For example, (e.g., `LD_LIBRARY_PATH` for linux or `DYLD_LIBRARY_PATH` for Mac).
+For example,
 
 === "Linux"
 
