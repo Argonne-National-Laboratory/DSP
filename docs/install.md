@@ -10,17 +10,19 @@ This describes the following:
 
 You can clone this repository in your preferred directory by typing
 
-```
-git clone --recursive https://github.com/Argonne-National-Laboratory/DSP.git
-```
+=== "Single line"
 
-or
+    ```
+    git clone --recursive https://github.com/Argonne-National-Laboratory/DSP.git
+    ```
 
-```
-git clone https://github.com/Argonne-National-Laboratory/DSP.git
-cd DSP
-git submodule update --init --recursive
-```
+=== "Multiple lines"
+
+    ```
+    git clone https://github.com/Argonne-National-Laboratory/DSP.git
+    cd DSP
+    git submodule update --init --recursive
+    ```
 
 ## Build and Setting
 

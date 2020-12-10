@@ -20,16 +20,21 @@ nav:
   - Getting Started: 
     - Installation: install.md
     - How to Use: howto.md
+    - Examples: examples.md
   - Parameters: parameters.md
   - Algorithms: algorithms.md
   - API: api.md
   - FAQ: faq.md
 markdown_extensions:
-  - pymdownx.highlight
+  - pymdownx.highlight:
+      linenums: true
   - pymdownx.superfences
   - pymdownx.caret
   - pymdownx.mark
   - pymdownx.tilde
+  - admonition
+  - pymdownx.tabbed
+  - def_list
   - pymdownx.arithmatex:
       generic: true
   - toc:
