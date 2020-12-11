@@ -7,7 +7,7 @@
 
 |               | Stable | Latest |
 | ------------- | ------ | ------ |
-| Documentation | [![Documentation Status](https://readthedocs.org/projects/dsp/badge/?version=stable)](https://dsp.readthedocs.io/?badge=stable) | [![Documentation Status](https://readthedocs.org/projects/dsp/badge/?version=latest)](https://dsp.readthedocs.io/?badge=latest) |
+| Documentation | [![Documentation Status](https://readthedocs.org/projects/dsp/badge/?version=stable)](https://dsp.readthedocs.io/en/stable/) | [![Documentation Status](https://readthedocs.org/projects/dsp/badge/?version=latest)](https://dsp.readthedocs.io/en/latest/) |
 
 --------
 
