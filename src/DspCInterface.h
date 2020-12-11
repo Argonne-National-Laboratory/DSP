@@ -15,6 +15,7 @@
 #include "Utility/DspMpi.h"
 
 /** DSP */
+#include "DspConfig.h"
 #include "DspApiEnv.h"
 
 class TssModel;
@@ -241,6 +242,15 @@ void writeMps(DspApiEnv * env, const char * name);
 
 /** print model */
 void printModel(DspApiEnv *env);
+
+/** query the DSP version major */
+int getVersionMajor(DspApiEnv *env);
+
+/** query the DSP version minor */
+int getVersionMinor(DspApiEnv *env);
+
+/** query the DSP version patch */
+int getVersionPatch(DspApiEnv *env);
 
 #ifdef __cplusplus
 }

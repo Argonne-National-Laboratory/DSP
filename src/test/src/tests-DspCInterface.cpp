@@ -13,6 +13,17 @@ TEST_CASE("C interface functions") {
         REQUIRE(env->solver_ == NULL);
     }
 
+    SECTION("Version checks")
+    {
+        int major = getVersionMajor(env);
+        int minor = getVersionMinor(env);
+        int patch = getVersionPatch(env);
+
+        REQUIRE(major == DSP_VERSION_MAJOR);
+        REQUIRE(minor == DSP_VERSION_MINOR);
+        REQUIRE(patch == DSP_VERSION_PATCH);
+    }
+
     SECTION("freeEnv function") {
         freeEnv(env);
         REQUIRE(env == NULL);
