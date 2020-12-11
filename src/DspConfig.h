@@ -4,9 +4,9 @@
 /** The version should be synced with the one in Github.
  * So it is based on symantic versioning.
  */
-#define DSP_VERSION_MAJOR 1
-#define DSP_VERSION_MINOR 4
-#define DSP_VERSION_PATCH 1
+#define DSP_VERSION_MAJOR 2
+#define DSP_VERSION_MINOR 0
+#define DSP_VERSION_PATCH 0
 
 #include <stdio.h>
 
