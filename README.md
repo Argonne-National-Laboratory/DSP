@@ -2,10 +2,9 @@
 
 ![Build Status](https://github.com/Argonne-National-Laboratory/DSP/workflows/Build%20test/badge.svg)
 [![codecov](https://codecov.io/gh/Argonne-National-Laboratory/DSP/branch/master/graph/badge.svg)](https://codecov.io/gh/Argonne-National-Laboratory/DSP)
-![GitHub tag (latest SemVer)](https://img.shields.io/github/v/tag/Argonne-National-Laboratory/DSP?label=release&sort=semver)
 [![DOI](https://zenodo.org/badge/26612881.svg)](https://zenodo.org/badge/latestdoi/26612881)
 
-|               | Stable | Latest |
+|               | ![GitHub tag (latest SemVer)](https://img.shields.io/github/v/tag/Argonne-National-Laboratory/DSP?label=release&sort=semver) | `master` |
 | ------------- | ------ | ------ |
 | Documentation | [![Documentation Status](https://readthedocs.org/projects/dsp/badge/?version=stable)](https://dsp.readthedocs.io/en/stable/) | [![Documentation Status](https://readthedocs.org/projects/dsp/badge/?version=latest)](https://dsp.readthedocs.io/en/latest/) |
 
