@@ -9,7 +9,7 @@
 
 #include "Utility/DspMacros.h"
 #include "Utility/DspMessage.h"
-#include "Model/TssModel.h"
+#include "Model/DecTssModel.h"
 #include "Solver/DualDecomp/DdSub.h"
 #include "SolverInterface/DspOsiClp.h"
 #include "SolverInterface/DspOsiCpx.h"
@@ -92,8 +92,10 @@ DSP_RTN_CODE DdSub::solve()
 	bool dualinfeas = false;
 
 	while (1) {
-		osi_->solve();
-	
+		
+		/** solve */
+		osi_->solve();	
+
 		/** check status. there might be unexpected results. */
 		status_ = osi_->status();
 		DSPdebugMessage("solution status %d\n", status_);
@@ -177,8 +179,10 @@ DSP_RTN_CODE DdSub::createProblem() {
     double cubd_aux[1];
     double obj_aux[1];
     int cpl_ncols;
+	QuadRowData *qc_row_core = NULL; 
+	QuadRowData *qc_row_scen = NULL;
 
-    BGN_TRY_CATCH
+	BGN_TRY_CATCH
 
     /** parameters */
     parRelaxIntegrality_ = par_->getBoolPtrParam("RELAX_INTEGRALITY");
@@ -266,6 +270,29 @@ DSP_RTN_CODE DdSub::createProblem() {
             }
             CoinFillN(ctype + tssModel->getNumCols(0), tssModel->getNumCols(1), 'C');
         }
+
+		/** get quadratic rows data */
+		if (tssModel->hasQuadraticRowCore()) 
+		{
+			qc_row_core = tssModel->getQuaraticsRowCore();
+
+		#ifdef DSP_DEBUG
+			/* print qcrowdata to test whether it is successfully received or not */
+			cout << "DdSub's quadratic constraints in core: " << endl;
+			tssModel->printQuadRows(-1);
+			tssModel->printQuadRows(qc_row_core);
+		#endif
+		}
+		if (tssModel->hasQuadraticRowScenario()) {
+			qc_row_scen = tssModel->getQuaraticsRowScenario(sind_);
+
+		#ifdef DSP_DEBUG
+			/* print qcrowdata to test whether it is successfully received or not */
+			cout << "DdSub's quadratic constraints in scen: " << endl;
+			tssModel->printQuadRows(sind_);
+			tssModel->printQuadRows(qc_row_scen);
+		#endif
+		}
     } else {
         if (parRelaxIntegrality_[0] || parRelaxIntegrality_[1]) {
             for (int j = 0; j < mat->getNumCols(); j++) {
@@ -315,13 +342,23 @@ DSP_RTN_CODE DdSub::createProblem() {
 	DspMessage::printArray(mat->getNumCols(), obj);
 #endif
     getSiPtr()->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
+	/* add quadratic rows */
+	if (qc_row_core) osi_->addQuadraticRows(qc_row_core->nqrows, qc_row_core->linnzcnt, qc_row_core->quadnzcnt, qc_row_core->rhs, qc_row_core->sense, qc_row_core->linind, qc_row_core->linval, qc_row_core->quadrow, qc_row_core->quadcol, qc_row_core->quadval);
+	if (qc_row_scen) osi_->addQuadraticRows(qc_row_scen->nqrows, qc_row_scen->linnzcnt, qc_row_scen->quadnzcnt, qc_row_scen->rhs, qc_row_scen->sense, qc_row_scen->linind, qc_row_scen->linval, qc_row_scen->quadrow, qc_row_scen->quadcol, qc_row_scen->quadval);
+#ifdef DSP_DEBUG
+		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
+		char lpfilename[128];
+		sprintf(lpfilename, "DdWorkerLB_scen%d.lp", sind_); 
+		osi_->writeProb(lpfilename, NULL);
+#endif
+
 	for (int j = 0; j < mat->getNumCols(); ++j) {
 		if (ctype[j] != 'C')
 			getSiPtr()->setInteger(j);
 	}
     DSPdebug(mat->verifyMtx(4));
 
-    /** set solution gap tolerance */
+	/** set solution gap tolerance */
 	if (nIntegers > 0)
 	    osi_->setRelMipGap(gapTol_);
 
@@ -423,6 +460,13 @@ DSP_RTN_CODE DdSub::updateProblem(
 	/** update primal bound (bounds of auxiliary constraint) */
 	if (primal_bound < COIN_DBL_MAX)
 		getSiPtr()->setColUpper(ncols - 1, primal_bound);//getSiPtr()->setColBounds(ncols - 1, primal_bound, primal_bound);
+
+#ifdef DSP_DEBUG
+		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
+		char lpfilename[128];
+		sprintf(lpfilename, "DdWorkerLB_scen_update%d.lp", sind_); 
+		osi_->writeProb(lpfilename, NULL);
+#endif
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 

@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+// #define DSP_DEBUG
 
 #include <cstdlib>
 #include <cstdio>
@@ -50,7 +50,7 @@ DspApiEnv * createEnv(void)
 }
 
 /** free API environment */
-void freeEnv(DspApiEnv * env)
+void freeEnv(DspApiEnv * &env)
 {
 	FREE_PTR(env);
 }
@@ -71,10 +71,11 @@ void freeSolver(DspApiEnv * env)
 
 /** If current model is stochastic, return the model as a TssModel object. If no model exists, create one. */
 TssModel * getTssModel(DspApiEnv * env)
-{
+{	
 	if (env->model_ == NULL)
+	{
 		env->model_ = new DecTssModel;
-	/** TODO: Should fail gracefully */
+	}
 	if (env->model_->isStochastic())
 	{
 		TssModel * tss;
@@ -134,8 +135,30 @@ int readDro(DspApiEnv * env, const char * dro)
 	return getTssModel(env)->readDro(dro);
 }
 
+/** read quad files */
+int readQuad(DspApiEnv * env, const char * smps, const char * quad)
+{
+	return getTssModel(env)->readQuad(smps, quad);
+}
+
 /** load first-stage problem */
 void loadFirstStage(
+		DspApiEnv *          env,   /**< pointer to API object */
+		const CoinBigIndex * start, /**< start index for each row */
+ 		const int *          index, /**< column indices */
+ 		const double *       value, /**< constraint elements */
+ 		const double *       clbd,  /**< column lower bounds */
+ 		const double *       cubd,  /**< column upper bounds */
+ 		const char *         ctype, /**< column types */
+ 		const double *       obj,   /**< objective coefficients */
+ 		const double *       rlbd,  /**< row lower bounds */
+ 		const double *       rubd   /**< row upper bounds */)
+{
+ 	getTssModel(env)->loadFirstStage(start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
+}
+
+/** load first-stage problem with quadratic objective */
+void loadQuadraticFirstStage(
 		DspApiEnv *          env,   /**< pointer to API object */
 		const CoinBigIndex * start, /**< start index for each row */
 		const int *          index, /**< column indices */
@@ -144,14 +167,68 @@ void loadFirstStage(
 		const double *       cubd,  /**< column upper bounds */
 		const char *         ctype, /**< column types */
 		const double *       obj,   /**< objective coefficients */
+		const int * 		 qrowindex,/**< start index for first-stage quadratic objective */
+		const int *			 qcolindex,/**< quadratic objective column indices */
+		const double *		 qvalue,/**< quadratic objective elements */
+		const CoinBigIndex	 qnum,	/**< number of quadratic elements */
 		const double *       rlbd,  /**< row lower bounds */
 		const double *       rubd   /**< row upper bounds */)
 {
-	getTssModel(env)->loadFirstStage(start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
+	getTssModel(env)->loadFirstStage(start, index, value, clbd, cubd, ctype, obj, qrowindex, qcolindex, qvalue, qnum, rlbd, rubd);
+}
+
+/** load first-stage problem with quadratic objective and constraints*/
+void loadQCQPFirstStage(
+			DspApiEnv *          env,   	/**< pointer to API object */
+			const CoinBigIndex * start, 	/**< start index for each row */
+			const int *          index, 	/**< column indices */
+			const double *       value, 	/**< constraint elements */
+			const double *       clbd,  	/**< column lower bounds */
+			const double *       cubd,  	/**< column upper bounds */
+			const char *         ctype, 	/**< column types */
+			const double *       obj,   	/**< objective coefficients */
+			const int * 		 qobjrowindex, /**< quadratic objective row indices */
+			const int *			 qobjcolindex, /**< quadratic objective column indices */
+			const double *		 qobjvalue, /**< quadratic objective constraint elements value */
+			const CoinBigIndex 	 qobjnum,  	/**< number of quadratic terms in the objective */
+			const double *       rlbd,  	/**< row lower bounds */
+			const double *       rubd,   	/**< row upper bounds */
+			const int 			nqrows, 	/**< number of quadratic rows */
+        	const int *         linnzcnt,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+        	const int *        	quadnzcnt,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+			const double *		rhs, 		/**< constraint rhs of each constraint */
+			const int *			sense, 		/**< constraint sense of each constraint */
+			const int *         linstart,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+			const int *         linind, 	/**< indices for the linear part */
+			const double *      linval, 	/**< nonzero coefficient of the linear part */
+			const int *        	quadstart,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+			const int *       	quadrow,  	/**< indices for the quadratic part */
+			const int *       	quadcol,  	/**< indices for the quadratic part */
+			const double *      quadval 	/**< nonzero coefficient of the quadratic part */)
+{
+	getTssModel(env)->loadFirstStage(start, index, value, clbd, cubd, ctype, obj, qobjrowindex, qobjcolindex, qobjvalue, qobjnum, rlbd, rubd, nqrows, linnzcnt, quadnzcnt, rhs, sense, linstart, linind, linval, quadstart, quadrow, quadcol, quadval);
 }
 
 /** load second-stage problem */
 void loadSecondStage(
+ 		DspApiEnv *          env,   /**< pointer to API object */
+ 		const int            s,     /**< scenario index */
+ 		const double         prob,  /**< probability */
+ 		const CoinBigIndex * start, /**< start index for each row */
+ 		const int *          index, /**< column indices */
+ 		const double *       value, /**< constraint elements */
+ 		const double *       clbd,  /**< column lower bounds */
+ 		const double *       cubd,  /**< column upper bounds */
+ 		const char *         ctype, /**< column types */
+ 		const double *       obj,   /**< objective coefficients */
+ 		const double *       rlbd,  /**< row lower bounds */
+ 		const double *       rubd   /**< row upper bounds */)
+{
+ 	getTssModel(env)->loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
+}
+
+/** load second-stage problem */
+void loadQuadraticSecondStage(
 		DspApiEnv *          env,   /**< pointer to API object */
 		const int            s,     /**< scenario index */
 		const double         prob,  /**< probability */
@@ -162,10 +239,48 @@ void loadSecondStage(
 		const double *       cubd,  /**< column upper bounds */
 		const char *         ctype, /**< column types */
 		const double *       obj,   /**< objective coefficients */
+		const int * 		 qrowindex,/**< start index for first-stage quadratic objective */
+		const int *			 qcolindex,/**< quadratic objective column indices */
+		const double *		 qvalue,/**< quadratic objective elements */
+		const CoinBigIndex	 qnum,	/**< number of quadratic elements */
 		const double *       rlbd,  /**< row lower bounds */
 		const double *       rubd   /**< row upper bounds */)
 {
-	getTssModel(env)->loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
+	getTssModel(env)->loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, qrowindex, qcolindex, qvalue, qnum, rlbd, rubd);
+}
+
+/** load second-stage problem */
+void loadQCQPSecondStage(
+			DspApiEnv *          env,   	/**< pointer to API object */
+			const int            s,     	/**< scenario index */
+			const double         prob,  	/**< probability */
+			const CoinBigIndex * start, 	/**< start index for each row */
+			const int *          index, 	/**< column indices */
+			const double *       value, 	/**< constraint elements */
+			const double *       clbd,  	/**< column lower bounds */
+			const double *       cubd,  	/**< column upper bounds */
+			const char *         ctype, 	/**< column types */
+			const double *       obj,   	/**< objective coefficients */
+			const int * 		 qobjrowindex, /**< quadratic objective row indices */
+			const int *			 qobjcolindex, /**< quadratic objective column indices */
+			const double *		 qobjvalue, /**< quadratic objective constraint elements value */
+			const CoinBigIndex 	 qobjnum,  	/**< number of quadratic terms in the objective */
+			const double *       rlbd,  	/**< row lower bounds */
+			const double *       rubd,   	/**< row upper bounds */
+			const int 			nqrows, 	/**< number of quadratic rows */
+        	const int *         linnzcnt,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+        	const int *        	quadnzcnt,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+			const double *		rhs, 		/**< constraint rhs of each constraint */
+			const int *			sense, 		/**< constraint sense of each constraint */
+			const int *         linstart,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+			const int *         linind, 	/**< indices for the linear part */
+			const double *      linval, 	/**< nonzero coefficient of the linear part */
+			const int *        	quadstart,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+			const int *       	quadrow,  	/**< indices for the quadratic part */
+			const int *       	quadcol,  	/**< indices for the quadratic part */
+			const double *      quadval 	/**< nonzero coefficient of the quadratic part */)
+{
+	getTssModel(env)->loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, qobjrowindex, qobjcolindex, qobjvalue, qobjnum, rlbd, rubd, nqrows, linnzcnt, quadnzcnt, rhs, sense, linstart, linind, linval, quadstart, quadrow, quadcol, quadval);
 }
 
 /**
@@ -274,7 +389,7 @@ void solveDd(DspApiEnv * env)
 	freeSolver(env);
 
 	env->solver_ = new DdDriverSerial(env->model_, env->par_, env->message_);
-	DSP_RTN_CHECK_THROW(env->solver_->init());
+ 	DSP_RTN_CHECK_THROW(env->solver_->init());
 	DSP_RTN_CHECK_THROW(dynamic_cast<DdDriverSerial*>(env->solver_)->run());
 	DSP_RTN_CHECK_THROW(env->solver_->finalize());
 
@@ -313,6 +428,7 @@ void solveBd(DspApiEnv * env)
 
 	DecTssModel* dec = new DecTssModel(*getTssModel(env));
 	BdDriverSerial * bd = new BdDriverSerial(dec, env->par_, env->message_);
+	
 	env->solver_ = bd;
 	DSPdebugMessage("Created a serial Benders object\n");
 
@@ -421,7 +537,8 @@ void solveBdMpi(
 	}
 
 	//DSPdebugMessage("Creating a MPI Benders object (comm %d)\n", comm);
-	BdDriverMpi * bd = new BdDriverMpi(new DecTssModel(*getTssModel(env)), env->par_, env->message_, comm);
+	BdDriverMpi * bd = new BdDriverMpi(new DecTssModel(*getTssModel(env)), env->par_, env->message_, comm); //this line cause segment fault
+	//BdDriverMpi * bd = new BdDriverMpi(env->model_, env->par_, env->message_, comm);
 	env->solver_ = bd;
 
 	double * obj_aux  = NULL;
@@ -570,6 +687,16 @@ int getTotalNumRows(DspApiEnv * env)
 {
 	DSP_API_CHECK_MODEL(-1);
 	return getModelPtr(env)->getFullModelNumRows();
+}
+
+/** get number of quadratic rows */
+int getNumQRows(DspApiEnv * env, int s)
+{
+	DSP_API_CHECK_MODEL(-1);
+	if (s < 0)
+		return getTssModel(env)->getNumCoreQRows();
+	else
+		return getTssModel(env)->getNumScenQRows(s);
 }
 
 /** get total number of columns */

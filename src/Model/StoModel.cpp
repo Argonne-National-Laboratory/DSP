@@ -4,9 +4,10 @@
  *  Created on: Sep 22, 2014
  *      Author: kibaekkim
  */
-
+// #define DSP_DEBUG
 #include "CoinHelperFunctions.hpp"
 #include "StoModel.h"
+#include <sstream>
 
 StoModel::StoModel() :
 		nscen_(0),
@@ -23,6 +24,7 @@ StoModel::StoModel() :
 		clbd_core_(NULL),
 		cubd_core_(NULL),
 		obj_core_(NULL),
+		qobj_core_(NULL),
 		rlbd_core_(NULL),
 		rubd_core_(NULL),
 		ctype_core_(NULL),
@@ -31,8 +33,11 @@ StoModel::StoModel() :
 		clbd_scen_(NULL),
 		cubd_scen_(NULL),
 		obj_scen_(NULL),
+		qobj_scen_(NULL),
 		rlbd_scen_(NULL),
 		rubd_scen_(NULL),
+		qc_row_core_(NULL),
+		qc_row_scen_(NULL),
 		fromSMPS_(false),
 		isdro_(false),
 		nrefs_(0),
@@ -55,7 +60,8 @@ StoModel::StoModel(const StoModel & rhs) :
 		nrefs_(rhs.nrefs_),
 		wass_eps_(rhs.wass_eps_),
 		wass_dist_(rhs.wass_dist_),
-		refs_probability_(rhs.refs_probability_)
+		refs_probability_(rhs.refs_probability_),
+		qc_row_core_(rhs.qc_row_core_)
 {
 	/** allocate memory */
 	nrows_      = new int [nstgs_];
@@ -67,6 +73,7 @@ StoModel::StoModel(const StoModel & rhs) :
 	clbd_core_  = new double * [nstgs_];
 	cubd_core_  = new double * [nstgs_];
 	obj_core_   = new double * [nstgs_];
+	qobj_core_  = new CoinPackedMatrix * [nstgs_];
 	rlbd_core_  = new double * [nstgs_];
 	rubd_core_  = new double * [nstgs_];
 	ctype_core_ = new char * [nstgs_];
@@ -75,6 +82,7 @@ StoModel::StoModel(const StoModel & rhs) :
 	clbd_scen_  = new CoinPackedVector * [nscen_];
 	cubd_scen_  = new CoinPackedVector * [nscen_];
 	obj_scen_   = new CoinPackedVector * [nscen_];
+	qobj_scen_  = new CoinPackedMatrix * [nscen_];
 	rlbd_scen_  = new CoinPackedVector * [nscen_];
 	rubd_scen_  = new CoinPackedVector * [nscen_];
 
@@ -96,6 +104,10 @@ StoModel::StoModel(const StoModel & rhs) :
 		clbd_core_[i] = new double [ncols_[i]];
 		cubd_core_[i] = new double [ncols_[i]];
 		obj_core_[i] = new double [ncols_[i]];
+		/** copy quadratic objective information */
+		if (rhs.qobj_core_[i]!=NULL){
+			qobj_core_[i] = new CoinPackedMatrix(*(rhs.qobj_core_[i]));
+		}
 		ctype_core_[i] = new char [ncols_[i]];
 		rlbd_core_[i] = new double [nrows_[i]];
 		rubd_core_[i] = new double [nrows_[i]];
@@ -106,8 +118,21 @@ StoModel::StoModel(const StoModel & rhs) :
 		CoinCopyN(rhs.rubd_core_[i], nrows_[i], rubd_core_[i]);
 		CoinCopyN(rhs.ctype_core_[i], ncols_[i], ctype_core_[i]);
 	}
+	
+	if (rhs.qc_row_scen_ != NULL) 
+	{
+		qc_row_scen_ = new QuadRowData * [nscen_];
+	} 
+	else 
+	{
+		qc_row_scen_ = NULL;
+	}
+
 	for (int i = nscen_ - 1; i >= 0; --i)
 	{
+		if (qc_row_scen_) {
+			qc_row_scen_[i] = rhs.qc_row_scen_[i];
+		}
 		prob_[i] = rhs.prob_[i];
 		if (rhs.mat_scen_[i])
 			mat_scen_[i] = new CoinPackedMatrix(*(rhs.mat_scen_[i]));
@@ -125,6 +150,10 @@ StoModel::StoModel(const StoModel & rhs) :
 			obj_scen_[i] = new CoinPackedVector(*(rhs.obj_scen_[i]));
 		else
 			obj_scen_[i] = new CoinPackedVector;
+		if (rhs.qobj_scen_[i])
+			qobj_scen_[i] = new CoinPackedMatrix(*(rhs.qobj_scen_[i]));
+		else
+			qobj_scen_[i] = new CoinPackedMatrix;
 		if (rhs.rlbd_scen_[i])
 			rlbd_scen_[i] = new CoinPackedVector(*(rhs.rlbd_scen_[i]));
 		else
@@ -153,6 +182,7 @@ StoModel::~StoModel()
 	FREE_2D_ARRAY_PTR(nstgs_, clbd_core_);
 	FREE_2D_ARRAY_PTR(nstgs_, cubd_core_);
 	FREE_2D_ARRAY_PTR(nstgs_, obj_core_);
+	FREE_2D_PTR(nstgs_, qobj_core_);
 	FREE_2D_ARRAY_PTR(nstgs_, rlbd_core_);
 	FREE_2D_ARRAY_PTR(nstgs_, rubd_core_);
 	FREE_2D_ARRAY_PTR(nstgs_, ctype_core_);
@@ -161,8 +191,11 @@ StoModel::~StoModel()
 	FREE_2D_PTR(nscen_, clbd_scen_);
 	FREE_2D_PTR(nscen_, cubd_scen_);
 	FREE_2D_PTR(nscen_, obj_scen_);
+	FREE_2D_PTR(nscen_, qobj_scen_);
 	FREE_2D_PTR(nscen_, rlbd_scen_);
 	FREE_2D_PTR(nscen_, rubd_scen_);
+	FREE_PTR(qc_row_core_);
+	FREE_2D_PTR(nscen_, qc_row_scen_);
 	scen2stg_.clear();
 	nscen_ = 0;
 	nstgs_ = 0;
@@ -189,11 +222,12 @@ DSP_RTN_CODE StoModel::readSmps(const char * filename)
 		throw "Failed to read file.";
 	}
 	std::cout << "Read SMPS files: " << CoinCpuTime() - stime << " sec." << std::endl;
+	
 	core = smi.getCore();
 
 	/** number of stages */
 	nstgs_ = core->getNumStages();
-
+	
 	/** Do not support multi-stage */
 	if (nstgs_ > 2)
 	{
@@ -216,6 +250,7 @@ DSP_RTN_CODE StoModel::readSmps(const char * filename)
 	clbd_core_  = new double * [nstgs_];
 	cubd_core_  = new double * [nstgs_];
 	obj_core_   = new double * [nstgs_];
+	qobj_core_  = new CoinPackedMatrix * [nstgs_];
 	rlbd_core_  = new double * [nstgs_];
 	rubd_core_  = new double * [nstgs_];
 	ctype_core_ = new char * [nstgs_];
@@ -224,9 +259,17 @@ DSP_RTN_CODE StoModel::readSmps(const char * filename)
 	clbd_scen_  = new CoinPackedVector * [nscen_];
 	cubd_scen_  = new CoinPackedVector * [nscen_];
 	obj_scen_   = new CoinPackedVector * [nscen_];
+	qobj_scen_  = new CoinPackedMatrix * [nscen_];
 	rlbd_scen_  = new CoinPackedVector * [nscen_];
 	rubd_scen_  = new CoinPackedVector * [nscen_];
 
+	for (i=0; i<nstgs_;i++){
+		qobj_core_[i]=NULL;
+	}
+
+	for (i=0; i<nscen_; i++){
+		qobj_scen_[i]=NULL;
+	}
 	/** stage information */
 	nrows_core_ = 0;
 	ncols_core_ = 0;
@@ -438,6 +481,542 @@ DSP_RTN_CODE StoModel::readDro(const char * filename)
 	return DSP_RTN_OK;
 }
 
+/* split a string */
+template <class Container>
+void split(const std::string& str, Container& cont)
+{
+	cont.clear();
+    istringstream iss(str);
+    copy(istream_iterator<std::string>(iss),
+         istream_iterator<std::string>(),
+         back_inserter(cont));
+}
+
+/** read quadratic data file */
+DSP_RTN_CODE StoModel::readQuad(const char * smps, const char * filename)
+{
+	BGN_TRY_CATCH
+
+	map<string, int> map_varName_index;
+
+	if (!mapVarnameIndex(map_varName_index, smps)) 
+	{
+		char msg[128];
+		sprintf(msg, "Unable to map variables to their indices\n");
+		throw msg;
+	}
+
+	char quad_cor[128], quad_sto[128], quad_tim[128];
+	sprintf(quad_cor, "%s.cor", filename); 
+	sprintf(quad_sto, "%s.sto", filename); 
+	sprintf(quad_tim, "%s.tim", filename); 
+	ifstream corfile(quad_cor);
+	ifstream stofile(quad_sto);
+	ifstream timfile(quad_tim);
+	
+	/* read core file */
+	string fileName;
+	string rhsName = "NULL";
+	int nqrows = 0;
+	map<string, int> map_qrowName_index;
+	vector<char> sense;
+	vector<double> rhs;
+	vector<vector<int>> linind;
+	vector<vector<double>> linval;
+	vector<vector<int>> quadrow;
+	vector<vector<int>> quadcol;
+	vector<vector<double>> quadval;	
+
+	string line;
+	vector<string> items;
+	map<string, int>::iterator it;
+
+	int i,j;
+
+	if (corfile.is_open()) {
+
+		while (getline(corfile, line, '\n')) {
+
+			split(line, items);
+			if (items[0].find("NAME") != string::npos) 
+			{
+				fileName = items[1];
+			}
+			else if (items[0].find("ROWS") != string::npos)
+			{
+				/** read row data */
+				while(getline(corfile, line, '\n')) 
+				{
+					split(line, items);
+					
+					if (items[0].find("COLUMNS") != string::npos || items[0].find("RHS") != string::npos || items[0].find("ENDATA") != string::npos) {
+						long pos = corfile.tellg();
+						int leng = line.length()+1;
+						corfile.seekg(pos-leng);
+						break;
+					}
+					else if (items[0] == "G")
+						sense.push_back('G');
+					else if (items[0] == "L")
+						sense.push_back('L');
+					else {
+						char msg[128];
+						sprintf(msg, "Quadratic constraints sense must be 'G' or 'L'\n");
+						throw msg;
+					}
+					map_qrowName_index[items[1]] = nqrows;
+					nqrows++;
+				}
+
+				/** allocate memory */
+				assert(nqrows == sense.size());
+				assert(nqrows == map_qrowName_index.size());
+			}
+			else if (items[0].find("COLUMNS") != string::npos)
+			{
+				/** read linind, linval */
+				linind.resize(nqrows);
+				linval.resize(nqrows);
+				
+				while (getline(corfile, line, '\n')) 
+				{	
+					split(line, items);
+					
+					if (items[0].find("RHS") != string::npos || items[0].find("QCMATRIX") != string::npos || items[0].find("ENDATA") != string::npos) {
+						long pos = corfile.tellg();
+						int leng = line.length()+1;
+						corfile.seekg(pos-leng);
+						break;
+					}
+
+					int nterms = items.size() - 1;
+					if (nterms <= 0 && nterms % 2 != 0) {
+						char msg[128];
+						sprintf(msg, "Each row in the COLUMNS section needs to start with a variable name and is followed by a series of pairs of a row name and its associated coefficient\n");
+						throw msg;
+					}
+
+					int i = 1;
+					while (i < nterms) {
+						
+						it = map_qrowName_index.find(items[i++]);
+						if (it == map_qrowName_index.end()) 
+						{
+							char msg[128];
+							sprintf(msg, "All rows should be declared before COLUMNS data\n");
+							throw msg; 
+						} 
+						else 
+						{
+							linind[it->second].push_back(map_varName_index[items[0]]);
+							linval[it->second].push_back(stod(items[i++]));
+						}
+					}
+				}
+			}
+			else if (items[0].find("RHS") != string::npos)
+			{
+				/** read rhs_ */
+				rhs.resize(nqrows);
+				while (getline(corfile, line, '\n')) {
+					
+					split(line, items);
+					
+					if (items[0].find("QCMATRIX") != string::npos || items[0].find("ENDATA") != string::npos || items[0].find("COLUMNS") != string::npos || items[0].find("ROWS") != string::npos){
+						long pos = corfile.tellg();
+						int leng = line.length()+1;
+						corfile.seekg(pos-leng);
+						break;
+					}
+					
+					if (rhsName == "NULL")
+						rhsName = items[0];
+
+					it = map_qrowName_index.find(items[1]);
+					if (it == map_qrowName_index.end()) 
+					{
+						char msg[128];
+						sprintf(msg, "All rows should be declared before RHS data\n");
+						throw msg; 
+					} 
+					else 
+					{
+						rhs[it->second] = stod(items[2]);
+					}
+				}
+			}
+			else if (items[0].find("QCMATRIX") != string::npos) 
+			{	
+				/** start reading quad term data */		
+				quadrow.resize(nqrows);
+				quadcol.resize(nqrows);
+				quadval.resize(nqrows);	
+
+				it = map_qrowName_index.find(items[1]);
+				if (it == map_qrowName_index.end()) 
+				{
+					char msg[128];
+					sprintf(msg, "All rows should be declared before QCMATRIX data\n");
+					throw msg; 
+				} 
+				else
+				{
+					/** read quadrow_, quadcol_, quadval_ */
+					while (getline(corfile, line, '\n')) {
+						split(line, items);
+						
+						if (items[0].find("QCMATRIX") != string::npos || items[0].find("ENDATA") != string::npos || items[0].find("RHS") != string::npos){
+							long pos = corfile.tellg();
+							int leng = line.length()+1;
+							corfile.seekg(pos-leng);
+							break;
+						}
+
+						quadrow[it->second].push_back(map_varName_index[items[0]]);
+						quadcol[it->second].push_back(map_varName_index[items[1]]);
+						quadval[it->second].push_back(stod(items[2]));
+					}
+				}
+			}
+			else if (items[0].find("ENDATA") != string::npos) 
+			{
+				break;
+			}
+			else {
+				char msg[128];
+				sprintf(msg, "Quadratic data file encountered unexpected input: %s\n", line.c_str());
+				throw msg;
+			}
+		}
+	    corfile.close();
+    } else {
+        cout << "Unable to open quad core file";
+        return 1;
+    }
+
+	/* read time file */
+	map<string, int> map_stgName_index;
+	vector<int> rstart(nstgs_);	
+	if (timfile.is_open()) {
+		while(getline(timfile, line)) 
+		{
+			split(line, items);
+			if (items[0].find("PERIODS") != string::npos) 
+				break;
+		}
+		
+		int nstg = 0;
+		
+		while(getline(timfile, line)) {
+			
+			if (line.find("ENDATA") != string::npos)
+				break;
+			
+			split(line, items);
+			
+			map_stgName_index[items[1]] = nstg;
+			it = map_qrowName_index.find(items[0]);
+			if (it == map_qrowName_index.end()) 
+			{
+				char msg[128];
+				sprintf(msg, "There is an undeclared row in time file.\n");
+				throw msg; 
+			} 
+			else 
+			{
+				rstart[nstg] = it->second;
+			}
+
+			nstg++;
+		}
+		if (nstg != nstgs_){
+			char msg[128];
+			sprintf(msg, "number of stages of smps data and that of quad data do not match in time file.\n");
+			throw msg; 
+		}
+			
+		timfile.close();
+    } else {
+        cout << "Unable to open quad time file";
+        return 1;
+	}
+
+	/* store data in StoModel */
+	int nqrows_core = rstart[1] - rstart[0];
+	int nqrows_scen = nqrows - rstart[1];
+	qc_row_core_ = new QuadRowData(nqrows_core, rstart[0], sense, rhs, linind, linval, quadrow, quadcol, quadval);
+	/* check whether there is a coupling quadratic row */
+	
+	for (i = 0; i < qc_row_core_->nqrows; i++) {
+		for (j = 0; j < qc_row_core_->linnzcnt[i]; j++) {
+			if (qc_row_core_->linind[i][j] >= ncols_[0]) {
+				char msg[128];
+				sprintf(msg, "There is a second stage var in a linear term of a first stage quadratic row. Coupling quadratic rows are not allowed in the current version.\n");
+				throw msg; 
+			}
+		}
+		for (j = 0; j < qc_row_core_->quadnzcnt[i]; j++) {
+			if (qc_row_core_->quadcol[i][j] >= ncols_[0] || qc_row_core_->quadrow[i][j] >= ncols_[0]) {
+				char msg[128];
+				sprintf(msg, "There is a second stage var in a quadratic term of a first stage quadratic row. Coupling quadratic rows are not allowed in the current version.\n");
+				throw msg; 
+			}
+		}
+	}
+	qc_row_scen_ = new QuadRowData * [nscen_];
+	for (int s = 0; s < nscen_; s++) 
+	{	
+		qc_row_scen_[s] = new QuadRowData(nqrows_scen, rstart[1], sense, rhs, linind, linval, quadrow, quadcol, quadval);
+
+		/* check whether there is a coupling quadratic row */
+		for (i = 0; i < qc_row_scen_[s]->nqrows; i++) {
+			for (j = 0; j < qc_row_scen_[s]->linnzcnt[i]; j++) {
+				if (qc_row_scen_[s]->linind[i][j] < ncols_[0]) {
+					char msg[128];
+					sprintf(msg, "There is a first stage var in a linear term of a second stage quadratic row. Coupling quadratic rows are not allowed in the current version.\n");
+					throw msg; 
+				}
+			}
+			for (j = 0; j < qc_row_scen_[s]->quadnzcnt[i]; j++) {
+				if (qc_row_scen_[s]->quadcol[i][j] < ncols_[0] || qc_row_scen_[s]->quadrow[i][j] < ncols_[0]) {
+					char msg[128];
+					sprintf(msg, "There is a first stage var in a quadratic term of a second stage quadratic row. Coupling quadratic rows are not allowed in the current version.\n");
+					throw msg; 
+				}
+			}
+		}
+	}	
+
+	if (stofile.is_open()) {
+		while(getline(stofile, line)) 
+		{
+			split(line, items);
+			
+			if (items[0].find("SCENARIOS") != string::npos) 
+				break;
+		}
+		
+		int nscen = 0;
+		while(getline(stofile, line)) {
+			
+			if (line.find("ENDATA") != string::npos)
+				break;
+			
+			split(line, items);
+			
+			if (items[0] == "SC") {
+
+				it = map_stgName_index.find(items[4]);
+				if (it == map_stgName_index.end()) 
+				{
+					char msg[128];
+					sprintf(msg, "There is an undeclared stage name in stofile.\n");
+					throw msg; 
+				} 
+				int stg = it->second;
+				QuadRowData *qc = qc_row_scen_[nscen];
+				nscen++;
+				
+				while(getline(stofile, line)) {
+					split(line, items);
+					
+					if (items[0].find("SC") != string::npos || items[0].find("ENDATA") != string::npos){
+						long pos = stofile.tellg();
+						int leng = line.length()+1;
+						stofile.seekg(pos-leng);
+						break;
+					}
+
+					string rname;
+					if (items.size() == 3) {
+						/* linterm or rhs */
+						it = map_qrowName_index.find(items[1]);
+					} else if (items.size() == 4) {
+						/* quadterm */
+						it = map_qrowName_index.find(items[2]);
+					} else {
+						char msg[128];
+						sprintf(msg, "There is an error in stofile.\n");
+						throw msg; 
+					}
+					
+					if (it == map_stgName_index.end()) 
+					{
+						char msg[128];
+						sprintf(msg, "There is an undeclared stage name in stofile.\n");
+						throw msg; 
+					}
+					int row_index = it->second - rstart[stg];
+					bool found = false;
+					if (items.size() == 3) 
+					{
+						if (items[0].find(rhsName) == string::npos) {
+							it = map_varName_index.find(items[0]);
+							if (it == map_varName_index.end()) 
+							{
+								char msg[128];
+								sprintf(msg, "There is an undeclared variable name in stofile.\n");
+								throw msg; 
+							}
+							/* linterm */
+							for (i = 0; i < qc->linnzcnt[row_index]; i++) {
+								if (qc->linind[row_index][i] == it->second) {
+									qc->linval[row_index][i] = stod(items[2]);
+									found = true;
+									break;
+								}
+							}
+						} else {
+							qc->rhs[row_index] = stod(items[2]);
+							found = true;
+						}
+					}
+					else if (items.size() == 4) {
+						/* quadterm */
+						vector<int> var_index(2);
+						for (j = 0; j < 2; j++) {
+							it = map_varName_index.find(items[j]);
+							if (it == map_varName_index.end()) 
+							{
+								char msg[128];
+								sprintf(msg, "There is an undeclared variable name in stofile.\n");
+								throw msg; 
+							}
+							else var_index[j] = it->second;
+						}
+						for (i = 0; i < qc->quadnzcnt[row_index]; i++) 
+						{	
+							if (qc->quadrow[row_index][i] == var_index[0] && qc->quadcol[row_index][i] == var_index[1]) 
+							{
+								qc->quadval[row_index][i] = stod(items[3]);
+								found = true;
+								break;
+							}
+						}
+					}
+					if (!found) {
+						char msg[128];
+						sprintf(msg, "constraint structure in stofile must agree with corfile.\n");
+						throw msg; 
+					}
+				}
+			}
+		}
+		if (nscen != nscen_){
+			char msg[128];
+			sprintf(msg, "number of scenarios of smps data and that of quad data do not match in stofile.\n");
+			throw msg; 
+		}
+		stofile.close();
+    } else {
+        cout << "Unable to open quad stochastic file";
+        return 1;
+	}
+	#ifdef DSP_DEBUG
+		printQuadRows(-1);
+		for (i = 0; i < nscen_; i++)
+			printQuadRows(i);	
+	#endif
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
+}
+
+/** construct a map that maps variable names to their indices */
+bool StoModel::mapVarnameIndex(map<string, int> &map_varName_index, const char * smps) 
+{
+	char core[128];
+	sprintf(core, "%s.cor", smps); 
+	ifstream corefile (core);
+
+	string name, item;
+
+	map_varName_index.clear();
+    int nvars = 0;
+	vector<string> rowNames;
+
+	map<string, int>::iterator map_it;
+    vector<string>::iterator vec_it;
+
+    bool foundColumns = false;
+
+    if (corefile.is_open()) {
+        
+	    while (corefile >> item) {
+		
+            if (item.find("ROWS") != string::npos) {
+			
+                while (1) {
+			        corefile >> item >> name;
+
+                    if (item.find("COLUMNS") != string::npos) {
+                        foundColumns = true;
+                        map_varName_index[name] = nvars;
+                        nvars++;
+                        break;
+                    }
+
+                    if (name == "ENDATA" || item == "ENDATA") {
+                        cout << "Encountered ENDATA before reading Columns" << endl;
+                        break;
+                    }
+
+			        rowNames.push_back(name);
+                }
+		
+                if (foundColumns) {
+                
+                    while(1) {
+				
+	        			corefile >> name >> item;
+				
+			        	vec_it = find(rowNames.begin(), rowNames.end(), name);
+				        if (vec_it == rowNames.end()) 
+				        {
+					        /** var term */
+					        corefile >> item;
+
+					        if (name.find("RHS") != string::npos)
+						        break;
+					
+					        map_it = map_varName_index.find(name);
+  					        if (map_it == map_varName_index.end())
+    					    {
+    					        map_varName_index[name] = nvars;
+                                nvars++;
+					        }
+				        } else 
+				        {
+					        /* constraint term
+					        * does not do anything */
+				        }
+			        }
+		        } else {
+                    cout << "Columns data should follow Rows data" << endl;
+                    break;
+                }
+            }
+
+		if (item.find("ENDATA") != string::npos) 
+			break;
+        
+	    }
+    corefile.close();
+    } else {
+        cout << "Unable to open core file";
+        return false;
+    }
+
+#ifdef DSP_DEBUG
+    cout << "variable, index" << endl;
+    for (auto &v : map_varName_index)
+    cout << v.first << ", " << v.second << endl;
+#endif              
+
+	return true;
+}
+
 void StoModel::setSolution(int size, double * solution)
 {
 	if (size > 0)
@@ -518,6 +1097,22 @@ DSP_RTN_CODE StoModel::setWassersteinAmbiguitySet(double lp_norm, double eps)
 						wass_dist_[r][ss] += pow(fabs(mat_scen_[s]->getCoefficient(i, j) - mat_scen_[ss]->getCoefficient(i, j)), 2);
 					}
 				}
+				/* Quadratic constraints */
+				if (hasQuadraticRowScenario()) {
+					QuadRowData * qc_s = qc_row_scen_[s];
+					QuadRowData * qc_ss = qc_row_scen_[ss];
+					for (int i = 0; i < qc_s->nqrows; i++) 
+					{
+						wass_dist_[r][ss] += pow(fabs(qc_s->rhs[i] - qc_ss->rhs[i]), 2);
+
+						for (int j = 0; j < qc_s->linnzcnt[i]; j++) {
+							wass_dist_[r][ss] += pow(fabs(qc_s->linval[i][j] - qc_ss->linval[i][j]), 2);
+						}
+						for (int j = 0; j < qc_s->quadnzcnt[i]; j++) {
+							wass_dist_[r][ss] += pow(fabs(qc_s->quadval[i][j] - qc_ss->quadval[i][j]), 2);
+						}
+					}
+				}
 				wass_dist_[r][ss] = pow(wass_dist_[r][ss], lp_norm / 2.0);
 			}
 			r++;
@@ -590,6 +1185,71 @@ void StoModel::copyCoreObjective(double * obj, int stg)
 	for (int j = 0; j < ncols_[stg]; ++j)
 	{
 		obj[j] = obj_core_[stg][j];
+	}
+}
+
+void StoModel::copyCoreQuadraticObjective(CoinPackedMatrix *&qobj_coupling, CoinPackedMatrix *&qobj_ncoupling, int stg)
+{
+	vector<int> colidx;
+	vector<int> rowidx;
+	vector<double> elements;
+	int numq=qobj_core_[stg]->getNumElements();
+	const CoinBigIndex * start = qobj_core_[stg]->getVectorStarts();
+	vector<int> colidx_coupling;
+	vector<int> rowidx_coupling;
+	vector<double> elements_coupling;
+	int numq_coupling = 0;
+	vector<int> colidx_ncoupling;
+	vector<int> rowidx_ncoupling;
+	vector<double> elements_ncoupling;
+	int numq_ncoupling = 0;
+
+	int rowcount=0;
+	for (int i=0; i<qobj_core_[stg]->getMajorDim();i++){
+		if (start[i+1]-start[i]>0){
+				for (int k=0; k<start[i+1]-start[i]; k++){
+					rowidx.push_back(rowcount);
+				}
+		}
+		rowcount++;
+	}
+
+	for (int i=0; i<numq; i++){
+		colidx.push_back(qobj_core_[stg]->getIndices()[i]);
+		elements.push_back(qobj_core_[stg]->getElements()[i]);
+	}
+
+	// security check
+	assert(numq==rowidx.size());
+	assert(numq==colidx.size());
+	assert(numq==elements.size());
+	for (int i=0; i<numq; i++){
+		if (rowidx[i]>=ncols_[stg-1] && colidx[i]>=ncols_[stg-1]){
+			rowidx_ncoupling.push_back(rowidx[i]-ncols_[stg-1]);
+			colidx_ncoupling.push_back(colidx[i]-ncols_[stg-1]);
+			elements_ncoupling.push_back(elements[i]);
+			numq_ncoupling++;
+		}
+		else{
+			rowidx_coupling.push_back(rowidx[i]);
+			colidx_coupling.push_back(colidx[i]);
+			elements_coupling.push_back(elements[i]);
+			numq_coupling++;
+		}
+	}
+
+	if(numq_ncoupling!=0){
+		qobj_ncoupling = new CoinPackedMatrix(false, &rowidx_ncoupling[0], &colidx_ncoupling[0], &elements_ncoupling[0], numq_ncoupling);
+	}
+	else{
+		qobj_ncoupling = NULL;
+	}
+	
+	if(numq_coupling!=0){
+		qobj_coupling = new CoinPackedMatrix(false, &rowidx_coupling[0], &colidx_coupling[0], &elements_coupling[0], numq_coupling);
+	}
+	else{
+		qobj_coupling = NULL;
 	}
 }
 
@@ -668,7 +1328,7 @@ void StoModel::combineRandRowVec(
 			}
 		}
 	}
-}
+}	
 
 /** combine random column lower bounds */
 void StoModel::combineRandColLower(double * clbd, int stg, int scen)
@@ -710,12 +1370,88 @@ void StoModel::combineRandObjective(double * obj, int stg, int scen, bool adjust
 	}
 
 	if (adjustProbability)
-	{
+	{ 
 		for (j = ncols_[stg] - 1; j >= 0; --j)
 		{
 			obj[j] *= prob_[scen];
 		}
 	}
+}
+
+void StoModel::combineRandQuadraticObjective(CoinPackedMatrix * &qobj_coupling, CoinPackedMatrix * &qobj_ncoupling, int stg, int scen, bool adjustProbability)
+{
+	int i, j, s;
+	int numelements = qobj_scen_[scen]->getNumElements();
+	const int * colindex=qobj_scen_[scen]->getIndices();
+	const CoinBigIndex * start = qobj_scen_[scen]->getVectorStarts();
+	const int dim=qobj_scen_[scen]->getMajorDim();
+	const double * elements=qobj_scen_[scen]->getElements();
+
+	int * rowindex;
+	rowindex = new int [numelements];
+	
+	std::vector<int> newrowindex_coupling, newcolindex_coupling;
+	std::vector<double> newelements_coupling;
+
+	std::vector<int> newrowindex_ncoupling, newcolindex_ncoupling;
+	std::vector<double> newelements_ncoupling;
+
+	
+	int idx=0;
+	/** convert start into row index */
+	for (int k=0; k<dim; k++){
+		for (i=0; i<start[k+1]-start[k];i++){
+			rowindex[idx]=k;
+			idx++;
+		}
+	}
+
+	int sidx=stg-1;
+	if (sidx<0) sidx=0;
+	for (i = 0; i < numelements; ++i)
+	{
+		if (colindex[i]>=ncols_[sidx] && rowindex[i]>=ncols_[sidx]){
+			newrowindex_ncoupling.push_back(rowindex[i]-ncols_[sidx]);
+			newcolindex_ncoupling.push_back(colindex[i]-ncols_[sidx]);
+			if (adjustProbability){
+				newelements_ncoupling.push_back(elements[i]*prob_[scen]);
+			}
+			else{
+				newelements_ncoupling.push_back(elements[i]);
+			}
+		}
+		else{
+			newrowindex_coupling.push_back(rowindex[i]);
+			newcolindex_coupling.push_back(colindex[i]);
+			if (adjustProbability){
+				newelements_coupling.push_back(elements[i]*prob_[scen]);
+			}
+			else{
+				newelements_coupling.push_back(elements[i]);
+			}
+		}
+	}
+	//printf("newcolindex_coupling.size() = %d\n", newcolindex_coupling.size());
+	//for (int m=0; m<newcolindex_ncoupling.size(); m++){
+	//	printf("newcolindex_ncoupling[%d]=%d\n", m, newcolindex_ncoupling[m]);
+	//}
+	if (newelements_coupling.size()==0){
+		qobj_coupling=NULL;
+	}
+	else{
+		qobj_coupling=new CoinPackedMatrix(false, &newcolindex_coupling[0], &newrowindex_coupling[0], &newelements_coupling[0], newelements_coupling.size());
+	}
+	if (newelements_ncoupling.size()==0){
+		qobj_coupling=NULL;
+	}
+	else{
+		qobj_ncoupling=new CoinPackedMatrix(false, &newcolindex_ncoupling[0], &newrowindex_ncoupling[0], &newelements_ncoupling[0], newelements_ncoupling.size());
+	}
+	//qobj_ncoupling=new CoinPackedMatrix(false, &newcolindex_ncoupling[0], &newrowindex_ncoupling[0], &newelements_ncoupling[0], newelements_ncoupling.size());
+	//PRINT_ARRAY_MSG(newcolindex_ncoupling.size(), &newcolindex_ncoupling[0], "elements in newcolindex_ncoupling");
+	//PRINT_ARRAY_MSG(qobj_ncoupling->getNumElements(), qobj_ncoupling->getElements(), "elements in qobj_ncoupling");
+
+	delete[] rowindex;
 }
 
 /** combine random row lower bounds */
@@ -814,6 +1550,17 @@ void StoModel::__printData()
 		PRINT_ARRAY_MSG(ncols_[t], ctype_core_[t], "ctype_core_")
 		PRINT_ARRAY_MSG(nrows_[t], rlbd_core_[t], "rlbd_core_")
 		PRINT_ARRAY_MSG(nrows_[t], rubd_core_[t], "rubd_core_")
+		printf("\n### quadratic objective coefficient ###\n\n");
+		if (qobj_core_[t])
+		{
+			printf("isColOrdered %d\n", qobj_core_[t]->isColOrdered());
+			PRINT_ARRAY_MSG(qobj_core_[t]->getMajorDim(), qobj_core_[t]->getVectorStarts(), "VectorStarts")
+			PRINT_SPARSE_ARRAY_MSG(
+					qobj_core_[t]->getNumElements(),
+					qobj_core_[t]->getIndices(),
+					qobj_core_[t]->getElements(),
+					"Elements")
+		}
 	}
 
 	for (int s = 0; s < nscen_; ++s)
@@ -834,6 +1581,19 @@ void StoModel::__printData()
 					"Elements")
 		}
 		printf("=== END of CoinPackedMatrix mat_scen_[%d] ===\n", s);
+
+		printf("=== BEGINNING of CoinPackedMatrix qobj_scen_[%d] ===\n", s);
+		if (qobj_scen_[s])
+		{
+			printf("isColOrdered %d\n", qobj_scen_[s]->isColOrdered());
+			PRINT_ARRAY_MSG(qobj_scen_[s]->getMajorDim(), qobj_scen_[s]->getVectorStarts(), "VectorStarts")
+			PRINT_SPARSE_ARRAY_MSG(
+					qobj_scen_[s]->getNumElements(),
+					qobj_scen_[s]->getIndices(),
+					qobj_scen_[s]->getElements(),
+					"Elements")
+		}
+		printf("=== END of CoinPackedMatrix qobj_scen_[%d] ===\n", s);
 #endif
 //		PRINT_COIN_PACKED_VECTOR_MSG((*clbd_scen_[s]), "clbd_scen_")
 //		PRINT_COIN_PACKED_VECTOR_MSG((*cubd_scen_[s]), "cubd_scen_")
@@ -843,6 +1603,68 @@ void StoModel::__printData()
 	}
 
 	printf("\n### END of printing StoModel data ###\n");
+}
+
+DSP_RTN_CODE StoModel::printQuadRows(const int s)
+{
+	BGN_TRY_CATCH
+
+	QuadRowData *qc;
+	if (s < 0) {
+		qc = qc_row_core_;
+		cout << "Core quad constr: ";
+	} else {
+		qc = qc_row_scen_[s];
+		cout << "Scen " << s << " quad constr: ";
+	}
+	for (int i = 0; i < qc->nqrows; i++) 
+	{
+		for (int lt = 0; lt < qc->linnzcnt[i]; lt++)
+		{
+			cout << qc->linval[i][lt] << " x" << qc->linind[i][lt] << " + ";
+		}
+		for (int qt = 0; qt < qc->quadnzcnt[i]-1; qt++)
+		{
+			cout << qc->quadval[i][qt] << " x" << qc->quadrow[i][qt] << " x" << qc->quadcol[i][qt] << " + ";
+		}
+		cout << qc->quadval[i][qc->quadnzcnt[i]-1] << " x" << qc->quadrow[i][qc->quadnzcnt[i]-1] << " x" << qc->quadcol[i][qc->quadnzcnt[i]-1];
+		if (qc->sense[i] == 'L')
+			cout << " <= " << qc->rhs[i] << endl;
+		else 
+			cout << " >= " << qc->rhs[i] << endl;
+	}
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
+}
+
+DSP_RTN_CODE StoModel::printQuadRows(const QuadRowData *qc)
+{
+	BGN_TRY_CATCH
+
+	for (int i = 0; i < qc->nqrows; i++) 
+	{
+		cout << i << "th quad constr: ";
+
+		for (int lt = 0; lt < qc->linnzcnt[i]; lt++)
+		{
+			cout << qc->linval[i][lt] << " x" << qc->linind[i][lt] << " + ";
+		}
+		for (int qt = 0; qt < qc->quadnzcnt[i]-1; qt++)
+		{
+			cout << qc->quadval[i][qt] << " x" << qc->quadrow[i][qt] << " x" << qc->quadcol[i][qt] << " + ";
+		}
+		cout << qc->quadval[i][qc->quadnzcnt[i]-1] << " x" << qc->quadrow[i][qc->quadnzcnt[i]-1] << " x" << qc->quadcol[i][qc->quadnzcnt[i]-1];
+		if (qc->sense[i] == 'L')
+			cout << " <= " << qc->rhs[i] << endl;
+		else 
+			cout << " >= " << qc->rhs[i] << endl;
+	}
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
 }
 
 double StoModel::getWassersteinDist(int i, int j) {

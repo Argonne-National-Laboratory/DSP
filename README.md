@@ -10,25 +10,21 @@ Status: ![Build Status](https://github.com/Argonne-National-Laboratory/DSP/workf
 
 --------
 
-DSP is an open-source and parallel package that implements decomposition methods for **structured mixed-integer programming** problems. These are structured optimization problems in the following form:
-
-        minimize   c^T x + \sum_{s=1}^S q_s^T y_s
-        subject to   A x                              = b
-                   T_s x +                    W_s y_s = h_s for s = 1, .., S
-                   some x, y_s are integers
-
-where x and y_s are decision variable vectors with dimensions n_1 and n_2, respectively, A, T_s and W_s are matrices of dimensions m_1 by n_1, m_2 by n_1 and m_2 by n_2, respectively, and c, q_s, b, and h_s are vectors of appropriate dimensions.
+DSP (**D**ecomposition of **S**tructured **P**rograms) is an open-source and parallel package that implements decomposition
+methods for structured **Mixed-Integer Quadratically Constrained Quadratic Programming (MIQCQP)** problems.
+Structured programming problems refer to the class of problems that embed decomposable structures (e.g., block-angular matrices).
+Multiple decomposition methods can effectively utilize such structures in order to accelerate the solutions.
 
 **DSP Solution Methods:**
 * Extensive form solver (global solver)
 * Serial/parallel dual decomposition (dual bounding solver)
 * Serial/parallel Dantzig-Wolfe decomposition (global solver)
-* Serial/parallel Benders decomposition
+* Serial/parallel (integer) Benders decomposition
 
 **Problem Types:**
-* Two-stage stochastic mixed-integer linear programs
-* Distributionally robust stochastic mixed-integer linear programs
-* Structured mixed-integer linear programs
+* Two-stage stochastic MIQCQP problems
+* Wasserstein-based distributionally robust variants
+* Structured MIQCQPs
 
 **Problem Input Formats:**
 * SMPS file format for stochastic programs (`.dro` optionally for distributionally robust)

@@ -239,6 +239,7 @@ target_link_libraries(runDsp ${DSP_LIBS})
 ##################################################
 if(UNIT_TESTING)
     add_subdirectory(test)
+    message(STATUS "unitTest is ON")
 endif(UNIT_TESTING)
 
 ##################################################
@@ -246,6 +247,7 @@ endif(UNIT_TESTING)
 ##################################################
 install(TARGETS Dsp LIBRARY DESTINATION $ENV{PWD}/lib)
 install(TARGETS runDsp DESTINATION $ENV{PWD}/bin)
+install(FILES DspCInterface.h DESTINATION $ENV{PWD}/include)
 
 install(CODE "message(\"\")")
 install(CODE "message(\"${Blue}** Standalone binary file was installed in $ENV{PWD}/bin${ColourReset}\")")

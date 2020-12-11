@@ -758,8 +758,12 @@ DSP_RTN_CODE DdMWSync::runWorker()
 					pos += model_->getNumSubproblemCouplingRows(sindex);
 					if (model_->isStochastic()) {
 						probability = recvbuf[pos++];
-						assert(probability >= 0.0);
-						assert(probability <= 1.0);
+						assert(probability >= -1e-6);
+						assert(probability <= 1.0 + 1e-6);
+						if (probability < 0 && probability >= -1e-6)
+							probability = 0;
+						else if (probability > 1 && probability <= 1 + 1e-6)
+							probability = 1;
 					}
 					workerlb->subprobs_[s]->updateProblem(lambda, probability, bestprimalobj);
 					/** apply Benders cuts */

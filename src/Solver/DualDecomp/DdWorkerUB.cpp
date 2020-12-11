@@ -6,7 +6,7 @@
  */
 
 // #define DSP_DEBUG
-#include "Model/TssModel.h"
+#include "Model/DecTssModel.h"
 #include "Solver/DualDecomp/DdWorkerUB.h"
 #include "SolverInterface/DspOsiCpx.h"
 #include "SolverInterface/DspOsiGrb.h"
@@ -29,37 +29,40 @@ DdWorkerUB::DdWorkerUB(
 {
 }
 
-DdWorkerUB::DdWorkerUB(const DdWorkerUB& rhs) : 
-DdWorker(rhs),
-bestub_(rhs.bestub_),
-primsols_(rhs.primsols_),
-ub_(rhs.ub_) {
+DdWorkerUB::DdWorkerUB(const DdWorkerUB &rhs) : DdWorker(rhs),
+												bestub_(rhs.bestub_),
+												primsols_(rhs.primsols_),
+												ub_(rhs.ub_)
+{
 	// number of subproblems to take care of
 	int nsubprobs = par_->getIntPtrParamSize("ARR_PROC_IDX");
 
 	// allocate memory
-	mat_mp_    = new CoinPackedMatrix * [nsubprobs];
-	rlbd_org_  = new double * [nsubprobs];
-	rubd_org_  = new double * [nsubprobs];
-	osi_        = new DspOsi * [nsubprobs];
-	for (int s = 0; s < nsubprobs; ++s) {
+	mat_mp_ = new CoinPackedMatrix *[nsubprobs];
+	rlbd_org_ = new double *[nsubprobs];
+	rubd_org_ = new double *[nsubprobs];
+	osi_ = new DspOsi *[nsubprobs];
+	for (int s = 0; s < nsubprobs; ++s)
+	{
 		mat_mp_[s] = new CoinPackedMatrix(*(rhs.mat_mp_[s]));
-		rlbd_org_[s] = new double [osi_[s]->si_->getNumRows()];
-		rubd_org_[s] = new double [osi_[s]->si_->getNumRows()];
+		rlbd_org_[s] = new double[osi_[s]->si_->getNumRows()];
+		rubd_org_[s] = new double[osi_[s]->si_->getNumRows()];
 		osi_[s] = rhs.osi_[s]->clone();
 		CoinCopyN(rhs.rlbd_org_[s], osi_[s]->si_->getNumRows(), rlbd_org_[s]);
 		CoinCopyN(rhs.rubd_org_[s], osi_[s]->si_->getNumRows(), rubd_org_[s]);
 	}
 }
 
-DdWorkerUB::~DdWorkerUB() {
+DdWorkerUB::~DdWorkerUB()
+{
 	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), mat_mp_);
 	FREE_2D_ARRAY_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), rlbd_org_);
 	FREE_2D_ARRAY_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), rubd_org_);
 	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), osi_);
 }
 
-DSP_RTN_CODE DdWorkerUB::init() {
+DSP_RTN_CODE DdWorkerUB::init()
+{
 	BGN_TRY_CATCH
 	/** status */
 	status_ = DSP_STAT_MW_CONTINUE;
@@ -69,7 +72,8 @@ DSP_RTN_CODE DdWorkerUB::init() {
 	return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE DdWorkerUB::createProblem() {
+DSP_RTN_CODE DdWorkerUB::createProblem()
+{
 #define FREE_MEMORY            \
 	FREE_PTR(mat_reco)         \
 	FREE_ARRAY_PTR(clbd_reco)  \
@@ -78,13 +82,13 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 	FREE_ARRAY_PTR(obj_reco)
 
 	/** recourse problem data */
-	CoinPackedMatrix * mat_reco = NULL;
-	double * clbd_reco   = NULL;
-	double * cubd_reco   = NULL;
-	double * obj_reco    = NULL;
-	char *   ctype_reco  = NULL;
+	CoinPackedMatrix *mat_reco = NULL;
+	double *clbd_reco = NULL;
+	double *cubd_reco = NULL;
+	double *obj_reco = NULL;
+	char *ctype_reco = NULL;
 
-	TssModel* tss = NULL;
+	TssModel *tss = NULL;
 
 	bool has_integer = false;
 
@@ -103,47 +107,110 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 	}
 
 	/** allocate memory */
-	mat_mp_    = new CoinPackedMatrix * [nsubprobs];
-	rlbd_org_  = new double * [nsubprobs];
-	rubd_org_  = new double * [nsubprobs];
-	osi_       = new DspOsi * [nsubprobs];
+	mat_mp_ = new CoinPackedMatrix *[nsubprobs];
+	rlbd_org_ = new double *[nsubprobs];
+	rubd_org_ = new double *[nsubprobs];
+	osi_ = new DspOsi *[nsubprobs];
 	primsols_.resize(nsubprobs);
 
-	for (int s = 0; s < nsubprobs; ++s) {
+	for (int s = 0; s < nsubprobs; ++s)
+	{
 
 		/** copy recourse problem */
 		DSP_RTN_CHECK_THROW(model_->copyRecoProb(par_->getIntPtrParam("ARR_PROC_IDX")[s],
-				mat_mp_[s], mat_reco, clbd_reco, cubd_reco, ctype_reco,
-				obj_reco, rlbd_org_[s], rubd_org_[s]));
+												 mat_mp_[s], mat_reco, clbd_reco, cubd_reco, ctype_reco,
+												 obj_reco, rlbd_org_[s], rubd_org_[s]));
 
 		for (int j = 0; j < mat_reco->getNumCols(); ++j)
-			if (ctype_reco[j] != 'C') {
+			if (ctype_reco[j] != 'C')
+			{
 				has_integer = true;
 				break;
 			}
 
 		/** creating solver interface */
 		osi_[s] = createDspOsi();
-		if (!osi_[s]) throw CoinError("Failed to create DspOsi", "createProblem", "DdWorkerUB");
+		if (!osi_[s])
+			throw CoinError("Failed to create DspOsi", "createProblem", "DdWorkerUB");
 
-	    /** no display */
-	    osi_[s]->setLogLevel(0);
+		/** no display */
+		osi_[s]->setLogLevel(0);
 		DSPdebug(osi_[s]->setLogLevel(5));
 
-	    /** load problem */
-	    osi_[s]->si_->loadProblem(*mat_reco, clbd_reco, cubd_reco, obj_reco, rlbd_org_[s], rubd_org_[s]);
-		for (int j = 0; j < mat_reco->getNumCols(); ++j) {
+		/** load problem */
+		osi_[s]->si_->loadProblem(*mat_reco, clbd_reco, cubd_reco, obj_reco, rlbd_org_[s], rubd_org_[s]);
+		for (int j = 0; j < mat_reco->getNumCols(); ++j)
+		{
 			if (ctype_reco[j] != 'C')
 				osi_[s]->si_->setInteger(j);
 		}
-	    DSPdebug(mat_reco->verifyMtx(4));
+		DSPdebug(mat_reco->verifyMtx(4));
 		DSPdebugMessage("number of integers: %d\n", osi_[s]->si_->getNumIntegers());
 
 		/** allocate array size for each scenario primal solution */
 		primsols_[s].resize(osi_[s]->si_->getNumCols());
 
+		/** add quadratic constraints */
+		if (tss->hasQuadraticRowCore()) 
+		{
+			/* nothing to do since current version only accepts noncoupling quadratic rows
+			 * any coupling solution obtained from each subproblem will satisfy the first stage quadratic rows 
+			 */
+		}
+		if (tss->hasQuadraticRowScenario()) 
+		{
+			QuadRowData * qc_row_data = tss->getQuaraticsRowScenario(s);
+
+#ifdef DSP_DEBUG
+			/* print qc_row_data to test whether it is successfully received or not */
+			tss->printQuadRows(s);
+			tss->printQuadRows(qc_row_data);
+#endif
+			/* Note that current version supports quadratic constraints with only second stage variables */
+			int nqrow = qc_row_data->nqrows;
+			int ** linind = new int * [nqrow];
+			int ** quadrow = new int * [nqrow];
+			int ** quadcol = new int * [nqrow];
+			
+			for (int i = 0; i < nqrow; i++)
+			{	
+				int linnzcnt = qc_row_data->linnzcnt[i];
+				int quadnzcnt = qc_row_data->quadnzcnt[i];
+				
+				linind[i] = new int [linnzcnt];
+				quadrow[i] = new int [quadnzcnt];
+				quadcol[i] = new int [quadnzcnt];
+
+				for (int j = 0; j < linnzcnt; j++) 
+				{
+					linind[i][j] = qc_row_data->linind[i][j] - tss->getNumCols(0);
+
+					if (linind[i][j] < 0)
+					{
+						throw "Current version supports quadratic constraints in non-coupling rows only./n";
+					}
+				}
+        
+				for (int j = 0; j < qc_row_data->quadnzcnt[i]; j++) 
+				{
+					quadrow[i][j] = qc_row_data->quadrow[i][j] - tss->getNumCols(0);
+					quadcol[i][j] = qc_row_data->quadcol[i][j] - tss->getNumCols(0);
+
+					if (quadrow[i][j] < 0 || quadcol[i][j] < 0)
+					{
+						throw "current version support quadratic constraints in non-coupling rows only./n";
+					}
+				}
+			}
+			osi_[s]->addQuadraticRows(qc_row_data->nqrows, qc_row_data->linnzcnt, qc_row_data->quadnzcnt, qc_row_data->rhs, qc_row_data->sense, linind, qc_row_data->linval, quadrow, quadcol, qc_row_data->quadval);
+			
+			FREE_2D_ARRAY_PTR(nqrow, linind);
+			FREE_2D_ARRAY_PTR(nqrow, quadrow);
+			FREE_2D_ARRAY_PTR(nqrow, quadcol);
+		}
+
 		FREE_MEMORY
-    }
+	}
 
 	END_TRY_CATCH_RTN(FREE_MEMORY, DSP_RTN_ERR)
 
@@ -153,35 +220,38 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 #undef FREE_MEMORY
 }
 
-double DdWorkerUB::evaluate(int n, double* solution) {
+double DdWorkerUB::evaluate(int n, double *solution)
+{
 	std::vector<int> indices;
 	std::vector<double> elements;
 	for (int i = 0; i < n; ++i)
-		if (fabs(solution[i]) > 1.0e-10) {
+		if (fabs(solution[i]) > 1.0e-10)
+		{
 			indices.push_back(i);
 			elements.push_back(solution[i]);
 		}
 
 	CoinPackedVector *s = new CoinPackedVector(indices.size(), &indices[0], &elements[0]);
 	double ub = evaluate(s);
-	
+
 	delete s;
 
 	return ub;
 }
 
-double DdWorkerUB::evaluate(CoinPackedVector* solution) {
-#define FREE_MEMORY \
+double DdWorkerUB::evaluate(CoinPackedVector *solution)
+{
+#define FREE_MEMORY    \
 	FREE_ARRAY_PTR(Tx) \
 	FREE_ARRAY_PTR(x)
 
-	double * Tx = NULL;
-	double* x = NULL;
-	TssModel* tss = NULL;
+	double *Tx = NULL;
+	double *x = NULL;
+	TssModel *tss = NULL;
 
 	BGN_TRY_CATCH
 
-	tss = dynamic_cast<TssModel*>(model_);
+	tss = dynamic_cast<TssModel *>(model_);
 	if (tss == NULL)
 		throw "This is not a stochastic programming problem.";
 
@@ -193,15 +263,19 @@ double DdWorkerUB::evaluate(CoinPackedVector* solution) {
 
 	/** allocate memory */
 	x = solution->denseVector(tss->getNumCols(0));
+  // DSPdebugMessage("x to evaluate:\n");
+	// DspMessage::printArray(tss->getNumCols(0), x);
+	
 	for (int s = nsubprobs - 1; s >= 0; --s) {
 		/** calculate Tx */
-		Tx = new double [mat_mp_[s]->getNumRows()];
+		Tx = new double[mat_mp_[s]->getNumRows()];
 		mat_mp_[s]->times(x, Tx);
 
 		/** adjust row bounds */
-		const double* rlbd = osi_[s]->si_->getRowLower();
-		const double* rubd = osi_[s]->si_->getRowUpper();
-		for (int i = osi_[s]->si_->getNumRows() - 1; i >= 0; --i) {
+		const double *rlbd = osi_[s]->si_->getRowLower();
+		const double *rubd = osi_[s]->si_->getRowUpper();
+		for (int i = osi_[s]->si_->getNumRows() - 1; i >= 0; --i)
+		{
 			if (rlbd_org_[s][i] > -COIN_DBL_MAX)
 				osi_[s]->si_->setRowLower(i, rlbd[i] - Tx[i]);
 			if (rubd_org_[s][i] < COIN_DBL_MAX)
@@ -212,6 +286,13 @@ double DdWorkerUB::evaluate(CoinPackedVector* solution) {
 		cx_weighted += cx * tss->getProbability()[par_->getIntPtrParam("ARR_PROC_IDX")[s]];
 
 		FREE_ARRAY_PTR(Tx)
+
+#ifdef DSP_DEBUG
+      /* write in lp file to see whether the quadratic rows are successfully added to the model or not */
+			char lpfilename[128];
+			sprintf(lpfilename, "DdWorkerUB_scen_updated%d.lp", s); 
+			osi_[s]->writeProb(lpfilename, NULL);
+#endif
 	}
 	DSPdebugMessage("cx_weighted %e\n", cx_weighted);
 
@@ -228,21 +309,24 @@ double DdWorkerUB::evaluate(CoinPackedVector* solution) {
 		ub_ = COIN_DBL_MAX;
 
 	/** restore row bounds */
-	for (int s = nsubprobs - 1; s >= 0; --s) {
-		for (int i = osi_[s]->si_->getNumRows() - 1; i >= 0; --i) {
+	for (int s = nsubprobs - 1; s >= 0; --s)
+	{
+		for (int i = osi_[s]->si_->getNumRows() - 1; i >= 0; --i)
+		{
 			osi_[s]->si_->setRowLower(i, rlbd_org_[s][i]);
 			osi_[s]->si_->setRowUpper(i, rubd_org_[s][i]);
 		}
 	}
 
-	END_TRY_CATCH_RTN(FREE_MEMORY,COIN_DBL_MAX)
+	END_TRY_CATCH_RTN(FREE_MEMORY, COIN_DBL_MAX)
 	FREE_MEMORY
 
 	return ub_;
 #undef FREE_MEMORY
 }
 
-DSP_RTN_CODE DdWorkerUB::solve() {
+DSP_RTN_CODE DdWorkerUB::solve()
+{
 	double cputime;
 	double walltime;
 
@@ -261,8 +345,8 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 
 		/** set time limit */
 		osi_[s]->setTimeLimit(
-				CoinMin(CoinMax(0.01, time_remains_),
-				par_->getDblParam("DD/SUB/TIME_LIM")));
+			CoinMin(CoinMax(0.01, time_remains_),
+					par_->getDblParam("DD/SUB/TIME_LIM")));
 
 		/** solve */
 		osi_[s]->solve();
@@ -270,21 +354,25 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 		/** check status. there might be unexpected results. */
 		int status = osi_[s]->status();
 		DSPdebugMessage("status = %d\n", status);
-		switch (status) {
+		switch (status)
+		{
 		case DSP_STAT_OPTIMAL:
 		case DSP_STAT_LIM_ITERorTIME:
 		case DSP_STAT_STOPPED_GAP:
 		case DSP_STAT_STOPPED_NODE:
 		case DSP_STAT_STOPPED_TIME:
+		case DSP_STAT_FEASIBLE:
 			break;
 		default:
 			status_ = DSP_STAT_MW_STOP;
 			message_->print(10,
-					"Warning: subproblem %d solution status is %d\n", s,
-					status);
+							"Warning: subproblem %d solution status is %d\n", s,
+							status);
 			break;
 		}
-		if (status_ == DSP_STAT_MW_STOP) {
+		if (status_ == DSP_STAT_MW_STOP)
+		{
+			DSPdebugMessage("status_ (dsp) = DSP_STAT_MW_STOP_, status (osi) =%d\n", status);
 			primobj = COIN_DBL_MAX;
 			dualobj = -COIN_DBL_MAX;
 			break;
@@ -312,20 +400,22 @@ DSP_RTN_CODE DdWorkerUB::solve() {
 	s_cputimes_.push_back(total_cputime);
 	s_walltimes_.push_back(total_walltime);
 
-	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+	END_TRY_CATCH_RTN(;, DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
 }
 
-DspOsi * DdWorkerUB::createDspOsi() {
-	DspOsi * osi = NULL;
+DspOsi *DdWorkerUB::createDspOsi()
+{
+	DspOsi *osi = NULL;
 	BGN_TRY_CATCH
 
-	switch (par_->getIntParam("DW/SUB/SOLVER")) {
+	switch (par_->getIntParam("DW/SUB/SOLVER"))
+	{
 	case OsiCpx:
 #ifdef DSP_HAS_CPX
 		osi = new DspOsiCpx();
-		CPXsetintparam(dynamic_cast<DspOsiCpx*>(osi)->cpx_->getEnvironmentPtr(), CPX_PARAM_SCRIND, CPX_OFF);
+		CPXsetintparam(dynamic_cast<DspOsiCpx *>(osi)->cpx_->getEnvironmentPtr(), CPX_PARAM_SCRIND, CPX_OFF);
 #else
 		throw CoinError("Cplex is not available.", "createDspOsi", "DdWorkerUB");
 #endif

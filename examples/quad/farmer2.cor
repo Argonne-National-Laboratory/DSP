@@ -1,0 +1,16 @@
+NAME	FARMER
+ROWS
+ L QC0
+ L QC1
+COLUMNS
+   x5 QC1   -5
+RHS
+   RHS      QC0      1600
+   RHS      QC1      400
+QCMATRIX   QC0
+   x5 x5 1
+QCMATRIX   QC1
+   x5 x5 2
+   x6 x6 2
+   x7 x7 2
+ENDATA
