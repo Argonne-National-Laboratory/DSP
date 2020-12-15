@@ -41,24 +41,13 @@ public:
 	}
 
 	/** load quadratic constrs */
-	virtual void addQuadraticRows(int nqrows, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int const ** linind, double const ** linval, 
-										int const ** quadrow, int const ** quadcol, double const ** quadval) {};
-
+	virtual void addQuadraticRows(int nqrows, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int ** linind, double ** linval, int ** quadrow, int ** quadcol, double ** quadval){};
+	
 	/** throw error */
 	virtual inline void checkDspOsiError(int err, std::string solverfuncname, std::string dsposimethod){};
 
 	/** write problem file */
-	virtual void writeProb(char const * filename_str, char const * filetype_str) {};
-
-	/** set problem type */
-	virtual void setProbType(bool isqp, bool isqcp) {
-		
-		if (si_->getNumIntegers() > 0)
-			ismip_ = true;
-		
-		isqp_ = isqp;
-		isqcp_ = isqcp;
-	}
+	virtual void writeProb(char const * filename_str, char const * filetype_str){};
 
 	/** change problem type to MIQCP */
 	virtual void switchToMIQCP(void){};
@@ -118,6 +107,9 @@ public:
 
 	/** get number of branch-and-bound nodes explored */
 	virtual int getNumNodes() {return 0;}
+
+	/** get ismip_ */
+	virtual bool isMip() {return ismip_;}
 
 	/** set log level */
 	virtual void setLogLevel(int level) {

@@ -13,7 +13,7 @@
 #include "DspApiEnv.h"
 #include "DspCInterface.h"
 #include "Utility/DspMacros.h"
-#include "Model/DecTssQcModel.h"
+#include "Model/DecTssModel.h"
 #include "Model/DecBlkModel.h"
 
 #include "Solver/Deterministic/DeDriver.h"
@@ -49,27 +49,6 @@ DspApiEnv * createEnv(void)
 	return new DspApiEnv;
 }
 
-/** create model */
-int createModel(DspApiEnv * env, bool isstochastic, bool isquadratic)
-{
-	if (env->model_ == NULL) {
-		if (isstochastic) {
-			if (isquadratic)
-				env->model_ = new DecTssQcModel;
-			else 
-				env->model_ = new DecTssModel;
-		} else {
-			if (isquadratic) {
-				cout << "Current version only support quadratic constraints for stochastic models" << endl;
-				return 1;
-			} else {
-				/* nothing to do */
-			}
-		}
-	} 
-	return 0;
-}
-
 /** free API environment */
 void freeEnv(DspApiEnv * &env)
 {
@@ -90,13 +69,12 @@ void freeSolver(DspApiEnv * env)
 	FREE_PTR(env->solver_);
 }
 
-/** If current model is stochastic, return the model as a TssModel object. */
+/** If current model is stochastic, return the model as a TssModel object. If no model exists, create one. */
 TssModel * getTssModel(DspApiEnv * env)
 {	
 	if (env->model_ == NULL)
 	{
-		printf("Error: env->model_ should be initialized using createModel function");
-		return NULL;
+		env->model_ = new DecTssModel;
 	}
 	if (env->model_->isStochastic())
 	{
@@ -115,37 +93,6 @@ TssModel * getTssModel(DspApiEnv * env)
 	else
 	{
 		printf("Error: Attempted to access feature only supported by stochastic models with a general decomposition model\n");
-		return NULL;
-	}
-}
-
-/** If current model is quadratic, return the model as a QcModel object. */
-DecTssQcModel * getDecTssQcModel(DspApiEnv * env)
-// QcModel * getQcModel(DspApiEnv * env)
-{
-	if (env->model_ == NULL)
-	{
-		printf("Error: env->model_ should be initialized using createModel function");
-		return NULL;
-	}
-	
-	if (env->model_->isQuadratic())
-	{
-		DecTssQcModel * qc;
-		try
-		{
-			qc = dynamic_cast<DecTssQcModel *>(env->model_);
-		}
-		catch (const std::bad_cast& e)
-		{
-			printf("Error: Model claims to be quadratic when it is not");
-			return NULL;
-		}
-		return qc;
-	}
-	else
-	{
-		printf("Error: Attempted to access feature only supported by quadratic models with a general two-stage decomposition model\n");
 		return NULL;
 	}
 }
@@ -176,18 +123,6 @@ void setDimensions(
 	getTssModel(env)->setDimensions(ncols1, nrows1, ncols2, nrows2);
 }
 
-/** set DecTssQcModel::QcRowData dimensions */
-void setQcRowDataDimensions(DspApiEnv * env)
-{
-	getDecTssQcModel(env)->setQcRowDataDimensions();
-}
-
-/** set quadratic constraint dimensions */
-void setQcDimensions(DspApiEnv * env, int s, int nqrows) 
-{
-	getDecTssQcModel(env)->setQcDimensions(s, nqrows);
-}
-
 /** read smps files */
 int readSmps(DspApiEnv * env, const char * smps)
 {
@@ -203,7 +138,7 @@ int readDro(DspApiEnv * env, const char * dro)
 /** read quad files */
 int readQuad(DspApiEnv * env, const char * smps, const char * quad)
 {
-	return getDecTssQcModel(env)->readQuad(smps, quad);
+	return getTssModel(env)->readQuad(smps, quad);
 }
 
 /** load first-stage problem */
@@ -242,6 +177,37 @@ void loadQuadraticFirstStage(
 	getTssModel(env)->loadFirstStage(start, index, value, clbd, cubd, ctype, obj, qrowindex, qcolindex, qvalue, qnum, rlbd, rubd);
 }
 
+/** load first-stage problem with quadratic objective and constraints*/
+void loadQCQPFirstStage(
+			DspApiEnv *          env,   	/**< pointer to API object */
+			const CoinBigIndex * start, 	/**< start index for each row */
+			const int *          index, 	/**< column indices */
+			const double *       value, 	/**< constraint elements */
+			const double *       clbd,  	/**< column lower bounds */
+			const double *       cubd,  	/**< column upper bounds */
+			const char *         ctype, 	/**< column types */
+			const double *       obj,   	/**< objective coefficients */
+			const int * 		 qobjrowindex, /**< quadratic objective row indices */
+			const int *			 qobjcolindex, /**< quadratic objective column indices */
+			const double *		 qobjvalue, /**< quadratic objective constraint elements value */
+			const CoinBigIndex 	 qobjnum,  	/**< number of quadratic terms in the objective */
+			const double *       rlbd,  	/**< row lower bounds */
+			const double *       rubd,   	/**< row upper bounds */
+			const int 			nqrows, 	/**< number of quadratic rows */
+        	const int *         linnzcnt,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+        	const int *        	quadnzcnt,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+			const double *		rhs, 		/**< constraint rhs of each constraint */
+			const int *			sense, 		/**< constraint sense of each constraint */
+			const int *         linstart,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+			const int *         linind, 	/**< indices for the linear part */
+			const double *      linval, 	/**< nonzero coefficient of the linear part */
+			const int *        	quadstart,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+			const int *       	quadrow,  	/**< indices for the quadratic part */
+			const int *       	quadcol,  	/**< indices for the quadratic part */
+			const double *      quadval 	/**< nonzero coefficient of the quadratic part */)
+{
+	getTssModel(env)->loadFirstStage(start, index, value, clbd, cubd, ctype, obj, qobjrowindex, qobjcolindex, qobjvalue, qobjnum, rlbd, rubd, nqrows, linnzcnt, quadnzcnt, rhs, sense, linstart, linind, linval, quadstart, quadrow, quadcol, quadval);
+}
 
 /** load second-stage problem */
 void loadSecondStage(
@@ -283,26 +249,39 @@ void loadQuadraticSecondStage(
 	getTssModel(env)->loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, qrowindex, qcolindex, qvalue, qnum, rlbd, rubd);
 }
 
-/** load quadratic constraints to the second stage */
-void loadQuadraticRows(
-		DspApiEnv *         env,  	 	/**< pointer to API object */
-        const int           s,     		/**< scenario index */
-		const int 			nqrows,		/**< number of quadratic constraints */
-        const int *         linnzcnt,  	/**< number of nonzero coefficients in the linear part of each constraint  */
-        const int *        	quadnzcnt,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
-		const double *		rhs, 		/**< constraint rhs of each constraint */
-		const int *			sense, 		/**< constraint sense of each constraint */
-		const int *         linstart,  	/**< number of nonzero coefficients in the linear part of each constraint  */
-		const int *         linind, 	/**< indices for the linear part */
-		const double *      linval, 	/**< nonzero coefficient of the linear part */
-		const int *        	quadstart,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
-		const int *       	quadrow,  	/**< indices for the quadratic part */
-		const int *       	quadcol,  	/**< indices for the quadratic part */
-		const double *      quadval 	/**< nonzero coefficient of the quadratic part */ )
+/** load second-stage problem */
+void loadQCQPSecondStage(
+			DspApiEnv *          env,   	/**< pointer to API object */
+			const int            s,     	/**< scenario index */
+			const double         prob,  	/**< probability */
+			const CoinBigIndex * start, 	/**< start index for each row */
+			const int *          index, 	/**< column indices */
+			const double *       value, 	/**< constraint elements */
+			const double *       clbd,  	/**< column lower bounds */
+			const double *       cubd,  	/**< column upper bounds */
+			const char *         ctype, 	/**< column types */
+			const double *       obj,   	/**< objective coefficients */
+			const int * 		 qobjrowindex, /**< quadratic objective row indices */
+			const int *			 qobjcolindex, /**< quadratic objective column indices */
+			const double *		 qobjvalue, /**< quadratic objective constraint elements value */
+			const CoinBigIndex 	 qobjnum,  	/**< number of quadratic terms in the objective */
+			const double *       rlbd,  	/**< row lower bounds */
+			const double *       rubd,   	/**< row upper bounds */
+			const int 			nqrows, 	/**< number of quadratic rows */
+        	const int *         linnzcnt,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+        	const int *        	quadnzcnt,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+			const double *		rhs, 		/**< constraint rhs of each constraint */
+			const int *			sense, 		/**< constraint sense of each constraint */
+			const int *         linstart,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+			const int *         linind, 	/**< indices for the linear part */
+			const double *      linval, 	/**< nonzero coefficient of the linear part */
+			const int *        	quadstart,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+			const int *       	quadrow,  	/**< indices for the quadratic part */
+			const int *       	quadcol,  	/**< indices for the quadratic part */
+			const double *      quadval 	/**< nonzero coefficient of the quadratic part */)
 {
-	getDecTssQcModel(env)->loadQuadraticRows(s, nqrows, linnzcnt, quadnzcnt, rhs, sense, linstart, linind, linval, quadstart, quadrow, quadcol, quadval);
+	getTssModel(env)->loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, qobjrowindex, qobjcolindex, qobjvalue, qobjnum, rlbd, rubd, nqrows, linnzcnt, quadnzcnt, rhs, sense, linstart, linind, linval, quadstart, quadrow, quadcol, quadval);
 }
-
 
 /**
  * The following function allows to read the model by blocks. This
@@ -714,7 +693,10 @@ int getTotalNumRows(DspApiEnv * env)
 int getNumQRows(DspApiEnv * env, int s)
 {
 	DSP_API_CHECK_MODEL(-1);
-	return getDecTssQcModel(env)->getNumQRows(s);
+	if (s < 0)
+		return getTssModel(env)->getNumCoreQRows();
+	else
+		return getTssModel(env)->getNumScenQRows(s);
 }
 
 /** get total number of columns */
@@ -814,6 +796,21 @@ void printModel(DspApiEnv * env)
 {
 	DSP_API_CHECK_MODEL();
 	env->model_->__printData();
+}
+
+int getVersionMajor(DspApiEnv *env)
+{
+	return env->getVersionMajor();
+}
+
+int getVersionMinor(DspApiEnv *env)
+{
+	return env->getVersionMinor();
+}
+
+int getVersionPatch(DspApiEnv *env)
+{
+	return env->getVersionPatch();
 }
 
 #undef DSP_API_CHECK_MODEL

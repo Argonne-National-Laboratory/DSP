@@ -1,0 +1,9 @@
+STOCH         FARMER
+SCENARIOS
+SC SCEN01    ROOT            0.33333333   PERIOD2          
+   x5   x5 QC0   1
+SC SCEN02    ROOT            0.33333333   PERIOD2          
+   x5   x5 QC0   1
+SC SCEN03    ROOT            0.33333334   PERIOD2          
+   x5   x5 QC0   1
+ENDATA

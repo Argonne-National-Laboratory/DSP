@@ -8,7 +8,7 @@
 #ifndef SRC_SOLVERINTERFACE_DSPOSICPX_H_
 #define SRC_SOLVERINTERFACE_DSPOSICPX_H_
 
- #define DSP_DEBUG
+// #define DSP_DEBUG
 
 #ifdef DSP_HAS_CPX
 
@@ -79,7 +79,8 @@ public:
 				}
 			}
 		}
-    }
+		isqp_ = true;
+	}
 
 	
 	/* For a continuous problem:
@@ -97,16 +98,17 @@ public:
 	 * * (For more information about solving a MIQCP, see the website: https://www.ibm.com/support/knowledgecenter/en/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/UsrMan/topics/discr_optim/mip_quadratic/03_introMIQCP.html) 
 	 */
 	/** load quadratic constrs */
-	virtual void addQuadraticRows(int nqrows, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int const ** linind, double const ** linval, 
-										int const ** quadrow, int const ** quadcol, double const ** quadval) 
+	virtual void addQuadraticRows(int nqrows, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int ** linind, double ** linval, int ** quadrow, int ** quadcol, double ** quadval)
 	{
+		if (nqrows > 0)
+			isqcp_ = true;
 		for (int i = 0; i < nqrows; i++) 
 		{
 			int err = CPXaddqconstr(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), linnzcnt[i], quadnzcnt[i], rhs[i], sense[i], 
 				linind[i], linval[i], quadrow[i], quadcol[i], quadval[i], NULL);
 			checkDspOsiError(err, "CPXaddqconstr", "addQuadraticRows");	
 		}
-    }
+	}
 
 	/** throw error */
 	virtual inline void checkDspOsiError(int err, std::string cpxfuncname, std::string dsposimethod) 
@@ -114,9 +116,6 @@ public:
 		if (err != 0) {
 			char s[100];
 			sprintf(s, "%s returned error %d", cpxfuncname.c_str(), err);
-			#ifdef DEBUG
-				std::cerr << "ERROR: " << s << " (" << dsposimethod << " in DspOsiCpx)" << std::endl;
-			#endif
 			throw CoinError(s, dsposimethod.c_str(), "DspOsiCpx");
 		}
 	}
@@ -130,7 +129,7 @@ public:
 
 	/** change problem type to MIQCP */
 	virtual void switchToMIQCP(void) {
-		DSPdebugMessage("DspOsiCpx::switchToMIQCP()\n");
+		DSPdebugMessage("DspOsiCpx::switchToMIQCP()\n");	
 
   		CPXENVptr env = cpx_->getEnvironmentPtr();
 		CPXLPptr lp = cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL);
@@ -148,7 +147,6 @@ public:
     	checkDspOsiError(err, "CPXchgctype", "switchToMIQCP");
 
     	delete[] cindarray;
-  		
 	}
 
 	/** change problem type to MIQP */
@@ -206,21 +204,23 @@ public:
 		if (!isqp_ && !isqcp_) {
 			if (si_->getNumIntegers() > 0) {
 				DSPdebugMessage("DspOsiCpx::solve(), si_->branchAndBound() \n");
-				si_->branchAndBound();
 				ismip_ = true;
+				si_->branchAndBound();
 			} else {
 				DSPdebugMessage("DspOsiCpx::solve(), si_->initialSolve() \n");
-				si_->initialSolve();
 				ismip_ = false;
+				si_->initialSolve();
 			}
 		}
 		else 
 		{
-			if (ismip_) {
+			if (si_->getNumIntegers() > 0) {
 				DSPdebugMessage("DspOsiCpx::solve(), MIQCQPSolve() \n");
+				ismip_ = true;
 				MIQCQPSolve();
 			} else {
 				DSPdebugMessage("DspOsiCpx::solve(), QCQPSolve() \n");
+				ismip_ = false;
 				QCQPSolve();
 			}	
 		}
@@ -229,8 +229,6 @@ public:
 	/** modified OsiCpxSolverInterface::initialSolve */
 	void QCQPSolve()
 	{
-		DSPdebugMessage("DspOsiCpx::QCQPSolve()\n");
-
   		if (isqp_)
 		  	switchToQP();
 		else if (isqcp_)
@@ -350,7 +348,8 @@ public:
 				if (stat == CPX_STAT_INForUNBD && presolve) 
 				{
 					CPXsetintparam(env, CPX_PARAM_PREIND, CPX_OFF);
-				}
+				} else 
+					break;
 				resolved = true;
 			}
 		}
@@ -360,13 +359,15 @@ public:
 	{
   		int term;
 
-  		DSPdebugMessage("DspOsiCpx::MIQCQPSolve()\n");
-
   		if (isqp_)
 		  	switchToMIQP();
 		else if (isqcp_)
 			switchToMIQCP();
-
+#ifdef DSP_DEBUG
+		char lpfilename[128];
+		sprintf(lpfilename, "miqcqp_model.lp"); 
+		writeProb(lpfilename, NULL);
+#endif
 		CPXENVptr env = cpx_->getEnvironmentPtr();
 
 		/** disabled domipstart in OsiCpxSolverInterface and have the default setting of CPX_PARAM_ADVIND
@@ -478,6 +479,24 @@ public:
 			}
 		}
 		return status;
+	}
+
+	/** get primal objective value */
+	virtual double getPrimObjValue() {
+		double objval = 0.0;
+		int err;
+  		int solntype;
+		
+		CPXsolninfo(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), NULL, &solntype, NULL, NULL);
+    
+		if (solntype != CPX_NO_SOLN) {
+      		err = CPXgetobjval(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), &objval);
+      		checkDspOsiError(err, "CPXgetobjval", "getObjValue");
+		} else {
+			// return 0.0 as objective value if no availible solution
+			objval = 0.0;
+		}
+		return objval;
 	}
 
 	/** get dual objective value */

@@ -144,7 +144,7 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 	bool isroot = true;
 	bool issolved = true;
 	bool isstochastic = smpsfile != NULL ? true : false;
-	bool isquadratic = quadfile != NULL ? true : false;
+	
 #ifdef DSP_HAS_MPI
 	int comm_rank, comm_size;
 	MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
@@ -155,11 +155,6 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 	if (isroot)
 		cout << "Creating DSP environment\n";
 	DspApiEnv *env = createEnv();
-
-	/* create model */
-	ret = createModel(env, isstochastic, isquadratic);
-	if (ret != 0)
-		return ret;
 
 	// Read problem instance from file(s)
 	if (smpsfile != NULL)
@@ -204,16 +199,6 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 			cout << "Current version only support deterministic or dual decomposition solvers for quadratic constrained problem" << endl;
 			return 1;
 		}
-
-#ifndef DSP_HAS_CPX
-		cout << "Current version only support CPLEX for solving quadratic constrained problem" << endl;
-		return 1;
-#endif
-		/** force to use CPLEX if available */
-		env->par_->setIntParam("DD/MASTER/SOLVER", OsiCpx);
-		env->par_->setIntParam("DD/SUB/SOLVER", OsiCpx);
-		env->par_->setIntParam("DE/SOLVER", OsiCpx);
-
 		if (isroot)
 			cout << "Reading Quad files: " << quadfile << endl;
 		ret = readQuad(env, smpsfile, quadfile);
@@ -221,8 +206,8 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 			return ret;
 		if (isroot)
 		{
-			for (int s = 0; s < getNumScenarios(env); s++)
-				cout << "Second stage: " << getNumQRows(env, s) << " quadratic rows in scenario " << s << endl;
+			cout << "First stage: " << getNumQRows(env, -1) << " quadratic rows" << endl;
+			cout << "Second stage: " << getNumQRows(env, 0) << " quadratic rows in scenarios" << endl;
 		}
 	}
 
@@ -344,7 +329,11 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 
 			if (isroot)
 				cout << "Run distributionally robust dual decomposition" << endl;
+#ifdef DSP_HAS_MPI
+			solveDdMpi(env, MPI_COMM_WORLD);
+#else
 			solveDd(env);
+#endif
 		}
 		else
 		{

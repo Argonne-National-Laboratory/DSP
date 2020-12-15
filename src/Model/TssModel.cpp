@@ -57,6 +57,10 @@ DSP_RTN_CODE TssModel::setNumberOfScenarios(int nscen)
 	rlbd_scen_  = new CoinPackedVector * [nscen_];
 	rubd_scen_  = new CoinPackedVector * [nscen_];
 
+	/* data for quadratic constraints */
+	qc_row_core_ = NULL;
+	qc_row_scen_ = NULL;
+
 	/** initialize memory */
 	for (int s = 0; s < nstgs_; ++s)
 	{
@@ -145,7 +149,7 @@ DSP_RTN_CODE TssModel::loadFirstStage(
 		const double *       rubd   /**< row upper bounds */)
 {
 	BGN_TRY_CATCH
-
+	
 	if (ncols_ == NULL || ncols_[0] <= 0)
 	{
 		printf("Error: invalid number of columns.\n");
@@ -177,9 +181,12 @@ DSP_RTN_CODE TssModel::loadFirstStage(
 			nints_core_++;
 
 			/** set bounds for binary variables */
-			if (ctype_core_[0][j] == 'B') {
-				clbd_core_[0][j] = 0.0;
-				cubd_core_[0][j] = 1.0;
+			if (ctype_core_[1][j] == 'B') {
+				/* only when bounds are not specified */
+				if (clbd_core_[1][j] < 0)
+					clbd_core_[1][j] = 0.0;
+				else if (cubd_core_[1][j] > 1) 
+					cubd_core_[1][j] = 1.0;
 			}
 		}
 	}
@@ -232,6 +239,91 @@ DSP_RTN_CODE TssModel::loadFirstStage(
 	return DSP_RTN_OK;
 }
 
+DSP_RTN_CODE TssModel::loadFirstStage(
+		const CoinBigIndex * start, /**< start index for each row */
+		const int *          index, /**< column indices */
+		const double *       value, /**< constraint elements */
+		const double *       clbd,  /**< column lower bounds */
+		const double *       cubd,  /**< column upper bounds */
+		const char *         ctype, /**< column types */
+		const double *       obj,   /**< objective coefficients */
+		const int * 		 qobjrowindex, /**< quadratic objective row indices */
+		const int *			 qobjcolindex, /**< quadratic objective column indices */
+		const double *		 qobjvalue, /**< quadratic objective constraint elements value */
+		const int 			 numq,  /**< number of quadratic terms */
+		const double *       rlbd,  /**< row lower bounds */
+		const double *       rubd,   /**< row upper bounds */
+		const int 			nqrows, /**< number of quadratic rows */
+		const int *         linnzcnt,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+		const int *        	quadnzcnt,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+		const double *		rhs, 		/**< constraint rhs of each constraint */
+		const int *			sense, 		/**< constraint sense of each constraint */
+		const int *         linstart,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+		const int *         linind, 	/**< indices for the linear part */
+		const double *      linval, 	/**< nonzero coefficient of the linear part */
+		const int *        	quadstart,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+		const int *       	quadrow,  	/**< indices for the quadratic part */
+		const int *       	quadcol,  	/**< indices for the quadratic part */
+		const double *      quadval 	/**< nonzero coefficient of the quadratic part */)
+{
+	BGN_TRY_CATCH
+	loadFirstStage(start, index, value, clbd, cubd, ctype, obj, qobjrowindex, qobjcolindex, qobjvalue, numq, rlbd, rubd);
+
+	if (nqrows > 0) {
+		/* allocate memory for quadratic constraints */
+		qc_row_core_ = new QuadRowData;
+	
+		qc_row_core_->nqrows = nqrows;
+		qc_row_core_->linnzcnt = new int [nqrows];
+		qc_row_core_->quadnzcnt = new int [nqrows];
+		qc_row_core_->rhs = new double [nqrows];
+		qc_row_core_->sense = new int [nqrows];
+		qc_row_core_->linind = new int * [nqrows];
+		qc_row_core_->linval = new double * [nqrows];
+		qc_row_core_->quadrow = new int * [nqrows];
+		qc_row_core_->quadcol = new int * [nqrows];
+		qc_row_core_->quadval = new double * [nqrows];
+
+		/** allocate values */
+		for (int k = 0; k < nqrows; k++) 
+		{
+			qc_row_core_->linnzcnt[k] = linnzcnt[k];
+			qc_row_core_->quadnzcnt[k] = quadnzcnt[k];
+			qc_row_core_->rhs[k] = rhs[k];
+			qc_row_core_->sense[k] = sense[k];
+
+			qc_row_core_->linind[k] = new int [linnzcnt[k]];
+			qc_row_core_->linval[k] = new double [linnzcnt[k]];
+
+			qc_row_core_->quadrow[k] = new int [quadnzcnt[k]];
+			qc_row_core_->quadcol[k] = new int [quadnzcnt[k]];
+			qc_row_core_->quadval[k] = new double [quadnzcnt[k]];
+
+			for (int t = 0; t < qc_row_core_->linnzcnt[k]; t++) 
+			{
+				qc_row_core_->linind[k][t] = linind[linstart[k] + t];
+				qc_row_core_->linval[k][t] = linval[linstart[k] + t];
+			}
+			
+			for (int t = 0; t < qc_row_core_->quadnzcnt[k]; t++) 
+			{
+				qc_row_core_->quadrow[k][t] = quadrow[quadstart[k] + t];
+				qc_row_core_->quadcol[k][t] = quadcol[quadstart[k] + t];
+				qc_row_core_->quadval[k][t] = quadval[quadstart[k] + t];
+			}
+		}
+	}
+	
+	#ifdef DSP_DEBUG
+		printQuadRows(-1);
+	#endif
+
+	DSPdebugMessage("load first stage with quadratic constraints\n");
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
+}
+
 /** load second-stage problem */
 DSP_RTN_CODE TssModel::loadSecondStage(
         const int s,               /**< scenario index */
@@ -275,7 +367,7 @@ DSP_RTN_CODE TssModel::loadSecondStage(
             printf("Error: invalid scenario index.\n");
             return DSP_RTN_ERR;
         }
-		
+
         /** allocate values */
         prob_[s] = prob;
         CoinCopyN(clbd, ncols_[1], clbd_core_[1]);
@@ -295,8 +387,11 @@ DSP_RTN_CODE TssModel::loadSecondStage(
 
 					/** set bounds for binary variables */
 					if (ctype_core_[1][j] == 'B') {
-						clbd_core_[1][j] = 0.0;
-						cubd_core_[1][j] = 1.0;
+						/* only when bounds are not specified */
+						if (clbd_core_[1][j] < 0)
+							clbd_core_[1][j] = 0.0;
+						else if (cubd_core_[1][j] > 1) 
+							cubd_core_[1][j] = 1.0;
 					}
                 }
             }
@@ -312,8 +407,8 @@ DSP_RTN_CODE TssModel::loadSecondStage(
                 for (int j = start[i]; j < start[i + 1]; ++j) {
                     bool added = false;
                     if (rows_core_[rstart_[1] + i]->findIndex(index[j]) < 0) {
-                        printf(" added index %d element %e to rows_core_[%d]\n", index[j], value[j], rstart_[1]+i);
-                        rows_core_[rstart_[1] + i]->insert(index[j], 0.);
+						// printf(" added index %d element %e to rows_core_[%d]\n", index[j], value[j], rstart_[1]+i);
+						rows_core_[rstart_[1] + i]->insert(index[j], 0.);
                         added = true;
                     }
                     if (added) rows_core_[rstart_[1] + i]->sortIncrIndex();
@@ -391,6 +486,99 @@ DSP_RTN_CODE TssModel::loadSecondStage(
 	return DSP_RTN_OK;
 };
 
+DSP_RTN_CODE TssModel::loadSecondStage(
+			const int            s,     /**< scenario index */
+			const double         prob,  /**< probability */
+			const CoinBigIndex * start, /**< start index for each row */
+			const int *          index, /**< column indices */
+			const double *       value, /**< constraint elements */
+			const double *       clbd,  /**< column lower bounds */
+			const double *       cubd,  /**< column upper bounds */
+			const char *         ctype, /**< column types */
+			const double *       obj,   /**< objective coefficients */
+			const int * 		 qobjrowindex, /**< quadratic objective row indices */
+			const int *			 qobjcolindex, /**< quadratic objective column indices */
+			const double *		 qobjvalue, /**< quadratic objective constraint elements value */
+			const CoinBigIndex 	 qnum,  /**< number of quadratic terms */
+			const double *       rlbd,  /**< row lower bounds */
+			const double *       rubd,   /**< row upper bounds */
+			const int 			nqrows, /**< number of quadratic rows */
+        	const int *         linnzcnt,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+        	const int *        	quadnzcnt,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+			const double *		rhs, 		/**< constraint rhs of each constraint */
+			const int *			sense, 		/**< constraint sense of each constraint */
+			const int *         linstart,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+			const int *         linind, 	/**< indices for the linear part */
+			const double *      linval, 	/**< nonzero coefficient of the linear part */
+			const int *        	quadstart,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+			const int *       	quadrow,  	/**< indices for the quadratic part */
+			const int *       	quadcol,  	/**< indices for the quadratic part */
+			const double *      quadval 	/**< nonzero coefficient of the quadratic part */)
+{
+	BGN_TRY_CATCH
+	loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, qobjrowindex, qobjcolindex, qobjvalue, qnum, rlbd, rubd);
+	
+	if (nqrows > 0) 
+	{
+		DSPdebugMessage("nqrows of %d: %d\n", s, nqrows);
+		
+		/* allocate memory for quadratic constraints */
+		if (!qc_row_scen_) 
+			qc_row_scen_ = new QuadRowData * [nscen_];
+		qc_row_scen_[s] = new QuadRowData;
+		
+		QuadRowData *qc = qc_row_scen_[s];
+
+		qc->nqrows = nqrows;
+		qc->linnzcnt = new int [nqrows];
+		qc->quadnzcnt = new int [nqrows];
+		qc->rhs = new double [nqrows];
+		qc->sense = new int [nqrows];
+		qc->linind = new int * [nqrows];
+		qc->linval = new double * [nqrows];
+		qc->quadrow = new int * [nqrows];
+		qc->quadcol = new int * [nqrows];
+		qc->quadval = new double * [nqrows];
+
+		/** allocate values */
+		for (int k = 0; k < nqrows; k++) 
+		{
+			qc->linnzcnt[k] = linnzcnt[k];
+			qc->quadnzcnt[k] = quadnzcnt[k];
+			qc->rhs[k] = rhs[k];
+			qc->sense[k] = sense[k];
+
+			qc->linind[k] = new int [linnzcnt[k]];
+			qc->linval[k] = new double [linnzcnt[k]];
+
+			qc->quadrow[k] = new int [quadnzcnt[k]];
+			qc->quadcol[k] = new int [quadnzcnt[k]];
+			qc->quadval[k] = new double [quadnzcnt[k]];
+
+			for (int t = 0; t < qc->linnzcnt[k]; t++) 
+			{
+				qc->linind[k][t] = linind[linstart[k] + t];
+				qc->linval[k][t] = linval[linstart[k] + t];
+			}
+			
+			for (int t = 0; t < qc->quadnzcnt[k]; t++) 
+			{
+				qc->quadrow[k][t] = quadrow[quadstart[k] + t];
+				qc->quadcol[k][t] = quadcol[quadstart[k] + t];
+				qc->quadval[k][t] = quadval[quadstart[k] + t];
+			}
+		}
+		#ifdef DSP_DEBUG
+		printQuadRows(s);
+		#endif
+	}
+	
+	DSPdebugMessage("load second stage with quadratic constraints\n");
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
+};
+
 DSP_RTN_CODE TssModel::copyRecoObj(int scen, double *& obj_reco, bool adjustProbability) {
 
 	assert(ncols_[1] >= 0);
@@ -421,7 +609,7 @@ DSP_RTN_CODE TssModel::copyRecoObj(int scen, double *& obj_reco, CoinPackedMatri
 	qobj_reco_ncoupling=new CoinPackedMatrix(false, 0, 0);
 
 	/** copy quadratic objective coefficience to qobj_reco */
-	copyCoreQuadrativeObjective(qobj_reco_coupling, qobj_reco_ncoupling, 1);
+	copyCoreQuadraticObjective(qobj_reco_coupling, qobj_reco_ncoupling, 1);
 	//PRINT_ARRAY_MSG(qobj_reco_ncoupling->getNumElements(), qobj_reco_ncoupling->getElements(), "elements in qobj_reco_ncoupling11");
 	combineRandQuadraticObjective(qobj_reco_coupling, qobj_reco_ncoupling, 1, scen, adjustProbability);
 	//PRINT_ARRAY_MSG(qobj_reco_ncoupling->getNumElements(), qobj_reco_ncoupling->getElements(), "elements in qobj_reco_ncoupling");

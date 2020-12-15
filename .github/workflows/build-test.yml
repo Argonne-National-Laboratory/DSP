@@ -1,0 +1,83 @@
+name: Build test
+
+on:
+  push:
+    paths-ignore:
+    - 'README.md'
+    - '**.yml'
+    - 'docs/**'
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  test-github-cpuonly:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-18.04]
+        compiler: [gcc, clang] 
+      fail-fast: false
+
+    steps:
+      - name: Install extra libraries
+        run: |
+          if [ ${{ matrix.os }} == ubuntu-18.04 ] && [ ${{ matrix.compiler }} == gcc ]
+          then
+            sudo apt-get update -y
+            sudo apt-get install -y lcov
+          fi
+      - name: Set my secrets
+        uses: webfactory/ssh-agent@v0.4.1
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Checkout DSP
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Checkout DSPThirdPartyLibs
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan xgitlab.cels.anl.gov >> ~/.ssh/known_hosts
+          git clone git@xgitlab.cels.anl.gov:kimk/DSPThirdPartyLibs.git
+      - name: Run cmake, build, and test
+        env:
+          MYOS: ${{ matrix.os }}
+          CC: ${{ matrix.compiler }}
+          FC: gfortran-9
+        run: |
+          cd DSPThirdPartyLibs
+          ./github.sh
+          if [ ${{ matrix.os }} == ubuntu-18.04 ]
+          then
+            export LD_LIBRARY_PATH=$PWD/lib:$(dirname `$FC --print-file-name libgfortran.so`):$LD_LIBRARY_PATH
+            echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          fi
+          if [ ${{ matrix.os }} == macos-latest ]
+          then
+            export DYLD_LIBRARY_PATH=$PWD/lib:$(dirname `$FC --print-file-name libgfortran.dylib`):$DYLD_LIBRARY_PATH
+            echo "DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
+          fi
+          cd ..
+          mkdir build
+          cd build
+          if [ ${{ matrix.compiler }} == gcc ]; then export CXX=g++; fi
+          if [ ${{ matrix.compiler }} == clang ]; then export CXX=clang++; fi
+          cmake .. -DUNIT_TESTING=ON -DCODE_COVERAGE=ON -DCMAKE_BUILD_TYPE=DEBUG
+          make -j
+          make install
+      - name: Run test
+        run: |
+          if [ ${{ matrix.os }} == ubuntu-18.04 ]; then export LD_LIBRARY_PATH=${{ env.LD_LIBRARY_PATH }}; fi
+          if [ ${{ matrix.os }} == macos-latest ]; then export DYLD_LIBRARY_PATH=${{ env.DYLD_LIBRARY_PATH }}; fi
+          cd build
+          ./src/test/UnitTests
+          ctest
+          if [ ${{ matrix.os }} == ubuntu-18.04 ] && [ ${{ matrix.compiler }} == gcc ]
+          then
+            lcov --capture --directory . --output-file coverage.info
+            lcov --remove coverage.info '/usr/*' --output-file coverage.info
+          fi
+      - uses: codecov/codecov-action@v1
+        with:
+          file: ./build/coverage.info
