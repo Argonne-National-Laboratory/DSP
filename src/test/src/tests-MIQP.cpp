@@ -92,7 +92,7 @@ const double rubd[3] = {INFINITY, INFINITY, INFINITY};
 TEST_CASE("Check the parameters loaded by functions")
 {
     DspApiEnv *env = createEnv();
-    createModel(env, 1, 0);
+    //createModel(env, 1, 0);
     /** set number of scenarios */
 
     setNumberOfScenarios(env, NS);
@@ -191,7 +191,7 @@ TEST_CASE("Check the parameters loaded by functions")
 TEST_CASE("Extensive Formulation for MIQP")
 {
     DspApiEnv *env = createEnv();
-    createModel(env, 1, 0);
+    //createModel(env, 1, 0);
     /** set number of scenarios */
     setNumberOfScenarios(env, NS);
 
