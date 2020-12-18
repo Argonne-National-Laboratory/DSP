@@ -204,7 +204,7 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 		
 		bool chg_to_socp = env->par_->getBoolParam("QC/CHG_TO_SOCP");
 		if (chg_to_socp)
-			cout << "QC is transformed into SCOP" << endl;
+			cout << "QC is transformed into SOCP" << endl;
 		else 
 			cout << "QC is not transformed into SOCP" << endl;
 		ret = readQuad(env, smpsfile, quadfile, chg_to_socp);	

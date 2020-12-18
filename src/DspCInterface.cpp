@@ -138,9 +138,7 @@ int readDro(DspApiEnv * env, const char * dro)
 /** read quad files */
 int readQuad(DspApiEnv * env, const char * smps, const char * quad, bool chg_to_socp)
 {
-	/* temporarily let julia interface not convert qcp to socp 
-	 * to allow for conversion, need to modify loadFirstStage and loadSecondStage in TssModel.cpp */
-	return getTssModel(env)->readQuad(smps, quad, false);
+	return getTssModel(env)->readQuad(smps, quad, chg_to_socp);
 }
 
 /** load first-stage problem */
