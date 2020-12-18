@@ -218,6 +218,12 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 			FREE_2D_ARRAY_PTR(nqrow, quadrow);
 			FREE_2D_ARRAY_PTR(nqrow, quadcol);
 		}
+#ifdef DSP_DEBUG
+/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
+char filename[128];
+sprintf(filename, "DdWorkerUB_scen%d", s); 
+		osi_[s]->writeProb(filename, "lp");
+#endif
 
 		FREE_MEMORY
 

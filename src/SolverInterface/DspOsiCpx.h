@@ -364,9 +364,9 @@ public:
 		else if (isqcp_)
 			switchToMIQCP();
 #ifdef DSP_DEBUG
-		char lpfilename[128];
-		sprintf(lpfilename, "miqcqp_model.lp"); 
-		writeProb(lpfilename, NULL);
+		char filename[128];
+		sprintf(filename, "miqcqp_model"); 
+		writeProb(filename, "lp");
 #endif
 		CPXENVptr env = cpx_->getEnvironmentPtr();
 
