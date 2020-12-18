@@ -943,11 +943,11 @@ for (j = 0; j < nstgs_; j++)
 				{
 					if (fabs(qc_row_scen_[s]->rhs[j] - qc_row_core_->rhs[row_idx]) > 1e-8)
 					{
-						rlbd_scen_[s]->insert(rpos + n_core[row_idx] + 1, qc_row_scen_[s]->rhs[j] - 1);
-						rlbd_scen_[s]->insert(rpos + n_core[row_idx] + 2, -qc_row_scen_[s]->rhs[j] - 1);
+						rlbd_scen_[s]->insert(rpos + n_core[row_idx] + 0 + rstart_temp[1], qc_row_scen_[s]->rhs[j] - 1);
+						rlbd_scen_[s]->insert(rpos + n_core[row_idx] + 1 + rstart_temp[1], -qc_row_scen_[s]->rhs[j] - 1);
 
-						rubd_scen_[s]->insert(rpos + n_core[row_idx] + 1, qc_row_scen_[s]->rhs[j] - 1);
-						rubd_scen_[s]->insert(rpos + n_core[row_idx] + 2, -qc_row_scen_[s]->rhs[j] - 1);
+						rubd_scen_[s]->insert(rpos + n_core[row_idx] + 0 + rstart_temp[1], qc_row_scen_[s]->rhs[j] - 1);
+						rubd_scen_[s]->insert(rpos + n_core[row_idx] + 1 + rstart_temp[1], -qc_row_scen_[s]->rhs[j] - 1);
 					}
 				}
 			}
