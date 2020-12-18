@@ -88,8 +88,10 @@ DSP_RTN_CODE DdDroWorkerUB::createProblem()
 	{
 		const double *obj_reco = osi_[s]->si_->getObjCoefficients();
 		for (int j = 0; j < tss->getNumCols(1); ++j)
-		{
-			osi_[s]->si_->setObjCoeff(j, obj_reco[j] / tss->getProbability()[par_->getIntPtrParam("ARR_PROC_IDX")[s]]);
+		{	double probability = tss->getProbability()[par_->getIntPtrParam("ARR_PROC_IDX")[s]];
+			if (probability > 1e-8)
+				osi_[s]->si_->setObjCoeff(j, obj_reco[j] / probability);
+			// osi_[s]->si_->setObjCoeff(j, obj_reco[j] / tss->getProbability()[par_->getIntPtrParam("ARR_PROC_IDX")[s]]);
 		}
 	}
 
