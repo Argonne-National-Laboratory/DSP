@@ -95,7 +95,7 @@ DSP_RTN_CODE DdSub::solve()
 	DSPdebug(DspMessage::printArray(osi_->si_->getNumCols(), osi_->si_->getObjCoefficients()));
 
 	while (1) {
-		
+
 		/** solve */
 		osi_->solve();	
 
@@ -353,9 +353,9 @@ DSP_RTN_CODE DdSub::createProblem() {
 	if (qc_row_scen) osi_->addQuadraticRows(qc_row_scen->nqrows, qc_row_scen->linnzcnt, qc_row_scen->quadnzcnt, qc_row_scen->rhs, qc_row_scen->sense, qc_row_scen->linind, qc_row_scen->linval, qc_row_scen->quadrow, qc_row_scen->quadcol, qc_row_scen->quadval);
 #ifdef DSP_DEBUG
 		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
-		char lpfilename[128];
-		sprintf(lpfilename, "DdWorkerLB_scen%d.lp", sind_); 
-		osi_->writeProb(lpfilename, NULL);
+		char filename[128];
+		sprintf(filename, "DdWorkerLB_scen%d", sind_); 
+		osi_->writeProb(filename, "lp");
 #endif
 
 	for (int j = 0; j < mat->getNumCols(); ++j) {
@@ -428,7 +428,7 @@ DSP_RTN_CODE DdSub::updateProblem(
 		assert(obj_);
 		if (model_->isStochastic()) {
 			// coefficients for the first-stage variables
-			assert(nrows_coupling_<ncols);
+			assert(nrows_coupling_ < ncols);
 
 			// coefficients for the second-stage variables
 			CoinCopyN(lambda, nrows_coupling_, newobj);
@@ -469,9 +469,9 @@ DSP_RTN_CODE DdSub::updateProblem(
 
 #ifdef DSP_DEBUG
 		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
-		char lpfilename[128];
-		sprintf(lpfilename, "DdWorkerLB_scen_update%d.lp", sind_); 
-		osi_->writeProb(lpfilename, NULL);
+		char filename[128];
+		sprintf(filename, "DdWorkerLB_scen_update%d", sind_); 
+		osi_->writeProb(filename, "lp");
 #endif
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
