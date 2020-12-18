@@ -798,6 +798,21 @@ void printModel(DspApiEnv * env)
 	env->model_->__printData();
 }
 
+int getVersionMajor(DspApiEnv *env)
+{
+	return env->getVersionMajor();
+}
+
+int getVersionMinor(DspApiEnv *env)
+{
+	return env->getVersionMinor();
+}
+
+int getVersionPatch(DspApiEnv *env)
+{
+	return env->getVersionPatch();
+}
+
 #undef DSP_API_CHECK_MODEL
 #undef DSP_API_CHECK_ENV
 
