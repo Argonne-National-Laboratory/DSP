@@ -25,7 +25,7 @@ const char *gDspUsage =
 	"       --smps\t\tSMPS file name without extensions. For example, if your SMPS files are ../test/farmer.cor, ../test/farmer.sto, and ../test/farmer.tim, this value should be ../test/farmer\n"
 	"       --mps\t\tMPS file name\n"
 	"       --dec\t\tDEC file name\n"
-	"       --quad\t\tQuadratic file name without extension. The Quadratic file should extend the parsed SMPS file and its suffix needs to be .txt in the current version. For example, if your Quadratic file is ../test/farmer.txt, this value should be ../test/farmer\n"
+	"       --quad\t\tQuadratic file name without extension. The Quadratic file should extend the parsed SMPS file and it needs to be provided as a separate set of SMPS files in the current version. For example, if your Quadratic file is ../quad/farmer.cor, ../quad/farmer.tim, ..quad/farmer.sto then this value should be ../farmer/farmer\n"
 	"       --soln\t\toptional argument for solution file prefix. For example, if the prefix is given as MySol, then two files MySol.primal.txt and MySol.dual.txt will be written for primal and dual solutions, respectively.\n"
 	"       --param\t\toptional paramater for parameter file name\n"
 	"       --test\t\toptional parameter for testing objective value\n";
@@ -193,14 +193,20 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 
 	if (quadfile != NULL)
 	{
-		if (string(algotype) != "de" && string(algotype) != "dd")
+		if (string(algotype) != "de" && string(algotype) != "dd" && string(algotype) != "drdd")
 		{
 			cout << "Current version only support deterministic or dual decomposition solvers for quadratic constrained problem" << endl;
 			return 1;
 		}
 		if (isroot)
 			cout << "Reading Quad files: " << quadfile << endl;
-		ret = readQuad(env, smpsfile, quadfile);
+		
+		bool chg_to_socp = env->par_->getBoolParam("QC/CHG_TO_SOCP");
+		if (chg_to_socp)
+			cout << "QC is transformed into SCOP" << endl;
+		else 
+			cout << "QC is not transformed into SOCP" << endl;
+		ret = readQuad(env, smpsfile, quadfile, chg_to_socp);	
 		if (ret != 0)
 			return ret;
 		if (isroot)
