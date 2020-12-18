@@ -295,7 +295,7 @@ TEST_CASE("Extensive Formulation for MIQP")
                     */
                     for (int i = 0; i < NS; i++)
                     {
-                        loadQuadraticSecondStage(env, i, probability[i], start, index2, value[i], yclbd, ycubd, yctype, profit, NULL, NULL, NULL, NULL, rlbd, rubd);
+                        loadQuadraticSecondStage(env, i, probability[i], start, index2, value[i], yclbd, ycubd, yctype, profit, NULL, NULL, NULL, 0, rlbd, rubd);
                     }
                     TssModel *model = getTssModel(env);
 
@@ -385,7 +385,7 @@ TEST_CASE("Extensive Formulation for MIQP")
         }
         SECTION("with linear objectives in the 1st stage")
         {
-            loadQuadraticFirstStage(env, start1, index1, value1, xclbd, xcubd, xctype, Cost, NULL, NULL, NULL, NULL, rubd1, rubd1);
+            loadQuadraticFirstStage(env, start1, index1, value1, xclbd, xcubd, xctype, Cost, NULL, NULL, NULL, 0, rubd1, rubd1);
             TssModel *model = getTssModel(env);
             /** two-stage problem 
               * check number of stages;
@@ -462,7 +462,7 @@ TEST_CASE("Extensive Formulation for MIQP")
                     /** This is the original farmers example */
                     for (int i = 0; i < NS; i++)
                     {
-                        loadQuadraticSecondStage(env, i, probability[i], start, index2, value[i], yclbd, ycubd, yctype, profit, NULL, NULL, NULL, NULL, rlbd, rubd);
+                        loadQuadraticSecondStage(env, i, probability[i], start, index2, value[i], yclbd, ycubd, yctype, profit, NULL, NULL, NULL, 0, rlbd, rubd);
                     }
                     TssModel *model;
                     model = getTssModel(env);
