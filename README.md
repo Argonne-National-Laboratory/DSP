@@ -41,7 +41,7 @@ git clone --recursive https://github.com/Argonne-National-Laboratory/DSP.git
 
 * [Kibaek Kim](https://kibaekkim.github.io/), Mathematics and Computer Science Division, Argonne National Laboratory.
 * [Victor M. Zavala](http://zavalab.engr.wisc.edu/), Department of Chemical and Biological Engineering, University of Wisconsin-Madison.
-* Christian Tjandraatmadja, Google Research.
+* [Christian Tjandraatmadja](https://research.google/people/ChristianTjandraatmadja/), Google Research.
 * Yingqiu Zhang, Industrial and Systems Engineering, Virginia Tech.
 * [Geunyeong Byeon](https://sites.google.com/asu.edu/geunyeongbyeon/home), Industrial Engineering, Arizona State University.
 * Hideaki Nakao, Mathematics and Computer Science Division, Argonne National Laboratory.
