@@ -2,5 +2,5 @@
 TIME          FARMER
 PERIODS       IMPLICIT
     QC0                      PERIOD1
-    QC2                      PERIOD2	
+    QC1                      PERIOD2	
 ENDATA

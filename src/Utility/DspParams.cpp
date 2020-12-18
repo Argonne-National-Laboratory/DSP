@@ -148,6 +148,9 @@ void DspParams::initBoolParams()
 	BoolParams_.createParam("DW/HEURISTICS/SMIP", true);
 	BoolParams_.createParam("DW/STRONG_BRANCH", false);
 	BoolParams_.createParam("DW/BRANCH/INTEGER_FIRST", false);
+
+	/** change QC to SOCP */
+	BoolParams_.createParam("QC/CHG_TO_SOCP", true);
 }
 
 void DspParams::initIntParams()

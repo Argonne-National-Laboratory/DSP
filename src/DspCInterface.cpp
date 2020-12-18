@@ -136,9 +136,9 @@ int readDro(DspApiEnv * env, const char * dro)
 }
 
 /** read quad files */
-int readQuad(DspApiEnv * env, const char * smps, const char * quad)
+int readQuad(DspApiEnv * env, const char * smps, const char * quad, bool chg_to_socp)
 {
-	return getTssModel(env)->readQuad(smps, quad);
+	return getTssModel(env)->readQuad(smps, quad, chg_to_socp);
 }
 
 /** load first-stage problem */

@@ -135,7 +135,7 @@ public:
 	bool mapVarnameIndex(map<string, int> &map_varName_index, const char * corefilename);
 
 	/** read quadratic data file, extending the smps file */
-	DSP_RTN_CODE readQuad(const char * smps, const char * filename);
+	DSP_RTN_CODE readQuad(const char * smps, const char * filename, bool chg_to_socp = true);
 
 	void __printData();
 
@@ -196,6 +196,9 @@ public:
 
 	/** get parameters for quadratic constraints in a scenario */
 	QuadRowData * getQuaraticsRowScenario(int s) const {return qc_row_scen_[s];}
+
+	DSP_RTN_CODE chgToSocp(vector<int> &qc_rstart);
+	void getL(double * &Q, int quadnzcnt, int *quadcol, int *quadrow, double *quadval, vector<int> &indices, int &n);
 
 	bool hasQuadraticRowCore() const {return qc_row_core_ != NULL ? true : false;};
 	bool hasQuadraticRowScenario() const {return qc_row_scen_ != NULL ? true : false;};
