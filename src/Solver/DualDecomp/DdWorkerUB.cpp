@@ -191,7 +191,7 @@ DSP_RTN_CODE DdWorkerUB::createProblem()
 					}
 				}
         
-				for (int j = 0; j < qc_row_data->quadnzcnt[i]; j++) 
+				for (int j = 0; j < quadnzcnt; j++) 
 				{
 					quadrow[i][j] = qc_row_data->quadrow[i][j] - tss->getNumCols(0);
 					quadcol[i][j] = qc_row_data->quadcol[i][j] - tss->getNumCols(0);
@@ -208,8 +208,13 @@ DSP_RTN_CODE DdWorkerUB::createProblem()
 			FREE_2D_ARRAY_PTR(nqrow, quadrow);
 			FREE_2D_ARRAY_PTR(nqrow, quadcol);
 		}
+#ifdef DSP_DEBUG
+/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
+char filename[128];
+sprintf(filename, "DdWorkerUB_scen%d", s); 
+		osi_[s]->writeProb(filename, "lp");
+#endif
 
-		FREE_MEMORY
 	}
 
 	END_TRY_CATCH_RTN(FREE_MEMORY, DSP_RTN_ERR)
@@ -289,9 +294,9 @@ double DdWorkerUB::evaluate(CoinPackedVector *solution)
 
 #ifdef DSP_DEBUG
       /* write in lp file to see whether the quadratic rows are successfully added to the model or not */
-			char lpfilename[128];
-			sprintf(lpfilename, "DdWorkerUB_scen_updated%d.lp", s); 
-			osi_[s]->writeProb(lpfilename, NULL);
+			char filename[128];
+			sprintf(filename, "DdWorkerUB_scen_updated%d", s); 
+			osi_[s]->writeProb(filename, "lp");
 #endif
 	}
 	DSPdebugMessage("cx_weighted %e\n", cx_weighted);

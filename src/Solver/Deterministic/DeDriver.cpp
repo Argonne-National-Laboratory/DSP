@@ -215,6 +215,13 @@ DSP_RTN_CODE DeDriver::run()
 			osi_->si_->setInteger(j);
 	}
 
+#ifdef DSP_DEBUG
+	/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
+		char filename[128];
+		sprintf(filename, "DeModel"); 
+		osi_->writeProb(filename, "lp");
+#endif
+
 	/** set optimality gap tolerance */
 	osi_->setRelMipGap(par_->getDblParam("DE/GAPTOL"));
 
