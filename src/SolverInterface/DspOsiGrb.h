@@ -339,6 +339,34 @@ public:
     //  	}
 	// }
 
+
+	/** ==============================================================================
+	  *    Generic Callbacks in Gurobi
+	  * ============================================================================== */
+
+	/** wrapper for cblazy 
+	 *  the cuts are in the greater equal form
+	*/
+	virtual void CallbackLazyCut(void *cbdata, OsiRowCut *lazyCut, int wherefrom, int wherefrom=0, int purgeable=0){
+		int len=lazyCut->row()->getNumElements();
+		const int *ind=lazyCut->row()->getIndices();
+		const double *val=lazyCut->row()->getElements();
+		char sense;
+		double rhs=lazyCut->rhs();
+		if (lazyCut->lb()==NULL){
+			sense='L';
+		}
+		else{
+			sense='G';
+		}
+		try{
+			GUROBI_CALL("CallbackLazyCut", GRBcblazy(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), len, ind, val, sense, rhs));
+		}
+		catch(const CoinError& e){
+         	e.print();
+     	}
+	}
+
 	/** set callback functions 
 	 * usrhandlr: OsiCut class, specific cuts to be added
 	*/

@@ -102,9 +102,15 @@ public:
 	/** set relative MIP gap */
 	virtual void setRelMipGap(double tol) {}
 
-	/** generate lazy call back function for general */
-	//virtual int generateCuts(void *cbdata, int where, void *userdata){}
-	/** set callback functions */
+	/** ==============================================================================
+	  *    Generic Callbacks
+	  * ============================================================================== */
+
+	/** wrapper for cblazy */
+	virtual void CallbackLazyCut(void *cbdata, OsiRowCut *lazyCut, int wherefrom=0, int purgeable=0){
+		throw CoinError("Lazy callback constraints is not support", "CallbackLazyCut", "DspOsi");
+	}
+
 	//virtual void setCallbackFunc()
 	OsiSolverInterface *si_;
 

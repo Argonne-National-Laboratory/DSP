@@ -199,6 +199,29 @@ public:
 		CPXsetdblparam(cpx_->getEnvironmentPtr(), CPX_PARAM_EPGAP, tol);
 	}
 
+	/** ==============================================================================
+	  *    Generic Callbacks in Cplex
+	  * ============================================================================== */
+
+	/** wrapper for cblazy 
+	 *  the cuts are in the greater equal form
+	*/
+	virtual void CallbackLazyCut(void *cbdata, OsiRowCut *lazyCut, int wherefrom=0, int purgeable=0){
+		int len=lazyCut->row()->getNumElements();
+		const int *ind=lazyCut->row()->getIndices();
+		const double *val=lazyCut->row()->getElements();
+		char sense;
+		double rhs=lazyCut->rhs();
+		if (lazyCut->lb()==NULL){
+			sense='L';
+		}
+		else{
+			sense='G';
+		}
+		CPXcutcallbackadd(cpx_->getEnvironmentPtr(), cbdata, wherefrom, len, rhs, sense, ind, val, purgeable);
+	}
+
+	
 	// virtual void addLazyConstr(
 	// 	int lazylen,
 	// 	const int *lazyind,
