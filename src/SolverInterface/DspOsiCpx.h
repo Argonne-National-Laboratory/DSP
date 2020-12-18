@@ -218,6 +218,7 @@ public:
 		else{
 			sense='G';
 		}
+		/** TODO: which is the proper function to call here */
 		CPXcutcallbackadd(cpx_->getEnvironmentPtr(), cbdata, wherefrom, len, rhs, sense, ind, val, purgeable);
 	}
 
