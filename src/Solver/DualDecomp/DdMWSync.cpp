@@ -90,7 +90,7 @@ DSP_RTN_CODE DdMWSync::init()
 		}
 		/** initialize workers */
 		for (unsigned i = 0; i < worker_.size(); ++i)
-			worker_[i]->init();
+			DSP_RTN_CHECK_THROW(worker_[i]->init());
 	}
 
         /** reset iteration info */
