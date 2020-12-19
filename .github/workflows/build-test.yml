@@ -6,6 +6,7 @@ on:
     - 'README.md'
     - '**.yml'
     - 'docs/**'
+    - 'src/DspConfig.h'
   pull_request:
     branches:
       - master
