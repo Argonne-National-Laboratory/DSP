@@ -172,10 +172,13 @@ DSP_RTN_CODE DwWorkerMpi::generateCols(
 	MPI_Allreduce(&maxstops_s, &maxstops_r, 1, MPI_INT, MPI_MAX, comm_);
 	std::fill(num_timelim_stops_.begin(), num_timelim_stops_.end(), maxstops_r);
 
-	DSP_RTN_CHECK_RTN_CODE(
-			DwWorker::generateCols(phase, piA_, indices, statuses, cxs, objs, sols));
-	DSPdebugMessage("Rank %d generated %lu indices, %lu statuses, %lu cxs, %lu objs, and %lu sols.\n",
-			comm_rank_, indices.size(), statuses.size(), cxs.size(), objs.size(), sols.size());
+	if (parProcIdxSize_ > 0)
+	{
+		DSP_RTN_CHECK_RTN_CODE(
+				DwWorker::generateCols(phase, piA_, indices, statuses, cxs, objs, sols));
+		DSPdebugMessage("Rank %d generated %lu indices, %lu statuses, %lu cxs, %lu objs, and %lu sols.\n",
+				comm_rank_, indices.size(), statuses.size(), cxs.size(), objs.size(), sols.size());
+	}
 
 	/** The root rank gathers the number of subproblems for each process. */
 	MPI_Gather(&parProcIdxSize_, 1, MPI_INT, recvcounts, 1, MPI_INT, 0, comm_);
@@ -282,10 +285,13 @@ DSP_RTN_CODE DwWorkerMpi::generateColsByFix(
 	MPI_Bcast(_x, tss->getNumCols(0), MPI_DOUBLE, 0, comm_);
 
 	/** actual function to generate columns */
-	DSP_RTN_CHECK_RTN_CODE(
+	if (parProcIdxSize_ > 0)
+	{
+		DSP_RTN_CHECK_RTN_CODE(
 			DwWorker::generateColsByFix(_x, indices, statuses, objs, sols));
-	DSPdebugMessage("Rank %d generated %lu indices, %lu statuses, %lu objs, and %lu sols.\n",
-			comm_rank_, indices.size(), statuses.size(), objs.size(), sols.size());
+		DSPdebugMessage("Rank %d generated %lu indices, %lu statuses, %lu objs, and %lu sols.\n",
+								comm_rank_, indices.size(), statuses.size(), objs.size(), sols.size());
+	}
 
 	/** The root rank gathers the number of subproblems for each process. */
 	MPI_Gather(&parProcIdxSize_, 1, MPI_INT, recvcounts, 1, MPI_INT, 0, comm_);
