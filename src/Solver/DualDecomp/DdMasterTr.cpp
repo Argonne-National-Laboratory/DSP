@@ -187,15 +187,15 @@ DSP_RTN_CODE DdMasterTr::solve()
 			message_->print(3, "Master solution time %.2f sec.\n", CoinGetTimeOfDay() - walltime);
 
 			resolve = false;
-			DSPdebug(getSiPtr()->writeMps("master"));
-	
+			// DSPdebug(getSiPtr()->writeMps("master"));
+
 			break;
 		}
 		default:
 			message_->print(0, "Warning: master solution status is %d\n", status_);
 			status_ = DSP_STAT_MW_STOP;
 			resolve = false;
-			DSPdebug(getSiPtr()->writeMps("master"));
+			// DSPdebug(getSiPtr()->writeMps("master"));
 			break;
 		}
 	}
