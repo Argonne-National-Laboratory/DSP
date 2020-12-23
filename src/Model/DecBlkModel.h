@@ -72,7 +72,8 @@ public:
 
 	bool isStochastic() {return false;}
 	virtual void setDro(bool yes) { ; }
-	bool isDro() {return false;}
+	virtual bool isDro() { return false; }
+	virtual bool isDistributed();
 	int getNumReferences() {return 0;}
 	double getWassersteinSize() {return 0.0;}
 	double getWassersteinDist(int i, int j) {return 0.0;}
