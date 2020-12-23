@@ -149,6 +149,9 @@ public:
 	// TODO: Better to create a new inhereted class?
 	virtual void setDro(bool yes) { TssModel::setDro(yes); }
 	virtual bool isDro() {return TssModel::isDro();}
+
+	virtual bool isDistributed();
+
 	virtual int getNumReferences() {return TssModel::getNumReferences();}
 	virtual double getWassersteinSize() {return TssModel::getWassersteinSize();}
 	virtual double getWassersteinDist(int i, int j) {return TssModel::getWassersteinDist(i,j);}

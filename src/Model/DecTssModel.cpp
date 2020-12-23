@@ -31,6 +31,18 @@ DecTssModel::~DecTssModel() {
 	FREE_ARRAY_PTR(master_col_indices_);
 }
 
+bool DecTssModel::isDistributed()
+{
+	bool is_distributed = false;
+	for (int s = 0; s < nscen_; ++s)
+		if (mat_scen_[s] == NULL)
+		{
+			is_distributed = true;
+			break;
+		}
+	return is_distributed;
+}
+
 DSP_RTN_CODE DecTssModel::decompose(
 	int size,                    /**< [in] size of subproblem subset */
 	int * scen,                  /**< [in] subset of scenarios */

@@ -27,6 +27,15 @@ DecBlkModel::~DecBlkModel() {
 	FREE_PTR(blk_);
 }
 
+bool DecBlkModel::isDistributed()
+{
+	/** FIXME: There is no way to check this condition. */
+	char msg[] = "This function (DecBlkModel::isDistributed()) should not be used.\n"
+				 "There is no way to check whether or not subproblems are distributed for generic block structure.\n";
+	printf("%s".msg);
+	return false;
+}
+
 double DecBlkModel::evalLhsCouplingRow(int row, double** solutions) {
 	double val = 0.0;
 	for (int i = 0; i < blk_->getNumBlocks() - 1; ++i)
