@@ -438,6 +438,11 @@ DSP_RTN_CODE StoModel::readDro(const char * filename)
 	return DSP_RTN_OK;
 }
 
+void StoModel::setProbability(double *probability)
+{
+	CoinCopyN(probability, nscen_, prob_);
+}
+
 void StoModel::setSolution(int size, double * solution)
 {
 	if (size > 0)
