@@ -206,6 +206,9 @@ public:
 	bool hasQuadraticRowCore() const {return qc_row_core_ != NULL ? true : false;};
 	bool hasQuadraticRowScenario() const {return qc_row_scen_ != NULL ? true : false;};
 
+	/** set probability */
+	void setProbability(double *probability);
+
 	/** set initial solutions */
 	void setSolution(
 			int      size,    /**< size of array */
