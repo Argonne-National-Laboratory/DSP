@@ -19,9 +19,9 @@ TEST_CASE("C interface functions") {
         int minor = getVersionMinor(env);
         int patch = getVersionPatch(env);
 
-        REQUIRE(major == DSP_VERSION_MAJOR);
-        REQUIRE(minor == DSP_VERSION_MINOR);
-        REQUIRE(patch == DSP_VERSION_PATCH);
+        CHECK(major == DSP_VERSION_MAJOR);
+        CHECK(minor == DSP_VERSION_MINOR);
+        CHECK(patch == DSP_VERSION_PATCH);
     }
 
     SECTION("freeEnv function") {
