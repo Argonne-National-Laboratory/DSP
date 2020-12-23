@@ -8,6 +8,7 @@
 // #define DSP_DEBUG
 #include "DspConfig.h"
 #include "DdDriverMpi.h"
+#include "Model/TssModel.h"
 #include "Solver/DualDecomp/DdMWSync.h"
 #include "Solver/DualDecomp/DdMWAsync.h"
 #include "Solver/DualDecomp/DdMWAsyncDyn.h"
@@ -43,6 +44,24 @@ DSP_RTN_CODE DdDriverMpi::init()
 
 	if (comm_rank_ == 0)
 		show_copyright();
+
+	/** Synchronize data 
+	 * Not all data needs to be sync, but some necessary data
+	 * may not be distributed (e.g., probability, DR ambiguity set).
+	*/
+	if (model_->isStochastic())
+	{
+		double *probability = NULL;
+		TssModel *tss = dynamic_cast<TssModel *>(model_);
+		if (comm_rank_ == 0)
+			probability = new double[tss->getNumScenarios()];
+		MPI_Reduce(tss->getProbability(), probability, tss->getNumScenarios(), MPI_DOUBLE, MPI_MAX, 0, comm_);
+		if (comm_rank_ == 0)
+		{
+			tss->setProbability(probability);
+			FREE_ARRAY_PTR(probability);
+		}
+	}
 
 	/** create Master-Worker framework */
 	if (comm_size_ > 1)
