@@ -207,12 +207,12 @@ public:
 	 *  the cuts are in the greater equal form
 	*/
 	virtual void CallbackLazyCut(void *cbdata, OsiRowCut *lazyCut, int wherefrom=0, int purgeable=0){
-		int len=lazyCut->row()->getNumElements();
-		const int *ind=lazyCut->row()->getIndices();
-		const double *val=lazyCut->row()->getElements();
+		int len=lazyCut->row().getNumElements();
+		const int *ind=lazyCut->row().getIndices();
+		const double *val=lazyCut->row().getElements();
 		char sense;
 		double rhs=lazyCut->rhs();
-		if (lazyCut->lb()==NULL){
+		if (lazyCut->lb()==-INFINITY){
 			sense='L';
 		}
 		else{

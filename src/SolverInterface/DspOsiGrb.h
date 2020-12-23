@@ -31,6 +31,12 @@
     }                                                                                \
   } while (false)
 
+struct callback_usr_data{
+	int (*functionptr)(void *, int);
+	void *cbdata;
+	int *where;
+};
+
 class DspOsiGrb : public DspOsi {
 public:
 
@@ -298,62 +304,20 @@ public:
     	}
 	}
 
-	/** generate lazy call back function for general */
-	// virtual int generateCuts(int size,  /**< [in] size of x */
-	//  	double *x, /**< [in] master solution */
-	//  	OsiCuts *cuts /**< [out] cuts generated */)
-	// {
-	// 	if (cutsToAdd_->sizeCuts() <= 0) return;
-	// 	for (int i = cutsToAdd_->sizeCuts() - 1; i >= 0; --i)
-	// 	{
-	// 		OsiRowCut * rc = cutsToAdd_->rowCutPtr(i);
-	// 		if (!rc) continue;
-	// 		const CoinPackedVector row = rc->row();
-	// 		if (row.getNumElements() == 0) continue;
-
-	// 		/** is optimality cut? */
-	// 		DSPdebug(rc->print());
-	// 		DSPdebugMessage("row.getNumElements() %d\n", row.getNumElements());
-	// 		bool isOptimalityCut = row.getIndices()[row.getNumElements() - 1] == nvars_ - 1;
-
-	// 		/** calculate efficacy */
-	// 	//		DspMessage::printArray(size, x);
-	// 		double efficacy = rc->violated(x);
-	// 		if (isOptimalityCut) efficacy /= row.twoNorm();
-
-	// 		/** determine if efficacious */
-	// 		if (efficacy <= 1.e-6)
-	// 			continue;
-	// 		else if (efficacy > maxEfficacy)
-	// 		{
-	// 			maxEfficaciousCut = i;
-	// 			maxEfficacy = efficacy;
-	// 		}
-	// 	}
-	//  	try{
-    //      	GUROBI_CALL("generateCuts", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
-
-	//  	}
-	//  	catch(const CoinError& e){
-    //      	e.print();
-    //  	}
-	// }
-
-
 	/** ==============================================================================
 	  *    Generic Callbacks in Gurobi
 	  * ============================================================================== */
 
 	/** wrapper for cblazy 
-	 *  the cuts are in the greater equal form
+	 *  Using OsiRowCut as argument
 	*/
-	virtual void CallbackLazyCut(void *cbdata, OsiRowCut *lazyCut, int wherefrom, int wherefrom=0, int purgeable=0){
-		int len=lazyCut->row()->getNumElements();
-		const int *ind=lazyCut->row()->getIndices();
-		const double *val=lazyCut->row()->getElements();
+	virtual void CallbackLazyCut(void *cbdata, OsiRowCut *lazyCut, int wherefrom=0, int purgeable=0){
+		int len=lazyCut->row().getNumElements();
+		const int *ind=lazyCut->row().getIndices();
+		const double *val=lazyCut->row().getElements();
 		char sense;
 		double rhs=lazyCut->rhs();
-		if (lazyCut->lb()==NULL){
+		if (lazyCut->lb()==-INFINITY){
 			sense='L';
 		}
 		else{
@@ -366,34 +330,35 @@ public:
          	e.print();
      	}
 	}
-
-	/** set callback functions 
-	 * usrhandlr: OsiCut class, specific cuts to be added
-	*/
-	virtual void setCallbackFunc(Osicut usrhandlr){
-	 	try{
-	 		GUROBI_CALL("setCallbackFunc", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
-	 		GUROBI_CALL("setCallbackFunc", GRBsetcallbackfunc(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), Benderscut, usrhandlr));
-	 	}
-	 	catch(const CoinError& e){
-         	e.print();
-     	}
+	/** wrapper for cblazy 
+	 *  Normal input */
+	virtual void CallbackLazyCut(void *cbdata, int lazylen, const int *lazyind, const double *lazyval, char lazysense, double lazyrhs){
+		try{
+			GUROBI_CALL("CallbackLazyCut", GRBcblazy(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), lazylen, lazyind, lazyval, lazysense, lazyrhs));
+		}
+		catch(const CoinError& e){
+    	 	e.print();
+    	}
 	}
 
-	int Benderscuts(GRBmodel *model, void *cbdata, int where, void *usrdata){
+	/** wrapper for grb callback input function *
+	 *  this is the input in GRBsetcallbackfunc() */
+	int static grb_callback_wrapper(GRBmodel *model, void *cbdata, int where, void *usrdata){
+		struct callback_usr_data *mydata = (struct callback_usr_data *) usrdata;
+		//mydata->functionptr = usrdata->functionptr;
+		mydata->functionptr(cbdata, where);
+	}
 
-	 	/** add cuts */
-		Osicuts *bdcut = dynamic_cast<Osicuts*>(usrdata);
-		cutsToAdd_->insert(bdcut);
-	 	if (where == DSP_STAT_PRIM_FEASIBLE){
-	 		/** add optimality cuts */
-			int len=bdcut->row().getNumElements();
-			int *ind=bdcut->row().getIndice();
-			double *val=bdcut->row().getElements();
-			char sense='L';
-			double rhs=bdcut->rhs();
-	 		GUROBI_CALL("Benderscuts", GRBcblazy(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), len, ind, val, sense, rhs));
-	 	}
+	/** set callback functions */
+	virtual void setCallbackFunc(int (*my_callback_func)(void*, int)){
+		struct callback_usr_data *usr_data;
+		usr_data->functionptr=my_callback_func;
+		//int (*grb_callback_function) (GRBmodel *, void *, int, void *)=static_cast<int (*)(GRBmodel *, void *, int, void *)> (&DspOsiGrb::grb_callback_wrapper);
+		//grb_callback_function=(int) (&DspOsiGrb::grb_callback_wrapper);
+		int error = GRBsetcallbackfunc(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), grb_callback_wrapper, usr_data);
+		if (error){
+			printf("ERROR: %s\n", GRBgeterrormsg(grb_->getEnvironmentPtr()));
+		}
 	}
 
     OsiGrbSolverInterface* grb_;   
