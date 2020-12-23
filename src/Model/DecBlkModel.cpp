@@ -32,7 +32,7 @@ bool DecBlkModel::isDistributed()
 	/** FIXME: There is no way to check this condition. */
 	char msg[] = "This function (DecBlkModel::isDistributed()) should not be used.\n"
 				 "There is no way to check whether or not subproblems are distributed for generic block structure.\n";
-	printf("%s".msg);
+	printf("%s", msg);
 	return false;
 }
 
