@@ -170,7 +170,7 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 			cout << "Second stage: " << getNumRows(env, 1) << " rows, " << getNumCols(env, 1) << " cols, " << getNumIntegers(env, 1) << " integers" << endl;
 			cout << "Number of scenarios: " << getNumSubproblems(env) << endl;
 		}
-		setBlockIds(env, getNumSubproblems(env), true);
+		setBlockIds(env, getNumSubproblems(env), false);
 	}
 	else if (mpsfile != NULL && decfile != NULL)
 	{
