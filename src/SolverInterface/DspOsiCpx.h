@@ -14,6 +14,12 @@
 #include "OsiCpxSolverInterface.hpp"
 #include "SolverInterface/DspOsi.h"
 
+struct callback_usr_data{
+	int (*functionptr)(void *, int);
+	void *cbdata;
+	int *where;
+};
+
 class DspOsiCpx : public DspOsi {
 public:
 
@@ -179,6 +185,10 @@ public:
 		return CPXgetnodecnt(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
 	}
 
+	/** set node information display frequency */
+	virtual int setNodeInfoFreq(int level){
+		CPXsetintparam(cpx_->getEnvironmentPtr(), CPXPARAM_MIP_Interval, level);
+	}
 	/** set number of cores */
 	virtual void setNumCores(int num) {
 		CPXsetintparam(cpx_->getEnvironmentPtr(), CPX_PARAM_THREADS, num);

@@ -260,6 +260,18 @@ public:
     	}
 	}
 
+	/** set node information display frequency */
+	virtual void setNodeInfoFreq(int level) {
+        try{
+        	GUROBI_CALL("setNodeInfoFreq", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
+			GUROBI_CALL("setNodeInfoFreq", GRBsetintparam(grb_->getEnvironmentPtr(), GRB_INT_PAR_DISPLAYINTERVAL, num));
+		}
+		catch(const CoinError& e){
+        	e.print();
+    	}
+    }
+
+
 	/** set number of cores */
 	virtual void setNumCores(int num) {
 		try{
@@ -331,7 +343,8 @@ public:
      	}
 	}
 	/** wrapper for cblazy 
-	 *  Normal input */
+	 *  Normal input 
+	 *  This should be called in the user-defined function */
 	virtual void CallbackLazyCut(void *cbdata, int lazylen, const int *lazyind, const double *lazyval, char lazysense, double lazyrhs){
 		try{
 			GUROBI_CALL("CallbackLazyCut", GRBcblazy(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), lazylen, lazyind, lazyval, lazysense, lazyrhs));
