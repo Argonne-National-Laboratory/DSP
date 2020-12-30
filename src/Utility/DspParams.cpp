@@ -214,6 +214,7 @@ void DspParams::initIntParams()
 //#endif
 
 #ifdef DSP_HAS_CPX
+	IntParams_.createParam("BD/MASTER/SOLVER", OsiCpx);
 	IntParams_.createParam("BD/SUB/SOLVER", OsiCpx);
 	IntParams_.createParam("DD/MASTER/SOLVER", OsiCpx);
 	IntParams_.createParam("DD/SUB/SOLVER", OsiCpx);
@@ -222,6 +223,7 @@ void DspParams::initIntParams()
 	IntParams_.createParam("DW/SUB/SOLVER", OsiCpx);
 #else
 #ifdef DSP_HAS_GRB
+	IntParams_.createParam("BD/MASTER/SOLVER", OsiGrb);
 	IntParams_.createParam("BD/SUB/SOLVER", OsiGrb);
 	IntParams_.createParam("DE/SOLVER", OsiGrb);
 	IntParams_.createParam("DD/MASTER/SOLVER", OsiGrb);
@@ -233,6 +235,8 @@ void DspParams::initIntParams()
 	IntParams_.createParam("BD/SUB/SOLVER", OsiClp);
 	IntParams_.createParam("DD/MASTER/SOLVER", OsiClp);
 #ifdef DSP_HAS_SCIP
+	IntParams_.createParam("BD/MASTER/SOLVER", OsiScip);
+	IntParams_.createParam("BD/SUB/SOLVER", OsiScip);
 	IntParams_.createParam("DD/SUB/SOLVER", OsiScip);
 	IntParams_.createParam("DE/SOLVER", OsiScip);
 	IntParams_.createParam("DW/SUB/SOLVER", OsiScip);
@@ -252,8 +256,9 @@ void DspParams::initIntParams()
 	IntParams_.createParam("DD/SUB/THREADS", 1);
 	IntParams_.createParam("DW/SUB/THREADS", 1);
 
-	/** display frequency */
-	IntParams_.createParam("SCIP/DISPLAY_FREQ", 100);
+	/** display frequency 
+	 * for all solver interface */
+	IntParams_.createParam("DISPLAY_FREQ", 100);
 
 	IntParams_.createParam("ALPS/SEARCH_STRATEGY", 0);
 	IntParams_.createParam("ALPS/NODE_LIM", 1000000);
