@@ -12,6 +12,12 @@
 #include "OsiSolverInterface.hpp"
 #include "OsiCuts.hpp"
 
+struct callback_usr_data{
+	int (*functionptr)(void *, int);
+	void *cbdata;
+	int *where;
+};
+
 class DspOsi {
 public:
 

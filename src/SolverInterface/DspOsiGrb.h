@@ -31,11 +31,6 @@
     }                                                                                \
   } while (false)
 
-struct callback_usr_data{
-	int (*functionptr)(void *, int);
-	void *cbdata;
-	int *where;
-};
 
 class DspOsiGrb : public DspOsi {
 public:
