@@ -264,7 +264,7 @@ public:
 	virtual void setNodeInfoFreq(int level) {
         try{
         	GUROBI_CALL("setNodeInfoFreq", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
-			GUROBI_CALL("setNodeInfoFreq", GRBsetintparam(grb_->getEnvironmentPtr(), GRB_INT_PAR_DISPLAYINTERVAL, num));
+			GUROBI_CALL("setNodeInfoFreq", GRBsetintparam(grb_->getEnvironmentPtr(), GRB_INT_PAR_DISPLAYINTERVAL, level));
 		}
 		catch(const CoinError& e){
         	e.print();
