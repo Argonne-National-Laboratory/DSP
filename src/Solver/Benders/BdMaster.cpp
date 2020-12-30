@@ -10,6 +10,9 @@
 #include "Model/TssModel.h"
 #include "Solver/Benders/BdMaster.h"
 #include "SolverInterface/DspOsiScip.h"
+#include "SolverInterface/DspOsiClp.h"
+#include "SolverInterface/DspOsiCpx.h"
+#include "SolverInterface/DspOsiGrb.h"
 #ifdef DSP_HAS_MPI
 #include "Solver/Benders/SCIPconshdlrBendersWorker.h"
 #endif /* DSP_HAS_MPI */
@@ -270,11 +273,13 @@ DSP_RTN_CODE BdMaster::createProblem() {
 	}
 
 	assert(osi_==NULL);
-	osi_ = new DspOsiScip();
-	if (!osi_) throw CoinError("Failed to create DspOsiScip", "createProblem", "DdMaster");
+
+	/** choose solver */
+
+	osi_ = createDspOsi(par_->getIntParam("BD/MASTER/SOLVER"));
 	
 	osi_->setLogLevel(CoinMin(par_->getIntParam("LOG_LEVEL"), 5));
-	osi_->setNodeInfoFreq(par_->getIntParam("SCIP/DISPLAY_FREQ"));
+	osi_->setNodeInfoFreq(par_->getIntParam("DISPLAY_FREQ"));
 
 	/** load problem data */
 	getSiPtr()->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
@@ -357,4 +362,41 @@ DSP_RTN_CODE BdMaster::setAuxVarData(
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
+}
+
+/** choose solver for BD master problem */
+DspOsi * BdMaster::createDspOsi(int solver){
+	DspOsi * osi = NULL;
+	BGN_TRY_CATCH
+
+	switch (solver) {
+		case OsiScip:
+			osi = new DspOsiScip();
+			break;
+		case OsiCpx:
+#ifdef DSP_HAS_CPX
+			osi = new DspOsiCpx();
+#else
+			throw CoinError("Cplex is not available.", "createDspOsi", "BdMaster");
+#endif
+			break;
+		case OsiGrb:
+#ifdef DSP_HAS_GRB
+			osi = new DspOsiGrb();
+#else
+			throw CoinError("Gurobi is not available.", "createDspOsi", "BdMaster");
+#endif
+			break;
+		case OsiClp:
+			throw CoinError("Clp does not support BD master problem.", "createDspOsi", "BdMaster");
+			break;
+		default:
+			char coinmsg[128];
+			sprintf(coinmsg, "Invalid parameter value (solver = %d)", solver);
+			throw CoinError(coinmsg, "createDspOsi", "BdMaster");
+			break;
+	}
+
+	END_TRY_CATCH_RTN(;,osi);
+	return osi;	
 }

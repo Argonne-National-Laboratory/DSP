@@ -12,6 +12,7 @@
 #include "Solver/DecSolver.h"
 #include "Solver/Benders/SCIPconshdlrBenders.h"
 #include "Solver/Benders/BdWorker.h"
+#include "SolverInterface/DspOsi.h"
 
 /** A class for implementing the Benders master solver */
 class BdMaster: public DecSolver {
@@ -67,6 +68,9 @@ public:
 	virtual int getNumAuxVars() {return naux_;}
 
 	virtual bool is_binary() {return is_binary_;}
+
+private:
+	static DspOsi * createDspOsi(int solver);
 
 protected:
 
