@@ -45,7 +45,6 @@ const double test_tolerance = 1.0e-2;
 */
 int main(int argc, char *argv[])
 {
-
 	show_copyright();
 
 	bool isroot = true;
