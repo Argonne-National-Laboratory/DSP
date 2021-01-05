@@ -10,6 +10,7 @@
 
 #include "Utility/DspMpi.h"
 #include "DdMW.h"
+#include "Solver/DualDecomp/DdDroWorkerUBMpi.h"
 
 /** A master-worker class for parallel dual decomposition */
 class DdMWPara: public DdMW {

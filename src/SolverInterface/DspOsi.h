@@ -22,10 +22,16 @@ class DspOsi {
 public:
 
 	/** default constructor */
-	DspOsi() {}
+	DspOsi() :
+	ismip_(false),
+	isqp_(false),
+	isqcp_(false) {}
 
 	/** copy constructor */
-	DspOsi(const DspOsi& rhs) {}
+	DspOsi(const DspOsi& rhs) : 
+	ismip_(rhs.ismip_),
+	isqp_(rhs.isqp_),
+	isqcp_(rhs.isqcp_) {}
 
 	/** clone constructor */
 	virtual DspOsi* clone() const = 0;
@@ -40,6 +46,27 @@ public:
 	virtual void loadQuadraticObjective(const CoinPackedMatrix &mat) {
 		throw CoinError("Quadratic objective is not supported.", "loadQuadraticObjective", "DspOsi");
 	}
+
+	/** load quadratic constrs */
+	virtual void addQuadraticRows(int nqrows, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int ** linind, double ** linval, int ** quadrow, int ** quadcol, double ** quadval){};
+	
+	/** throw error */
+	virtual inline void checkDspOsiError(int err, std::string solverfuncname, std::string dsposimethod){};
+
+	/** write problem file */
+	virtual void writeProb(char const * filename_str, char const * filetype_str){};
+
+	/** change problem type to MIQCP */
+	virtual void switchToMIQCP(void){};
+
+	/** change problem type to MIQP */
+	virtual void switchToMIQP(void){};
+
+	/** change problem type to QCP */
+	virtual void switchToQCP(void){};
+
+	/** change problem type to QP */
+	virtual void switchToQP(void){};
 
 	virtual void writeMps(const char *filename){
 		si_->writeMps(filename);
@@ -88,6 +115,9 @@ public:
 	/** get number of branch-and-bound nodes explored */
 	virtual int getNumNodes() {return 0;}
 
+	/** get ismip_ */
+	virtual bool isMip() {return ismip_;}
+
 	/** set log level */
 	virtual void setLogLevel(int level) {
 		si_->messageHandler()->setLogLevel(level);
@@ -125,9 +155,12 @@ public:
 	}
 	//virtual void setCallbackFunc()
 	OsiSolverInterface *si_;
-
-	/** To store cuts added */
-	OsiCuts *cutsToAdd_;
+	
+	/** Stores whether CPLEX' prob type is currently set to mixed-integer program */
+	mutable bool ismip_;
+	/** Stores whether CPLEX' prob type is currently set to (MI)QP or (MI)QCP */
+	mutable bool isqp_;
+	mutable bool isqcp_;
 };
 
 #endif /* SRC_SOLVERINTERFACE_DSPOSI_H_ */

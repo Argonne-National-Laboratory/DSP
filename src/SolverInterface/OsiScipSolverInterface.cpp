@@ -100,7 +100,9 @@ int OsiScipSolverInterface::getNumCols() const {
 }
 
 int OsiScipSolverInterface::getNumRows() const {
-	return SCIPgetNOrigConss(scip_);
+	// return SCIPgetNOrigConss(scip_);
+	// return SCIPgetNLPRows(scip_);
+	return nconss_;
 }
 
 int OsiScipSolverInterface::getNumElements() const {
@@ -436,6 +438,32 @@ void OsiScipSolverInterface::addRow(
 	addRow(vec, rowlb, rowub);
 }
 
+void OsiScipSolverInterface::addQuadraticRows(int nqrows, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int ** linind, double ** linval, int ** quadrow, int ** quadcol, double ** quadval)
+{
+	for (int i = 0; i < nqrows; i++) 
+	{
+		double rowlb, rowub;
+		convertSenseToBound(sense[i], rhs[i], 0, rowlb, rowub);
+
+		char name[SCIP_MAXSTRLEN];
+		(void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "quadrow_%d", i);
+
+		SCIP_CONS * cons = NULL;
+		SCIP_CALL_ABORT(SCIPcreateConsBasicQuadratic(scip_, &cons, name, 0, NULL, NULL, 0, NULL, NULL, NULL, rowlb, rowub));
+
+		/** add coefficients */
+		for (int j = 0; j < linnzcnt[i]; j++)
+			SCIP_CALL_ABORT(SCIPaddLinearVarQuadratic(scip_, cons, vars_[linind[i][j]], linval[i][j]));
+		for (int j = 0; j < quadnzcnt[i]; j++)
+			SCIP_CALL_ABORT(SCIPaddBilinTermQuadratic(scip_, cons, vars_[quadrow[i][j]], vars_[quadcol[i][j]], quadval[i][j]));
+		/** add constraint */
+		SCIP_CALL_ABORT(SCIPaddCons(scip_, cons));
+
+		qconss_.push_back(cons);
+		nqconss_++;
+	}
+}
+
 void OsiScipSolverInterface::deleteRows(const int num, const int* rowIndices) {
 	std::vector<int> inds;
 	inds.resize(num);
@@ -679,6 +707,8 @@ void OsiScipSolverInterface::finalize()
 			SCIP_CALL_ABORT(SCIPreleaseVar(scip_, &vars_[j]));
 		for (int i = 0; i < nconss_; ++i)
 			SCIP_CALL_ABORT(SCIPreleaseCons(scip_, &conss_[i]));
+		for (int i = 0; i < nqconss_; ++i)
+			SCIP_CALL_ABORT(SCIPreleaseCons(scip_, &qconss_[i]));
 		SCIP_CALL_ABORT(SCIPfree(&scip_));
 		scip_ = NULL;
 	}
@@ -698,7 +728,9 @@ void OsiScipSolverInterface::finalize()
 	ctype_.clear();
 
 	nconss_ = 0;
+	nqconss_ = 0;
 	conss_.clear();
+	qconss_.clear();
 	rlbd_.clear();
 	rubd_.clear();
 	sense_.clear();
@@ -771,7 +803,8 @@ OsiScipSolverInterface::OsiScipSolverInterface() :
 scip_(NULL),
 mat_(NULL),
 nvars_(0),
-nconss_(0) {
+nconss_(0),
+nqconss_(0) {
 	initialize();
 }
 

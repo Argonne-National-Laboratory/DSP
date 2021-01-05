@@ -147,8 +147,6 @@ public:
 
 	bool isStochastic() {return true;}
 
-	virtual bool isQCQP() {return TssModel::isQCQP();}
-
 	// The following functions are for distributionally robust variant.
 	// TODO: Better to create a new inhereted class?
 	virtual void setDro(bool yes) { TssModel::setDro(yes); }
@@ -244,7 +242,7 @@ public:
 		CoinPackedMatrix *& qobj_reco_coupling,/**< [out] coupling quadratric coefficients (y^2}*/
 		CoinPackedMatrix *& qobj_reco_ncoupling, /**< [out] non-coupling quadratic coefficients (xy) */
 		double *& rlbd_reco,          /**< [out] row lower bounds */
-		double *& rubd_reco,           /**< [out] row upper bounds */
+		double *& rubd_reco,          /**< [out] row upper bounds */
 		bool adjust_probability = true /**< [in] adjust probability */);
 
 	DSP_RTN_CODE getFullModel(

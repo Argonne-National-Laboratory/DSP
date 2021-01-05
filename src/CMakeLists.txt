@@ -42,6 +42,7 @@ set(DSP_SRC
     Solver/DualDecomp/DdWorkerCG.cpp
     Solver/DualDecomp/DdWorkerLB.cpp
     Solver/DualDecomp/DdWorkerUB.cpp
+    Solver/DualDecomp/DdDroWorkerUB.cpp
     Solver/DantzigWolfe/DwBranchInt.cpp
     Solver/DantzigWolfe/DwBranchNonant.cpp
     Solver/DantzigWolfe/DwBranchNonant2.cpp
@@ -160,6 +161,7 @@ if (MPI_CXX_FOUND)
         Solver/DualDecomp/DdMWAsyncDyn.cpp
         Solver/DualDecomp/DdMWPara.cpp
         Solver/DualDecomp/DdMWSync.cpp
+        Solver/DualDecomp/DdDroWorkerUBMpi.cpp
         Utility/DspMpi.cpp
     )
     if(SCIPLIB)
@@ -237,6 +239,7 @@ target_link_libraries(runDsp ${DSP_LIBS})
 ##################################################
 if(UNIT_TESTING)
     add_subdirectory(test)
+    message(STATUS "unitTest is ON")
 endif(UNIT_TESTING)
 
 ##################################################

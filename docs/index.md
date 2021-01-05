@@ -1,61 +1,108 @@
 # What is DSP?
 
 DSP (**D**ecomposition of **S**tructured **P**rograms) is an open-source and parallel package that implements decomposition
-methods for **structured mixed-integer linear programming problems**.
+methods for structured **Mixed-Integer Quadratically Constrained Quadratic Programming (MIQCQP)** problems.
+Structured programming problems refer to the class of problems that embed decomposable structures (e.g., block-angular matrices).
+A well-known example is a two-stage stochastic program with a finite number of scenarios of the form
+$$
+\min_{x,y_i} f^x(x) + \sum_{i=1}^N p_i f_i^y(y_i)
+$$
+subject to
+$$
+(x,y_i) \in \mathcal{G}_i := \\left\\{(x,y_i):g_i^x(x) + g_i^y(y_i) \leq h_i \\right\\}, \quad \forall i=1,\dots,N,
+$$
+where $x$ and $y_i$ are the first- and second-stage variables, respectively, for each scenario index $i$, $p_i$ is the probability of scenario $i$, and $f^x$, $f_i^y$, $g_i^x$, and $g_i^y$ are (convex) quadratic functions.
+Multiple decomposition methods can effectively utilize such structures in order to accelerate the solutions.
 
-Examples of the structured programming problem include:
+!!! check "Key Features"
 
-- distributionally robust optimization problem (with Wasserstein ambiguity set)
-- stochastic programming problem
-- long-term planning problem
-- network optimization problem
+    - Implementation of parallel Benders and dual decompositions of stochastic MIQCQP problems
+    - Support for Wasserstein-based distributionally robust solutions of the form
 
-## Algorithms in DSP
+    $$
+    \min_{(x,y_i)\in\mathcal{G}_i, \; i=1,\dots,N} \left\{ f^x(x) + \max_{p\in\mathbb{P}_r^W(\epsilon)} \sum_{i=1}^N p_i f_i^y(y_i) \right\},
+    $$
 
-DSP provides **serial** and **parallel** implementations for the four types of algorithms.
+      where $\mathbb{P}_r^W(\epsilon)$ is the Wasserstein ambiguity set of order $r$ with size $\epsilon$.
 
-### Dantzig-Wolfe Decomposition
+    - Support for generic decomposable structures (e.g., network topology, time horizon)
+    - Parallel solve on a cluster by using MPI library
+    - Run in parallel with Julia modeling interface `DSPopt.jl`. A toy example can be simply written in the following few lines:
 
-This solves the dual of the dual decomposition.
-The key difference from the dual decomposition is the implementation of branch-and-bound method on top of the decomposition,
-which allows to find a global optiaml solution.
+    === "Serial Run"
 
-For more technical details, please refer the following papers.
+        ```julia
+        using StructJuMP
+        using DSPopt
 
-1. Kibaek Kim and Brian Dandurand. "Scalable Branching on Dual Decomposition of Stochastic Mixed-Integer Programming Problems" Mathematical Programming Computation (to appear), 2020
-1. Kibaek Kim, Audun Botterud, and Feng Qiu. "Temporal Decomposition for Improved Unit Commitment in Power System Production Cost Modeling" IEEE Transactions on Power Systems. 2018
+        # scenarios
+        xi = [[7,7] [11,11] [13,13]]
 
-### Dual Decomposition
+        # create StructuredModel with number of scenarios
+        m = StructuredModel(num_scenarios = 3)
 
-This solves the Lagrangian relaxation of the constraints that couple blocks of the structure.
-Hence, the algorithm finds a Lagrangian dual bound that can be strictly lower than the optimal objective value for nonconvex problems (e.g., mixed-integer programs).
-For two-stage stochastic programs, each block is represented by a scenario subproblem.
-Stochastic programs can be read from [SMPS](https://ieeexplore.ieee.org/abstract/document/8142546) files or our C API functions (or Julia package [DSPopt.jl](https://github.com/kibaekkim/DSPopt.jl)).
-For generic optimization problems, each block can be specified by [mps-dec](https://gcg.or.rwth-aachen.de/doc/reader__dec_8h.html) files or our C API functions (or Julia package DSPopt.jl).
+        @variable(m, 0 <= x[i=1:2] <= 5, Int)
+        @objective(m, Min, -1.5 * x[1] - 4 * x[2])
+        for s = 1:3
+            # create a StructuredModel linked to m with id s and probability 1/3
+            blk = StructuredModel(parent = m, id = s, prob = 1/3)
+            @variable(blk, y[j=1:4], Bin)
+            @objective(blk, Min, -16 * y[1] + 19 * y[2] + 23 * y[3] + 28 * y[4])
+            @constraint(blk, 2 * y[1] + 3 * y[2] + 4 * y[3] + 5 * y[4] <= xi[1,s] - x[1])
+            @constraint(blk, 6 * y[1] + y[2] + 3 * y[3] + 2 * y[4] <= xi[2,s] - x[2])
+        end
 
-> NOTE: A **distributionally robust** variant of dual decomposition is available for the problems given in SMPS files and `.dro` file.
+        # The Wasserstein ambiguity set of order-2 can be imposed with the size limit of 1.0.
+        DSPopt.set(WassersteinSet, 2, 1.0)
 
-For more technical details, please refer the following papers.
+        status = optimize!(m, 
+            is_stochastic = true, # Needs to indicate that the model is a stochastic program.
+            solve_type = DSPopt.DW, # see instances(DSPopt.Methods) for other methods
+        )
+        ```
 
-1. Kibaek Kim. "Dual Decomposition of Two-Stage Distributionally Robust Mixed-Integer Programming under the Wasserstein Ambiguity Set" Optimization Online, 2020
-1. Kibaek Kim, Cosmin G. Petra, and Victor M. Zavala. "An Asynchronous Bundle-Trust-Region Method for Dual Decomposition of Stochastic Mixed-Integer Programming" SIAM Journal on Optimization, 2019
-1. Kibaek Kim, Mihai Anitescu, and Victor M. Zavala. "An Asynchronous Decomposition Algorithm for Security Constrained Unit Commitment under Contingency Events" Proceedings in Power System Computation Conference, 2018
-1. Kibaek Kim and Victor M. Zavala. "Algorithmic Innovations and Software for the Dual Decomposition Method applied to Stochastic Mixed-Integer Programs" Mathematical Programming Computation, 2017
+    === "Paralell Run"
 
-### Integer Benders Decomposition
+        ```julia
+        using MPI
+        using StructJuMP
+        using DSPopt
 
-This solves the integer Benders decomposition of stochastic programming problems with the lower bound initialized by the dual decomposition.
-Integer Benders decomposition runs when the first stage is a pure-binary program and the second stage is a mixed-integer program.
+        # Initialize MPI communication
+        MPI.Init()
 
-> NOTE: A **distributionally robust** variant of Benders decomposition is available for the problems given in SMPS files and `.dro` file.
+        # Initialize DSPopt.jl with the communicator.
+        DSPopt.parallelize(MPI.COMM_WORLD)
 
-> Note: When the first stage is not a pure-binary program, any second-stage integer variables will be relaxed.
+        # scenarios
+        xi = [[7,7] [11,11] [13,13]]
 
-> Note: This algorithm requires SCIP and is available only for stochastic programs.
+        # create StructuredModel with number of scenarios
+        m = StructuredModel(num_scenarios = 3)
 
-### Extensive Form Solver
+        @variable(m, 0 <= x[i=1:2] <= 5, Int)
+        @objective(m, Min, -1.5 * x[1] - 4 * x[2])
+        for s = 1:3
+            # create a StructuredModel linked to m with id s and probability 1/3
+            blk = StructuredModel(parent = m, id = s, prob = 1/3)
+            @variable(blk, y[j=1:4], Bin)
+            @objective(blk, Min, -16 * y[1] + 19 * y[2] + 23 * y[3] + 28 * y[4])
+            @constraint(blk, 2 * y[1] + 3 * y[2] + 4 * y[3] + 5 * y[4] <= xi[1,s] - x[1])
+            @constraint(blk, 6 * y[1] + y[2] + 3 * y[3] + 2 * y[4] <= xi[2,s] - x[2])
+        end
 
-This reformulates the problem into one large optimization problem and uses available external solver.
-Parallel computing is available only through the external solver (i.e., multi-threading).
+        # The Wasserstein ambiguity set of order-2 can be imposed with the size limit of 1.0.
+        DSPopt.set(WassersteinSet, 2, 1.0)
 
-> Note: There is no MPI parallelism for this algorithm.
+        status = optimize!(m, 
+            is_stochastic = true, # Needs to indicate that the model is a stochastic program.
+            solve_type = DSPopt.DW, # see instances(DSPopt.Methods) for other methods
+        )
+
+        # Finalize MPI communication
+        MPI.Finalize()
+        ```
+
+## Acknowledgements
+
+This material is based upon work supported by the U.S. Department of Energy, Office of Science, under contract number DE-AC02-06CH11357.

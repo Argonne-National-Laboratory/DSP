@@ -7,6 +7,7 @@
 
 // #define DSP_DEBUG
 
+#include "DspConfig.h"
 #include "DdDriverSerial.h"
 #include "DdMWSerial.h"
 
@@ -23,6 +24,8 @@ DdDriverSerial::~DdDriverSerial() {}
 
 DSP_RTN_CODE DdDriverSerial::init() {
 	BGN_TRY_CATCH
+
+	show_copyright();
 
 	/** create Master-Worker framework */
 	mw_ = new DdMWSerial(model_, par_, message_);

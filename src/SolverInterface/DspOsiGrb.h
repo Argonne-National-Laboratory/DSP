@@ -110,6 +110,24 @@ public:
 		}
     }
     
+	/** load quadratic constrs */
+	virtual void addQuadraticRows(int nqrows, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int ** linind, double ** linval, int ** quadrow, int ** quadcol, double ** quadval)
+	{
+		if (nqrows > 0)
+			isqcp_ = true;
+		for (int i = 0; i < nqrows; i++) 
+		{
+			GUROBI_CALL("loadQuadraticObjective", GRBaddqconstr(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), linnzcnt[i], linind[i], linval[i], quadnzcnt[i], quadrow[i], quadcol[i], quadval[i], sense[i], rhs[i], NULL));
+		}
+		GUROBI_CALL("loadProblem", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
+	}
+
+	/** write problem file */
+	virtual void writeProb(char const * filename_str, char const * filetype_str)
+	{
+		std::string filename = std::string(filename_str) + "." + std::string(filetype_str);
+		GUROBI_CALL("writeProb", GRBwrite(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), filename.c_str()));
+	}
 
 	/** solve problem */
 	virtual void solve() {

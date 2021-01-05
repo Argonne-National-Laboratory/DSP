@@ -13,6 +13,7 @@ TEST_CASE("C interface functions") {
         REQUIRE(env->solver_ == NULL);
     }
 
+<<<<<<< HEAD
     int NS = 3;                        // number of scenarios
     double probability[3] = {(double)1/3, (double)1/3, (double)1/3}; // probability
 
@@ -93,6 +94,17 @@ TEST_CASE("C interface functions") {
         //prim=getPrimalBound(env);
         //double p=round(prim*1000000)/1000000;
         //REQUIRE(p == -64818.588589);
+=======
+    SECTION("Version checks")
+    {
+        int major = getVersionMajor(env);
+        int minor = getVersionMinor(env);
+        int patch = getVersionPatch(env);
+
+        REQUIRE(major == DSP_VERSION_MAJOR);
+        REQUIRE(minor == DSP_VERSION_MINOR);
+        REQUIRE(patch == DSP_VERSION_PATCH);
+>>>>>>> dev/qcqp
     }
 
     SECTION("freeEnv function") {

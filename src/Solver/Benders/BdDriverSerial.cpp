@@ -7,6 +7,7 @@
 
 // #define DSP_DEBUG
 
+#include "DspConfig.h"
 #include "Solver/Benders/BdDriverSerial.h"
 #include "Solver/Benders/BdMWSerial.h"
 #include "Solver/DualDecomp/DdDriverSerial.h"
@@ -25,6 +26,8 @@ BdDriverSerial::~BdDriverSerial() {}
 DSP_RTN_CODE BdDriverSerial::init()
 {
 	BGN_TRY_CATCH
+
+	show_copyright();
 
 	/** primal soltuion */
 	primsol_.resize(model_->getFullModelNumCols());

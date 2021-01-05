@@ -1,11 +1,50 @@
-site_name: DSP
+site_name: DSP Documentation
+repo_url: https://github.com/Argonne-National-Laboratory/DSP
+
+theme: 
+  name: material
+  features:
+    - navigation.instant
+  palette:
+    - primary: blue
+    - accent: blue
+  icon:
+    repo: fontawesome/brands/github
+    logo: octicons/workflow-24
+  font:
+    text: Ubuntu
+    code: Source Code Pro
+
 nav:
   - Home: index.md
-  - Requirement: requirement.md
-  - How to Install: install.md
-  - How to Use: howto.md
+  - Getting Started: 
+    - Installation: install.md
+    - How to Use: howto.md
+    - More Examples: examples.md
+  - Algorithms: algorithms.md
   - Parameters: parameters.md
   - API: api.md
   - FAQ: faq.md
-theme: 
-  name: material
+
+markdown_extensions:
+  - pymdownx.highlight:
+      linenums: true
+  - pymdownx.superfences
+  - pymdownx.caret
+  - pymdownx.mark
+  - pymdownx.tilde
+  - admonition
+  - pymdownx.tabbed
+  - def_list
+  - pymdownx.arithmatex:
+      generic: true
+  - toc:
+      permalink: true
+
+plugins:
+  - git-revision-date
+
+extra_javascript:
+  - javascripts/config.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js

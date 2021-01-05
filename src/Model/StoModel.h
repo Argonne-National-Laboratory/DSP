@@ -17,6 +17,90 @@
 #include "Utility/DspMacros.h"
 #include "Utility/DspRtnCodes.h"
 
+/** quadratic row infomration for a scenario */
+struct QuadRowData {
+	int				nqrows; 		/** number of quadratic rows for a scenario  */
+    int *         	linnzcnt;  		/** number of nonzero coefficients in the linear part of each constraint  */
+    int *        	quadnzcnt;  	/** number of nonzero coefficients in the quadratic part of each constraint  */
+	double *		rhs; 			/** constraint rhs of each constraint */
+	int *			sense; 			/** constraint sense of each constraint */
+	int **        	linind; 		/** indices for the linear part */
+	double **      	linval; 		/** nonzero coefficient of the linear part */
+	int **      	quadrow;  		/** indices for the quadratic part */
+	int **      	quadcol;  		/** indices for the quadratic part */
+	double **     	quadval; 		/** nonzero coefficient of the quadratic part */ 
+
+	QuadRowData(){
+		nqrows = 0;
+		linnzcnt = NULL;
+		quadnzcnt = NULL;
+		rhs = NULL;
+		sense = NULL;
+		linind = NULL;
+		linval = NULL;
+		quadrow = NULL;
+		quadcol = NULL;
+		quadval = NULL;
+	}
+	QuadRowData(int nqrows_, int rstart, vector<char> sense_, vector<double> rhs_, vector<vector<int>> linind_, vector<vector<double>> linval_, vector<vector<int>> quadrow_, vector<vector<int>> quadcol_, vector<vector<double>> quadval_)
+	{
+		nqrows = nqrows_;
+		if (nqrows > 0) 
+		{
+			linnzcnt = new int [nqrows];
+			quadnzcnt = new int [nqrows];
+			rhs = new double [nqrows];
+			sense = new int [nqrows];
+			linind = new int * [nqrows];
+			linval = new double * [nqrows];
+			quadrow = new int * [nqrows];
+			quadcol = new int * [nqrows];
+			quadval = new double * [nqrows];
+
+			for (int i = 0; i < nqrows; i++) 
+			{
+				sense[i] = sense_[i+rstart];
+				rhs[i] = rhs_[i+rstart];
+				
+				linnzcnt[i] = linval_[i+rstart].size();
+				linind[i] = new int [linnzcnt[i]];
+				linval[i] = new double [linnzcnt[i]];
+
+				quadnzcnt[i] = quadrow_[i+rstart].size();
+				quadrow[i] = new int [quadnzcnt[i]];
+				quadcol[i] = new int [quadnzcnt[i]];
+				quadval[i] = new double [quadnzcnt[i]];
+
+				for (int j = 0; j < linnzcnt[i]; j++) 
+				{
+					linind[i][j] = linind_[i+rstart][j];
+					linval[i][j] = linval_[i+rstart][j];
+				}
+
+				for (int j = 0; j < quadnzcnt[i]; j++) 
+				{
+					quadrow[i][j] = quadrow_[i+rstart][j];
+					quadcol[i][j] = quadcol_[i+rstart][j];
+					quadval[i][j] = quadval_[i+rstart][j];
+				}
+			}
+		}
+	}
+	~QuadRowData(){
+		if (nqrows > 0) {
+			FREE_ARRAY_PTR(linnzcnt);
+			FREE_ARRAY_PTR(quadnzcnt);
+			FREE_ARRAY_PTR(rhs);
+			FREE_ARRAY_PTR(sense);
+
+			FREE_2D_ARRAY_PTR(nqrows, linind);
+			FREE_2D_ARRAY_PTR(nqrows, linval);
+			FREE_2D_ARRAY_PTR(nqrows, quadrow);
+			FREE_2D_ARRAY_PTR(nqrows, quadcol);
+			FREE_2D_ARRAY_PTR(nqrows, quadval);
+		}
+	}
+};
 
 /*
  * This class is a wrapper for SMI, which reads and writes SMPS files.
@@ -47,7 +131,17 @@ public:
 	/** read DRO file */
 	DSP_RTN_CODE readDro(const char * filename);
 
+	/** construct a map that maps variable names to their indices */
+	bool mapVarnameIndex(map<string, int> &map_varName_index, const char * corefilename);
+
+	/** read quadratic data file, extending the smps file */
+	DSP_RTN_CODE readQuad(const char * smps, const char * filename, bool chg_to_socp = true);
+
 	void __printData();
+
+	/* print quadratic rows of scenario s, if s == -1, print quadratic rows in core */
+	DSP_RTN_CODE printQuadRows (const int s);
+	DSP_RTN_CODE printQuadRows (const QuadRowData *qc);
 
 public:
 
@@ -72,6 +166,12 @@ public:
 	/** get number of integer variables in core */
 	int getNumCoreIntegers() const {return nints_core_;}
 
+	/** get number of quadratic constraints in core */
+	int getNumCoreQRows() {return qc_row_core_->nqrows;}
+	
+	/** get number of quadratic constraints of a scenario*/
+	int getNumScenQRows(int scen) {return qc_row_scen_[scen]->nqrows;}
+	
 	/** get objective function coefficients for a given stage */
 	const double * getObjCore(int stage) {return obj_core_[stage];}
 
@@ -88,10 +188,38 @@ public:
 	/** get initial solutions */
 	const Solutions getInitialSolutions() {return init_solutions_;}
 
+	/** get core coefficeints for a given stage */
+	const CoinPackedVector * getRowCore(int i) {return rows_core_[i];}
+
+	/** get parameters for quadratic constraints in core*/
+	QuadRowData * getQuaraticsRowCore() const {return qc_row_core_;}
+
+	/** get parameters for quadratic constraints in a scenario */
+	QuadRowData * getQuaraticsRowScenario(int s) const {return qc_row_scen_[s];}
+
+	DSP_RTN_CODE chgToSocp(vector<int> &qc_rstart);
+	void getL(double * &Q, int quadnzcnt, int *quadcol, int *quadrow, double *quadval, vector<int> &indices, int &n);
+
+	bool hasQuadraticRowCore() const {return qc_row_core_ != NULL ? true : false;};
+	bool hasQuadraticRowScenario() const {return qc_row_scen_ != NULL ? true : false;};
+	bool hasQuadraticObjCore() const {return qobj_core_ != NULL ? true : false;};
+	bool hasQuadraticObjScenario() const {return qobj_scen_ != NULL? true : false;};
+
 	/** set initial solutions */
 	void setSolution(
 			int      size,    /**< size of array */
 			double * solution /**< solution */);
+
+	/** 
+	 * Set the Wasserstein ambiguity set for distributionally robust optimization.
+	 * This should be used for stochastic programming models, where the probabilities
+	 * are used as the empirical references of the Wasserstein distance.
+	 * 
+	 * @param lp_norm use the distance norm of p
+	 * @param eps maximum distance size
+	 * @return DSP_RTN_OK if no error
+	 */
+	DSP_RTN_CODE setWassersteinAmbiguitySet(double lp_norm, double eps);
 
 #if 0
 	/** add branching object */
@@ -119,9 +247,9 @@ public:
 	 *  for non-coupling terms, shift indices, start from y,
 	 *  only for two-stage problem
 	*/
-	void copyCoreQuadrativeObjective(
-		CoinPackedMatrix *&qobj_coupling, 
-		CoinPackedMatrix *&qobj_ncoupling, 
+	void copyCoreQuadraticObjective(
+		CoinPackedMatrix *&qobj_coupling,
+		CoinPackedMatrix *&qobj_ncoupling,
 		int stg);
 
 	/** copy core column types */
@@ -177,8 +305,6 @@ public:
 			int offset,   /**< offset by which indices are shifted */
 			int start = 0 /**< index only after which indices are shifted */);
 
-	virtual bool isQCQP() {return isQCQP_;}
-
 	// The following functions are for distributionally robust variant.
 	// TODO: Better to create a new inhereted class?
 	virtual void setDro(bool yes) { isdro_ = yes; }
@@ -215,6 +341,7 @@ protected:
 	double ** rlbd_core_;           /**< row lower bounds for each stage */
 	double ** rubd_core_;           /**< row upper bounds for each stage */
 	char **   ctype_core_;          /**< column types for each stage */
+	QuadRowData * qc_row_core_;		/**< parameters for quadratic rows in core: current version only accept noncoupling quadratic rows */
 
 	/*
 	 * Random data only (no core data)
@@ -228,6 +355,7 @@ protected:
 	CoinPackedMatrix ** qobj_scen_; /**< quadratic objective coefficients for each scenario */
 	CoinPackedVector ** rlbd_scen_; /**< row lower bounds for each scenario */
 	CoinPackedVector ** rubd_scen_; /**< row upper bounds for each scenario */
+	QuadRowData ** qc_row_scen_;		/**< parameters for quadratic rows in scenarios: current version only accept noncoupling quadratic rows */
 
 	StoScenMap scen2stg_; /** map from scenario to stage */
 
@@ -235,8 +363,7 @@ protected:
 
 	bool fromSMPS_; /**< problem was read from SMPS files? */
 
-	bool isdro_;                /**< is this distributionally robust? */
-	bool isQCQP_ = 0;			/**< quadratic terms in the problem? */
+	bool isdro_;				/**< is this distributionally robust? */
 	int nrefs_;                 /**< number of reference scenarios for DRO */
 	double wass_eps_;           /**< size of the Wasserstein ball */
 	double ** wass_dist_;       /**< Wasserstein distances between two realizations */

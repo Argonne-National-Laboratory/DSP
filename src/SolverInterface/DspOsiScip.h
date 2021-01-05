@@ -40,6 +40,20 @@ public:
         scip_ = NULL;
     }
 
+    virtual void addQuadraticRows(int nqrows, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int ** linind, double ** linval, int ** quadrow, int ** quadcol, double ** quadval)
+    {
+        if (nqrows > 0)
+			isqcp_ = true;
+
+		scip_->addQuadraticRows(nqrows, linnzcnt, quadnzcnt, rhs, sense, linind, linval, quadrow, quadcol, quadval);
+    }
+
+	/** write problem file */
+	virtual void writeProb(char const * filename_str, char const * filetype_str)
+	{
+		si_->writeMps(filename_str, filetype_str);
+	}
+
     /** solve problem */
     virtual void solve() {
         si_->branchAndBound();

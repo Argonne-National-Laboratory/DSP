@@ -15,9 +15,11 @@
 #include "Utility/DspMpi.h"
 
 /** DSP */
+#include "DspConfig.h"
 #include "DspApiEnv.h"
 
 class TssModel;
+class DecTssModel;
 
 #ifdef __cplusplus
 extern "C" {
@@ -27,7 +29,7 @@ extern "C" {
 DspApiEnv * createEnv(void);
 
 /** free API environment */
-void freeEnv(DspApiEnv * env);
+void freeEnv(DspApiEnv * &env);
 
 /** free model */
 void freeModel(DspApiEnv * env);
@@ -60,6 +62,9 @@ int readSmps(DspApiEnv * env, const char * smps);
 /** read dro files */
 int readDro(DspApiEnv * env, const char * dro);
 
+/** read quad files */
+int readQuad(DspApiEnv * env, const char * smps, const char * quad, bool chg_to_socp = true);
+
 /** load first-stage problem */
 void loadFirstStage(
  		DspApiEnv *          env,   /**< pointer to API object */
@@ -89,6 +94,35 @@ void loadQuadraticFirstStage(
 		const CoinBigIndex	 qnum,	/**< number of quadratic elements */
 		const double *       rlbd,  /**< row lower bounds */
 		const double *       rubd   /**< row upper bounds */);
+
+/** load first-stage problem with quadratic objective and constraints*/
+void loadQCQPFirstStage(
+			DspApiEnv *          env,   	/**< pointer to API object */
+			const CoinBigIndex * start, 	/**< start index for each row */
+			const int *          index, 	/**< column indices */
+			const double *       value, 	/**< constraint elements */
+			const double *       clbd,  	/**< column lower bounds */
+			const double *       cubd,  	/**< column upper bounds */
+			const char *         ctype, 	/**< column types */
+			const double *       obj,   	/**< objective coefficients */
+			const int * 		 qobjrowindex, /**< quadratic objective row indices */
+			const int *			 qobjcolindex, /**< quadratic objective column indices */
+			const double *		 qobjvalue, /**< quadratic objective constraint elements value */
+			const CoinBigIndex 	 qobjnum,  	/**< number of quadratic terms in the objective */
+			const double *       rlbd,  	/**< row lower bounds */
+			const double *       rubd,   	/**< row upper bounds */
+			const int 			nqrows, 	/**< number of quadratic rows */
+        	const int *         linnzcnt,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+        	const int *        	quadnzcnt,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+			const double *		rhs, 		/**< constraint rhs of each constraint */
+			const int *			sense, 		/**< constraint sense of each constraint */
+			const int *         linstart,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+			const int *         linind, 	/**< indices for the linear part */
+			const double *      linval, 	/**< nonzero coefficient of the linear part */
+			const int *        	quadstart,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+			const int *       	quadrow,  	/**< indices for the quadratic part */
+			const int *       	quadcol,  	/**< indices for the quadratic part */
+			const double *      quadval 	/**< nonzero coefficient of the quadratic part */);
 
 /** load second-stage problem */
 void loadSecondStage(
@@ -123,6 +157,37 @@ void loadQuadraticSecondStage(
 		const CoinBigIndex	 qnum,	/**< number of quadratic elements */
 		const double *       rlbd,  /**< row lower bounds */
 		const double *       rubd   /**< row upper bounds */);		
+
+/** load quadratic constraints to the second stage */
+void loadQCQPSecondStage(
+			DspApiEnv *          env,   	/**< pointer to API object */
+			const int            s,     	/**< scenario index */
+			const double         prob,  	/**< probability */
+			const CoinBigIndex * start, 	/**< start index for each row */
+			const int *          index, 	/**< column indices */
+			const double *       value, 	/**< constraint elements */
+			const double *       clbd,  	/**< column lower bounds */
+			const double *       cubd,  	/**< column upper bounds */
+			const char *         ctype, 	/**< column types */
+			const double *       obj,   	/**< objective coefficients */
+			const int * 		 qobjrowindex, /**< quadratic objective row indices */
+			const int *			 qobjcolindex, /**< quadratic objective column indices */
+			const double *		 qobjvalue, /**< quadratic objective constraint elements value */
+			const CoinBigIndex 	 qnum,  	/**< number of quadratic terms */
+			const double *       rlbd,  	/**< row lower bounds */
+			const double *       rubd,   	/**< row upper bounds */
+			const int 			nqrows, 	/**< number of quadratic rows */
+        	const int *         linnzcnt,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+        	const int *        	quadnzcnt,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+			const double *		rhs, 		/**< constraint rhs of each constraint */
+			const int *			sense, 		/**< constraint sense of each constraint */
+			const int *         linstart,  	/**< number of nonzero coefficients in the linear part of each constraint  */
+			const int *         linind, 	/**< indices for the linear part */
+			const double *      linval, 	/**< nonzero coefficient of the linear part */
+			const int *        	quadstart,  /**< number of nonzero coefficients in the quadratic part of each constraint  */
+			const int *       	quadrow,  	/**< indices for the quadratic part */
+			const int *       	quadcol,  	/**< indices for the quadratic part */
+			const double *      quadval 	/**< nonzero coefficient of the quadratic part */);
 
 /** load block problems */
 void loadBlockProblem(
@@ -184,8 +249,19 @@ void solveBdMpi(
 /** read parameter file */
 void readParamFile(DspApiEnv * env, const char * param_file);
 
+/** 
+ * Set the Wasserstein ambiguity set for distributionally robust optimization.
+ * This should be used for stochastic programming models, where the probabilities
+ * are used as the empirical references of the Wasserstein distance.
+ * 
+ * @param env pointer to API object
+ * @param lp_norm use the distance norm of p
+ * @param eps maximum distance size
+ */
+void setWassersteinAmbiguitySet(DspApiEnv *env, double lp_norm, double eps);
+
 /** set boolean parameter */
-void setBoolParam(DspApiEnv * env, const char * name, bool value);
+void setBoolParam(DspApiEnv *env, const char *name, bool value);
 
 /** set integer parameter */
 void setIntParam(DspApiEnv * env, const char * name, int value);
@@ -217,6 +293,9 @@ int getNumIntegers(DspApiEnv * env, int stage);
 
 /** get Total number of row */
 int getTotalNumRows(DspApiEnv * env);
+
+/** get number of quadratic rows */
+int getNumQRows(DspApiEnv * env, int s);
 
 /** get number of columns */
 int getTotalNumCols(DspApiEnv * env);
@@ -266,6 +345,15 @@ void writeMps(DspApiEnv * env, const char * name);
 
 /** print model */
 void printModel(DspApiEnv *env);
+
+/** query the DSP version major */
+int getVersionMajor(DspApiEnv *env);
+
+/** query the DSP version minor */
+int getVersionMinor(DspApiEnv *env);
+
+/** query the DSP version patch */
+int getVersionPatch(DspApiEnv *env);
 
 #ifdef __cplusplus
 }

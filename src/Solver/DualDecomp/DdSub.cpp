@@ -5,11 +5,11 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+#define DSP_DEBUG
 
 #include "Utility/DspMacros.h"
 #include "Utility/DspMessage.h"
-#include "Model/TssModel.h"
+#include "Model/DecTssModel.h"
 #include "Solver/DualDecomp/DdSub.h"
 #include "SolverInterface/DspOsiClp.h"
 #include "SolverInterface/DspOsiCpx.h"
@@ -70,10 +70,10 @@ DdSub::~DdSub() {
 DSP_RTN_CODE DdSub::init()
 {
 	BGN_TRY_CATCH
-	
+	DSPdebugMessage("create problem...\n");
 	/** create problem */
 	DSP_RTN_CHECK_THROW(createProblem());
-	
+	DSPdebugMessage("add cut generator...\n");
 	/** add cut generator (lazycuts) */
 	DSP_RTN_CHECK_THROW(addCutGenerator());
 	
@@ -92,8 +92,10 @@ DSP_RTN_CODE DdSub::solve()
 	bool dualinfeas = false;
 
 	while (1) {
-		osi_->solve();
-	
+
+		/** solve */
+		osi_->solve();	
+
 		/** check status. there might be unexpected results. */
 		status_ = osi_->status();
 		DSPdebugMessage("solution status %d\n", status_);
@@ -180,8 +182,10 @@ DSP_RTN_CODE DdSub::createProblem() {
     double cubd_aux[1];
     double obj_aux[1];
     int cpl_ncols;
+	QuadRowData *qc_row_core = NULL; 
+	QuadRowData *qc_row_scen = NULL;
 
-    BGN_TRY_CATCH
+	BGN_TRY_CATCH
 
     /** parameters */
     parRelaxIntegrality_ = par_->getBoolPtrParam("RELAX_INTEGRALITY");
@@ -196,18 +200,19 @@ DSP_RTN_CODE DdSub::createProblem() {
     obj_aux[0] = 0.0;
 
     /** decompose model */
-	if (model_->isQCQP()){
-		DSP_RTN_CHECK_THROW(
-            model_->decompose(1, augs, 1, clbd_aux, cubd_aux, obj_aux,
+	//if (model_->isQCQP()){
+	// 	DSP_RTN_CHECK_THROW(
+    //         model_->decompose(1, augs, 1, clbd_aux, cubd_aux, obj_aux,
+    //                           mat, clbd, cubd, ctype, obj, qobj, rlbd, rubd));
+	//}
+	//else{
+	// 	DSP_RTN_CHECK_THROW(
+    //        model_->decompose(1, augs, 1, clbd_aux, cubd_aux, obj_aux,
+    //                          mat, clbd, cubd, ctype, obj, rlbd, rubd));
+	//}
+    DSP_RTN_CHECK_THROW(
+             model_->decompose(1, augs, 1, clbd_aux, cubd_aux, obj_aux,
                               mat, clbd, cubd, ctype, obj, qobj, rlbd, rubd));
-	}
-	else{
-		DSP_RTN_CHECK_THROW(
-            model_->decompose(1, augs, 1, clbd_aux, cubd_aux, obj_aux,
-                              mat, clbd, cubd, ctype, obj, rlbd, rubd));
-
-	}
-    
     DSP_RTN_CHECK_THROW(
             model_->decomposeCoupling(1, augs, cpl_mat_, cpl_cols_, cpl_ncols));
 
@@ -243,8 +248,11 @@ DSP_RTN_CODE DdSub::createProblem() {
         }
 
 		double probability = tssModel->getProbability()[sind_];
-		for (int j = 0; j < tssModel->getNumCols(0); ++j)
-			obj[j] *= probability;
+		if (probability > 1e-6)
+		{
+			for (int j = 0; j < tssModel->getNumCols(1); ++j)
+				obj_[tssModel->getNumCols(0)+j] /= probability;
+		}
 		if (model_->isDro()) {
 			if (sind_ < tssModel->getNumReferences()) {
 				for (int j = tssModel->getNumCols(0); j < tssModel->getNumCols(0) + tssModel->getNumCols(1); ++j) {
@@ -298,8 +306,6 @@ DSP_RTN_CODE DdSub::createProblem() {
 			qobj=new CoinPackedMatrix(false, &rowindice[0], colindice, &adjelements[0], numqobjelements);
 			//PRINT_ARRAY_MSG(qobj->getNumElements(), qobj->getElements(), "in subproblem qobj coef");
 		}
-		
-		
 
 #ifdef DSP_DEBUG
 		DSPdebugMessage("sind_ = %d, probability = %e, lambdas = \n", sind_, model_->isDro() ? tssModel->getReferenceProbability(sind_) : probability);
@@ -321,6 +327,29 @@ DSP_RTN_CODE DdSub::createProblem() {
             }
             CoinFillN(ctype + tssModel->getNumCols(0), tssModel->getNumCols(1), 'C');
         }
+
+		/** get quadratic rows data */
+		if (tssModel->hasQuadraticRowCore()) 
+		{
+			qc_row_core = tssModel->getQuaraticsRowCore();
+
+		#ifdef DSP_DEBUG
+			/* print qcrowdata to test whether it is successfully received or not */
+			cout << "DdSub's quadratic constraints in core: " << endl;
+			tssModel->printQuadRows(-1);
+			tssModel->printQuadRows(qc_row_core);
+		#endif
+		}
+		if (tssModel->hasQuadraticRowScenario()) {
+			qc_row_scen = tssModel->getQuaraticsRowScenario(sind_);
+
+		#ifdef DSP_DEBUG
+			/* print qcrowdata to test whether it is successfully received or not */
+			cout << "DdSub's quadratic constraints in scen: " << endl;
+			tssModel->printQuadRows(sind_);
+			tssModel->printQuadRows(qc_row_scen);
+		#endif
+		}
     } else {
         if (parRelaxIntegrality_[0] || parRelaxIntegrality_[1]) {
             for (int j = 0; j < mat->getNumCols(); j++) {
@@ -373,13 +402,23 @@ DSP_RTN_CODE DdSub::createProblem() {
 	if (qobj != NULL){
 		osi_->loadQuadraticObjective(*qobj);
 	}
+	/* add quadratic rows */
+	if (qc_row_core) osi_->addQuadraticRows(qc_row_core->nqrows, qc_row_core->linnzcnt, qc_row_core->quadnzcnt, qc_row_core->rhs, qc_row_core->sense, qc_row_core->linind, qc_row_core->linval, qc_row_core->quadrow, qc_row_core->quadcol, qc_row_core->quadval);
+	if (qc_row_scen) osi_->addQuadraticRows(qc_row_scen->nqrows, qc_row_scen->linnzcnt, qc_row_scen->quadnzcnt, qc_row_scen->rhs, qc_row_scen->sense, qc_row_scen->linind, qc_row_scen->linval, qc_row_scen->quadrow, qc_row_scen->quadcol, qc_row_scen->quadval);
+#ifdef DSP_DEBUG
+		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
+		char filename[128];
+		sprintf(filename, "DdWorkerLB_scen%d", sind_); 
+		osi_->writeProb(filename, "lp");
+#endif
+
 	for (int j = 0; j < mat->getNumCols(); ++j) {
 		if (ctype[j] != 'C')
 			getSiPtr()->setInteger(j);
 	}
     DSPdebug(mat->verifyMtx(4));
 
-    /** set solution gap tolerance */
+	/** set solution gap tolerance */
 	if (nIntegers > 0)
 	    osi_->setRelMipGap(gapTol_);
 
@@ -414,16 +453,16 @@ DSP_RTN_CODE DdSub::addCutGenerator() {
 	}
 #endif
 
-#ifdef DSP_HAS_GRB
- 	if (par_->getIntParam("DD/SUB/SOLVER") == OsiGrb) {
- 		DspOsiGrb * osigrb = dynamic_cast<DspOsiGrb*>(osi_);
- 		//OsiGrbSolverInterface *si = osigrb->grb_;
- 		if (si){
-			 /** set call back function */
-			 osigrb->setCallbackFunc();
-		 }
- 	} 
-#endif
+// #ifdef DSP_HAS_GRB
+//  	if (par_->getIntParam("DD/SUB/SOLVER") == OsiGrb) {
+//  		DspOsiGrb * osigrb = dynamic_cast<DspOsiGrb*>(osi_);
+//  		OsiGrbSolverInterface *si = osigrb->grb_;
+//  		if (si){
+// 			 /** set call back function */
+// 			 osigrb->setCallbackFunc();
+// 		 }
+//  	} 
+// #endif
 	END_TRY_CATCH_RTN(;, DSP_RTN_ERR)
 
     return DSP_RTN_OK;
@@ -454,7 +493,7 @@ DSP_RTN_CODE DdSub::updateProblem(
 		assert(obj_);
 		if (model_->isStochastic()) {
 			// coefficients for the first-stage variables
-			assert(nrows_coupling_<ncols);
+			assert(nrows_coupling_ < ncols);
 
 			// coefficients for the second-stage variables
 			CoinCopyN(lambda, nrows_coupling_, newobj);
@@ -492,6 +531,13 @@ DSP_RTN_CODE DdSub::updateProblem(
 	/** update primal bound (bounds of auxiliary constraint) */
 	if (primal_bound < COIN_DBL_MAX)
 		getSiPtr()->setColUpper(ncols - 1, primal_bound);//getSiPtr()->setColBounds(ncols - 1, primal_bound, primal_bound);
+
+#ifdef DSP_DEBUG
+		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
+		char filename[128];
+		sprintf(filename, "DdWorkerLB_scen_update%d", sind_); 
+		osi_->writeProb(filename, "lp");
+#endif
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
