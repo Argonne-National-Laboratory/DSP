@@ -143,8 +143,6 @@ public:
 	 */
 	double evalLhsCouplingRowSubprob(int row, int subprob, double * subprobSolution);
 
-	bool nonanticipativity() {return true;}
-
 	bool isStochastic() {return true;}
 
 	// The following functions are for distributionally robust variant.

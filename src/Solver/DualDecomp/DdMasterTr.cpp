@@ -252,7 +252,7 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 	}
 
 	/** LP dimension */
-	if (model_->nonanticipativity())
+	if (model_->isStochastic())
 	{
 		/** initial normalization constraint for nonanticipativity constraints */
 		nrows = model_->getNumCouplingCols(); // number of first-stage variables
@@ -285,7 +285,13 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 	if (model_->isDro()) {
 		obj_reco_ = new double * [tss->getNumScenarios()];
 		for (int j = 0; j < tss->getNumScenarios(); ++j)
+		{
 			tss->copyRecoObj(j, obj_reco_[j], false);
+#ifdef DSP_DEBUG
+			printf("obj_reco_[%d] = \n", j);
+			DspMessage::printArray(tss->getNumCols(1), obj_reco_[j]);
+#endif
+		}
 	}
 
 	/** allocate memory */
@@ -312,7 +318,8 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 	if (parTr_)
 	{
 		stability_center_ = new double [ncols-nthetas_];
-		if (model_->nonanticipativity()) {
+		if (model_->isStochastic())
+		{
 			for (i = 0; i < model_->getNumCouplingCols(); ++i) {
 				for (j = 0; j < model_->getNumSubproblems(); ++j) {
 					k = model_->getNumCouplingCols()*j+i;
@@ -338,7 +345,9 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 						stability_center_[nlambdas_+nus_+i] = 0.0;
 				}
 			}
-		} else {
+		}
+		else
+		{
 			CoinZeroN(stability_center_, ncols-nthetas_);
 		}
 	}
@@ -348,7 +357,8 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 	CoinFillN(cubd, nthetas_, +COIN_DBL_MAX);
 
 	/** trust region bound */
-	if (model_->nonanticipativity()) {
+	if (model_->isStochastic())
+	{
 		for (i = 0; i < model_->getNumCouplingCols(); ++i) {
 			double avg_c = model_->getCouplingColsObjs()[i] / model_->getNumSubproblems();
 			for (j = 0; j < model_->getNumSubproblems(); ++j) {
@@ -448,8 +458,9 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 		assert(rpos == nrows);
 		assert(pos == nzcnt);
 		bgn[nrows] = pos;
-
-	} else {
+	}
+	else
+	{
 		CoinFillN(clbd+nthetas_, nlambdas_, -COIN_DBL_MAX);
 		CoinFillN(cubd+nthetas_, nlambdas_, +COIN_DBL_MAX);
 
@@ -520,11 +531,10 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 	primsol_.resize(ncols);
 	lambda_.resize(nlambdas_);
 	CoinFillN(&primsol_[0], nthetas_, COIN_DBL_MAX);
-	if (model_->nonanticipativity()) {
+	if (model_->isStochastic())
 		CoinCopyN(stability_center_, ncols-nthetas_, &primsol_[nthetas_]);
-	} else {
+	else
 		CoinZeroN(&primsol_[nthetas_], nlambdas_);
-	}
 	CoinCopyN(&primsol_[nthetas_], nlambdas_, &lambda_[0]);
 
 	if (model_->isStochastic()) {
@@ -560,7 +570,7 @@ DSP_RTN_CODE DdMasterTr::updateProblem()
 	double newdual = 0.0;
 	for (int s = 0; s < model_->getNumSubproblems(); ++s)
 	{
-		DSPdebugMessage("subdualobj_[%d] = %e\n", s, subdualobj_[s]);
+		DSPdebugMessage("subprimobj_[%d] = %e, subdualobj_[%d] = %e\n", s, subprimobj_[s], s, subdualobj_[s]);
 		newprimal += subprimobj_[s];
 		//newdual += subdualobj_[s];
 		newdual += subprimobj_[s];
@@ -759,17 +769,20 @@ int DdMasterTr::addCuts(
 		/** calculate error and construct cut */
 		linerr_ += subprimobj_[s];
 		aggrhs[cutidx] += subprimobj_[s];
+		DSPdebugMessage("subprimobj_[%d] = %e\n", s, subprimobj_[s]);
 		for (int i = 0; i < nlambdas_; i++)
 		{
 			/** evaluate solution on coupling constraints (if they are Hx = d, this is (Hx - d)_i) */
 			double hx_d = model_->evalLhsCouplingRowSubprob(i, s, subsolution_[s]) - model_->getRhsCouplingRow(i);
 			aggvec[cutidx][nthetas_ + i] -= hx_d; /** coefficients for lambda */
 			linerr_ += hx_d * stability_center_[i];
+			DSPdebugMessage2("s = %d, i = %d, hx_d = %e, primsol_ = %e\n", s, i, hx_d, primsol_[nthetas_ + i]);
 			// if (isSolved_) {
 				linerr_ -= hx_d * primsol_[nthetas_ + i];
 				aggrhs[cutidx] -= hx_d * primsol_[nthetas_ + i];
 			// }
 		}
+		DSPdebugMessage("aggrhs[%d] = %e\n", cutidx, aggrhs[cutidx]);
 	}
 
 	if (model_->isDro()) {
@@ -797,16 +810,19 @@ int DdMasterTr::addCuts(
 			recourse_obj = 0.0;
 			for (int j = 0; j < tss->getNumCols(1); ++j) {
 				recourse_obj += obj_reco_[s][j] * subsolution_[s][tss->getNumCols(0)+j];
-				// DSPdebugMessage("obj_reco_[%d][%d] = %e, subsolution_[%d][%d] = %e\n",
-				// 	s, j, obj_reco_[s][j], s, tss->getNumCols(0)+j, subsolution_[s][tss->getNumCols(0)+j]);
+				DSPdebugMessage("obj_reco_[%d][%d] = %e, subsolution_[%d][%d] = %e\n",
+								s, j, obj_reco_[s][j], s, tss->getNumCols(0) + j, subsolution_[s][tss->getNumCols(0) + j]);
 			}
 			// recourse_obj = scen_obj->dotProduct(subsolution_[s] + tss->getNumCols(0));
 
 			linerr_ += recourse_obj * (stability_center_[nlambdas_+nus_+s] - primsol_[ncols-nPs_+s]);
 			aggvec[cutidx][ncols-nPs_+s] = -recourse_obj;
 			aggrhs[cutidx] -= recourse_obj * primsol_[ncols-nPs_+s];
-			DSPdebugMessage("recourse_obj[%d] = %e, primsol_[%d] = %e, aggvec[%d][%d] = %e\n",
-							s, recourse_obj, ncols - nPs_ + s, primsol_[ncols - nPs_ + s], cutidx, ncols - nPs_ + s, aggvec[cutidx][ncols - nPs_ + s]);
+			DSPdebugMessage("recourse_obj[%d] = %e, primsol_[%d] = %e, aggvec[%d][%d] = %e, aggrhs[%d] = %e\n",
+							s, recourse_obj,
+							ncols - nPs_ + s, primsol_[ncols - nPs_ + s],
+							cutidx, ncols - nPs_ + s, aggvec[cutidx][ncols - nPs_ + s],
+							cutidx, aggrhs[cutidx]);
 		}
 	}
 
@@ -901,7 +917,7 @@ DSP_RTN_CODE DdMasterTr::possiblyDeleteCutsOsi(
 		double subobjval /**< sum of subproblem objective values */)
 {
 	OsiCuts cuts;
-	int nrows = model_->nonanticipativity() ? model_->getNumSubproblemCouplingCols(0) : 0;
+	int nrows = model_->isStochastic() ? model_->getNumSubproblemCouplingCols(0) : 0;
 	int ncuts = getSiPtr()->getNumRows() - nrows;
 	if (ncuts == 0)
 		return DSP_RTN_OK;
@@ -1005,7 +1021,7 @@ int DdMasterTr::recruiteCuts()
 	getSiPtr()->setWarmStart(getSiPtr()->getWarmStart());
 	ws = dynamic_cast<CoinWarmStartBasis*>(getSiPtr()->getWarmStart());
 
-	int irow = model_->nonanticipativity() ? model_->getNumSubproblemCouplingCols(0) : 0;
+	int irow = model_->isStochastic() ? model_->getNumSubproblemCouplingCols(0) : 0;
 	for (int i = 0; i < cuts_->sizeCuts(); ++i)
 	{
 		/** retrieve row cut */
@@ -1064,7 +1080,7 @@ DSP_RTN_CODE DdMasterTr::removeAllCuts()
 {
 	BGN_TRY_CATCH
 
-	int nrows = model_->nonanticipativity() ? model_->getNumSubproblemCouplingCols(0) : 0;
+	int nrows = model_->isStochastic() ? model_->getNumSubproblemCouplingCols(0) : 0;
 	int ncuts = getSiPtr()->getNumRows() - nrows;
 
 	/** row indices to delete */

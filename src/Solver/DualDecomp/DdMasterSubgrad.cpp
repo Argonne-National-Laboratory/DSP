@@ -71,7 +71,7 @@ DSP_RTN_CODE DdMasterSubgrad::solve()
 
 	/** store final multipliers */
 	DecTssModel * decTssModel = dynamic_cast<DecTssModel*>(model_);
-	if (model_->nonanticipativity() && decTssModel != NULL)
+	if (model_->isStochastic() && decTssModel != NULL)
 	{
 		/** nonanticipativity constraints must be converted back from a different representation */
 		double* primsol = primsol_.data();
@@ -123,7 +123,7 @@ DSP_RTN_CODE DdMasterSubgrad::updateProblem()
 
 	/** compute gradient */
 	DecTssModel * decTssModel = dynamic_cast<DecTssModel*>(model_);
-	if (model_->nonanticipativity() && decTssModel != NULL)
+	if (model_->isStochastic() && decTssModel != NULL)
 	{
 		/** nonanticipativity constraints must be converted to a different representation */
 		for (int i = 0; i < model_->getNumCouplingRows(); i++)
