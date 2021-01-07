@@ -68,8 +68,6 @@ public:
 
 	double getRhsCouplingRow(int row);
 
-	bool nonanticipativity() {return false;}
-
 	bool isStochastic() {return false;}
 	virtual void setDro(bool yes) { ; }
 	virtual bool isDro() { return false; }

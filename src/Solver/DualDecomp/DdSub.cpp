@@ -91,6 +91,9 @@ DSP_RTN_CODE DdSub::solve()
 	/** check dual infeasibility */
 	bool dualinfeas = false;
 
+	DSPdebugMessage("s = %d, objective cofficient:\n", sind_);
+	DSPdebug(DspMessage::printArray(osi_->si_->getNumCols(), osi_->si_->getObjCoefficients()));
+
 	while (1) {
 		osi_->solve();
 	
@@ -248,11 +251,11 @@ DSP_RTN_CODE DdSub::createProblem() {
 				obj_[tssModel->getNumCols(0) + j] /= probability;
 
 #ifdef DSP_DEBUG
-		DSPdebugMessage("sind_ = %d, probability = %e, lambdas = \n", sind_, model_->isDro() ? tssModel->getReferenceProbability(sind_) : probability);
+		printf("sind_ = %d, probability = %e, lambdas = \n", sind_, model_->isDro() ? tssModel->getReferenceProbability(sind_) : probability);
 		DspMessage::printArray(tssModel->getNumCols(0), obj);
 #endif
 
-        /** convert column types */
+		/** convert column types */
         if (parRelaxIntegrality_[0]) {
             for (int j = 0; j < tssModel->getNumCols(0); ++j) {
                 if (ctype[j] != 'C')
