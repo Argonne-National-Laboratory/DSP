@@ -56,14 +56,17 @@ public:
 	virtual DSP_RTN_CODE terminationTest() {return status_;}
 
 	/** A const member to return lambda */
-	const double * getLambda() {return lambda_;}
+	virtual const double *getLambda() { return lambda_.data(); }
+
+	/** Return lambda for subproblem index s */
+	virtual const double *getLambda(int s);
 
 protected:
 
 	/** create DspOsi for master */
 	virtual DspOsi * createDspOsi();
 
-	const double* lambda_; /**< pointer to the lambda part (Lagrangian multiplier with respect to the relaxed constraints) of the solution */
+	std::vector<double> lambda_;	   /**< pointer to the lambda part (Lagrangian multiplier with respect to the relaxed constraints) of the solution */
 	std::vector<double> subprimobj_;   /**< subproblem primal objective values */
 	std::vector<double> subdualobj_;   /**< subproblem dual objective values */
 	double ** subsolution_; /**< subproblem solution */

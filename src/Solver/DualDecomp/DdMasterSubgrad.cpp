@@ -84,7 +84,7 @@ DSP_RTN_CODE DdMasterSubgrad::solve()
 	}
 
 	/** retrieve lambda */
-	lambda_ = primsol_.data();
+	lambda_ = primsol_;
 
 	/** update statistics */
 	double * s_primsol = new double [model_->getNumCouplingRows()];

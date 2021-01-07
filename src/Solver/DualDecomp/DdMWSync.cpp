@@ -205,14 +205,13 @@ DSP_RTN_CODE DdMWSync::runMaster()
 	if (comm_rank_ != 0)
 		return DSP_RTN_OK;
 
-#define FREE_MEMORY \
-	FREE_ARRAY_PTR(sendbuf) \
-	FREE_ARRAY_PTR(scounts) \
-	FREE_ARRAY_PTR(sdispls) \
-	FREE_ARRAY_PTR(recvbuf) \
-	FREE_ARRAY_PTR(rcounts) \
-	FREE_ARRAY_PTR(rdispls) \
-	FREE_ARRAY_PTR(lambdas) \
+#define FREE_MEMORY              \
+	FREE_ARRAY_PTR(sendbuf)      \
+	FREE_ARRAY_PTR(scounts)      \
+	FREE_ARRAY_PTR(sdispls)      \
+	FREE_ARRAY_PTR(recvbuf)      \
+	FREE_ARRAY_PTR(rcounts)      \
+	FREE_ARRAY_PTR(rdispls)      \
 	FREE_ARRAY_PTR(nsubsolution) \
 	thetas = NULL;
 
@@ -239,8 +238,7 @@ DSP_RTN_CODE DdMWSync::runMaster()
 	int *    rcounts = NULL; /**< MPI_Gatherv: receive buffer size for each process */
 	int *    rdispls = NULL; /**< MPI_Gatherv: receive buffer displacement for each process*/
 
-	const double * thetas  = NULL; /**< of master problem */
-	double **      lambdas = NULL; /**< of master problem */
+	const double *thetas = NULL;   /**< of master problem */
 	const double *Ps = NULL;	   /**< of DRO master problem */
 
 	int * nsubsolution = NULL; /**< size of subproblem solution for each scenario */
@@ -335,9 +333,6 @@ DSP_RTN_CODE DdMWSync::runMaster()
 	/** allocate memory for message buffers */
 	sendbuf = new double [size_of_sendbuf];
 	recvbuf = new double [size_of_recvbuf];
-
-	/** allocate memory for lambdas */
-	lambdas = new double * [model_->getNumSubproblems()];
 
 	printHeaderInfo();
 
@@ -450,13 +445,7 @@ DSP_RTN_CODE DdMWSync::runMaster()
 
 		/** retrieve master solution by part */
 		double * master_primsol = const_cast<double*>(master_->getPrimalSolution());
-		thetas  = master_primsol;
-		for (int i = 0, j = model_->getNumSubproblems(); i < model_->getNumSubproblems(); ++i)
-		{
-			/** shallow copy */
-			lambdas[i] = master_primsol + j;
-			j += model_->getNumSubproblemCouplingRows(i);
-		}
+		thetas = master_primsol;
 		if (model_->isStochastic())
 		{
 			if (model_->isDro())
@@ -477,8 +466,8 @@ DSP_RTN_CODE DdMWSync::runMaster()
 			{
 				int subprob_index = subprob_indices_[subprob_displs_[i]+j];
 				sendbuf[pos++] = thetas[subprob_index];
-				CoinCopyN(lambdas[subprob_index],
-						model_->getNumSubproblemCouplingRows(subprob_index), sendbuf + pos);
+				CoinCopyN(master_->getLambda(subprob_index),
+						  model_->getNumSubproblemCouplingRows(subprob_index), sendbuf + pos);
 				pos += model_->getNumSubproblemCouplingRows(subprob_index);
 				if (model_->isStochastic())
 					sendbuf[pos++] = Ps[subprob_index];
@@ -528,10 +517,6 @@ DSP_RTN_CODE DdMWSync::runMaster()
 		DSPdebugMessage2("primsol_:\n");
 		DSPdebug2(DspMessage::printArray(model_->getFullModelNumCols(), &master_->bestprimsol_[0]));
 	}
-
-	/** release shallow-copy of pointers */
-	for (int i = 0; i < model_->getNumSubproblems(); ++i)
-		lambdas[i] = NULL;
 
 	/** get total time spend in the master */
 	mt_total += CoinGetTimeOfDay() - mts_total;
