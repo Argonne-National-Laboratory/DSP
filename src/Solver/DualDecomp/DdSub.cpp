@@ -236,15 +236,16 @@ DSP_RTN_CODE DdSub::createProblem() {
 			obj[j] *= probability;
 		if (model_->isDro()) {
 			if (sind_ < tssModel->getNumReferences()) {
-				for (int j = tssModel->getNumCols(0); j < tssModel->getNumCols(0) + tssModel->getNumCols(1); ++j) {
-					obj[j] *= tssModel->getReferenceProbability(sind_) / probability;
-				}
+				if (probability > 0)
+					for (int j = tssModel->getNumCols(0); j < tssModel->getNumCols(0) + tssModel->getNumCols(1); ++j)
+						obj[j] *= tssModel->getReferenceProbability(sind_) / probability;
 			} else {
 				CoinZeroN(obj + tssModel->getNumCols(0), tssModel->getNumCols(1));
 			}
 		}
-		for (int j = 0; j < tssModel->getNumCols(1); ++j)
-			obj_[tssModel->getNumCols(0)+j] /= probability;
+		if (probability > 0)
+			for (int j = 0; j < tssModel->getNumCols(1); ++j)
+				obj_[tssModel->getNumCols(0) + j] /= probability;
 
 #ifdef DSP_DEBUG
 		DSPdebugMessage("sind_ = %d, probability = %e, lambdas = \n", sind_, model_->isDro() ? tssModel->getReferenceProbability(sind_) : probability);
