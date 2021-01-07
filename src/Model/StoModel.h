@@ -99,6 +99,11 @@ public:
 	 */
 	DSP_RTN_CODE setWassersteinAmbiguitySet(double lp_norm, double eps);
 
+	/** 
+	 * Nomalize probability vector
+	 */
+	void normalizeProbability();
+
 #if 0
 	/** add branching object */
 	void addBranchingHyperplane(int nzcnt, int * indices, double * values, int priority);
