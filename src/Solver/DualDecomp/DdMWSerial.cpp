@@ -193,7 +193,7 @@ DSP_RTN_CODE DdMWSerial::run()
 			break;
 		}
 	}
-	assert(workerlb!=NULL);
+	assert(workerlb != NULL);
 
 	nsubsolution = new int[model_->getNumSubproblems()];
 	for (int s = 0; s < model_->getNumSubproblems(); ++s)
