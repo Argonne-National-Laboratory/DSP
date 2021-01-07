@@ -205,6 +205,9 @@ public:
 	bool hasQuadraticObjCore() const {return qobj_core_ != NULL ? true : false;};
 	bool hasQuadraticObjScenario() const {return qobj_scen_ != NULL? true : false;};
 
+	/** set probability */
+	void setProbability(double *probability);
+
 	/** set initial solutions */
 	void setSolution(
 			int      size,    /**< size of array */
@@ -220,6 +223,11 @@ public:
 	 * @return DSP_RTN_OK if no error
 	 */
 	DSP_RTN_CODE setWassersteinAmbiguitySet(double lp_norm, double eps);
+
+	/** 
+	 * Nomalize probability vector
+	 */
+	void normalizeProbability();
 
 #if 0
 	/** add branching object */

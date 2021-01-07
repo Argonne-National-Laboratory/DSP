@@ -145,13 +145,11 @@ DSP_RTN_CODE DdMWSerial::finalize()
 DSP_RTN_CODE DdMWSerial::run()
 {
 #define FREE_MEMORY              \
-	FREE_ARRAY_PTR(lambdas)      \
 	FREE_ARRAY_PTR(nsubsolution) \
 	thetas = NULL;               \
 	Ps = NULL;
 
 	const double *thetas = NULL; /**< of master problem */
-	double **lambdas = NULL;	 /**< of master problem */
 	const double *Ps = NULL;	 /**< of DRO master problem */
 
 	int *nsubsolution = NULL; /**< size of subproblem solution */
@@ -207,10 +205,6 @@ DSP_RTN_CODE DdMWSerial::run()
 		}
 	}
 	assert(workerlb != NULL);
-
-	/** allocate memory for lambdas */
-	/** NOTE: lambdas will be used as shallow pointers. */
-	lambdas = new double *[model_->getNumSubproblems()];
 
 	nsubsolution = new int[model_->getNumSubproblems()];
 	for (int s = 0; s < model_->getNumSubproblems(); ++s)
@@ -390,26 +384,15 @@ DSP_RTN_CODE DdMWSerial::run()
 		itercnt_++;
 
 		/** retrieve master solution by part */
-		double *master_primsol = const_cast<double *>(master_->getPrimalSolution());
+		const double *master_primsol = master_->getPrimalSolution();
 		thetas = master_primsol;
-		for (int i = 0, j = model_->getNumSubproblems(); i < model_->getNumSubproblems(); ++i)
-		{
-			/** shallow copy */
-			lambdas[i] = master_primsol + j;
-			j += model_->getNumSubproblemCouplingRows(i);
-		}
 		if (model_->isStochastic())
 		{
 			if (model_->isDro())
-			{
 				Ps = master_primsol + master_->getNumCols() - tss->getNumScenarios();
-			}
 			else
-			{
 				Ps = tss->getProbability();
-			}
 		}
-		master_primsol = NULL;
 
 		/** update subproblems */
 		int sindex = -1;
@@ -419,13 +402,9 @@ DSP_RTN_CODE DdMWSerial::run()
 			sindex = workerlb->subprobs_[s]->sind_;
 			workerlb->subprobs_[s]->theta_ = thetas[sindex];
 			if (model_->isStochastic())
-			{
 				probability = Ps[sindex];
-			}
-			// DSPdebugMessage("s = %d, probability = %e, lambdas = \n", s, probability);
-			// DspMessage::printArray(model_->getNumSubproblemCouplingRows(sindex), lambdas[sindex]);
 			DSPdebugMessage("update workerlb problem.\n");
-			workerlb->subprobs_[s]->updateProblem(lambdas[sindex], probability, master_->bestprimobj_);
+			workerlb->subprobs_[s]->updateProblem(master_->getLambda(sindex), probability, master_->bestprimobj_);
 			/** apply Benders cuts */
 			if (parFeasCuts_ >= 0 || parOptCuts_ >= 0)
 			{
@@ -456,10 +435,6 @@ DSP_RTN_CODE DdMWSerial::run()
 		DSPdebugMessage2("primsol_:\n");
 		DSPdebug2(DspMessage::printArray(model_->getFullModelNumCols(), master_->bestprimsol_.data()));
 	}
-
-	/** release shallow-copy of pointers */
-	for (int i = 0; i < model_->getNumSubproblems(); ++i)
-		lambdas[i] = NULL;
 
 	END_TRY_CATCH_RTN(FREE_MEMORY, DSP_RTN_ERR)
 

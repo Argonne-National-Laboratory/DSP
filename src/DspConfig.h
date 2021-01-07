@@ -18,7 +18,7 @@ inline void show_copyright()
                  "  - Version %d.%d.%d\n"
                  "  - See https://github.com/Argonne-National-Laboratory/DSP\n\n"
                  "  Under the terms of Contract No. DE-AC02-06CH11357 with UChicago Argonne, LLC,\n"
-                 "  the U.S. Government retains certain rights in this software.\n\n"
+                 "  the U.S. Government retains certain rights in this software.\n"
                  "=================================================================================\n",
             DSP_VERSION_MAJOR, DSP_VERSION_MINOR, DSP_VERSION_PATCH);
     printf("%s", msg);

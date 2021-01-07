@@ -1918,6 +1918,11 @@ bool StoModel::mapVarnameIndex(map<string, int> &map_varName_index, const char *
 	return true;
 }
 
+void StoModel::setProbability(double *probability)
+{
+	CoinCopyN(probability, nscen_, prob_);
+}
+
 void StoModel::setSolution(int size, double * solution)
 {
 	if (size > 0)
@@ -1944,6 +1949,8 @@ DSP_RTN_CODE StoModel::setWassersteinAmbiguitySet(double lp_norm, double eps)
 
 	wass_eps_ = pow(eps, lp_norm);
 	isdro_ = true;
+
+	normalizeProbability();
 
 	/** Count the number of reference scenarios.
 	 * We take all scenarios with nonzero probabilities as the references (a.k.a. 
@@ -2040,6 +2047,17 @@ DSP_RTN_CODE StoModel::setWassersteinAmbiguitySet(double lp_norm, double eps)
 	printf("[DRO] Computed the Wasserstein distances of order %f.\n", lp_norm);
 
 	return DSP_RTN_OK;
+}
+
+void StoModel::normalizeProbability()
+{
+	double prob_sum = 0.0;
+	for (int s = 0; s < nscen_; ++s)
+		prob_sum += prob_[s];
+
+	if (fabs(prob_sum - 1.0) > 1.e-8)
+		for (int s = 0; s < nscen_; ++s)
+			prob_[s] /= prob_sum;
 }
 
 /** split core matrix row for a given stage */
