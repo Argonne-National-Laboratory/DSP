@@ -26,7 +26,7 @@ void OsiScipSolverInterface::writeMps(const char* filename,
 void OsiScipSolverInterface::initialSolve() {
 	/** solve */
 	SCIP_CALL_ABORT(SCIPsolve(scip_));
-#if DSP_DEBUG
+#ifdef DSP_DEBUG
 	int numDdCuts = 0;
 	int numPoolCuts = SCIPgetNPoolCuts(scip_);
 	SCIP_CUT ** poolcuts = SCIPgetPoolCuts(scip_);
@@ -50,6 +50,7 @@ void OsiScipSolverInterface::initialSolve() {
 		solution_.resize(SCIPgetNOrigVars(scip_));
 		SCIP_CALL_ABORT(SCIPgetSolVals(scip_, sol, SCIPgetNOrigVars(scip_), &vars_[0], &solution_[0]));
 	}
+	DSPdebugMessage("finish initial solve\n");
 }
 
 void OsiScipSolverInterface::resolve() {
