@@ -122,7 +122,7 @@ SCIPconshdlrBenders* BdMWSerial::constraintHandler()
 	conshdlr->setDecModel(model_);
 	conshdlr->setBdSub(bdsub);
 	conshdlr->setOriginalVariables(si->getNumCols(), si->getScipVars(), naux);
-	DSPdebugMessage("in constraintHandler\n");
+
 	END_TRY_CATCH_RTN(;, NULL)
 
 	return conshdlr;

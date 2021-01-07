@@ -445,7 +445,12 @@ DSP_RTN_CODE DecTssModel::decompose(
 	//PRINT_ARRAY(qobj_core_[0]->getNumElements()+1, qstarts);
 	//PRINT_ARRAY_MSG(qobj_core_[0]->getNumElements(), qobj_core_[0]->getIndices(), "qobj_core[0] column indices")
 
-	if (qobj_core_[0] != NULL){
+	if (qobj_core_ != NULL){
+		printf("qobj_core_[0] = %d\n", qobj_core_[1] );
+	}
+
+	DSPdebugMessage("loading quadratic information if has quadratic objective...\n");
+	if (hasQuadraticObjCore()){
 		const CoinBigIndex * qstarts=qobj_core_[0]->getVectorStarts();
 		for (i = 0; i < qobj_core_[0]->getNumRows(); ++i)
 		{
@@ -472,11 +477,11 @@ DSP_RTN_CODE DecTssModel::decompose(
 	//PRINT_ARRAY_MSG(3, qelements, "elements of qobj");
 
 	//DSPdebugMessage("qobj_scen_[0]->getNumRows() = %d \n", qobj_scen_[0]->getNumRows());
-
+	if (hasQuadraticObjScenario()){
 	for (s=0; s<size; s++)
 	{	
 		if (qobj_scen_[scen[s]] != NULL){
-
+		
 		rownum=0;
 		for (i = 0; i < qobj_scen_[scen[s]]->getNumRows(); ++i)
 		{
@@ -501,6 +506,7 @@ DSP_RTN_CODE DecTssModel::decompose(
 		//PRINT_ARRAY_MSG(qobj_scen_[scen[s]]->getNumElements(), qobj_scen_[scen[s]]->getIndices(), "col induces of qobj_scen_[scen[s]]");
 		}
 	}
+	}
 	//PRINT_ARRAY_MSG(qrowIndices.size(), qrowIndices, "row indices of qobj");
 	//PRINT_ARRAY_MSG(qcolIndices.size(), qcolIndices, "col indices of qobj");
 	//PRINT_ARRAY_MSG(qcolIndices.size(), qelements, "elements of qobj");
@@ -509,23 +515,16 @@ DSP_RTN_CODE DecTssModel::decompose(
 	DSPdebugMessage("rownum %d nzcnt %d pos %d\n", rownum, nzcnt, pos);
 	assert(nzcnt == pos);
 
-	int flag=1;
-	if (qobj_core_[0]==NULL){
-		for (s=0; s<size; s++){
-			if (qobj_scen_[scen[s]] == NULL){
-				flag=0;
-			}
-		}
-	}
-	if (flag==0){
-		qobj=NULL;
-	}
-	else{
+	
+	if (hasQuadraticObjCore()||hasQuadraticObjScenario()){
 		qobj = new CoinPackedMatrix(false, &qrowIndices[0], &qcolIndices[0], &qelements[0], nzcnt);
 		qobj->setDimensions(ncols, ncols);
 
 		DSPdebug(qobj->verifyMtx(4));
 
+	}
+	else{
+		qobj=NULL;
 	}
 	
 	

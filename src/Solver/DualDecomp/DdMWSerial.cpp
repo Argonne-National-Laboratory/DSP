@@ -88,8 +88,7 @@ DSP_RTN_CODE DdMWSerial::init()
 		printf("i = %d\n", i);
 		worker_[i]->init();
 	}
-		
-	DSPdebugMessage("after worker\n");
+
 	END_TRY_CATCH_RTN(;, DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
