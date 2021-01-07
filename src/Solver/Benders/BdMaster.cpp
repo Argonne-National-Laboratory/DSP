@@ -275,8 +275,9 @@ DSP_RTN_CODE BdMaster::createProblem() {
 	assert(osi_==NULL);
 
 	/** choose solver */
-
-	osi_ = createDspOsi(par_->getIntParam("BD/MASTER/SOLVER"));
+	osi_ = new DspOsiScip();
+	if (!osi_) throw CoinError("Failed to create DspOsiScip", "createProblem", "DdMaster");
+	//osi_ = createDspOsi(par_->getIntParam("BD/MASTER/SOLVER"));
 	
 	osi_->setLogLevel(CoinMin(par_->getIntParam("LOG_LEVEL"), 5));
 	osi_->setNodeInfoFreq(par_->getIntParam("DISPLAY_FREQ"));
@@ -371,7 +372,11 @@ DspOsi * BdMaster::createDspOsi(int solver){
 
 	switch (solver) {
 		case OsiScip:
+#ifdef DSP_HAS_SCIP
 			osi = new DspOsiScip();
+#else
+			throw CoinError("Scip is not available.", "createDspOsi", "BdMaster");
+#endif
 			break;
 		case OsiCpx:
 #ifdef DSP_HAS_CPX

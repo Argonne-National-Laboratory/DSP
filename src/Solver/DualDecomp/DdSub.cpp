@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-#define DSP_DEBUG
+//#define DSP_DEBUG
 
 #include "Utility/DspMacros.h"
 #include "Utility/DspMessage.h"
@@ -248,6 +248,8 @@ DSP_RTN_CODE DdSub::createProblem() {
         }
 
 		double probability = tssModel->getProbability()[sind_];
+		for (int j = 0; j < tssModel->getNumCols(0); ++j)
+			obj[j] *= probability;
 		if (probability > 1e-6)
 		{
 			for (int j = 0; j < tssModel->getNumCols(1); ++j)
@@ -262,8 +264,6 @@ DSP_RTN_CODE DdSub::createProblem() {
 				CoinZeroN(obj + tssModel->getNumCols(0), tssModel->getNumCols(1));
 			}
 		}
-		for (int j = 0; j < tssModel->getNumCols(1); ++j)
-			obj_[tssModel->getNumCols(0)+j] /= probability;
 		
 		/** adjust quadratic objectives */
 		if (qobj!=NULL){
