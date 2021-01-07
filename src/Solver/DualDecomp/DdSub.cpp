@@ -91,6 +91,9 @@ DSP_RTN_CODE DdSub::solve()
 	/** check dual infeasibility */
 	bool dualinfeas = false;
 
+	DSPdebugMessage("s = %d, objective cofficient:\n", sind_);
+	DSPdebug(DspMessage::printArray(osi_->si_->getNumCols(), osi_->si_->getObjCoefficients()));
+
 	while (1) {
 		
 		/** solve */
@@ -240,22 +243,34 @@ DSP_RTN_CODE DdSub::createProblem() {
 			obj[j] *= probability;
 		if (model_->isDro()) {
 			if (sind_ < tssModel->getNumReferences()) {
-				for (int j = tssModel->getNumCols(0); j < tssModel->getNumCols(0) + tssModel->getNumCols(1); ++j) {
-					obj[j] *= tssModel->getReferenceProbability(sind_) / probability;
+				if (probability > 0) {
+					for (int j = tssModel->getNumCols(0); j < tssModel->getNumCols(0) + tssModel->getNumCols(1); ++j)
+						obj[j] *= tssModel->getReferenceProbability(sind_) / probability;
+				} else {
+					// The second-stage coefficients should already be zeros if probability = 0.
+					// But, let's make sure that.
+					CoinZeroN(obj + tssModel->getNumCols(0), tssModel->getNumCols(1));
 				}
 			} else {
 				CoinZeroN(obj + tssModel->getNumCols(0), tssModel->getNumCols(1));
 			}
 		}
-		for (int j = 0; j < tssModel->getNumCols(1); ++j)
-			obj_[tssModel->getNumCols(0)+j] /= probability;
+
+		if (probability > 0) {
+			for (int j = 0; j < tssModel->getNumCols(1); ++j)
+				obj_[tssModel->getNumCols(0) + j] /= probability;
+		} else {
+			// The second-stage coefficients should already be zeros if probability = 0.
+			// But, let's make sure that.
+			CoinZeroN(obj_ + tssModel->getNumCols(0), tssModel->getNumCols(1));
+		}
 
 #ifdef DSP_DEBUG
-		DSPdebugMessage("sind_ = %d, probability = %e, lambdas = \n", sind_, model_->isDro() ? tssModel->getReferenceProbability(sind_) : probability);
+		printf("sind_ = %d, probability = %e, lambdas = \n", sind_, model_->isDro() ? tssModel->getReferenceProbability(sind_) : probability);
 		DspMessage::printArray(tssModel->getNumCols(0), obj);
 #endif
 
-        /** convert column types */
+		/** convert column types */
         if (parRelaxIntegrality_[0]) {
             for (int j = 0; j < tssModel->getNumCols(0); ++j) {
                 if (ctype[j] != 'C')
@@ -399,9 +414,9 @@ DSP_RTN_CODE DdSub::addCutGenerator() {
 
 /** update problem */
 DSP_RTN_CODE DdSub::updateProblem(
-		double * lambda,
-		double probability,
-		double primal_bound)
+	const double *lambda,
+	double probability,
+	double primal_bound)
 {
 #define FREE_MEMORY       \
 	FREE_ARRAY_PTR(newobj);

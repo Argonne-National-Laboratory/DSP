@@ -158,19 +158,6 @@ public:
 	virtual double getRhsCouplingRow(int row) = 0;
 
 	/**
-	 * Indicates whether the coupling constraints are nonanticipativity constraints
-	 * (i.e. x_1 = ... = x_s), which may receive special treatment due to their structure.
-	 * If nonanticipativity is true, implementation must ensure all these are equal:
-	 *   the dimension of x_s for any s,
-	 *   getNumCouplingRows() / getNumSubproblems(),
-	 *   getNumCouplingCols() / getNumSubproblems(),
-	 *   getNumSubproblemCouplingRows(s) for any s, and
-	 *   getNumSubproblemCouplingCols(s) for any s.
-	 * See class DecTssModel for more details on the special treatment for nonanticipativity.
-	 */
-	virtual bool nonanticipativity() = 0;
-
-	/**
 	 * If true, this is a stochastic model that can be downcasted to StoModel.
 	 * Used to handle specific stochastic cases.
 	 */
