@@ -87,9 +87,15 @@ DSP_RTN_CODE DdDroWorkerUB::createProblem()
 	for (int s = 0; s < nsubprobs; ++s)
 	{
 		const double *obj_reco = osi_[s]->si_->getObjCoefficients();
-		for (int j = 0; j < tss->getNumCols(1); ++j)
+		if (tss->getProbability()[par_->getIntPtrParam("ARR_PROC_IDX")[s]] > 0)
 		{
-			osi_[s]->si_->setObjCoeff(j, obj_reco[j] / tss->getProbability()[par_->getIntPtrParam("ARR_PROC_IDX")[s]]);
+			for (int j = 0; j < tss->getNumCols(1); ++j)
+				osi_[s]->si_->setObjCoeff(j, obj_reco[j] / tss->getProbability()[par_->getIntPtrParam("ARR_PROC_IDX")[s]]);
+		}
+		else
+		{
+			for (int j = 0; j < tss->getNumCols(1); ++j)
+				osi_[s]->si_->setObjCoeff(j, 0.0);
 		}
 	}
 
@@ -174,6 +180,7 @@ DSP_RTN_CODE DdDroWorkerUB::solve()
 {
 	double cputime;
 	double walltime;
+	char lpfilename[128];
 
 	BGN_TRY_CATCH
 
@@ -192,6 +199,15 @@ DSP_RTN_CODE DdDroWorkerUB::solve()
 		osi_[s]->setTimeLimit(
 			CoinMin(CoinMax(0.01, time_remains_),
 					par_->getDblParam("DD/SUB/TIME_LIM")));
+
+#ifdef DSP_DEBUG
+		/* more info to log */
+		osi_[s]->setLogLevel(2);
+
+		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
+		sprintf(lpfilename, "DdDroWorkerUB_scen%d.lp", s);
+		osi_[s]->writeProb(lpfilename, NULL);
+#endif
 
 		/** solve */
 		osi_[s]->solve();
