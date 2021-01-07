@@ -316,7 +316,7 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 			for (i = 0; i < model_->getNumCouplingCols(); ++i) {
 				for (j = 0; j < model_->getNumSubproblems(); ++j) {
 					k = model_->getNumCouplingCols()*j+i;
-					stability_center_[k] = model_->getCouplingColsObjs()[i] / model_->getNumSubproblems();
+					stability_center_[k] = model_->getCouplingColsObjs()[i] * tss->getProbability()[j];
 				}
 			}
 
