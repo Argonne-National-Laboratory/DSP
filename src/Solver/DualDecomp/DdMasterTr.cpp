@@ -162,6 +162,7 @@ DSP_RTN_CODE DdMasterTr::solve()
 			primobj_ = osi_->getPrimObjValue();
 			/** get solution */
 			CoinCopyN(getSiPtr()->getColSolution(), getSiPtr()->getNumCols(), &primsol_[0]);
+			CoinCopyN(&primsol_[nthetas_], nlambdas_, &lambda_[0]);
 #ifdef DSP_DEBUG
 			printf("Master solution (obj %+e):\n", primobj_);
 			DspMessage::printArray(getSiPtr()->getNumCols(), &primsol_[0]);

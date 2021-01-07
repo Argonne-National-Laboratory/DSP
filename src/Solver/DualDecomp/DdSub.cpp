@@ -399,9 +399,9 @@ DSP_RTN_CODE DdSub::addCutGenerator() {
 
 /** update problem */
 DSP_RTN_CODE DdSub::updateProblem(
-		double * lambda,
-		double probability,
-		double primal_bound)
+	const double *lambda,
+	double probability,
+	double primal_bound)
 {
 #define FREE_MEMORY       \
 	FREE_ARRAY_PTR(newobj);
