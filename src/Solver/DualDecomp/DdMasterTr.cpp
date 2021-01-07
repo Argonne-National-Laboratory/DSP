@@ -518,12 +518,14 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 
 	/** allocate memory for solution */
 	primsol_.resize(ncols);
+	lambda_.resize(nlambdas_);
 	CoinFillN(&primsol_[0], nthetas_, COIN_DBL_MAX);
 	if (model_->nonanticipativity()) {
 		CoinCopyN(stability_center_, ncols-nthetas_, &primsol_[nthetas_]);
 	} else {
 		CoinZeroN(&primsol_[nthetas_], nlambdas_);
 	}
+	CoinCopyN(&primsol_[nthetas_], nlambdas_, &lambda_[0]);
 
 	if (model_->isStochastic()) {
 		bestdualsol_.resize(ncols-nthetas_);
