@@ -841,16 +841,14 @@ int DdMasterTr::addCuts(
 
 		/** cut rhs */
 		cutrhs = aggrhs[s];
-		if (fabs(cutrhs) < 1e-10)
-			cutrhs = 0.0;
-		if (model_->isDro() && fabs(cutrhs) > 1.e-10)
+		if (model_->isDro() && fabs(cutrhs) > 1.0e-8)
 		{
 #ifdef DSP_DEBUG
 			DSPdebugMessage("cutrhs[%d] = %e\n", s, cutrhs);
 #endif
-			printf("Master problem may experience numerical difficulty in cut generation: (fabs(%e) >> 0.0)\n", cutrhs);
-			cutrhs = 0.0;
+			message_->print(2, "Master problem may experience numerical difficulty in cut generation: (fabs(%e) > 1.0e-8)\n", cutrhs);
 		}
+		cutrhs = 0.0;
 		// assert(model_->isDro() == false || cutrhs == 0.0);
 
 		OsiRowCut * rc = new OsiRowCut;
