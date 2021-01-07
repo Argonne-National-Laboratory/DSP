@@ -106,20 +106,23 @@ SCIPconshdlrBenders* BdMWSerial::constraintHandler()
 		add_integer_benders = true;
 
 	/** Benders constraint handler */
-	if (add_integer_benders)
+	if (add_integer_benders){
 		// Distributionally robust integer benders is implemented in SCIPconshdlrIntBenders.
 		conshdlr = new SCIPconshdlrIntBenders(si->getScip(), "Benders", priority, sepa_solver);
+	}
 	else
 	{
 		if (model_->isDro())
 			conshdlr = new SCIPconshdlrDrBenders(si->getScip(), "Benders", priority, sepa_solver);
-		else
+		else{
+			si->getScip();
 			conshdlr = new SCIPconshdlrBenders(si->getScip(), "Benders", priority);
+		}
 	}
 	conshdlr->setDecModel(model_);
 	conshdlr->setBdSub(bdsub);
 	conshdlr->setOriginalVariables(si->getNumCols(), si->getScipVars(), naux);
-
+	DSPdebugMessage("in constraintHandler\n");
 	END_TRY_CATCH_RTN(;, NULL)
 
 	return conshdlr;
