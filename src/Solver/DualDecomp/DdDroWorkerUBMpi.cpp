@@ -47,10 +47,12 @@ DSP_RTN_CODE DdDroWorkerUBMpi::init()
 		for (int s = 0; s < par_->getIntPtrParamSize("ARR_PROC_IDX"); ++s)
 		{
 			const double *obj_reco = osi_[s]->si_->getObjCoefficients();
-			for (int j = 0; j < tss->getNumCols(1); ++j)
-			{
-				osi_[s]->si_->setObjCoeff(j, obj_reco[j] / tss->getProbability()[par_->getIntPtrParam("ARR_PROC_IDX")[s]]);
-			}
+			if (tss->getProbability()[par_->getIntPtrParam("ARR_PROC_IDX")[s]] > 0)
+				for (int j = 0; j < tss->getNumCols(1); ++j)
+					osi_[s]->si_->setObjCoeff(j, obj_reco[j] / tss->getProbability()[par_->getIntPtrParam("ARR_PROC_IDX")[s]]);
+			else
+				for (int j = 0; j < tss->getNumCols(1); ++j)
+					osi_[s]->si_->setObjCoeff(j, 0.0);
 		}
 	}
 
