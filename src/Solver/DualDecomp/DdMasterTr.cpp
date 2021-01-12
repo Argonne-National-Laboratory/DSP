@@ -1139,7 +1139,7 @@ DSP_RTN_CODE DdMasterTr::terminationTest()
 #endif
 
 	double absgap = getAbsApproxGap();
-	double relgap = getRelApproxGap();
+	double relgap = getRelDualityGap();
 	DSPdebugMessage("absgap %+e relgap %+e\n", absgap, relgap);
 	double gaptol = par_->getDblParam("DD/STOP_TOL");
 	if (getSiPtr()->getNumIntegers() > 0)
