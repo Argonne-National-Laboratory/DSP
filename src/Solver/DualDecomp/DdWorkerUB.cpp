@@ -133,9 +133,11 @@ DSP_RTN_CODE DdWorkerUB::createProblem()
 		if (!osi_[s])
 			throw CoinError("Failed to create DspOsi", "createProblem", "DdWorkerUB");
 
-		/** no display */
-		osi_[s]->setLogLevel(0);
-		DSPdebug(osi_[s]->setLogLevel(5));
+		/** set number of cores */
+		osi_[s]->setNumCores(par_->getIntParam("DD/SUB/THREADS"));
+
+		/** set display */
+		osi_[s]->setLogLevel(par_->getIntParam("DD/SUB/UB/SOLVER/LOG_LEVEL"));
 
 		/** load problem */
 		osi_[s]->si_->loadProblem(*mat_reco, clbd_reco, cubd_reco, obj_reco, rlbd_org_[s], rubd_org_[s]);
