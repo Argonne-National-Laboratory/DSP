@@ -118,7 +118,8 @@ public:
 	{
 		if (err != 0) {
 			char s[100];
-			sprintf(s, "%s returned error %d", cpxfuncname.c_str(), err);
+			int substat = CPXgetsubstat(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
+			sprintf(s, "%s returned error %d, substat %d", cpxfuncname.c_str(), err, substat);
 			throw CoinError(s, dsposimethod.c_str(), "DspOsiCpx");
 		}
 	}
