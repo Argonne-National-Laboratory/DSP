@@ -22,6 +22,7 @@ DdWorkerUB::DdWorkerUB(
 	DspMessage *message /**< message pointer */) : DdWorker(model, par, message),
 												   bestub_(COIN_DBL_MAX),
 												   mat_mp_(NULL),
+												   obj_org_(NULL),
 												   rlbd_org_(NULL),
 												   rubd_org_(NULL),
 												   osi_(NULL),
@@ -38,14 +39,17 @@ ub_(rhs.ub_) {
 	int nsubprobs = par_->getIntPtrParamSize("ARR_PROC_IDX");
 
 	// allocate memory
-	mat_mp_    = new CoinPackedMatrix * [nsubprobs];
-	rlbd_org_  = new double * [nsubprobs];
-	rubd_org_  = new double * [nsubprobs];
-	osi_        = new DspOsi * [nsubprobs];
-	for (int s = 0; s < nsubprobs; ++s) {
+	mat_mp_ = new CoinPackedMatrix *[nsubprobs];
+	obj_org_ = new double *[nsubprobs];
+	rlbd_org_ = new double *[nsubprobs];
+	rubd_org_ = new double *[nsubprobs];
+	osi_ = new DspOsi *[nsubprobs];
+	for (int s = 0; s < nsubprobs; ++s)
+	{
 		mat_mp_[s] = new CoinPackedMatrix(*(rhs.mat_mp_[s]));
-		rlbd_org_[s] = new double [osi_[s]->si_->getNumRows()];
-		rubd_org_[s] = new double [osi_[s]->si_->getNumRows()];
+		obj_org_[s] = new double[osi_[s]->si_->getNumCols()];
+		rlbd_org_[s] = new double[osi_[s]->si_->getNumRows()];
+		rubd_org_[s] = new double[osi_[s]->si_->getNumRows()];
 		osi_[s] = rhs.osi_[s]->clone();
 		CoinCopyN(rhs.rlbd_org_[s], osi_[s]->si_->getNumRows(), rlbd_org_[s]);
 		CoinCopyN(rhs.rubd_org_[s], osi_[s]->si_->getNumRows(), rubd_org_[s]);
@@ -54,6 +58,7 @@ ub_(rhs.ub_) {
 
 DdWorkerUB::~DdWorkerUB() {
 	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), mat_mp_);
+	FREE_2D_ARRAY_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), obj_org_);
 	FREE_2D_ARRAY_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), rlbd_org_);
 	FREE_2D_ARRAY_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), rubd_org_);
 	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), osi_);
@@ -103,24 +108,36 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 	}
 
 	/** allocate memory */
-	mat_mp_    = new CoinPackedMatrix * [nsubprobs];
-	rlbd_org_  = new double * [nsubprobs];
-	rubd_org_  = new double * [nsubprobs];
-	osi_       = new DspOsi * [nsubprobs];
+	mat_mp_ = new CoinPackedMatrix *[nsubprobs];
+	obj_org_ = new double *[nsubprobs];
+	rlbd_org_ = new double *[nsubprobs];
+	rubd_org_ = new double *[nsubprobs];
+	osi_ = new DspOsi *[nsubprobs];
 	primsols_.resize(nsubprobs);
 
-	for (int s = 0; s < nsubprobs; ++s) {
+	for (int s = 0; s < nsubprobs; ++s)
+	{
+		// scenario index
+		int sind = par_->getIntPtrParam("ARR_PROC_IDX")[s];
 
 		/** copy recourse problem */
-		DSP_RTN_CHECK_THROW(model_->copyRecoProb(par_->getIntPtrParam("ARR_PROC_IDX")[s],
-				mat_mp_[s], mat_reco, clbd_reco, cubd_reco, ctype_reco,
-				obj_reco, rlbd_org_[s], rubd_org_[s]));
+		DSP_RTN_CHECK_THROW(model_->copyRecoProb(sind,
+												 mat_mp_[s], mat_reco, clbd_reco, cubd_reco, ctype_reco,
+												 obj_reco, rlbd_org_[s], rubd_org_[s], false));
+
+		// store the original objective coefficient
+		obj_org_[s] = new double[mat_reco->getNumCols()];
+		CoinCopyN(obj_reco, mat_reco->getNumCols(), obj_org_[s]);
 
 		for (int j = 0; j < mat_reco->getNumCols(); ++j)
-			if (ctype_reco[j] != 'C') {
+		{
+			obj_reco[j] *= tss->getProbability()[sind];
+			if (ctype_reco[j] != 'C')
+			{
 				has_integer = true;
 				break;
 			}
+		}
 
 		/** creating solver interface */
 		osi_[s] = createDspOsi();
