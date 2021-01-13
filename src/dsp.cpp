@@ -194,7 +194,7 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 	{
 		if (string(algotype) != "de" && string(algotype) != "dd" && string(algotype) != "drdd")
 		{
-			cout << "Current version only support deterministic or dual decomposition solvers for quadratic constrained problem" << endl;
+			cout << "Quadratic constrained problem is not supported for " << string(algotype) << "." << endl;
 			return 1;
 		}
 		if (isroot)
