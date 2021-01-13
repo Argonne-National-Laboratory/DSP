@@ -171,7 +171,7 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 		}
 		if (tss->hasQuadraticRowScenario()) 
 		{
-			QuadRowData * qc_row_data = tss->getQuaraticsRowScenario(s);
+			QuadRowData *qc_row_data = tss->getQuaraticsRowScenario(sind);
 
 #ifdef DSP_DEBUG
 			/* print qc_row_data to test whether it is successfully received or not */
