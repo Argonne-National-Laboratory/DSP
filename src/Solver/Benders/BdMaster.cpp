@@ -5,10 +5,11 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+#define DSP_DEBUG
 
 #include "Model/TssModel.h"
 #include "Solver/Benders/BdMaster.h"
+#include "SolverInterface/DspOsi.h"
 #include "SolverInterface/DspOsiScip.h"
 #include "SolverInterface/DspOsiClp.h"
 #include "SolverInterface/DspOsiCpx.h"
@@ -137,6 +138,22 @@ DSP_RTN_CODE BdMaster::setSolutions(Solutions initsols)
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
+}
+
+DSP_RTN_CODE BdMaster::setBendersCallback(int (*benderscallback)(void*, int)){
+	BGN_TRY_CATCH
+	DspOsi *osi=NULL;
+	OsiSolverInterface *si=NULL;
+	osi=dynamic_cast<DspOsi*>(osi_);
+
+	osi->setCallbackFunc(bendersCallback());
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
+}
+
+DSP_RTN_CODE BdMaster::bendersCallback(void *cb_data, int where){
+	
 }
 
 DSP_RTN_CODE BdMaster::setConshdlr(SCIPconshdlrBenders* conshdlr)
@@ -275,9 +292,10 @@ DSP_RTN_CODE BdMaster::createProblem() {
 	assert(osi_==NULL);
 
 	/** choose solver */
-	osi_ = new DspOsiScip();
-	if (!osi_) throw CoinError("Failed to create DspOsiScip", "createProblem", "DdMaster");
-	//osi_ = createDspOsi(par_->getIntParam("BD/MASTER/SOLVER"));
+	// osi_ = new DspOsiScip();
+	// if (!osi_) throw CoinError("Failed to create DspOsiScip", "createProblem", "DdMaster");
+	osi_ = createDspOsi(par_->getIntParam("BD/MASTER/SOLVER"));
+	if (!osi_) throw CoinError("Failed to create DspOsi", "createProblem", "DdMaster");
 	
 	osi_->setLogLevel(CoinMin(par_->getIntParam("LOG_LEVEL"), 5));
 	osi_->setNodeInfoFreq(par_->getIntParam("DISPLAY_FREQ"));

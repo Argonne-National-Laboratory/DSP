@@ -54,6 +54,7 @@ public:
 	/** set objective bounds */
 	virtual DSP_RTN_CODE setObjectiveBounds(double upper, double lower);
 
+	virtual DSP_RTN_CODE setBendersCallback();
 	/** set constraint handler for Benders cut generation */
 	virtual DSP_RTN_CODE setConshdlr(SCIPconshdlrBenders * conshdlr);
 
