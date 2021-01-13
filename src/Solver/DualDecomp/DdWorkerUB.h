@@ -66,6 +66,7 @@ public:
 
 protected:
 	CoinPackedMatrix ** mat_mp_;
+	double **obj_org_;	/**< original objective coefficients for each subproblem */
 	double** rlbd_org_; /**< original row lower bounds for each subproblem */
 	double** rubd_org_; /**< original row upper bounds for each subproblem */
 

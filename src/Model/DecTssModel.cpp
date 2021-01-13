@@ -45,19 +45,20 @@ bool DecTssModel::isDistributed()
 }
 
 DSP_RTN_CODE DecTssModel::decompose(
-	int size,                    /**< [in] size of subproblem subset */
-	int * scen,                  /**< [in] subset of scenarios */
-	int naux,                    /**< [in] number of auxiliary columns */
-	double * clbd_aux,           /**< [in] lower bounds for auxiliary columns */
-	double * cubd_aux,           /**< [in] upper bounds for auxiliary columns */
-	double * obj_aux,            /**< [in] objective coefficients for auxiliary columns */
-	CoinPackedMatrix *& mat,     /**< [out] constraint matrix */
-	double *& clbd,              /**< [out] column lower bounds */
-	double *& cubd,              /**< [out] column upper bounds */
-	char   *& ctype,             /**< [out] column types */
-	double *& obj,               /**< [out] objective coefficients */
-	double *& rlbd,              /**< [out] row lower bounds */
-	double *& rubd               /**< [out] row upper bounds */)
+	int size,				/**< [in] size of subproblem subset */
+	int *scen,				/**< [in] subset of scenarios */
+	int naux,				/**< [in] number of auxiliary columns */
+	double *clbd_aux,		/**< [in] lower bounds for auxiliary columns */
+	double *cubd_aux,		/**< [in] upper bounds for auxiliary columns */
+	double *obj_aux,		/**< [in] objective coefficients for auxiliary columns */
+	CoinPackedMatrix *&mat, /**< [out] constraint matrix */
+	double *&clbd,			/**< [out] column lower bounds */
+	double *&cubd,			/**< [out] column upper bounds */
+	char *&ctype,			/**< [out] column types */
+	double *&obj,			/**< [out] objective coefficients */
+	double *&rlbd,			/**< [out] row lower bounds */
+	double *&rubd,			/**< [out] row upper bounds */
+	bool adjust_probability)
 {
 	assert(size >= 0);
 	assert(nrows_);
@@ -242,7 +243,7 @@ DSP_RTN_CODE DecTssModel::decompose(
 		/** objective coefficients */
 		DSPdebugMessage("combining objective coefficients\n");
 		copyCoreObjective(obj + ncols_[0] + s * ncols_[1], 1);
-		combineRandObjective(obj + ncols_[0] + s * ncols_[1], 1, sind);
+		combineRandObjective(obj + ncols_[0] + s * ncols_[1], 1, sind, adjust_probability);
 
 		/** row lower bounds */
 		DSPdebugMessage("combining row lower bounds\n");
