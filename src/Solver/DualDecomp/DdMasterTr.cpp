@@ -181,7 +181,7 @@ DSP_RTN_CODE DdMasterTr::solve()
 			message_->print(3, "Master solution time %.2f sec.\n", CoinGetTimeOfDay() - walltime);
 
 			resolve = false;
-			// DSPdebug(getSiPtr()->writeMps("master"));
+			DSPdebug(osi_->writeProb("master.lp", NULL));
 
 			break;
 		}
