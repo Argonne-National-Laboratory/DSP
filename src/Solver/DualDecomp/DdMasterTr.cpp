@@ -1138,17 +1138,20 @@ DSP_RTN_CODE DdMasterTr::terminationTest()
 		return status_;
 #endif
 
-	double absgap = getAbsApproxGap();
-	double relgap = getRelDualityGap();
-	DSPdebugMessage("absgap %+e relgap %+e\n", absgap, relgap);
+	double agap = getRelApproxGap();
+	double dgap = getRelDualityGap();
+	DSPdebugMessage("absgap %+e relgap %+e\n", agap, dgap);
 	double gaptol = par_->getDblParam("DD/STOP_TOL");
 	if (getSiPtr()->getNumIntegers() > 0)
 		gaptol += par_->getDblParam("DD/SUB/GAPTOL");
-	if (relgap <= gaptol) {
+	if (CoinMin(agap, dgap) <= gaptol)
+	{
 		signal = DSP_STAT_MW_STOP;
 		status_ = DSP_STAT_OPTIMAL;
-		message_->print(1, "Tr  STOP with gap tolerance %+e (%.2f%%).\n", absgap, relgap*100);
-	} else if (nstalls_ >= 3 && getSiPtr()->getObjValue() < bestdualobj_) {
+		message_->print(1, "Tr  STOP with gap tolerance %.2f%%.\n", CoinMin(agap, dgap) * 100);
+	}
+	else if (nstalls_ >= 3 && getSiPtr()->getObjValue() < bestdualobj_)
+	{
 		signal = DSP_STAT_MW_STOP;
 		status_ = DSP_STAT_STOPPED_NUMERICS;
 		message_->print(1, "Tr  STOP with stalling (%d).\n", nstalls_);
