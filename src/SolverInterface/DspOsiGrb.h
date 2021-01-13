@@ -125,8 +125,13 @@ public:
 	/** write problem file */
 	virtual void writeProb(char const * filename_str, char const * filetype_str)
 	{
-		std::string filename = std::string(filename_str) + "." + std::string(filetype_str);
-		GUROBI_CALL("writeProb", GRBwrite(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), filename.c_str()));
+		try{
+			std::string filename = std::string(filename_str) + "." + std::string(filetype_str);
+			GUROBI_CALL("writeProb", GRBwrite(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), const_cast< char * >(filename.c_str())));
+		}
+		catch(const CoinError& e){
+        	e.print();
+		}
 	}
 
 	/** solve problem */
