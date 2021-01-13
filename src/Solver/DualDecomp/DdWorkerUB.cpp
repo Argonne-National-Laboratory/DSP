@@ -153,12 +153,6 @@ DSP_RTN_CODE DdWorkerUB::createProblem()
 		//printf("number of elements in qobj_reco_coupling = %d\n", qobj_reco_coupling_[s]->getNumElements());
 		//PRINT_ARRAY_MSG(qobj_reco_ncoupling->getNumElements(), qobj_reco_ncoupling->getElements(), "elements in qobj_reco_ncoupling");
 
-		if (model_->isDro()) {
-			for (int j = 0; j < tss->getNumCols(1); ++j) {
-				obj_reco[j] /= tss->getProbability()[par_->getIntPtrParam("ARR_PROC_IDX")[s]];
-			}
-		}
-
 		for (int j = 0; j < mat_reco->getNumCols(); ++j)
 			if (ctype_reco[j] != 'C')
 			{

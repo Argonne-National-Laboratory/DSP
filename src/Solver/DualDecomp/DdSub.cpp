@@ -313,6 +313,7 @@ DSP_RTN_CODE DdSub::createProblem() {
 
 			qobj=new CoinPackedMatrix(false, &rowindice[0], colindice, &adjelements[0], numqobjelements);
 			//PRINT_ARRAY_MSG(qobj->getNumElements(), qobj->getElements(), "in subproblem qobj coef");
+		}
 
 		if (probability > 0) {
 			for (int j = 0; j < tssModel->getNumCols(1); ++j)
