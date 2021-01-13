@@ -29,32 +29,9 @@ DSP_RTN_CODE DdDroWorkerUBMpi::init()
 	 * This problem is solved by the root process only.
 	*/
 	if (comm_rank_ == 0)
-	{
 		DSP_RTN_CHECK_THROW(createProblem());
-	}
-	else
-	{
-		TssModel *tss = NULL;
-		try
-		{
-			tss = dynamic_cast<TssModel *>(model_);
-		}
-		catch (const std::bad_cast &e)
-		{
-			printf("This is not a stochastic programming problem.\n");
-			return DSP_RTN_ERR;
-		}
-		for (int s = 0; s < par_->getIntPtrParamSize("ARR_PROC_IDX"); ++s)
-		{
-			const double *obj_reco = osi_[s]->si_->getObjCoefficients();
-			if (tss->getProbability()[par_->getIntPtrParam("ARR_PROC_IDX")[s]] > 0)
-				for (int j = 0; j < tss->getNumCols(1); ++j)
-					osi_[s]->si_->setObjCoeff(j, obj_reco[j] / tss->getProbability()[par_->getIntPtrParam("ARR_PROC_IDX")[s]]);
-			else
-				for (int j = 0; j < tss->getNumCols(1); ++j)
-					osi_[s]->si_->setObjCoeff(j, 0.0);
-		}
-	}
+
+	DSP_RTN_CHECK_THROW(setObjective());
 
 	END_TRY_CATCH_RTN(;, DSP_RTN_ERR)
 	return DSP_RTN_OK;
