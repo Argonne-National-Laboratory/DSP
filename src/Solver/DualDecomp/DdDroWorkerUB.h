@@ -46,6 +46,10 @@ public:
 	virtual DSP_RTN_CODE createProblem();
 
 protected:
+
+	/** Set the objective function for each subproblem */
+	virtual DSP_RTN_CODE setObjective();
+	
 	DspOsi *osi_dro_; /**< solver interface for DRO upper bound */
 };
 

@@ -32,6 +32,7 @@ DSP_RTN_CODE DdDroWorkerUB::init()
 
 	/** Create the DRO upper bounding problem. */
 	DSP_RTN_CHECK_THROW(createProblem());
+	DSP_RTN_CHECK_THROW(setObjective());
 
 	END_TRY_CATCH_RTN(;, DSP_RTN_ERR)
 	return DSP_RTN_OK;
@@ -76,26 +77,19 @@ DSP_RTN_CODE DdDroWorkerUB::createProblem()
 	}
 
 	/** create DRO upper bounding problem */
-	int nsubprobs = par_->getIntPtrParamSize("ARR_PROC_IDX");
 	int ncols_dro = 1 + model_->getNumReferences();
 	int nrows_dro = model_->getNumReferences() * tss->getNumScenarios();
-	int nzcnt_dro = nrows_dro * 2;
-
-	/** The second-stage objective coefficients of each subproblem 
-	 * need re-sacled by the original probability. 
-	 */
-	for (int s = 0; s < nsubprobs; ++s)
+	int nzcnt_dro = 0;
+	for (int k = 0; k < tss->getNumScenarios(); ++k)
 	{
-		const double *obj_reco = osi_[s]->si_->getObjCoefficients();
-		if (tss->getProbability()[par_->getIntPtrParam("ARR_PROC_IDX")[s]] > 0)
+		for (int s = 0; s < model_->getNumReferences(); ++s)
 		{
-			for (int j = 0; j < tss->getNumCols(1); ++j)
-				osi_[s]->si_->setObjCoeff(j, obj_reco[j] / tss->getProbability()[par_->getIntPtrParam("ARR_PROC_IDX")[s]]);
-		}
-		else
-		{
-			for (int j = 0; j < tss->getNumCols(1); ++j)
-				osi_[s]->si_->setObjCoeff(j, 0.0);
+			// alpha
+			if (model_->getWassersteinDist(s, k) > 0)
+				nzcnt_dro++;
+
+			// beta_s
+			nzcnt_dro++;
 		}
 	}
 
@@ -135,9 +129,12 @@ DSP_RTN_CODE DdDroWorkerUB::createProblem()
 			bgn_dro[rnum] = pos_dro;
 
 			// alpha
-			ind_dro[pos_dro] = 0;
-			elem_dro[pos_dro] = model_->getWassersteinDist(s, k);
-			pos_dro++;
+			if (model_->getWassersteinDist(s, k) > 0)
+			{
+				ind_dro[pos_dro] = 0;
+				elem_dro[pos_dro] = model_->getWassersteinDist(s, k);
+				pos_dro++;
+			}
 
 			// beta_s
 			ind_dro[pos_dro] = 1 + s;
@@ -179,6 +176,34 @@ DSP_RTN_CODE DdDroWorkerUB::createProblem()
 #undef FREE_MEMORY
 }
 
+DSP_RTN_CODE DdDroWorkerUB::setObjective()
+{
+	TssModel *tss = NULL;
+
+	BGN_TRY_CATCH
+
+	try
+	{
+		tss = dynamic_cast<TssModel *>(model_);
+	}
+	catch (const std::bad_cast &e)
+	{
+		printf("This is not a stochastic programming problem.\n");
+		return DSP_RTN_ERR;
+	}
+
+	/** The second-stage objective coefficients of each subproblem 
+	 * need re-sacled by the original probability. 
+	 */
+	for (int s = 0; s < par_->getIntPtrParamSize("ARR_PROC_IDX"); ++s)
+		for (int j = 0; j < tss->getNumCols(1); ++j)
+			osi_[s]->si_->setObjCoeff(j, obj_org_[s][j]);
+
+	END_TRY_CATCH_RTN(;, DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
+}
+
 DSP_RTN_CODE DdDroWorkerUB::solve()
 {
 	double cputime;
@@ -204,9 +229,6 @@ DSP_RTN_CODE DdDroWorkerUB::solve()
 					par_->getDblParam("DD/SUB/TIME_LIM")));
 
 #ifdef DSP_DEBUG
-		/* more info to log */
-		osi_[s]->setLogLevel(2);
-
 		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
 		sprintf(lpfilename, "DdDroWorkerUB_scen%d.lp", s);
 		osi_[s]->writeProb(lpfilename, NULL);
@@ -264,6 +286,12 @@ DSP_RTN_CODE DdDroWorkerUB::solve()
 			}
 		}
 		osi_dro_->solve();
+#ifdef DSP_DEBUG
+		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
+		char lpfilename[128];
+		sprintf(lpfilename, "DdDroWorkerUB.lp");
+		osi_dro_->writeProb(lpfilename, NULL);
+#endif
 
 		if (osi_dro_->si_->isProvenOptimal())
 		{
