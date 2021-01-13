@@ -116,9 +116,9 @@ DSP_RTN_CODE DdSub::solve()
 			DSPdebugMessage("fraction gap %e\n", fabs(primobj_-dualobj_) / fabs(dualobj_));
 			dualinfeas = false;
 #ifdef DSP_DEBUG
-			char submps[64];
-			sprintf(submps, "sub%d", sind_);
-			getSiPtr()->writeMps(submps);
+			char sublp[64];
+			sprintf(sublp, "sub%d.lp", sind_);
+			osi_->writeProb(sublp, NULL);
 #endif
 			break;
 		case DSP_STAT_LIM_INFEAS:
