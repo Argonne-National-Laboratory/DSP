@@ -406,6 +406,8 @@ DSP_RTN_CODE DdMWSync::runMaster()
 				CoinCopyN(master_->getLambda(), model_->getNumCouplingRows(), &master_->bestdualsol_[0]);
 		}
 
+		printIterInfo();
+
 		/** STOP with iteration limit */
 		if (itercnt_ >= master_->getParPtr()->getIntParam("DD/ITER_LIM"))
 		{
@@ -437,8 +439,6 @@ DSP_RTN_CODE DdMWSync::runMaster()
 		/** broadcast signal */
 		MPI_Bcast(&signal, 1, MPI_INT, 0, comm_);
 		if (signal == DSP_STAT_MW_STOP) break;
-		
-		printIterInfo();
 
 		/** increment iteration count */
 		itercnt_++;

@@ -126,7 +126,7 @@ public:
 	virtual void setTimeLimit(double time) {}
 
 	/** set node limit */
-	virtual void setNodeLimit(double num) {}
+	virtual void setNodeLimit(int num) {}
 
 	/** set relative MIP gap */
 	virtual void setRelMipGap(double tol) {}

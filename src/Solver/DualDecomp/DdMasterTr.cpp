@@ -181,7 +181,7 @@ DSP_RTN_CODE DdMasterTr::solve()
 			message_->print(3, "Master solution time %.2f sec.\n", CoinGetTimeOfDay() - walltime);
 
 			resolve = false;
-			// DSPdebug(getSiPtr()->writeMps("master"));
+			DSPdebug(osi_->writeProb("master.lp", NULL));
 
 			break;
 		}
@@ -841,15 +841,18 @@ int DdMasterTr::addCuts(
 
 		/** cut rhs */
 		cutrhs = aggrhs[s];
-		if (model_->isDro() && fabs(cutrhs) > 1.0e-8)
+		if (model_->isDro())
 		{
+			if (fabs(cutrhs) > 1.0e-8)
+			{
 #ifdef DSP_DEBUG
-			DSPdebugMessage("cutrhs[%d] = %e\n", s, cutrhs);
+				DSPdebugMessage("cutrhs[%d] = %e\n", s, cutrhs);
 #endif
-			message_->print(2, "Master problem may experience numerical difficulty in cut generation: (fabs(%e) > 1.0e-8)\n", cutrhs);
+				message_->print(2, "Master problem may experience numerical difficulty in cut generation: (fabs(%e) > 1.0e-8)\n", cutrhs);
+			}
+			// assert(model_->isDro() == false || cutrhs == 0.0);
+			cutrhs = 0.0;
 		}
-		cutrhs = 0.0;
-		// assert(model_->isDro() == false || cutrhs == 0.0);
 
 		OsiRowCut * rc = new OsiRowCut;
 		rc->setRow(cutvec);
