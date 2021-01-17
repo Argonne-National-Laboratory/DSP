@@ -57,11 +57,11 @@ if (NOT ${CPLEX_LIB_DIR} STREQUAL "")
 endif()
 
 if(NOT ${GUROBI_LIB_DIR} STREQUAL "")
-	find_library(GUROBILIB NAMES gurobi90 PATHS ${GUROBI_LIB_DIR})
+	find_library(GUROBILIB NAMES gurobi91 PATHS ${GUROBI_LIB_DIR})
 	if(GUROBILIB)
 		message(STATUS "Found ${GUROBILIB}")
 	else()
-		message(FATAL_ERROR "Could NOT find libgurobi90: DSP only supports version 9 or later.")
+		message(FATAL_ERROR "Could NOT find libgurobi91: DSP only supports version 9 or later.")
 	endif()
 endif()
 
