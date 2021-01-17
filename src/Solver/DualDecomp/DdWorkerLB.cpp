@@ -5,9 +5,10 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+// #define DSP_DEBUG
 
 #include "Solver/DualDecomp/DdWorkerLB.h"
+#include "Utility/DspMessage.h"
 
 DdWorkerLB::DdWorkerLB(
 		DecModel *   model,  /**< model pointer */
@@ -69,8 +70,11 @@ DSP_RTN_CODE DdWorkerLB::solve() {
 			/** set time limit */
 			subprobs_[s]->setTimeLimit(
 					CoinMin(CoinMax(0.01, time_remains_), par_->getDblParam("DD/SUB/TIME_LIM")));
+			
 			/** solve */
+			DSPdebugMessage("Start solve workerlb->subprobs_[%d]\n", s);
 			subprobs_[s]->solve();
+			DSPdebugMessage("Complete solving workerlb->subprobs_[%d]\n", s);
 
 			/** check status. there might be unexpected results. */
 			switch (subprobs_[s]->getStatus()) {

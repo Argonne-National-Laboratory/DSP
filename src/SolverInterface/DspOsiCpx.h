@@ -108,6 +108,9 @@ public:
 				linind[i], linval[i], quadrow[i], quadcol[i], quadval[i], NULL);
 			checkDspOsiError(err, "CPXaddqconstr", "addQuadraticRows");	
 		}
+		/* if QCP, then put more emphasis on numerical issues  */
+		if (isqcp_)
+			CPXsetintparam(cpx_->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, CPX_ON);
 	}
 
 	/** throw error */
