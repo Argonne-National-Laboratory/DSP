@@ -17,3 +17,4 @@ experiments/dro/outputs
 experiments/dro/*.out
 examples/dro/experiments/outputs/*
 examples/dro/experiments/*.csv
+.DS_Store
