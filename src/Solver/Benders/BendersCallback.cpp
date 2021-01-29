@@ -3,20 +3,80 @@
 #include "Model/TssModel.h"
 #include "OsiCuts.hpp"
 
+
 /** default constructor */
-BendersCallback::BendersCallback(DspOsi *osi, const char *name, int sepapriority):
+BendersCallback():
+osi_(NULL,)
 model_(NULL),
 bdsub_(NULL),
 nvars_(0),
-vars_(NULL),
 naux_(0),
 probability_(NULL){}
 
-virtual ~BendersCallback(){
+~BendersCallback::BendersCallback(){
 	/** empty*/
 }
 
-int static BendersCallback::BendersCut(){
+int static BendersCut(void *cbdata, int cbwhere){
+	//BGN_TRY_CATCH
+	double stime = CoinGetTimeOfDay();
+
+	/**< Benders cut placeholder */
+	OsiCuts cs;
+
+	/** generate Benders cuts */
+	generate_Benders(osi, &cs);
+
+	/** If found Benders cuts */
+	for (int i = 0; i < cs.sizeCuts(); ++i)
+	{
+		/** get cut pointer */
+		OsiRowCut * rc = cs.rowCutPtr(i);
+		if (!rc) continue;
+
+		const CoinPackedVector cutrow = rc->row();
+		if (cutrow.getNumElements() == 0) continue;
+
+#ifdef DSP_DEBUG
+		/** is optimality cut? */
+		bool isOptimalityCut = false;
+		DSPdebugMessage("naux_ %d nvars_ %d\n", naux_, nvars_);
+		for (int j = nvars_ - naux_; j < nvars_; ++j)
+		{
+			if (cutrow.getMaxIndex() == j)
+			{
+				DSPdebugMessage("cutrow.getMaxIndex() = %d\n", j);
+				isOptimalityCut = true;
+				break;
+			}
+		}
+#endif
+
+	
+#ifdef DSP_DEBUG
+			/*DSPdebugMessage("found Benders (%s) cut: act=%f, lhs=%f, norm=%f, eff=%f, min=%f, max=%f (range=%f)\n",
+				isOptimalityCut ? "opti" : "feas",
+				SCIPgetRowLPActivity(scip, row), SCIProwGetLhs(row), SCIProwGetNorm(row),
+				SCIPgetCutEfficacy(scip, sol, row),
+				SCIPgetRowMinCoef(scip, row), SCIPgetRowMaxCoef(scip, row),
+				SCIPgetRowMaxCoef(scip, row)/SCIPgetRowMinCoef(scip, row));*/
+			DSPdebug(rc->print());
+#endif
+
+			if (rc->effectiveness()>0.0)
+			{
+				/** add cut */
+				//if (cbwhere==CB_MIPSOL):
+					osi->CallbackLazycut(cbdata, rc);
+			}
+	}
+
+	return DSP_RTN_OK;
+}
+
+DSP_RTN_CODE BendersCallback::addBenderscut(DspOsi *osi){
+
+	osi->setCallbackFunc(Benderscut);
 
 }
 
@@ -36,13 +96,13 @@ void BendersCallback::setBdSub(BdSub * bdsub) {
 
 DSP_RTN_CODE BendersCallback::generate_Benders(DspOsi * osi, OsiCuts *cs){
 
-	BGN_TRY_CATCH
+	//BGN_TRY_CATCH
 
-	double *val;
-	val=new double[nvars_];
+	double *vals;
+	vals=new double[nvars_];
 
 	/** get current solution */
-	osi->cbget(CB_MIPSOL, CB_MIPSOL_SOL, &val);
+	osi->cbget(CB_MIPSOL, CB_MIPSOL_SOL, &vals);
 
 	/** generate Benders cuts */
 	generateCuts(nvars_, val, cs);
@@ -71,7 +131,7 @@ DSP_RTN_CODE BendersCallback::generate_Benders(DspOsi * osi, OsiCuts *cs){
 DSP_RTN_CODE BendersCallback::sepaBenders(
 	DspOsi *osi)
 {
-	BGN_TRY_CATCH
+	//BGN_TRY_CATCH
 	double stime = CoinGetTimeOfDay();
 
 	/**< Benders cut placeholder */
@@ -119,7 +179,7 @@ DSP_RTN_CODE BendersCallback::sepaBenders(
 			if (rc->effectiveness()>0.0))
 			{
 				/** add cut */
-				osi->CallbackLazycut(cbdata, rc);
+				osi->CallbackLazyCut(cbdata, rc);
 			}
 	}
 
@@ -133,15 +193,10 @@ DSP_RTN_CODE BendersCallback::sepaBenders(
 
  DSP_RTN_CODE BendersCallback::setOriginalVariables(
 			int nvars,        /**< number of original variables, including auxiliary variables */
-			double   * vars, /**< original variables, including auxiliary variables */
 			int         naux  /**< number of auxiliary variables */)
 {
-	BGN_TRY_CATCH
-	FREE_ARRAY_PTR(vars_);
+	//BGN_TRY_CATCH
 	nvars_ = nvars;
-	vars_ = new double[nvars_];
-	for (int j = 0; j < nvars_; ++j)
-		vars_[j] = vars[j];
 	naux_ = naux;
 
 	return DSP_RTN_OK;
@@ -294,7 +349,7 @@ void BendersCallback::aggregateCuts(
 		}
 	}
 
-	END_TRY_CATCH(FREE_MEMORY)
+	//END_TRY_CATCH(FREE_MEMORY)
 
 	FREE_MEMORY
 

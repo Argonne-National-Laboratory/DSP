@@ -11,6 +11,7 @@
 /** DSP */
 #include "Solver/DecSolver.h"
 #include "Solver/Benders/SCIPconshdlrBenders.h"
+#include "Solver/Benders/BendersCallback.h"
 #include "Solver/Benders/BdWorker.h"
 #include "SolverInterface/DspOsi.h"
 
@@ -54,7 +55,9 @@ public:
 	/** set objective bounds */
 	virtual DSP_RTN_CODE setObjectiveBounds(double upper, double lower);
 
-	virtual DSP_RTN_CODE setBendersCallback();
+	/** set benders callback function */
+	virtual DSP_RTN_CODE setBendersCallback(BendersCallback * BDfunction);
+
 	/** set constraint handler for Benders cut generation */
 	virtual DSP_RTN_CODE setConshdlr(SCIPconshdlrBenders * conshdlr);
 

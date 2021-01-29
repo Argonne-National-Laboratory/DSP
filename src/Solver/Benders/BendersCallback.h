@@ -1,3 +1,6 @@
+#ifndef BENDERSCALLBACK_H_
+#define BENDERSCALLBACK_H_
+
 #include "Model/DecModel.h"
 #include "Solver/Benders/BdSub.h"
 #include "OsiCuts.hpp"
@@ -5,7 +8,11 @@
 #include "SolverInterface/DspOsiGrb.h"
 #include "SolverInterface/DspOsiCpx.h"
 
-class BendersCallback:{
+struct cbdata{
+	/** empty for now */
+};
+
+class BendersCallback{
     public: 
 		/** default constructor */
 		BendersCallback(DspOsi *osi, const char *name, int sepapriority);
@@ -13,14 +20,18 @@ class BendersCallback:{
 		/** default constructor */
 		virtual ~BendersCallback();
 
+		/** set model pointer */
+		virtual void setDecModel(DecModel * model) {model_ = model;}
+
         virtual void setBdSub(BdSub * bdsub);
 
-		virtual int static Benderscut();
+		int static BendersCut(void *cbdata, int cbwhere);
 
 		virtual DSP_RTN_CODE setOriginalVariables(
 			int nvars,        /**< number of original variables, including auxiliary variables */
-			double   ** vars, /**< original variables, including auxiliary variables */
 			int         naux  /**< number of auxiliary variables */);
+
+		virtual DSP_RTN_CODE addBenderscut(DspOsi *osi);
         
     protected:
 
@@ -38,11 +49,12 @@ class BendersCallback:{
 			OsiCuts * cuts    /**< [out] cuts generated */);
 	
 	protected:
-
+		DspOsi * osi_;					/** pointer to solver */
 		DecModel *  model_;            /**< DecModel object */
 		BdSub *     bdsub_;            /**< pointer to cut generator */
 		int         nvars_;            /**< number of original variables */
-		double *	vars_;             /**< pointer array to original variables */
 		int         naux_;             /**< number of auxiliary variables */
 		double*     probability_;      /**< array of probability */
-}
+};
+
+#endif /** BENDERSCALLBACK_H_ */

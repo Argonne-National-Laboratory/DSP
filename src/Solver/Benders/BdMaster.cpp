@@ -82,7 +82,7 @@ DSP_RTN_CODE BdMaster::solve() {
 
 	BGN_TRY_CATCH
 
-	DSPdebugMessage("Start solving...\n");
+	DSPdebugMessage("Start solving master...\n");
 
 	/** set time limit */
 	osi_->setTimeLimit(CoinMax(0.01, CoinMin(1.0e+20,time_remains_)));
@@ -140,20 +140,19 @@ DSP_RTN_CODE BdMaster::setSolutions(Solutions initsols)
 	return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE BdMaster::setBendersCallback(int (*benderscallback)(void*, int)){
+DSP_RTN_CODE BdMaster::setBendersCallback(BendersCallback *BDcb){
+
 	BGN_TRY_CATCH
+	
 	DspOsi *osi=NULL;
-	OsiSolverInterface *si=NULL;
+	//OsiSolverInterface *si=NULL;
 	osi=dynamic_cast<DspOsi*>(osi_);
 
-	osi->setCallbackFunc(bendersCallback());
+	BDcb->addBenderscut(osi);
+
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
-}
-
-DSP_RTN_CODE BdMaster::bendersCallback(void *cb_data, int where){
-	
 }
 
 DSP_RTN_CODE BdMaster::setConshdlr(SCIPconshdlrBenders* conshdlr)

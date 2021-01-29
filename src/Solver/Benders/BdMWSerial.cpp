@@ -62,6 +62,7 @@ DSP_RTN_CODE BdMWSerial::run()
 		master_->setConshdlr(constraintHandler());
 	}
 	else if (par_->getIntParam("BD/MASTER/SOLVER")==OsiGrb){
+		DSPdebugMessage("set Callback function for Grb\n");
 		master_->setBendersCallback(BendersCallbackFunc());
 	}
 	
@@ -132,16 +133,16 @@ SCIPconshdlrBenders* BdMWSerial::constraintHandler()
 
 	END_TRY_CATCH_RTN(;, NULL)
 
-	return conshdlr;
+	return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE BdMWSerial::BendersCallbackFunc(){
+BendersCallback* BdMWSerial::BendersCallbackFunc(){
 
-	BGN_TRY_CATCH
+	//BGN_TRY_CATCH
 
 	BendersCallback * Bdcb = NULL;
 
-	BGN_TRY_CATCH
+	//BGN_TRY_CATCH
 
 	int naux = par_->getIntParam("BD/NUM_CUTS_PER_ITER");
 	int priority = par_->getIntParam("BD/CUT_PRIORITY");
@@ -173,5 +174,5 @@ DSP_RTN_CODE BdMWSerial::BendersCallbackFunc(){
 	Bdcb->setBdSub(bdsub);
 	Bdcb->setOriginalVariables(osi->si_->getNumCols(), naux);
 
-	return DSP_RTN_OK
+	return DSP_RTN_OK;
 }
