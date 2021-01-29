@@ -54,12 +54,13 @@ enum DSP_CB_WHERE{
 	CB_MIPSOL,
 	CB_MIPNODE,
 	CB_MESSAGE
-}
+};
 
 enum DSP_CB_WHAT{
+	CB_MIPNODE_STATUS,
 	CB_MIPSOL_SOL,
 	CB_MIPSOL_OBJ,
-}
+};
 /**
  * This class create, set and get parameters.
  */
