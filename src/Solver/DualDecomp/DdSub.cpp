@@ -215,7 +215,7 @@ DSP_RTN_CODE DdSub::createProblem() {
 	//}
     DSP_RTN_CHECK_THROW(
              model_->decompose(1, augs, 1, clbd_aux, cubd_aux, obj_aux,
-                              mat, clbd, cubd, ctype, obj, qobj, rlbd, rubd));
+                              mat, clbd, cubd, ctype, obj, qobj, rlbd, rubd, false));
     DSP_RTN_CHECK_THROW(
             model_->decomposeCoupling(1, augs, cpl_mat_, cpl_cols_, cpl_ncols));
 
@@ -251,26 +251,21 @@ DSP_RTN_CODE DdSub::createProblem() {
         }
 
 		double probability = tssModel->getProbability()[sind_];
-		for (int j = 0; j < tssModel->getNumCols(0); ++j)
-			obj[j] *= probability;
-		if (probability > 1e-6)
+		if (model_->isDro())
 		{
-			for (int j = 0; j < tssModel->getNumCols(1); ++j)
-				obj_[tssModel->getNumCols(0)+j] /= probability;
+			for (int j = 0; j < tssModel->getNumCols(0); ++j)
+				obj[j] *= probability;
+			if (sind_ < tssModel->getNumReferences())
+				for (int j = 0; j < tssModel->getNumCols(1); ++j)
+					obj[tssModel->getNumCols(0) + j] *= tssModel->getReferenceProbability(sind_);
+			else
+				for (int j = 0; j < tssModel->getNumCols(1); ++j)
+					obj[tssModel->getNumCols(0) + j] *= probability;
 		}
-		if (model_->isDro()) {
-			if (sind_ < tssModel->getNumReferences()) {
-				if (probability > 0) {
-					for (int j = tssModel->getNumCols(0); j < tssModel->getNumCols(0) + tssModel->getNumCols(1); ++j)
-						obj[j] *= tssModel->getReferenceProbability(sind_) / probability;
-				} else {
-					// The second-stage coefficients should already be zeros if probability = 0.
-					// But, let's make sure that.
-					CoinZeroN(obj + tssModel->getNumCols(0), tssModel->getNumCols(1));
-				}
-			} else {
-				CoinZeroN(obj + tssModel->getNumCols(0), tssModel->getNumCols(1));
-			}
+		else
+		{
+			for (int j = 0; j < mat->getNumCols(); ++j)
+				obj[j] *= probability;
 		}
 		
 		/** adjust quadratic objectives */

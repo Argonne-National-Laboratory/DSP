@@ -107,6 +107,12 @@ DSP_RTN_CODE DdMW::init()
 	parEvalUb_    = par_->getIntParam("DD/EVAL_UB");
 	parTimeLimit_ = par_->getDblParam("DD/WALL_LIM");
 
+	if (model_->isDro())
+	{
+		parFeasCuts_ = -1;
+		parOptCuts_ = -1;
+	}
+
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;

@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-// #define DSP_DEBUG
+#define DSP_DEBUG
 #include "Model/DecTssModel.h"
 #include "Solver/DualDecomp/DdWorkerUB.h"
 #include "SolverInterface/DspOsiCpx.h"
@@ -22,6 +22,7 @@ DdWorkerUB::DdWorkerUB(
 	DspMessage *message /**< message pointer */) : DdWorker(model, par, message),
 												   bestub_(COIN_DBL_MAX),
 												   mat_mp_(NULL),
+												   obj_org_(NULL),
 												   rlbd_org_(NULL),
 												   rubd_org_(NULL),
 												   osi_(NULL),
@@ -39,12 +40,14 @@ DdWorkerUB::DdWorkerUB(const DdWorkerUB &rhs) : DdWorker(rhs),
 
 	// allocate memory
 	mat_mp_ = new CoinPackedMatrix *[nsubprobs];
+	obj_org_ = new double *[nsubprobs];
 	rlbd_org_ = new double *[nsubprobs];
 	rubd_org_ = new double *[nsubprobs];
 	osi_ = new DspOsi *[nsubprobs];
 	for (int s = 0; s < nsubprobs; ++s)
 	{
 		mat_mp_[s] = new CoinPackedMatrix(*(rhs.mat_mp_[s]));
+		obj_org_[s] = new double[osi_[s]->si_->getNumCols()];
 		rlbd_org_[s] = new double[osi_[s]->si_->getNumRows()];
 		rubd_org_[s] = new double[osi_[s]->si_->getNumRows()];
 		osi_[s] = rhs.osi_[s]->clone();
@@ -56,6 +59,7 @@ DdWorkerUB::DdWorkerUB(const DdWorkerUB &rhs) : DdWorker(rhs),
 DdWorkerUB::~DdWorkerUB()
 {
 	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), mat_mp_);
+	FREE_2D_ARRAY_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), obj_org_);
 	FREE_2D_ARRAY_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), rlbd_org_);
 	FREE_2D_ARRAY_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), rubd_org_);
 	FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), osi_);
@@ -123,6 +127,7 @@ DSP_RTN_CODE DdWorkerUB::createProblem()
 
 	/** allocate memory */
 	mat_mp_    = new CoinPackedMatrix * [nsubprobs];
+	obj_org_ = new double *[nsubprobs];
 	rlbd_org_  = new double * [nsubprobs];
 	rubd_org_  = new double * [nsubprobs];
 
@@ -133,49 +138,58 @@ DSP_RTN_CODE DdWorkerUB::createProblem()
 
 	for (int s = 0; s < nsubprobs; ++s)
 	{
+		// scenario index
+		int sind = par_->getIntPtrParam("ARR_PROC_IDX")[s];
 
 		/** copy recourse problem */
 		
 		if (tss->hasQuadraticObjCore() == false && tss->hasQuadraticObjScenario()==false){
-			DSP_RTN_CHECK_THROW(model_->copyRecoProb(par_->getIntPtrParam("ARR_PROC_IDX")[s],
+			DSP_RTN_CHECK_THROW(model_->copyRecoProb(sind,
 				mat_mp_[s], mat_reco, clbd_reco, cubd_reco, ctype_reco,
-				obj_reco, rlbd_org_[s], rubd_org_[s]));
+				obj_reco, rlbd_org_[s], rubd_org_[s], false));
 				qobj_reco_coupling_[s]=NULL;
 				qobj_reco_ncoupling_[s]=NULL;
 		}
 		else{
 				
-			DSP_RTN_CHECK_THROW(model_->copyRecoProb(par_->getIntPtrParam("ARR_PROC_IDX")[s],
+			DSP_RTN_CHECK_THROW(model_->copyRecoProb(sind,
 				mat_mp_[s], mat_reco, clbd_reco, cubd_reco, ctype_reco,
-				obj_reco, qobj_reco_coupling_[s], qobj_reco_ncoupling_[s], rlbd_org_[s], rubd_org_[s]));
+				obj_reco, qobj_reco_coupling_[s], qobj_reco_ncoupling_[s], rlbd_org_[s], rubd_org_[s], false));
 				
 		}
 		//printf("number of elements in qobj_reco_coupling = %d\n", qobj_reco_coupling_[s]->getNumElements());
 		//PRINT_ARRAY_MSG(qobj_reco_ncoupling->getNumElements(), qobj_reco_ncoupling->getElements(), "elements in qobj_reco_ncoupling");
+		
+		// store the original objective coefficient
+		obj_org_[s] = new double[mat_reco->getNumCols()];
+		CoinCopyN(obj_reco, mat_reco->getNumCols(), obj_org_[s]);
 
 		for (int j = 0; j < mat_reco->getNumCols(); ++j)
+		{
+			obj_reco[j] *= tss->getProbability()[sind];
 			if (ctype_reco[j] != 'C')
 			{
 				has_integer = true;
 				break;
 			}
+		}
 
 		/** creating solver interface */
 		osi_[s] = createDspOsi();
 		if (!osi_[s])
 			throw CoinError("Failed to create DspOsi", "createProblem", "DdWorkerUB");
+		
+		//for (int j = 0; j < mat_reco->getNumCols(); ++j) {
+		/** set number of cores */
+		osi_[s]->setNumCores(par_->getIntParam("DD/SUB/THREADS"));
 
-		/** no display */
-		osi_[s]->setLogLevel(0);
-		DSPdebug(osi_[s]->setLogLevel(5));
-		
-	    /** load problem */
-	    osi_[s]->si_->loadProblem(*mat_reco, clbd_reco, cubd_reco, obj_reco, rlbd_org_[s], rubd_org_[s]);
-		if (qobj_reco_ncoupling_[s]!=NULL){
-			osi_[s]->loadQuadraticObjective(*qobj_reco_ncoupling_[s]);
-		}
-		
-		for (int j = 0; j < mat_reco->getNumCols(); ++j) {
+		/** set display */
+		osi_[s]->setLogLevel(par_->getIntParam("DD/SUB/UB/SOLVER/LOG_LEVEL"));
+
+		/** load problem */
+		osi_[s]->si_->loadProblem(*mat_reco, clbd_reco, cubd_reco, obj_reco, rlbd_org_[s], rubd_org_[s]);
+		for (int j = 0; j < mat_reco->getNumCols(); ++j)
+		{
 			if (ctype_reco[j] != 'C')
 				osi_[s]->si_->setInteger(j);
 		}
@@ -194,7 +208,7 @@ DSP_RTN_CODE DdWorkerUB::createProblem()
 		}
 		if (tss->hasQuadraticRowScenario()) 
 		{
-			QuadRowData * qc_row_data = tss->getQuaraticsRowScenario(s);
+			QuadRowData *qc_row_data = tss->getQuaraticsRowScenario(sind);
 
 #ifdef DSP_DEBUG
 			/* print qc_row_data to test whether it is successfully received or not */

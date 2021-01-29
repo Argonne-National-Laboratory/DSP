@@ -250,6 +250,7 @@ void DspParams::initIntParams()
 
 	IntParams_.createParam("DE/SOLVER/LOG_LEVEL", 0);
 	IntParams_.createParam("DD/SUB/SOLVER/LOG_LEVEL", 0);
+	IntParams_.createParam("DD/SUB/UB/SOLVER/LOG_LEVEL", 0);
 	IntParams_.createParam("DW/MASTER/SOLVER/LOG_LEVEL", 0);
 	IntParams_.createParam("DW/SUB/SOLVER/LOG_LEVEL", 0);
 
