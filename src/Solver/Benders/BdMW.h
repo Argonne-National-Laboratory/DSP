@@ -12,6 +12,7 @@
 #include "Solver/Benders/BdMaster.h"
 #include "Solver/Benders/BdWorker.h"
 #include "Solver/Benders/SCIPconshdlrBenders.h"
+#include "Solver/Benders/BendersCallback.h"
 
 /** A base class for the Benders master-worker framework */
 class BdMW: public BaseMasterWorker {
@@ -70,6 +71,8 @@ protected:
 
 	/** constraint handler */
 	virtual SCIPconshdlrBenders * constraintHandler() {return NULL;}
+
+	virtual BendersCallback * BendersCallbackFunc() {return NULL;}
 
 public:
 
