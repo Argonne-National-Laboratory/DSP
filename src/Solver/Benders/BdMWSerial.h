@@ -35,6 +35,9 @@ protected:
 
 	/** constraint handler */
 	virtual SCIPconshdlrBenders * constraintHandler();
+
+	/** Benders Callback Function */
+	virtual BendersCallback * BendersCallbackFunc();
 };
 
 #endif /* SRC_SOLVER_BENDERS_BDMWSERIAL_H_ */
