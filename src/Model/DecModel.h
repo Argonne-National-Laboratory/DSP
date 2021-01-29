@@ -233,7 +233,8 @@ public:
 		double *& obj,               /**< [out] objective coefficients */
 		CoinPackedMatrix *& qobj,     /**< [out] quadratic objective */
 		double *& rlbd,              /**< [out] row lower bounds */
-		double *& rubd               /**< [out] row upper bounds */) = 0;
+		double *& rubd,              /**< [out] row upper bounds */
+		bool adjust_probability = true /**< [in] adjust probability (only for stochastic)*/) = 0;
 
 	/**
 	 * Produces the coupling constraints for the given subproblems. The coupling constraint matrix

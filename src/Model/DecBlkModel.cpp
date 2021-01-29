@@ -218,7 +218,8 @@ DSP_RTN_CODE DecBlkModel::decompose(
 		double *& obj,           /**< [out] objective coefficients */
 		CoinPackedMatrix *& qobj,/**< [out] quadratic objective coefficients */
 		double *& rlbd,          /**< [out] row lower bounds */
-		double *& rubd           /**< [out] row upper bounds */) {
+		double *& rubd,           /**< [out] row upper bounds */
+		bool adjust_probability /**< [in] adjust probability */) {
 
 	BGN_TRY_CATCH
 

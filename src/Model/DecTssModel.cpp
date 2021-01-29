@@ -282,7 +282,8 @@ DSP_RTN_CODE DecTssModel::decompose(
 	double *& obj,               /**< [out] objective coefficients */
 	CoinPackedMatrix *&qobj,	 /**< [out] quadratic objective coefficients */
 	double *& rlbd,              /**< [out] row lower bounds */
-	double *& rubd               /**< [out] row upper bounds */)
+	double *& rubd,               /**< [out] row upper bounds */
+	bool adjust_probability)
 {
 	assert(size >= 0);
 	assert(nrows_);

@@ -187,7 +187,8 @@ public:
 		double *& obj,               /**< [out] objective coefficients */
 		CoinPackedMatrix *&qobj,	 /**< [out] quadratic objective coefficients */
 		double *& rlbd,              /**< [out] row lower bounds */
-		double *& rubd               /**< [out] row upper bounds */);
+		double *& rubd,               /**< [out] row upper bounds */
+		bool adjust_probability = true /**< [in] adjust probability */);
 
 	DSP_RTN_CODE decomposeCoupling(
 		int size,                    /**< [in] size of subproblem subset */
