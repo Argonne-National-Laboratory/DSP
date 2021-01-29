@@ -46,6 +46,20 @@ enum DSP_DW_BRANCH {
 	BRANCH_DISJUNCTION_TEST,
 };
 
+enum DSP_CB_WHERE{
+	CB_POLLING = 0,
+	CB_PRSOLVE,
+	CB_SIMPLEX,
+	CB_MIP,
+	CB_MIPSOL,
+	CB_MIPNODE,
+	CB_MESSAGE
+}
+
+enum DSP_CB_WHAT{
+	CB_MIPSOL_SOL,
+	CB_MIPSOL_OBJ,
+}
 /**
  * This class create, set and get parameters.
  */
