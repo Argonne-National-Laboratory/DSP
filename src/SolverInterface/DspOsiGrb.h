@@ -380,6 +380,36 @@ public:
 		mydata->functionptr(cbdata, where);
 	}
 
+	/** retirve data from callback */
+	virtual void cbget(int where, int what, void *resultP){
+		int grbwhat, grbwhere;
+		switch(where) {
+        case CB_MIP:
+			grbwhere=GRB_CB_MIP;
+        case CB_MIPSOL:
+            grbwhere = GRB_CB_MIPSOL;
+		case CB_MIPNODE:
+			grbwhere = GRB_CB_MIPNODE;
+		case CB_SIMPLEX:
+			grbwhere=GRB_CB_SIMPLEX;
+		}
+
+		switch(what) {
+        case CB_MIPNODE_STATUS:
+			grbwhat=GRB_CB_MIPNODE_STATUS;
+        case CB_MIPSOL_SOL:
+            grbwhat = GRB_CB_MIPSOL_SOL;
+		case CB_MIPSOL_OBJ:
+			grbwhat = GRB_CB_MIPSOL_OBJ;
+		}
+		try{
+			GUROBI_CALL("cbget", GRBcbget(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), cbdata, grbwhere, grbwhat, (void *) &resultP));
+		}
+		catch(const CoinError& e){
+    	 	e.print();
+    	}
+
+	}
 	/** set callback functions */
 	virtual void setCallbackFunc(int (*my_callback_func)(void*, int)){
 		struct callback_usr_data *usr_data;

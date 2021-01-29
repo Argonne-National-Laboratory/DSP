@@ -141,6 +141,10 @@ public:
 	/** ==============================================================================
 	  *    Generic Callbacks
 	  * ============================================================================== */
+	/** retrive callback data */
+	virtual void cbget(int where, int what, void *resultP){
+		throw CoinError("Lazy callback constraints is not support", "CallbackLazyCut", "DspOsi");
+	}
 
 	/** wrapper for cblazy */
 	virtual void CallbackLazyCut(void *cbdata, OsiRowCut *lazyCut, int wherefrom=0, int purgeable=0){
