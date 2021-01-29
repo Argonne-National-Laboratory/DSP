@@ -382,6 +382,7 @@ public:
 
 	/** retirve data from callback */
 	virtual void cbget(int where, int what, void *resultP){
+		void *cbdata;
 		int grbwhat, grbwhere;
 		switch(where) {
         case CB_MIP:
@@ -402,12 +403,12 @@ public:
 		case CB_MIPSOL_OBJ:
 			grbwhat = GRB_CB_MIPSOL_OBJ;
 		}
-		try{
-			GUROBI_CALL("cbget", GRBcbget(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), cbdata, grbwhere, grbwhat, (void *) &resultP));
+		
+		int error=GRBcbget(cbdata, grbwhere, grbwhat, (void *) &resultP);
+		
+		if (error){
+			printf("ERROR: %s\n", GRBgeterrormsg(grb_->getEnvironmentPtr()));
 		}
-		catch(const CoinError& e){
-    	 	e.print();
-    	}
 
 	}
 	/** set callback functions */

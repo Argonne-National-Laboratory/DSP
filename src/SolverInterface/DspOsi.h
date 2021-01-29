@@ -11,6 +11,7 @@
 #include "Utility/DspRtnCodes.h"
 #include "OsiSolverInterface.hpp"
 #include "OsiCuts.hpp"
+#include "Utility/DspParams.h"
 
 struct callback_usr_data{
 	int (*functionptr)(void *, int);
