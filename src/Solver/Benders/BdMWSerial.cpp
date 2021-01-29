@@ -173,9 +173,5 @@ DSP_RTN_CODE BdMWSerial::BendersCallbackFunc(){
 	Bdcb->setBdSub(bdsub);
 	Bdcb->setOriginalVariables(osi->si_->getNumCols(), naux);
 
-	END_TRY_CATCH_RTN(;, NULL)
-
-	return conshdlr;
-
 	return DSP_RTN_OK
 }
