@@ -12,6 +12,8 @@
 #include "Solver/Benders/SCIPconshdlrDrBenders.h"
 #include "Solver/Benders/SCIPconshdlrIntBenders.h"
 #include "SolverInterface/DspOsiScip.h"
+#include "Solver/Benders/BendersCallback.h"
+#include "SolverInterface/DspOsi.h"
 
 BdMWSerial::BdMWSerial(
 		DecModel *   model,  /**< model pointer */
@@ -138,11 +140,9 @@ SCIPconshdlrBenders* BdMWSerial::constraintHandler()
 
 BendersCallback* BdMWSerial::BendersCallbackFunc(){
 
-	//BGN_TRY_CATCH
-
 	BendersCallback * Bdcb = NULL;
 
-	//BGN_TRY_CATCH
+	BGN_TRY_CATCH
 
 	int naux = par_->getIntParam("BD/NUM_CUTS_PER_ITER");
 	int priority = par_->getIntParam("BD/CUT_PRIORITY");
@@ -167,12 +167,14 @@ BendersCallback* BdMWSerial::BendersCallbackFunc(){
 	if (model_->isDro())
 		printf("To implement Benders Callback for Dro...\n");
 	else{
-		Bdcb = new BendersCallback(osi, "Benders", priority);
+		Bdcb = new BendersCallback();
 	}
 	
 	Bdcb->setDecModel(model_);
 	Bdcb->setBdSub(bdsub);
 	Bdcb->setOriginalVariables(osi->si_->getNumCols(), naux);
+
+	END_TRY_CATCH_RTN(;, NULL)
 
 	return DSP_RTN_OK;
 }

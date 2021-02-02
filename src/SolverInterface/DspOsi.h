@@ -154,10 +154,14 @@ public:
 	virtual void CallbackLazyCut(void *cbdata, int lazylen, const int *lazyind, const double *lazyval, char lazysense, double lazyrhs){
 		throw CoinError("Lazy callback constraints is not support", "CallbackLazyCut", "DspOsi");
 	}
-	virtual void setCallbackFunc(void (*my_callback_func)(void*)){
-		throw CoinError("Lazy callback constraints is not support", "setCallbackFunc", "DspOsi");
 
+	virtual void setCallbackFunc(void *cbdata){
+		throw CoinError("Lazy callback constraints is not support", "setCallbackFunc", "DspOsi");
 	}
+	/*
+	virtual void setCallbackFunc(void (*my_callback_func)(void*, int)){
+		throw CoinError("Lazy callback constraints is not support", "setCallbackFunc", "DspOsi");
+	}*/
 	//virtual void setCallbackFunc()
 	OsiSolverInterface *si_;
 	

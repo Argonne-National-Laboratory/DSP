@@ -64,14 +64,14 @@ set(DSP_SRC
     Solver/Benders/BdMWSerial.cpp
     Solver/Benders/BdSub.cpp
     Solver/Benders/BdWorker.cpp
-    Solver/Benders/SCIPconshdlrBenders.cpp
-    Solver/Benders/SCIPconshdlrDrBenders.cpp
-    Solver/Benders/SCIPconshdlrIntBenders.cpp
+    #Solver/Benders/SCIPconshdlrBenders.cpp
+    #Solver/Benders/SCIPconshdlrDrBenders.cpp
+    #Solver/Benders/SCIPconshdlrIntBenders.cpp
     Solver/DualDecomp/DdWorkerCGBd.cpp
-    Solver/DualDecomp/SCIPconshdlrBendersDd.cpp
-	SolverInterface/SCIPbranchruleLB.cpp
-    SolverInterface/OsiScipSolverInterface.cpp
-    Solver/Benders/BendersCallback.h
+    #Solver/DualDecomp/SCIPconshdlrBendersDd.cpp
+	#SolverInterface/SCIPbranchruleLB.cpp
+    #SolverInterface/OsiScipSolverInterface.cpp
+    #Solver/Benders/BendersCallback.h
     Solver/Benders/BendersCallback.cpp
 )
 set(DSP_INC_DIR 
@@ -124,13 +124,13 @@ if(SCIPLIB)
         #Solver/Benders/BdMWSerial.cpp
         #Solver/Benders/BdSub.cpp
         #Solver/Benders/BdWorker.cpp
-        #Solver/Benders/SCIPconshdlrBenders.cpp
-        #Solver/Benders/SCIPconshdlrDrBenders.cpp
-       # Solver/Benders/SCIPconshdlrIntBenders.cpp
+        Solver/Benders/SCIPconshdlrBenders.cpp
+        Solver/Benders/SCIPconshdlrDrBenders.cpp
+        Solver/Benders/SCIPconshdlrIntBenders.cpp
         #Solver/DualDecomp/DdWorkerCGBd.cpp
-        #Solver/DualDecomp/SCIPconshdlrBendersDd.cpp
-		#SolverInterface/SCIPbranchruleLB.cpp
-		#SolverInterface/OsiScipSolverInterface.cpp
+        Solver/DualDecomp/SCIPconshdlrBendersDd.cpp
+		SolverInterface/SCIPbranchruleLB.cpp
+		SolverInterface/OsiScipSolverInterface.cpp
     )
     set(DSP_INC_DIR 
         ${DSP_INC_DIR} 

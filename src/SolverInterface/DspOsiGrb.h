@@ -412,6 +412,16 @@ public:
 
 	}
 	/** set callback functions */
+
+	virtual void setCallbackFunc(void *cbdata){
+		//struct callback_usr_data *usr_data;
+		callback_usr_data *usr_data = static_cast<callback_usr_data*>(cbdata);
+		int error = GRBsetcallbackfunc(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), grb_callback_wrapper, usr_data);
+		if (error){
+			printf("ERROR: %s\n", GRBgeterrormsg(grb_->getEnvironmentPtr()));
+		}
+	}
+	/*
 	virtual void setCallbackFunc(int (*my_callback_func)(void*, int)){
 		struct callback_usr_data *usr_data;
 		usr_data->functionptr=my_callback_func;
@@ -422,6 +432,7 @@ public:
 			printf("ERROR: %s\n", GRBgeterrormsg(grb_->getEnvironmentPtr()));
 		}
 	}
+	*/
 
     OsiGrbSolverInterface* grb_;   
 };

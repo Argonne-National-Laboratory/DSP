@@ -8,14 +8,12 @@
 #include "SolverInterface/DspOsiGrb.h"
 #include "SolverInterface/DspOsiCpx.h"
 
-struct cbdata{
-	/** empty for now */
-};
+
 
 class BendersCallback{
     public: 
 		/** default constructor */
-		BendersCallback(DspOsi *osi, const char *name, int sepapriority);
+		BendersCallback();
 
 		/** default constructor */
 		virtual ~BendersCallback();
@@ -25,13 +23,20 @@ class BendersCallback{
 
         virtual void setBdSub(BdSub * bdsub);
 
-		int static BendersCut(void *cbdata, int cbwhere);
+		virtual DSP_RTN_CODE BendersCut(void *cbdata, int cbwhere);
+
+		int static BendersWrapper(void *cbdata, int cbwhere);
 
 		virtual DSP_RTN_CODE setOriginalVariables(
 			int nvars,        /**< number of original variables, including auxiliary variables */
 			int         naux  /**< number of auxiliary variables */);
 
 		virtual DSP_RTN_CODE addBenderscut(DspOsi *osi);
+
+		virtual bool isStochastic() {
+			if (model_ && model_->isStochastic()) return true;
+			else return false;
+		}
         
     protected:
 

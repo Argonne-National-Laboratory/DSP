@@ -2,22 +2,30 @@
 #include "Utility/DspMessage.h"
 #include "Model/TssModel.h"
 #include "OsiCuts.hpp"
+#include "SolverInterface/DspOsiGrb.h"
+#include "SolverInterface/DspOsiCpx.h"
 
-
+struct cb_data{
+	/** empty for now */
+	int (*functionptr)(void *, int);
+	void *cbdata;
+	int *where;
+	BendersCallback *bdptr;
+};
 /** default constructor */
-BendersCallback():
-osi_(NULL,)
+BendersCallback::BendersCallback() :
+//osi_(osi),
 model_(NULL),
 bdsub_(NULL),
 nvars_(0),
 naux_(0),
 probability_(NULL){}
 
-~BendersCallback::BendersCallback(){
+BendersCallback::~BendersCallback(){
 	/** empty*/
 }
 
-int static BendersCut(void *cbdata, int cbwhere){
+DSP_RTN_CODE BendersCallback::BendersCut(void *cbdata, int cbwhere){
 	//BGN_TRY_CATCH
 	double stime = CoinGetTimeOfDay();
 
@@ -25,7 +33,7 @@ int static BendersCut(void *cbdata, int cbwhere){
 	OsiCuts cs;
 
 	/** generate Benders cuts */
-	generate_Benders(osi, &cs);
+	generate_Benders(osi_, &cs);
 
 	/** If found Benders cuts */
 	for (int i = 0; i < cs.sizeCuts(); ++i)
@@ -67,16 +75,25 @@ int static BendersCut(void *cbdata, int cbwhere){
 			{
 				/** add cut */
 				//if (cbwhere==CB_MIPSOL):
-					osi->CallbackLazycut(cbdata, rc);
+					osi_->CallbackLazyCut(cbdata, rc);
 			}
 	}
 
 	return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE BendersCallback::addBenderscut(DspOsi *osi){
+int static BendersWrapper(void *cbdata, int where){
+	cb_data *mydata=static_cast<cb_data*>(cbdata);
+	mydata->bdptr->BendersCut(mydata, where);
+}
 
-	osi->setCallbackFunc(Benderscut);
+DSP_RTN_CODE BendersCallback::addBenderscut(DspOsi *osi){
+	
+	osi_ = osi;
+	cb_data *usrdata;
+	usrdata->functionptr=&BendersWrapper;
+	usrdata->bdptr=this;
+	osi_->setCallbackFunc(usrdata);
 
 }
 
@@ -105,7 +122,7 @@ DSP_RTN_CODE BendersCallback::generate_Benders(DspOsi * osi, OsiCuts *cs){
 	osi->cbget(CB_MIPSOL, CB_MIPSOL_SOL, &vals);
 
 	/** generate Benders cuts */
-	generateCuts(nvars_, val, cs);
+	generateCuts(nvars_, vals, cs);
 
 	/** If found Benders cuts */
 	for (int i = 0; i < cs->sizeCuts(); ++i)
@@ -123,73 +140,12 @@ DSP_RTN_CODE BendersCallback::generate_Benders(DspOsi * osi, OsiCuts *cs){
 	}
 
 	/** free memory */
-	delete [] val;
+	delete [] vals;
 
 	return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE BendersCallback::sepaBenders(
-	DspOsi *osi)
-{
-	//BGN_TRY_CATCH
-	double stime = CoinGetTimeOfDay();
 
-	/**< Benders cut placeholder */
-	OsiCuts cs;
-
-	/** generate Benders cuts */
-	generate_Benders(osi, &cs));
-
-	/** If found Benders cuts */
-	for (int i = 0; i < cs.sizeCuts(); ++i)
-	{
-		/** get cut pointer */
-		OsiRowCut * rc = cs.rowCutPtr(i);
-		if (!rc) continue;
-
-		const CoinPackedVector cutrow = rc->row();
-		if (cutrow.getNumElements() == 0) continue;
-
-#ifdef DSP_DEBUG
-		/** is optimality cut? */
-		bool isOptimalityCut = false;
-		DSPdebugMessage("naux_ %d nvars_ %d\n", naux_, nvars_);
-		for (int j = nvars_ - naux_; j < nvars_; ++j)
-		{
-			if (cutrow.getMaxIndex() == j)
-			{
-				DSPdebugMessage("cutrow.getMaxIndex() = %d\n", j);
-				isOptimalityCut = true;
-				break;
-			}
-		}
-#endif
-
-	
-#ifdef DSP_DEBUG
-			/*DSPdebugMessage("found Benders (%s) cut: act=%f, lhs=%f, norm=%f, eff=%f, min=%f, max=%f (range=%f)\n",
-				isOptimalityCut ? "opti" : "feas",
-				SCIPgetRowLPActivity(scip, row), SCIProwGetLhs(row), SCIProwGetNorm(row),
-				SCIPgetCutEfficacy(scip, sol, row),
-				SCIPgetRowMinCoef(scip, row), SCIPgetRowMaxCoef(scip, row),
-				SCIPgetRowMaxCoef(scip, row)/SCIPgetRowMinCoef(scip, row));*/
-			DSPdebug(rc->print());
-#endif
-
-			if (rc->effectiveness()>0.0))
-			{
-				/** add cut */
-				osi->CallbackLazyCut(cbdata, rc);
-			}
-	}
-
-#ifdef BENDERS_PROFILE
-	time_statistics_["sepaBenders"] += CoinGetTimeOfDay() - stime;
-	count_statistics_["sepaBenders"]++;
-#endif
-
-	return DSP_RTN_OK;
-}
 
  DSP_RTN_CODE BendersCallback::setOriginalVariables(
 			int nvars,        /**< number of original variables, including auxiliary variables */
@@ -349,7 +305,7 @@ void BendersCallback::aggregateCuts(
 		}
 	}
 
-	//END_TRY_CATCH(FREE_MEMORY)
+	END_TRY_CATCH(FREE_MEMORY)
 
 	FREE_MEMORY
 

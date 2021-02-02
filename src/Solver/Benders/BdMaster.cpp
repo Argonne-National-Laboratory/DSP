@@ -14,6 +14,7 @@
 #include "SolverInterface/DspOsiClp.h"
 #include "SolverInterface/DspOsiCpx.h"
 #include "SolverInterface/DspOsiGrb.h"
+#include "Solver/Benders/BendersCallback.h"
 #ifdef DSP_HAS_MPI
 #include "Solver/Benders/SCIPconshdlrBendersWorker.h"
 #endif /* DSP_HAS_MPI */
@@ -294,7 +295,7 @@ DSP_RTN_CODE BdMaster::createProblem() {
 	// osi_ = new DspOsiScip();
 	// if (!osi_) throw CoinError("Failed to create DspOsiScip", "createProblem", "DdMaster");
 	osi_ = createDspOsi(par_->getIntParam("BD/MASTER/SOLVER"));
-	if (!osi_) throw CoinError("Failed to create DspOsi", "createProblem", "DdMaster");
+	if (!osi_) throw CoinError("Failed to create DspOsi", "createProblem", "BdMaster");
 	
 	osi_->setLogLevel(CoinMin(par_->getIntParam("LOG_LEVEL"), 5));
 	osi_->setNodeInfoFreq(par_->getIntParam("DISPLAY_FREQ"));
