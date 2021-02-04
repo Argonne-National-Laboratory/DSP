@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-// #define DSP_DEBUG
+#define DSP_DEBUG
 
 #include "Model/TssModel.h"
 #include "Solver/Benders/BdMaster.h"
@@ -157,7 +157,7 @@ DSP_RTN_CODE BdMaster::setBendersCallback(BendersCallback *BDcb){
 
 DSP_RTN_CODE BdMaster::setConshdlr(SCIPconshdlrBenders* conshdlr)
 {
-	DSPdebugMessage("Added constraint handler %p\n", conshdlr);
+
 	BGN_TRY_CATCH
 	assert(conshdlr!=NULL);
 	
@@ -165,10 +165,8 @@ DSP_RTN_CODE BdMaster::setConshdlr(SCIPconshdlrBenders* conshdlr)
 	OsiScipSolverInterface * scip = dynamic_cast<DspOsiScip*>(osi_)->scip_;
 
 	/** include constraint handler */
-	DSPdebugMessage("Added constraint handler %p\n", conshdlr);
-	printf("debug...\n");
 	SCIP_CALL_ABORT(SCIPincludeObjConshdlr(scip->getScip(), conshdlr, TRUE));
-	printf("debug...\n");
+
 	/** create constraint */
 	SCIP_CONS * cons = NULL;
 	SCIP_CALL_ABORT(SCIPcreateConsBenders(scip->getScip(), &cons, "Benders"));
