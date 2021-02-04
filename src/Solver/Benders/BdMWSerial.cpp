@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-#define DSP_DEBUG
+// #define DSP_DEBUG
 
 #include "Solver/Benders/BdMWSerial.h"
 #include "Solver/Benders/SCIPconshdlrBenders.h"
@@ -125,7 +125,6 @@ SCIPconshdlrBenders* BdMWSerial::constraintHandler()
 		if (model_->isDro())
 			conshdlr = new SCIPconshdlrDrBenders(si->getScip(), "Benders", priority, sepa_solver);
 		else{
-			si->getScip();
 			conshdlr = new SCIPconshdlrBenders(si->getScip(), "Benders", priority);
 		}
 	}
@@ -135,7 +134,7 @@ SCIPconshdlrBenders* BdMWSerial::constraintHandler()
 
 	END_TRY_CATCH_RTN(;, NULL)
 
-	return DSP_RTN_OK;
+	return conshdlr;
 }
 
 BendersCallback* BdMWSerial::BendersCallbackFunc(){
@@ -176,5 +175,5 @@ BendersCallback* BdMWSerial::BendersCallbackFunc(){
 
 	END_TRY_CATCH_RTN(;, NULL)
 
-	return DSP_RTN_OK;
+	return Bdcb;
 }
