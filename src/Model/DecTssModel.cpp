@@ -578,7 +578,7 @@ DSP_RTN_CODE DecTssModel::decompose(
 		/** objective coefficients */
 		DSPdebugMessage("combining objective coefficients\n");
 		copyCoreObjective(obj + ncols_[0] + s * ncols_[1], 1);
-		combineRandObjective(obj + ncols_[0] + s * ncols_[1], 1, sind);
+		combineRandObjective(obj + ncols_[0] + s * ncols_[1], 1, sind, adjust_probability);
 
 		/** row lower bounds */
 		DSPdebugMessage("combining row lower bounds\n");
