@@ -1,20 +1,27 @@
+#define DSP_DEBUG
+
 #include "Solver/Benders/BendersCallback.h"
+#include "Utility/DspMacros.h"
 #include "Utility/DspMessage.h"
 #include "Model/TssModel.h"
 #include "OsiCuts.hpp"
 #include "SolverInterface/DspOsiGrb.h"
 #include "SolverInterface/DspOsiCpx.h"
+#include<type_traits>
+
+typedef int (*functionptr)(void *, int);
 
 struct cb_data{
 	/** empty for now */
-	int (*functionptr)(void *, int);
-	void *cbdata;
-	int *where;
+	int (* cbfunc)(void *, int) ;
+	//functionptr cbfunc;
+	//void *cbdata;
+	//int *where;
 	BendersCallback *bdptr;
 };
 /** default constructor */
 BendersCallback::BendersCallback() :
-//osi_(osi),
+osi_(NULL),
 model_(NULL),
 bdsub_(NULL),
 nvars_(0),
@@ -33,7 +40,7 @@ DSP_RTN_CODE BendersCallback::BendersCut(void *cbdata, int cbwhere){
 	OsiCuts cs;
 
 	/** generate Benders cuts */
-	generate_Benders(osi_, &cs);
+	generate_Benders(&cs);
 
 	/** If found Benders cuts */
 	for (int i = 0; i < cs.sizeCuts(); ++i)
@@ -74,26 +81,45 @@ DSP_RTN_CODE BendersCallback::BendersCut(void *cbdata, int cbwhere){
 			if (rc->effectiveness()>0.0)
 			{
 				/** add cut */
-				//if (cbwhere==CB_MIPSOL):
-					osi_->CallbackLazyCut(cbdata, rc);
+				if (cbwhere==CB_MIPSOL)
+					osi_->CallbackLazyCut(rc, CB_MIPSOL);
 			}
 	}
 
 	return DSP_RTN_OK;
 }
 
-int static BendersWrapper(void *cbdata, int where){
+static int  BendersWrapper(void *cbdata, int where){
+	printf("In Benders Wrapper...\n");
 	cb_data *mydata=static_cast<cb_data*>(cbdata);
 	mydata->bdptr->BendersCut(mydata, where);
 }
 
-DSP_RTN_CODE BendersCallback::addBenderscut(DspOsi *osi){
+void BendersCallback::addBenderscut(){
 	
-	osi_ = osi;
-	cb_data *usrdata;
-	usrdata->functionptr=&BendersWrapper;
+	struct cb_data *usrdata=NULL;
+	//BendersWrapper(cbdata, where);
+	DSPdebugMessage("Adding Benders Wrapper...\n");
+	//usrdata->cbfunc=&BendersWrapper;
+	DSPdebugMessage("Adding Benders ...\n");
+
+    //auto y = reinterpret_cast<void(*&)()>(x);
+    // auto y = reinterpret_cast<void(*)()>(x);
+    //static_assert(std::is_same_v<decltype(y), void(*)()>);
+
+	auto fptr=&BendersCallback::BendersCut;
+	DSPdebugMessage("Adding Benders1 ...\n");
+	auto *a = reinterpret_cast<int (*&)(void *, int)>(fptr);
+	//static_assert(std::is_same_v<decltype(a), int(*)(void *, int)>);
+	DSPdebugMessage("Adding Benders2 ...\n");
+	//int test=1;
+	//usrdata->where=&test;
+	
+	usrdata->cbfunc=a;
 	usrdata->bdptr=this;
-	osi_->setCallbackFunc(usrdata);
+	DSPdebugMessage("Adding Benders3 ...\n");
+	//usrdata->cbfunc=&BendersWrapper;
+	osi_->setCallbackFunc(this);
 
 }
 
@@ -111,7 +137,7 @@ void BendersCallback::setBdSub(BdSub * bdsub) {
 	}
 }
 
-DSP_RTN_CODE BendersCallback::generate_Benders(DspOsi * osi, OsiCuts *cs){
+DSP_RTN_CODE BendersCallback::generate_Benders(OsiCuts *cs){
 
 	//BGN_TRY_CATCH
 
@@ -119,8 +145,11 @@ DSP_RTN_CODE BendersCallback::generate_Benders(DspOsi * osi, OsiCuts *cs){
 	vals=new double[nvars_];
 
 	/** get current solution */
-	osi->cbget(CB_MIPSOL, CB_MIPSOL_SOL, &vals);
-
+	osi_->cbget(CB_MIPSOL, CB_MIPSOL_SOL, &vals);
+#ifdef DSP_DEBUG
+		printf("solval:\n");
+		DspMessage::printArray(nvars_, vals);
+#endif
 	/** generate Benders cuts */
 	generateCuts(nvars_, vals, cs);
 

@@ -21,17 +21,19 @@ class BendersCallback{
 		/** set model pointer */
 		virtual void setDecModel(DecModel * model) {model_ = model;}
 
+		virtual void setDspOsi(DspOsi *osi){ osi_=osi;}
+
         virtual void setBdSub(BdSub * bdsub);
 
 		virtual DSP_RTN_CODE BendersCut(void *cbdata, int cbwhere);
 
-		int static BendersWrapper(void *cbdata, int cbwhere);
+		static int BendersWrapper(void *cbdata, int cbwhere);
 
 		virtual DSP_RTN_CODE setOriginalVariables(
 			int nvars,        /**< number of original variables, including auxiliary variables */
 			int         naux  /**< number of auxiliary variables */);
 
-		virtual DSP_RTN_CODE addBenderscut(DspOsi *osi);
+		virtual void addBenderscut();
 
 		virtual bool isStochastic() {
 			if (model_ && model_->isStochastic()) return true;
@@ -40,7 +42,7 @@ class BendersCallback{
         
     protected:
 
-		virtual DSP_RTN_CODE generate_Benders(DspOsi * osi, OsiCuts *cs);
+		virtual DSP_RTN_CODE generate_Benders(OsiCuts *cs);
         /** generate Benders cuts */
         virtual void generateCuts(
 		    int size,  /**< [in] size of x */
