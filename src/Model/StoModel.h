@@ -202,8 +202,19 @@ public:
 
 	bool hasQuadraticRowCore() const {return qc_row_core_ != NULL ? true : false;};
 	bool hasQuadraticRowScenario() const {return qc_row_scen_ != NULL ? true : false;};
-	bool hasQuadraticObjCore() const {return qobj_core_ != NULL ? true : false;};
-	bool hasQuadraticObjScenario() const {return qobj_scen_ != NULL? true : false;};
+	bool hasQuadraticObjCore() const {
+		if (qobj_core_==NULL)
+			return false;
+		
+		if (qobj_core_[0]==NULL)
+			return false;
+		for (int i=0; i<qobj_core_[0]->getNumElements(); i++){
+			if (qobj_core_[0]->getElements()[i]!=0)
+				return true;
+		}
+		return false;
+	};
+	bool hasQuadraticObjScenario() const {return qobj_scen_ != NULL ? true : false;}
 
 	/** set probability */
 	void setProbability(double *probability);

@@ -459,10 +459,6 @@ DSP_RTN_CODE DecTssModel::decompose(
 	//PRINT_ARRAY(qobj_core_[0]->getNumElements()+1, qstarts);
 	//PRINT_ARRAY_MSG(qobj_core_[0]->getNumElements(), qobj_core_[0]->getIndices(), "qobj_core[0] column indices")
 
-	if (qobj_core_ != NULL){
-		printf("qobj_core_[0] = %d\n", qobj_core_[1] );
-	}
-
 	DSPdebugMessage("loading quadratic information if has quadratic objective...\n");
 	if (hasQuadraticObjCore()){
 		const CoinBigIndex * qstarts=qobj_core_[0]->getVectorStarts();
