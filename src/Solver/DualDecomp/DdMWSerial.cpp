@@ -85,7 +85,6 @@ DSP_RTN_CODE DdMWSerial::init()
 	DSPdebugMessage("initilize worker\n");
 	/** initialize workers */
 	for (unsigned i = 0; i < worker_.size(); ++i){
-		printf("i = %d\n", i);
 		worker_[i]->init();
 	}
 
