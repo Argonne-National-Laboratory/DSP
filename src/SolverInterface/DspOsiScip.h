@@ -145,6 +145,9 @@ public:
         SCIPsetRealParam(scip_->getScip(), "limits/gap", tol);
     }
 
+    virtual void setInteger(int index) {
+        scip_->setInteger(index);
+    }
     OsiScipSolverInterface* scip_;  
 };
 
