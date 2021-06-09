@@ -25,9 +25,9 @@ class BendersCallback{
 
         virtual void setBdSub(BdSub * bdsub);
 
-		virtual DSP_RTN_CODE BendersCut(void *cbdata, int cbwhere);
+		virtual DSP_RTN_CODE BendersCut(void *cbdata, int where);
 
-		static int BendersWrapper(void *cbdata, int cbwhere);
+		static int BendersWrapper(GRBmodel *model, void *cbdata, int where, void *usrdata);
 
 		virtual DSP_RTN_CODE setOriginalVariables(
 			int nvars,        /**< number of original variables, including auxiliary variables */
@@ -42,7 +42,7 @@ class BendersCallback{
         
     protected:
 
-		virtual DSP_RTN_CODE generate_Benders(OsiCuts *cs);
+		virtual DSP_RTN_CODE generate_Benders(void *cbdata, OsiCuts *cs);
         /** generate Benders cuts */
         virtual void generateCuts(
 		    int size,  /**< [in] size of x */
