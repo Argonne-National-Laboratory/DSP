@@ -13,7 +13,7 @@
 #include "Solver/Benders/SCIPconshdlrBenders.h"
 #include "Solver/Benders/BendersCallback.h"
 #include "Solver/Benders/BdWorker.h"
-#include "SolverInterface/DspOsi.h"
+//#include "SolverInterface/DspOsi.h"
 
 /** A class for implementing the Benders master solver */
 class BdMaster: public DecSolver {
@@ -56,7 +56,7 @@ public:
 	virtual DSP_RTN_CODE setObjectiveBounds(double upper, double lower);
 
 	/** set benders callback function */
-	virtual DSP_RTN_CODE setBendersCallback(BendersCallback * BDfunction);
+	virtual DSP_RTN_CODE setBendersCallback(BendersCallback * Bdcb);
 
 	/** set constraint handler for Benders cut generation */
 	virtual DSP_RTN_CODE setConshdlr(SCIPconshdlrBenders * conshdlr);
