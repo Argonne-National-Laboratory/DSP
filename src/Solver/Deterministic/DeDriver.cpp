@@ -344,7 +344,7 @@ void DeDriver::writeExtMps(const char *name)
 	for (int j = 0; j < mat->getNumCols(); j++)
 	{
 		if (ctype[j] != 'C')
-			osi->si_->setInteger(j);
+			osi->setInteger(j);
 	}
 
 	/** write mps */
