@@ -463,8 +463,6 @@ public:
 		struct callback_usr_data *usr_data = (struct callback_usr_data *)(cbdata);
 		//struct callback_usr_data *usr_data = static_cast<callback_usr_data*>(cbdata);
 		struct callback_data mydata;
-		mydata.testnum=usr_data->testnum;
-		//mydata.cbfunc=usr_data->cbfunc;
 		mydata.bdptr=usr_data->bdptr;
 		int error = GRBsetcallbackfunc(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), usr_data->cbfunc, &mydata);
 		//GRBsetcallbackfunc(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), usr_data->cbfunc, cbdata);
