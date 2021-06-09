@@ -822,8 +822,11 @@ void writeMps(DspApiEnv * env, const char * name)
 	freeSolver(env);
 
 	env->solver_ = new DeDriver(env->model_, env->par_, env->message_);
+	printf("debug1\n");
 	env->solver_->init();
+	printf("debug2\n");
 	dynamic_cast<DeDriver*>(env->solver_)->writeExtMps(name);
+	printf("debug3\n");
 	env->solver_->finalize();
 }
 
