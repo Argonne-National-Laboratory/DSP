@@ -541,6 +541,11 @@ public:
 		CPXsetdblparam(cpx_->getEnvironmentPtr(), CPX_PARAM_EPGAP, tol);
 	}
 
+	virtual void setInteger(int index) {
+		int idx=index;
+		char coltype='I';
+		CPXchgctype(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), 1, &idx, &coltype);
+	}
 	/** ==============================================================================
 	  *    Generic Callbacks in Cplex
 	  * ============================================================================== */
@@ -564,17 +569,14 @@ public:
 		CPXcutcallbackadd(cpx_->getEnvironmentPtr(), cbdata, wherefrom, len, rhs, sense, ind, val, purgeable);
 	}
 
-	
-	// virtual void addLazyConstr(
-	// 	int lazylen,
-	// 	const int *lazyind,
-	// 	const double *lazyval,
-	// 	char lazysense,
-	// 	double lazyrhs
-	// ){
-	// 	int lazybeg[1] = {0};
-	// 	CPXaddlazyconstraints(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), 1, lazylen, lazyrhs, lazysense, lazybeg, lazyind, lazyval, NULL);
-	// }
+	/* set callback function for lp*/
+	virtual void setLpCallbackFunc(void *cbdata){
+
+	}
+	/* set callback function for mip*/
+	virtual void setMipCallbackFunc(void *cbdata){
+		throw CoinError("Set callback function for MIP is not support", "setCallbackFunc", "DspOsi");
+	}
     OsiCpxSolverInterface* cpx_;   
 };
 

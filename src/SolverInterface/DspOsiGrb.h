@@ -31,7 +31,23 @@
     }                                                                                \
   } while (false)
 
+typedef int (*functionptr)(GRBmodel *, void *, int, void *);
 
+struct callback_usr_data{
+	//int (*functionptr)(void *, int);
+	functionptr cbfunc;
+	//void *cbdata;
+	//int *where;
+	void *bdptr;
+};
+
+struct callback_data{
+	//int (*functionptr)(void *, int);
+	//functionptr cbfunc;
+	//void *cbdata;
+	//int *where;
+	void *bdptr;
+};
 class DspOsiGrb : public DspOsi {
 public:
 
@@ -334,6 +350,27 @@ public:
     	}
 	}
 
+	virtual bool isMip(){
+		int mip;
+		try{
+			GUROBI_CALL("isMip", GRBgetintattr(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), "IsMIP", &mip));
+		}
+		catch(const CoinError& e){
+        	e.print();
+    	}
+		ismip_=mip;
+		return ismip_;
+	}
+
+	virtual void setInteger(int index) {
+		try{
+			GUROBI_CALL("setInteger", GRBsetcharattrelement(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), GRB_CHAR_ATTR_VTYPE, index, GRB_INTEGER));
+		}
+		catch(const CoinError& e){
+        	e.print();
+    	}
+	}
+
 	/** ==============================================================================
 	  *    Generic Callbacks in Gurobi
 	  * ============================================================================== */
@@ -347,14 +384,15 @@ public:
 		const double *val=lazyCut->row().getElements();
 		char sense;
 		double rhs=lazyCut->rhs();
+
 		if (lazyCut->lb()==-INFINITY){
-			sense='L';
+			sense=GRB_LESS_EQUAL;
 		}
 		else{
-			sense='G';
+			sense=GRB_GREATER_EQUAL;
 		}
 		try{
-			GUROBI_CALL("CallbackLazyCut", GRBcblazy(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), len, ind, val, sense, rhs));
+			GUROBI_CALL("CallbackLazyCut", GRBcblazy(cbdata, len, ind, val, sense, rhs));
 		}
 		catch(const CoinError& e){
          	e.print();
@@ -372,67 +410,68 @@ public:
     	}
 	}
 
-	/** wrapper for grb callback input function *
-	 *  this is the input in GRBsetcallbackfunc() */
-	int static grb_callback_wrapper(GRBmodel *model, void *cbdata, int where, void *usrdata){
-		struct callback_usr_data *mydata = (struct callback_usr_data *) usrdata;
-		//mydata->functionptr = usrdata->functionptr;
-		mydata->functionptr(cbdata, where);
-	}
-
 	/** retirve data from callback */
-	virtual void cbget(int where, int what, void *resultP){
-		void *cbdata;
-		int grbwhat, grbwhere;
-		switch(where) {
-        case CB_MIP:
-			grbwhere=GRB_CB_MIP;
-        case CB_MIPSOL:
-            grbwhere = GRB_CB_MIPSOL;
-		case CB_MIPNODE:
-			grbwhere = GRB_CB_MIPNODE;
-		case CB_SIMPLEX:
-			grbwhere=GRB_CB_SIMPLEX;
+	virtual void cbget(void *cbdata, int cbwhere, int cbwhat, void *resultP){
+		// void *cbdata;
+		int what, where;
+
+		switch(cbwhere) {
+			case CB_MIP:
+		 		where=GRB_CB_MIP;
+        	case CB_MIPSOL:
+        	    where = GRB_CB_MIPSOL;
+			case CB_MIPNODE:
+			 	where = GRB_CB_MIPNODE;
+			case CB_SIMPLEX:
+		 		where=GRB_CB_SIMPLEX;
 		}
 
 		switch(what) {
-        case CB_MIPNODE_STATUS:
-			grbwhat=GRB_CB_MIPNODE_STATUS;
-        case CB_MIPSOL_SOL:
-            grbwhat = GRB_CB_MIPSOL_SOL;
-		case CB_MIPSOL_OBJ:
-			grbwhat = GRB_CB_MIPSOL_OBJ;
-		}
-		
-		int error=GRBcbget(cbdata, grbwhere, grbwhat, (void *) &resultP);
-		
-		if (error){
-			printf("ERROR: %s\n", GRBgeterrormsg(grb_->getEnvironmentPtr()));
+        	case CB_MIPNODE_STATUS:
+			 	what=GRB_CB_MIPNODE_STATUS;
+        	case CB_MIPSOL_SOL:
+             	what = GRB_CB_MIPSOL_SOL;
+			case CB_MIPSOL_OBJ:
+			 	what = GRB_CB_MIPSOL_OBJ;
 		}
 
+		if (resultP==NULL)
+			printf("out of memory\n");
+
+		//printf("resultP[0]=%f\n", (double *) resultP[0]);
+		try{
+			GUROBI_CALL("cbget", GRBcbget(cbdata, cbwhere, GRB_CB_MIPSOL_SOL, resultP));
+		}
+		catch(const CoinError& e){
+         	e.print();
+     	}
+	}
+
+	virtual void setLazyConsParam(){
+		try{
+			GUROBI_CALL("setLazyConsParam", GRBsetintparam(GRBgetenv(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)), GRB_INT_PAR_LAZYCONSTRAINTS, 1));
+		}
+		catch(const CoinError& e){
+    	 	e.print();
+    	}
 	}
 	/** set callback functions */
 
-	virtual void setCallbackFunc(void *cbdata){
+	virtual void setMipCallbackFunc(void *cbdata){
 		//struct callback_usr_data *usr_data;
-		callback_usr_data *usr_data = static_cast<callback_usr_data*>(cbdata);
-		int error = GRBsetcallbackfunc(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), grb_callback_wrapper, usr_data);
+		assert(cbdata != NULL);
+		struct callback_usr_data *usr_data = (struct callback_usr_data *)(cbdata);
+		//struct callback_usr_data *usr_data = static_cast<callback_usr_data*>(cbdata);
+		struct callback_data mydata;
+		mydata.testnum=usr_data->testnum;
+		//mydata.cbfunc=usr_data->cbfunc;
+		mydata.bdptr=usr_data->bdptr;
+		int error = GRBsetcallbackfunc(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), usr_data->cbfunc, &mydata);
+		//GRBsetcallbackfunc(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), usr_data->cbfunc, cbdata);
 		if (error){
 			printf("ERROR: %s\n", GRBgeterrormsg(grb_->getEnvironmentPtr()));
 		}
 	}
-	/*
-	virtual void setCallbackFunc(int (*my_callback_func)(void*, int)){
-		struct callback_usr_data *usr_data;
-		usr_data->functionptr=my_callback_func;
-		//int (*grb_callback_function) (GRBmodel *, void *, int, void *)=static_cast<int (*)(GRBmodel *, void *, int, void *)> (&DspOsiGrb::grb_callback_wrapper);
-		//grb_callback_function=(int) (&DspOsiGrb::grb_callback_wrapper);
-		int error = GRBsetcallbackfunc(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), grb_callback_wrapper, usr_data);
-		if (error){
-			printf("ERROR: %s\n", GRBgeterrormsg(grb_->getEnvironmentPtr()));
-		}
-	}
-	*/
 
     OsiGrbSolverInterface* grb_;   
 };

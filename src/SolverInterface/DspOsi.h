@@ -13,11 +13,6 @@
 #include "OsiCuts.hpp"
 #include "Utility/DspParams.h"
 
-struct callback_usr_data{
-	int (*functionptr)(void *, int);
-	void *cbdata;
-	int *where;
-};
 
 class DspOsi {
 public:
@@ -139,30 +134,38 @@ public:
 	/** set relative MIP gap */
 	virtual void setRelMipGap(double tol) {}
 
+	/** overload function in OsiGrb */
+	virtual void setInteger(int index) {}
+
 	/** ==============================================================================
 	  *    Generic Callbacks
 	  * ============================================================================== */
 	/** retrive callback data */
-	virtual void cbget(int where, int what, void *resultP){
+	virtual void cbget(void *cbdata,int cbwhere, int cbwhat, void *resultP){
 		throw CoinError("Lazy callback constraints is not support", "CallbackLazyCut", "DspOsi");
 	}
 
 	/** wrapper for cblazy */
 	virtual void CallbackLazyCut(void *cbdata, OsiRowCut *lazyCut, int wherefrom=0, int purgeable=0){
-		throw CoinError("Lazy callback constraints is not support", "CallbackLazyCut", "DspOsi");
+	 	throw CoinError("Lazy callback constraints is not support", "CallbackLazyCut", "DspOsi");
 	}
 	virtual void CallbackLazyCut(void *cbdata, int lazylen, const int *lazyind, const double *lazyval, char lazysense, double lazyrhs){
 		throw CoinError("Lazy callback constraints is not support", "CallbackLazyCut", "DspOsi");
 	}
 
-	virtual void setCallbackFunc(void *cbdata){
-		throw CoinError("Lazy callback constraints is not support", "setCallbackFunc", "DspOsi");
+	virtual void setLazyConsParam(){
+		throw CoinError("Set Lazy Constraints is not support", "setLazyConsParam", "DspOsi");
 	}
-	/*
-	virtual void setCallbackFunc(void (*my_callback_func)(void*, int)){
-		throw CoinError("Lazy callback constraints is not support", "setCallbackFunc", "DspOsi");
-	}*/
-	//virtual void setCallbackFunc()
+
+	/* set callback function for lp*/
+	virtual void setLpCallbackFunc(void *cbdata){
+		throw CoinError("Set callback function for LP is not support", "setCallbackFunc", "DspOsi");
+	}
+	/* set callback function for mip*/
+	virtual void setMipCallbackFunc(void *cbdata){
+		throw CoinError("Set callback function for MIP is not support", "setCallbackFunc", "DspOsi");
+	}
+
 	OsiSolverInterface *si_;
 	
 	/** Stores whether CPLEX' prob type is currently set to mixed-integer program */
