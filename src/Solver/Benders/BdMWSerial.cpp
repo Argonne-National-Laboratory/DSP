@@ -14,6 +14,7 @@
 #include "SolverInterface/DspOsiScip.h"
 #include "Solver/Benders/BendersCallback.h"
 #include "SolverInterface/DspOsi.h"
+#include "SolverInterface/DspOsiGrb.h"
 
 BdMWSerial::BdMWSerial(
 		DecModel *   model,  /**< model pointer */
@@ -168,11 +169,13 @@ BendersCallback* BdMWSerial::BendersCallbackFunc(){
 	else{
 		Bdcb = new BendersCallback();
 	}
-	
+
 	Bdcb->setDecModel(model_);
 	Bdcb->setBdSub(bdsub);
 	Bdcb->setOriginalVariables(osi->si_->getNumCols(), naux);
-
+	Bdcb->setDspOsi(osi);
+	Bdcb->addBenderscut();
+	
 	END_TRY_CATCH_RTN(;, NULL)
 
 	return Bdcb;

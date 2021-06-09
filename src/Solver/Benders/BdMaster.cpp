@@ -5,15 +5,16 @@
  *      Author: kibaekkim
  */
 
-#define DSP_DEBUG
+// #define DSP_DEBUG
 
 #include "Model/TssModel.h"
 #include "Solver/Benders/BdMaster.h"
-//#include "SolverInterface/DspOsi.h"
+#include "SolverInterface/DspOsi.h"
 #include "SolverInterface/DspOsiScip.h"
 #include "SolverInterface/DspOsiClp.h"
 #include "SolverInterface/DspOsiCpx.h"
 #include "SolverInterface/DspOsiGrb.h"
+#include "Solver/Benders/BendersCallback.h"
 #ifdef DSP_HAS_MPI
 #include "Solver/Benders/SCIPconshdlrBendersWorker.h"
 #endif /* DSP_HAS_MPI */
@@ -140,16 +141,17 @@ DSP_RTN_CODE BdMaster::setSolutions(Solutions initsols)
 	return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE BdMaster::setBendersCallback(BendersCallback *BDcb){
+DSP_RTN_CODE BdMaster::setBendersCallback(BendersCallback *Bdcb){
 
 	BGN_TRY_CATCH
 	
 	DspOsi *osi=NULL;
 	//OsiSolverInterface *si=NULL;
 	osi=dynamic_cast<DspOsi*>(osi_);
-	DSPdebugMessage("Adding Benders callback function...\n");
-	BDcb->addBenderscut(osi);
 
+	DSPdebugMessage("Added constraint handler %p\n", Bdcb);
+	assert(Bdcb!=NULL);
+	
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
@@ -165,6 +167,7 @@ DSP_RTN_CODE BdMaster::setConshdlr(SCIPconshdlrBenders* conshdlr)
 	OsiScipSolverInterface * scip = dynamic_cast<DspOsiScip*>(osi_)->scip_;
 
 	/** include constraint handler */
+	DSPdebugMessage("Added constraint handler %p\n", conshdlr);
 	SCIP_CALL_ABORT(SCIPincludeObjConshdlr(scip->getScip(), conshdlr, TRUE));
 
 	/** create constraint */
@@ -300,10 +303,14 @@ DSP_RTN_CODE BdMaster::createProblem() {
 
 	/** load problem data */
 	getSiPtr()->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
+	
 	for (int j = 0; j < mat->getNumCols(); ++j) {
-		if (ctype[j] != 'C')
-			getSiPtr()->setInteger(j);
+		if (ctype[j] != 'C'){
+			osi_->setInteger(j);
+		}
 	}
+	int probtype=osi_->isMip();
+
 	DSPdebugMessage("Successfully load the problem.\n");
 
 	/** allocate memory for primal solution */
