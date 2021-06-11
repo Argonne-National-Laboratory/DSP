@@ -468,6 +468,7 @@ DSP_RTN_CODE TssModel::loadSecondStage(
 	}
 	else
 	{
+		//setRecoQP(true);
 		loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
 
 		/** allocate memory for qobj_core_[1] */
@@ -610,7 +611,8 @@ DSP_RTN_CODE TssModel::copyRecoObj(int scen, double *& obj_reco, CoinPackedMatri
 	/** copy quadratic objective coefficience to qobj_reco */
 	copyCoreQuadraticObjective(qobj_reco_coupling, qobj_reco_ncoupling, 1);
 	//PRINT_ARRAY_MSG(qobj_reco_ncoupling->getNumElements(), qobj_reco_ncoupling->getElements(), "elements in qobj_reco_ncoupling11");
-	combineRandQuadraticObjective(qobj_reco_coupling, qobj_reco_ncoupling, 1, scen, adjustProbability);
+	//if (qobj_reco_coupling!=NULL && qobj_reco_ncoupling!=NULL)
+		combineRandQuadraticObjective(qobj_reco_coupling, qobj_reco_ncoupling, 1, scen, adjustProbability);
 	//PRINT_ARRAY_MSG(qobj_reco_ncoupling->getNumElements(), qobj_reco_ncoupling->getElements(), "elements in qobj_reco_ncoupling");
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)

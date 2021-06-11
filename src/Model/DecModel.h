@@ -179,6 +179,10 @@ public:
 	virtual bool isDistributed() = 0;
 
 	/**
+	 * If true, the subproblem is QP
+	 */
+	//virtual bool RecoIsQP() = 0;
+	/**
 	 * Returns the number of reference scenarios (for DRO).
 	 */
 	virtual int getNumReferences() = 0;

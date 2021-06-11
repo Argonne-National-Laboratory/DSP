@@ -214,7 +214,24 @@ public:
 		}
 		return false;
 	};
-	bool hasQuadraticObjScenario() const {return qobj_scen_ != NULL ? true : false;}
+	//bool hasQuadraticObjScenario() const {return qobj_scen_ != NULL ? true : false;}
+	bool hasQuadraticObjScenario() const {
+		if (qobj_scen_==NULL){
+			printf("false\n");
+			return false;
+		}
+		for (int i=0; i<nscen_; i++){
+			printf("checking in first\n");
+			if (qobj_scen_[i]!=NULL){
+				for (int j=0; j<qobj_scen_[i]->getNumElements(); j++){
+				printf("checking in second\n");
+				if (qobj_scen_[i]->getElements()[j]!=0)
+					return true;
+			}
+			}
+		}
+		return false;
+	}
 
 	/** set probability */
 	void setProbability(double *probability);
@@ -328,6 +345,10 @@ public:
 	// TODO: Better to create a new inhereted class?
 	virtual void setDro(bool yes) { isdro_ = yes; }
 	virtual bool isDro() {return isdro_;}
+	/**
+	 * If true, the subproblem is QP
+	 */
+	//virtual bool RecoIsQP() = 0;
 	virtual int getNumReferences() {return nrefs_;}
 	virtual double getWassersteinSize() {return wass_eps_;}
 	virtual double getWassersteinDist(int i, int j);

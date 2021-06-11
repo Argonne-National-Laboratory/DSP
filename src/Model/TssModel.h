@@ -170,6 +170,12 @@ public:
 			const int *       	quadrow,  	/**< indices for the quadratic part */
 			const int *       	quadcol,  	/**< indices for the quadratic part */
 			const double *      quadval 	/**< nonzero coefficient of the quadratic part */);
+
+			//virtual void setRecoQP(bool yes) { RecoIsQP_ = yes; }
+			//virtual bool RecoIsQP() {return RecoIsQP_;}
+
+	protected:
+			//bool RecoIsQP_;				/**< is the second stage problem QP? */
 };
 
 #endif /* TSSMODEL_H_ */

@@ -150,6 +150,8 @@ public:
 	virtual void setDro(bool yes) { TssModel::setDro(yes); }
 	virtual bool isDro() {return TssModel::isDro();}
 
+	//virtual bool RecoIsQP() {return TssModel::RecoIsQP();}
+
 	virtual bool isDistributed();
 
 	virtual int getNumReferences() {return TssModel::getNumReferences();}

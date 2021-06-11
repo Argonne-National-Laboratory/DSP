@@ -72,6 +72,7 @@ public:
 	bool isQCQP() {return false;}
 	virtual void setDro(bool yes) { ; }
 	virtual bool isDro() { return false; }
+	//virtual bool RecoIsQP() { return false;}
 	virtual bool isDistributed();
 	int getNumReferences() {return 0;}
 	double getWassersteinSize() {return 0.0;}
