@@ -221,13 +221,11 @@ public:
 			return false;
 		}
 		for (int i=0; i<nscen_; i++){
-			printf("checking in first\n");
 			if (qobj_scen_[i]!=NULL){
 				for (int j=0; j<qobj_scen_[i]->getNumElements(); j++){
-				printf("checking in second\n");
-				if (qobj_scen_[i]->getElements()[j]!=0)
-					return true;
-			}
+					if (qobj_scen_[i]->getElements()[j]!=0)
+						return true;
+				}
 			}
 		}
 		return false;
