@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-// #define DSP_DEBUG
+#define DSP_DEBUG
 // #define DSP_PROFILE
 
 #include "Utility/DspUtility.h"
@@ -119,6 +119,8 @@ DSP_RTN_CODE BdSub::loadProblem(DecModel* model)
 	FREE_ARRAY_PTR(cubd_reco)  \
 	FREE_ARRAY_PTR(ctype_reco) \
 	FREE_ARRAY_PTR(obj_reco)   \
+	FREE_ARRAY_PTR(qobj_reco_coupling)  \
+	FREE_ARRAY_PTR(qobj_reco_ncoupling) \
 	FREE_ARRAY_PTR(rlbd_reco)  \
 	FREE_ARRAY_PTR(rubd_reco)
 
@@ -127,6 +129,8 @@ DSP_RTN_CODE BdSub::loadProblem(DecModel* model)
 	double * clbd_reco   = NULL;
 	double * cubd_reco   = NULL;
 	double * obj_reco    = NULL;
+	CoinPackedMatrix * qobj_reco_coupling = NULL;
+	CoinPackedMatrix * qobj_reco_ncoupling = NULL;
 	char *   ctype_reco  = NULL;
 	double * rlbd_reco   = NULL;
 	double * rubd_reco   = NULL;
@@ -149,11 +153,20 @@ DSP_RTN_CODE BdSub::loadProblem(DecModel* model)
 		mat_mp_[i]     = NULL;
 		cglp_[i]       = NULL;
 		warm_start_[i] = NULL;
-
-		/** copy recourse problem */
-		DSP_RTN_CHECK_THROW(model->copyRecoProb(subindices_[i],
+		/*if (model->RecoIsQP()){
+			DSP_RTN_CHECK_THROW(model->copyRecoProb(subindices_[i],
+				mat_mp_[i], mat_reco, clbd_reco, cubd_reco, ctype_reco,
+				obj_reco, qobj_reco_coupling, qobj_reco_ncoupling, rlbd_reco, rubd_reco, false));
+		}*/
+		//else{
+			DSP_RTN_CHECK_THROW(model->copyRecoProb(subindices_[i],
 				mat_mp_[i], mat_reco, clbd_reco, cubd_reco, ctype_reco,
 				obj_reco, rlbd_reco, rubd_reco, false));
+		//}
+		/** copy recourse problem */
+		/* DSP_RTN_CHECK_THROW(model->copyRecoProb(subindices_[i],
+				mat_mp_[i], mat_reco, clbd_reco, cubd_reco, ctype_reco,
+				obj_reco, qobj_reco_coupling, qobj_reco_ncoupling, rlbd_reco, rubd_reco, false)); */
 		
 		/** get probability; 1.0 for non-stochastic */
 		probability_[i] = model->isStochastic() ? dynamic_cast<TssModel*>(model)->getProbability()[i] : 1.0;
@@ -164,6 +177,11 @@ DSP_RTN_CODE BdSub::loadProblem(DecModel* model)
 		
 		/** load problem */
 		cglp_[i]->si_->loadProblem(*mat_reco, clbd_reco, cubd_reco, obj_reco, rlbd_reco, rubd_reco);
+		//if (model->RecoIsQP()==1)
+		//	cglp_[i]->loadQuadraticObjective(*qobj_reco_ncoupling);
+		//else
+			//cglp_[i]->loadQuadraticObjective(*qobj_reco_ncoupling);
+
 		for (int j = 0; j < cglp_[i]->si_->getNumCols(); ++j)
 		{
 			if (ctype_reco[j] != 'C') {
