@@ -505,7 +505,10 @@ DSP_RTN_CODE DecTssModel::decompose(
 					//	qelements.push_back(2* (prob_[scen[s]] * (qobj_scen_[scen[s]]->getElements()[start + j])));
 					//}
 					//else{
+					if (adjust_probability)
 						qelements.push_back(prob_[scen[s]] * (qobj_scen_[scen[s]]->getElements()[start + j]));
+					else
+						qelements.push_back(qobj_scen_[scen[s]]->getElements()[start + j]);
 					//}
 			}
 			shiftVecIndices(length, &qcolIndices[0] + pos, s * ncols_[1], cstart_[1]);
@@ -1007,7 +1010,7 @@ DSP_RTN_CODE DecTssModel::copyRecoProb(
 	copyCoreColType(ctype_reco, 1);
 
 	/** objective coefficients */
-	copyRecoObj(scen, obj_reco, qobj_reco_coupling, qobj_reco_ncoupling, true);
+	copyRecoObj(scen, obj_reco, qobj_reco_coupling, qobj_reco_ncoupling, adjust_probability);
 
 	/** row lower bounds */
 	copyCoreRowLower(rlbd_reco, 1);
