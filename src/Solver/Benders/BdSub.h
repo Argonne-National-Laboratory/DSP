@@ -129,7 +129,25 @@ private:
 			const double * rc,                 /**< [in] reduced cost corresponding to variables */
 			double *       cutval,             /**< [out] cut coefficients */
 			double &       cutrhs              /**< [out] cut rhs */);
-
+	
+	
+	static int calculateQuadraticCutElements(
+			int nrows,                         /**< [in] number of rows in subproblem */
+			int ncols,                         /**< [in] number of columns in subproblem */
+			const CoinPackedMatrix * mat_tech, /**< [in] technology matrix */
+			const double * rlbd,               /**< [in] row lower bounds */
+			const double * rubd,               /**< [in] row upper bounds */
+			const double * clbd,               /**< [in] column lower bounds */
+			const double * cubd,               /**< [in] column upper bounds */
+			const double * pi,                 /**< [in] dual variables corresponding to constraints */
+			const double * rc,                 /**< [in] reduced cost corresponding to variables */
+			const double   objval,			   /**< [in] the objective value of subproblem */
+			const CoinPackedMatrix * qobj_reco_coupling,	/**< [in] coupling quadratic terms in subproblem */
+			const double * x,				   /**< [in] first stage solution */
+			const double * y,				   /**< [out] second stage solution */
+			double *       cutval,             /**< [out] cut coefficients */
+			double &       cutrhs              /**< [out] cut rhs */);
+		
 protected:
 
 	DspParams * par_; /**< parameters */
