@@ -4,7 +4,7 @@
  *  Created on: Sep 22, 2014
  *      Author: kibaekkim
  */
- #define DSP_DEBUG
+// #define DSP_DEBUG
 #include "CoinHelperFunctions.hpp"
 #include "Utility/DspMessage.h"
 #include "StoModel.h"

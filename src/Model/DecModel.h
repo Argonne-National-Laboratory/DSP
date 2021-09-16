@@ -181,7 +181,7 @@ public:
 	/**
 	 * If true, the subproblem is QP
 	 */
-	//virtual bool RecoIsQP() = 0;
+	virtual bool RecoIsQP() = 0;
 	/**
 	 * Returns the number of reference scenarios (for DRO).
 	 */

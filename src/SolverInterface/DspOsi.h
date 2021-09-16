@@ -43,6 +43,16 @@ public:
 		throw CoinError("Quadratic objective is not supported.", "loadQuadraticObjective", "DspOsi");
 	}
 
+	/** get number of none zero quadratic terms in objective */
+	virtual int getNumNZQobj(){
+		throw CoinError("Quadratic objective is not supported.", "getNumNZQobj", "DspOsi");
+	}
+
+	/** get quadratic objective terms */
+	virtual void getQuadraticObjective(int * qrow, int * qcol, double * qvalue) {
+		throw CoinError("Quadratic objective is not supported.", "getQuadraticObjective", "DspOsi");
+	}
+
 	/** load quadratic constrs */
 	virtual void addQuadraticRows(int nqrows, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int ** linind, double ** linval, int ** quadrow, int ** quadcol, double ** quadval){};
 	

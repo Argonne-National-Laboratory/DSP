@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-#define DSP_DEBUG
+// #define DSP_DEBUG
 // #define DSP_PROFILE
 
 #include "Utility/DspUtility.h"
@@ -119,8 +119,8 @@ DSP_RTN_CODE BdSub::loadProblem(DecModel* model)
 	FREE_ARRAY_PTR(cubd_reco)  \
 	FREE_ARRAY_PTR(ctype_reco) \
 	FREE_ARRAY_PTR(obj_reco)   \
-	FREE_ARRAY_PTR(qobj_reco_coupling)  \
-	FREE_ARRAY_PTR(qobj_reco_ncoupling) \
+	FREE_PTR(qobj_reco_coupling)  \
+	FREE_PTR(qobj_reco_ncoupling) \
 	FREE_ARRAY_PTR(rlbd_reco)  \
 	FREE_ARRAY_PTR(rubd_reco)
 
@@ -153,16 +153,19 @@ DSP_RTN_CODE BdSub::loadProblem(DecModel* model)
 		mat_mp_[i]     = NULL;
 		cglp_[i]       = NULL;
 		warm_start_[i] = NULL;
-		/*if (model->RecoIsQP()){
+		if (model->RecoIsQP()){
+			printf("the subproblem is QP\n");
 			DSP_RTN_CHECK_THROW(model->copyRecoProb(subindices_[i],
 				mat_mp_[i], mat_reco, clbd_reco, cubd_reco, ctype_reco,
 				obj_reco, qobj_reco_coupling, qobj_reco_ncoupling, rlbd_reco, rubd_reco, false));
-		}*/
-		//else{
+		}
+		else{
+			printf("the subproblem is not QP\n");
 			DSP_RTN_CHECK_THROW(model->copyRecoProb(subindices_[i],
 				mat_mp_[i], mat_reco, clbd_reco, cubd_reco, ctype_reco,
 				obj_reco, rlbd_reco, rubd_reco, false));
-		//}
+			DSPdebugMessage("finish copy reco problem\n");
+		}
 		/** copy recourse problem */
 		/* DSP_RTN_CHECK_THROW(model->copyRecoProb(subindices_[i],
 				mat_mp_[i], mat_reco, clbd_reco, cubd_reco, ctype_reco,
@@ -175,26 +178,31 @@ DSP_RTN_CODE BdSub::loadProblem(DecModel* model)
 		cglp_[i] = createDspOsi(par_->getIntParam("BD/SUB/SOLVER"));
 		if (!cglp_[i]) throw CoinError("Failed to create DspOsi", "loadProblem", "BdSub");
 		
+
 		/** load problem */
 		cglp_[i]->si_->loadProblem(*mat_reco, clbd_reco, cubd_reco, obj_reco, rlbd_reco, rubd_reco);
-		//if (model->RecoIsQP()==1)
-		//	cglp_[i]->loadQuadraticObjective(*qobj_reco_ncoupling);
+		
+		if (qobj_reco_ncoupling!=NULL){
+			DSPdebugMessage("loading coupling quadratic objective terms...\n");
+			cglp_[i]->loadQuadraticObjective(*qobj_reco_ncoupling);
+		}
+			
 		//else
-			//cglp_[i]->loadQuadraticObjective(*qobj_reco_ncoupling);
 
+		DSPdebugMessage("finish copy reco problem\n");
 		for (int j = 0; j < cglp_[i]->si_->getNumCols(); ++j)
 		{
 			if (ctype_reco[j] != 'C') {
-				cglp_[i]->si_->setInteger(j);
+				cglp_[i]->setInteger(j);
 				recourse_has_integer_ = true;
 			}
 		}
 		cglp_[i]->setLogLevel(0);
 		cglp_[i]->setNumCores(par_->getIntParam("BD/SUB/THREADS"));
-
+		DSPdebugMessage("finish copy reco problem\n");
 		/** allocate memory for solution */
 		solutions_[i] = new double [cglp_[i]->si_->getNumCols()];
-
+		DSPdebugMessage("finish copy reco problem\n");
 		/** free memory */
 		FREE_MEMORY
 	}
@@ -302,11 +310,16 @@ void BdSub::solveOneSubproblem(
 	const double * pi   = NULL; /** dual variables */
 	const double * rc   = NULL; /** reduced costs */
 	const char * ctype = cgl->cglp_[s]->si_->getColType();
+	const int numq = cgl->cglp_[s]->getNumNZQobj();
+	const int * qrow = new int [numq];
+	const int * qcol = new int [numq];
+	const double * qvalue = new double [numq];
 
 	double stime = CoinGetTimeOfDay(); // tic
 
 	/** clone CGLP */
 	osi = cgl->cglp_[s]->clone();
+	osi->writeProb("sub", "lp");
 	osi->setLogLevel(0);
 	osi->setNumCores(cgl->par_->getIntParam("BD/SUB/THREADS"));
 	si = osi->si_;
@@ -430,8 +443,15 @@ void BdSub::solveOneSubproblem(
 #endif
 
 		/** calculate cut elements */
-		calculateCutElements(si->getNumRows(), si->getNumCols(),
+		//if (cgl->RecoIsQP()==false){
+			calculateCutElements(si->getNumRows(), si->getNumCols(),
 							 cgl->mat_mp_[s], rlbd, rubd, clbd, cubd, pi, rc, cutval[s], cutrhs[s]);
+		//}
+		//else{
+		//	calculateQuadraticCutElements(si->getNumRows(), si->getNumCols(),
+		//		cgl->mat_mp_[s], rlbd, rubd, clbd, cubd, pi, rc, si->getObjValue(), qobj_reco_coupling, x, si->getColSolution(), cutval[s], cutrhs[s]);
+		//}
+		
 	} else {
 		si->writeMps("subprob");
 	}
@@ -712,6 +732,59 @@ DSP_RTN_CODE BdSub::calculateCutElements(
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
+}
+
+DSP_RTN_CODE BdSub::calculateQuadraticCutElements(
+			int nrows,                         /**< [in] number of rows in subproblem */
+			int ncols,                         /**< [in] number of columns in subproblem */
+			const CoinPackedMatrix * mat_tech, /**< [in] technology matrix */
+			const double * rlbd,               /**< [in] row lower bounds */
+			const double * rubd,               /**< [in] row upper bounds */
+			const double * clbd,               /**< [in] column lower bounds */
+			const double * cubd,               /**< [in] column upper bounds */
+			const double * pi,                 /**< [in] dual variables corresponding to constraints */
+			const double * rc,                 /**< [in] reduced cost corresponding to variables */
+			const double   objval,			   /**< [in] the objective value of subproblem */
+			const CoinPackedMatrix * qobj_reco_coupling,	/**< [in] coupling quadratic terms in subproblem */
+			const double * x,				   /**< [in] first stage solution */
+			const double * y,				   /**< [out] second stage solution */
+			double *       cutval,             /**< [out] cut coefficients */
+			double &       cutrhs              /**< [out] cut rhs */)
+{
+	BGN_TRY_CATCH
+#define FREE_MEMORY \
+	FREE_ARRAY_PTR(temp1) \
+	FREE_ARRAY_PTR(temp2)
+
+	/* coefficient: pi */
+	int ncols1=mat_tech->getNumCols();
+	double *temp1;
+	double *temp2;
+	temp1=new double[ncols1]();
+	temp1=new double[ncols1]();
+	if (qobj_reco_coupling != NULL){
+		//qobj_reco_coupling->transpose(y, temp1);
+	}
+	/** calculate pi^T T */
+	mat_tech->transposeTimes(pi, temp2);
+
+	/** calculate cut coefficient, beta */
+	for (int i=0; i<ncols1; i++){
+		cutval[i]=temp1[i]-temp2[i];
+	}
+
+	/* calculate rhs */
+	cutrhs=objval;
+	for (int i=0; i<ncols1; i++){
+		cutrhs -= cutval[i] * x[i];
+	}
+
+	FREE_MEMORY
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
+#undef FREE_MEMORY
+
 }
 
 DspOsi * BdSub::createDspOsi(int solver) {

@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-// #define DSP_DEBUG
+ #define DSP_DEBUG
 
 #include "DspConfig.h"
 #include "Solver/Benders/BdDriverSerial.h"

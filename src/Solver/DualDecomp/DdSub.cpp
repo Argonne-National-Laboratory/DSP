@@ -95,10 +95,17 @@ DSP_RTN_CODE DdSub::solve()
 	DSPdebug(DspMessage::printArray(osi_->si_->getNumCols(), osi_->si_->getObjCoefficients()));
 
 	while (1) {
+		printf("debug\n");
+#ifdef DSP_DEBUG
+			char submps[64];
+			sprintf(submps, "sub%d", sind_);
+			osi_->writeMps(submps);
+			//getSiPtr()->writeMps(submps);
+#endif
 
 		/** solve */
 		osi_->solve();	
-
+		
 		/** check status. there might be unexpected results. */
 		status_ = osi_->status();
 		DSPdebugMessage("solution status %d\n", status_);
@@ -203,16 +210,16 @@ DSP_RTN_CODE DdSub::createProblem() {
     obj_aux[0] = 0.0;
 
     /** decompose model */
-	//if (model_->isQCQP()){
-	// 	DSP_RTN_CHECK_THROW(
+	// if (model_->isQCQP()){
+	//  	DSP_RTN_CHECK_THROW(
+    //          model_->decompose(1, augs, 1, clbd_aux, cubd_aux, obj_aux,
+    //                            mat, clbd, cubd, ctype, obj, qobj, rlbd, rubd));
+	// }
+	// else{
+	//  	DSP_RTN_CHECK_THROW(
     //         model_->decompose(1, augs, 1, clbd_aux, cubd_aux, obj_aux,
-    //                           mat, clbd, cubd, ctype, obj, qobj, rlbd, rubd));
-	//}
-	//else{
-	// 	DSP_RTN_CHECK_THROW(
-    //        model_->decompose(1, augs, 1, clbd_aux, cubd_aux, obj_aux,
-    //                          mat, clbd, cubd, ctype, obj, rlbd, rubd));
-	//}
+    //                           mat, clbd, cubd, ctype, obj, rlbd, rubd));
+	// }
     DSP_RTN_CHECK_THROW(
              model_->decompose(1, augs, 1, clbd_aux, cubd_aux, obj_aux,
                               mat, clbd, cubd, ctype, obj, qobj, rlbd, rubd, false));
@@ -221,7 +228,10 @@ DSP_RTN_CODE DdSub::createProblem() {
 
 	/** keep the original objective coefficient */
 	obj_ = new double [mat->getNumCols()];
+	//qobj_=new CoinPackedMatrix(*qobj);
+	//PRINT_ARRAY_MSG(qobj->getNumElements(), qobj->getElements(), "in subproblem qobj coef");
 	CoinCopyN(obj, mat->getNumCols(), obj_);
+	PRINT_ARRAY_MSG(mat->getNumCols(), obj_, "in obj coef");
 	DSPdebugMessage("mat->getNumCols() = %d\n", mat->getNumCols());
 
     /** number of coupling variables and constraints for this subproblem */
@@ -278,8 +288,6 @@ DSP_RTN_CODE DdSub::createProblem() {
 			const double * elements = qobj->getElements();
 			vector<double> adjelements;
 
-			//PRINT_ARRAY_MSG(qobj->getNumElements(), qobj->getElements(), "in subproblem qobj coef");
-			
 			int rowcount=0;
 			for (int j=0; j<startsize-1; j++){
 				if (start[j+1]-start[j]>0){
@@ -490,6 +498,7 @@ DSP_RTN_CODE DdSub::updateProblem(
 	FREE_ARRAY_PTR(newobj);
 
 	double * newobj = NULL;
+	//CoinPackedMatrix * newqobj=NULL;
 
 	BGN_TRY_CATCH
 
@@ -500,6 +509,7 @@ DSP_RTN_CODE DdSub::updateProblem(
 		/** allocate memory */
 		newobj = new double [ncols];
 		obj_offset_ = 0;
+		//newqobj=new CoinPackedMatrix(*qobj_);
 
 		/** update objective coefficients */
 		assert(obj_);
@@ -509,12 +519,15 @@ DSP_RTN_CODE DdSub::updateProblem(
 
 			// coefficients for the second-stage variables
 			CoinCopyN(lambda, nrows_coupling_, newobj);
-			// printf("DdSub::updateProblem lambda:\n");
-			// DspMessage::printArray(nrows_coupling_, lambda);
+			printf("DdSub::updateProblem lambda:\n");
+			DspMessage::printArray(nrows_coupling_, lambda);
 			for (int j = nrows_coupling_; j < ncols-1; ++j) {
 				newobj[j] = obj_[j] * probability;
-				// printf("update subproblem %d: obj_[%d] = %e, probability = %e, newobj -> %e\n", sind_, j, obj_[j], probability, newobj[j]);
+				//printf("update subproblem %d: obj_[%d] = %e, probability = %e, newobj -> %e\n", sind_, j, obj_[j], probability, newobj[j]);
 			}
+			//for (int i=0; i<newqobj->getNumElements(); i++){
+				//newqobj
+			//}
 			newobj[ncols-1] = obj_[ncols-1];
 		} else {
 			CoinCopyN(obj_, ncols, newobj);

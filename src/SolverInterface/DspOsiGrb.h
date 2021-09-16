@@ -125,7 +125,29 @@ public:
         	e.print();
 		}
     }
+
+	virtual int getNumNZQobj(){
+		try{
+			int numq = 0;
+			GUROBI_CALL("getNumNZQobj", GRBgetintattr(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), "NumQNZs", &numq));
+			return numq;
+		}
+		catch(const CoinError& e){
+        	e.print();
+		}
+	}
     
+	virtual void getQuadraticObjective(int * qrow, int * qcol, double * qvalue) {
+		try{
+			int numq = 0;
+			GUROBI_CALL("getQuadraticObjective", GRBgetintattr(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), "NumQNZs", &numq));
+			GUROBI_CALL("getQuadraticObjective", GRBgetq(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), &numq, qrow, qcol, qvalue));
+		}
+		catch(const CoinError& e){
+        	e.print();
+		}
+	}
+
 	/** load quadratic constrs */
 	virtual void addQuadraticRows(int nqrows, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int ** linind, double ** linval, int ** quadrow, int ** quadcol, double ** quadval)
 	{

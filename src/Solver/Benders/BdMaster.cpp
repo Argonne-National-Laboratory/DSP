@@ -88,7 +88,7 @@ DSP_RTN_CODE BdMaster::solve() {
 	/** set time limit */
 	osi_->setTimeLimit(CoinMax(0.01, CoinMin(1.0e+20,time_remains_)));
 	tic_ = CoinGetTimeOfDay();
-
+	osi_->writeProb("mastercheck","lp");
 	/** solve */
 	osi_->solve();
 

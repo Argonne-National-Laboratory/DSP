@@ -1,4 +1,4 @@
-// #define DSP_DEBUG
+ #define DSP_DEBUG
 
 #include "Solver/Benders/BendersCallback.h"
 #include "Utility/DspMacros.h"

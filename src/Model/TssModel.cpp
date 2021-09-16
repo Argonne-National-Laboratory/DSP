@@ -468,7 +468,7 @@ DSP_RTN_CODE TssModel::loadSecondStage(
 	}
 	else
 	{
-		//setRecoQP(true);
+		setRecoQP(true);
 		loadSecondStage(s, prob, start, index, value, clbd, cubd, ctype, obj, rlbd, rubd);
 
 		/** allocate memory for qobj_core_[1] */

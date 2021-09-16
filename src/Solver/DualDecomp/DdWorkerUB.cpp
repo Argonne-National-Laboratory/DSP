@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-#define DSP_DEBUG
+//#define DSP_DEBUG
 #include "Model/DecTssModel.h"
 #include "Solver/DualDecomp/DdWorkerUB.h"
 #include "SolverInterface/DspOsiCpx.h"
@@ -259,8 +259,8 @@ DSP_RTN_CODE DdWorkerUB::createProblem()
 		}
 #ifdef DSP_DEBUG
 /* write in lp file to see whether the quadratic rows are successfully added to the model or not */
-char filename[128];
-sprintf(filename, "DdWorkerUB_scen%d", s); 
+	char filename[128];
+	sprintf(filename, "DdWorkerUB_scen%d", s); 
 		osi_[s]->writeProb(filename, "lp");
 #endif
 
