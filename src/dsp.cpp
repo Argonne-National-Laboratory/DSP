@@ -532,13 +532,16 @@ int parseDecFile(char* decfile, vector<vector<string> >& rows_in_blocks) {
 	return 0;
 }
 
-void createBlockModel(DspApiEnv* env, CoinMpsIO& p, const CoinPackedMatrix* mat, 
-		int blockid, vector<string>& rows_in_block, map<string,int>& rowname2index, 
-		const char* ctype, const double* obj) {
-	vector<int> rowids(rows_in_block.size(),-1);
-	vector<double> rlbd(rows_in_block.size(),0.0);
-	vector<double> rubd(rows_in_block.size(),0.0);
-	CoinPackedMatrix submat(false,0,0);
+void createBlockModel(DspApiEnv *env, CoinMpsIO &p, const CoinPackedMatrix *mat,
+					  int blockid, vector<string> &rows_in_block, map<string, int> &rowname2index,
+					  const char *ctype, const double *obj)
+{
+	vector<int> rowids(rows_in_block.size(), -1);
+	vector<double> rlbd(rows_in_block.size(), 0.0);
+	vector<double> rubd(rows_in_block.size(), 0.0);
+	CoinPackedMatrix submat(false, 0, 0);
+	submat.setDimensions(0, p.getNumCols());
+	submat.reserve(rows_in_block.size(), rows_in_block.size());
 
 	//cout << "Creating block " << blockid << " ... ";
 	for (unsigned j = 0; j < rows_in_block.size(); ++j) {
@@ -546,10 +549,8 @@ void createBlockModel(DspApiEnv* env, CoinMpsIO& p, const CoinPackedMatrix* mat,
 		rowids[j] = k;
 		rlbd[j] = p.getRowLower()[k];
 		rubd[j] = p.getRowUpper()[k];
+		submat.appendRow(mat->getVector(k));
 	}
-	//cout << " with " << rowids.size() << " rows ... ";
-	submat.submatrixOf(*mat, rowids.size(), &rowids[0]);
-	//cout << "done!" << endl;
 #if 0
 	CoinMpsIO pout;
 	vector<string> cnames;
