@@ -1,0 +1,18 @@
+cff-version: 1.1.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Kim
+    given-names: Kibaek
+    orcid: https://orcid.org/0000-0002-5820-6533
+    affiliation: "Argonne National Laboratory"
+    email: "kimk@anl.gov"
+    website: https://kibaekkim.github.io
+  - family-names: Zavala
+    given-names: Victor
+  - family-names: Tjandraatmadja
+    given-names: Christian
+  - family-names: Byeon
+    given-names: Geunyeong
+title: Argonne-National-Laboratory/DSP: v1.4.1
+version: v1.4.1
+date-released: 2020-12-11
