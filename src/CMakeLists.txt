@@ -183,8 +183,6 @@ endif(MPI_CXX_FOUND)
 
 if(CMAKE_BUILD_TYPE EQUAL "DEBUG")
     add_compile_options(-Wall)
-else()
-    add_compile_options(-Wno-absolute-value)
 endif()
 
 if(CODE_COVERAGE)
