@@ -495,7 +495,10 @@ int parseDecFile(char* decfile, vector<vector<string> >& rows_in_blocks) {
 	if (myfile.is_open()) {
 		string card_prefix;
 		size_t found;
-		while(getline(myfile, line)) {
+		while (getline(myfile, line))
+		{
+			if (!line.empty() && line[line.size() - 1] == '\r')
+    			line.pop_back();
 			found = line.find_first_of(" ");
 			card_prefix = line.substr(0, found);
 			if (card_prefix.compare("PRESOLVED") == 0)
