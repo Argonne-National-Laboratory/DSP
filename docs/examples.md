@@ -64,9 +64,9 @@ The examples are given with `--algo dd` (i.e., using the dual decomposition), bu
     === "Serial Run"
 
         ```
-        ./bin/runDsp --algo dd \
-                     --mps ../examples/noswot \
-                     --dec ../examples/noswot \
+        ./bin/runDsp --algo dw \
+                     --mps ../examples/mps-dec/noswot.mps \
+                     --dec ../examples/mps-dec/noswot.dec \
                      --soln mysoln \
                      --param myparam.txt
         ```
@@ -74,9 +74,9 @@ The examples are given with `--algo dd` (i.e., using the dual decomposition), bu
     === "Parallel Run"
 
         ```
-        mpiexec -np 3 ./bin/runDsp --algo dd \
-                                   --mps ../examples/noswot \
-                                   --dec ../examples/noswot \
+        mpiexec -np 3 ./bin/runDsp --algo dw \
+                                   --mps ../examples/mps-dec/noswot.mps \
+                                   --dec ../examples/mps-dec/noswot.dec \
                                    --soln mysoln \
                                    --param myparam.txt
         ```
