@@ -306,40 +306,45 @@ DetModel::~DetModel()
 
 void DetModel::__printData()
 {
-	int ncols = mat_->getNumCols();
-	int nrows = mat_->getNumRows();
-
 	printf("\n### BEGINNING of printing DetModel data ###\n\n");
+	
+	if (mat_) {
+		int ncols = mat_->getNumCols();
+		int nrows = mat_->getNumRows();
 
-	printf("nrows %d\n", nrows);
-	printf("ncols %d\n", ncols);
-	PRINT_ARRAY_MSG(ncols, clbd_, "clbd_")
-	PRINT_ARRAY_MSG(ncols, cubd_, "cubd_")
-	PRINT_ARRAY_MSG(ncols, ctype_, "ctype_")
-	PRINT_ARRAY_MSG(ncols, obj_, "obj_")
-	PRINT_ARRAY_MSG(nrows, rlbd_, "rlbd_")
-	PRINT_ARRAY_MSG(nrows, rubd_, "rubd_")
+		printf("nrows %d\n", nrows);
+		printf("ncols %d\n", ncols);
+		PRINT_ARRAY_MSG(ncols, clbd_, "clbd_")
+		PRINT_ARRAY_MSG(ncols, cubd_, "cubd_")
+		PRINT_ARRAY_MSG(ncols, ctype_, "ctype_")
+		PRINT_ARRAY_MSG(ncols, obj_, "obj_")
+		PRINT_ARRAY_MSG(nrows, rlbd_, "rlbd_")
+		PRINT_ARRAY_MSG(nrows, rubd_, "rubd_")
 
-	printf("=== BEGINNING of CoinPackedMatrix mat_ ===\n");
-	printf("isColOrdered %d\n", mat_->isColOrdered());
-	PRINT_ARRAY_MSG(mat_->getMajorDim(), mat_->getVectorStarts(), "VectorStarts")
-	PRINT_SPARSE_ARRAY_MSG(
-			mat_->getNumElements(),
-			mat_->getIndices(),
-			mat_->getElements(),
-			"Elements")
-	printf("=== END of CoinPackedMatrix mat_ ===\n");
+		printf("=== BEGINNING of CoinPackedMatrix mat_ ===\n");
+		printf("isColOrdered %d\n", mat_->isColOrdered());
+		PRINT_ARRAY_MSG(mat_->getMajorDim(), mat_->getVectorStarts(), "VectorStarts")
+		PRINT_SPARSE_ARRAY_MSG(
+				mat_->getNumElements(),
+				mat_->getIndices(),
+				mat_->getElements(),
+				"Elements")
+		printf("=== END of CoinPackedMatrix mat_ ===\n");
+	} else {
+		printf("! Matrix data has not been created.\n");
+	}
 
-	printf("=== BEGINNING of CoinPackedMatrix qobj_ ===\n");
-	printf("isColOrdered %d\n", qobj_->isColOrdered());
-	PRINT_ARRAY_MSG(qobj_->getMajorDim(), qobj_->getVectorStarts(), "VectorStarts")
-	PRINT_SPARSE_ARRAY_MSG(
-			qobj_->getNumElements(),
-			qobj_->getIndices(),
-			qobj_->getElements(),
-			"Elements")
-	printf("=== END of CoinPackedMatrix qobj_ ===\n");
-
+	if (qobj_) {
+		printf("=== BEGINNING of CoinPackedMatrix qobj_ ===\n");
+		printf("isColOrdered %d\n", qobj_->isColOrdered());
+		PRINT_ARRAY_MSG(qobj_->getMajorDim(), qobj_->getVectorStarts(), "VectorStarts")
+		PRINT_SPARSE_ARRAY_MSG(
+				qobj_->getNumElements(),
+				qobj_->getIndices(),
+				qobj_->getElements(),
+				"Elements")
+		printf("=== END of CoinPackedMatrix qobj_ ===\n");
+	}
 
 	printf("\n### END of printing StoModel data ###\n");
 }
