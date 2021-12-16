@@ -158,7 +158,14 @@ DSP_RTN_CODE DeDriver::run()
 		bestdualobj_ = osi_->getDualObjValue();
 
 		/** solution */
-		if (osi_->si_->getColSolution()) {
+		if (osi_->si_->getColSolution())
+		{
+			DSPdebugMessage("bestprimsol_=\n");
+			// DspMessage::printArray(osi_->si_->getNumCols(), osi_->si_->getColSolution());
+			
+			// make sure that the solution vector has enough space.
+			if (primsol_.size() < osi_->si_->getNumCols())
+				primsol_.resize(osi_->si_->getNumCols());
 			CoinCopyN(osi_->si_->getColSolution(), osi_->si_->getNumCols(), &primsol_[0]);
 			bestprimsol_ = primsol_;
 		}
