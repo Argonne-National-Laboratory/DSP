@@ -257,7 +257,7 @@ DSP_RTN_CODE DeDriver::run()
 		if (osi_->si_->getColSolution())
 		{
 			DSPdebugMessage("bestprimsol_=\n");
-			// DspMessage::printArray(osi_->si_->getNumCols(), osi_->si_->getColSolution());
+			DSPdebug(DspMessage::printArray(osi_->si_->getNumCols(), osi_->si_->getColSolution()));
 			
 			// make sure that the solution vector has enough space.
 			if (primsol_.size() < osi_->si_->getNumCols())
@@ -269,9 +269,10 @@ DSP_RTN_CODE DeDriver::run()
 		/** statistics */
 		numIterations_ = osi_->si_->getIterationCount();
 		DSPdebugMessage("numIterations_=%d\n", numIterations_);
-		if (osi_->isMip())
+		if (osi_->isMip()) {
 			numNodes_ = osi_->getNumNodes();
-		DSPdebugMessage("numNodes_=%d\n", numNodes_);
+			DSPdebugMessage("numNodes_=%d\n", numNodes_);
+		}
 	}
 	// osi_->si_->writeMps("dsp");
 
@@ -345,7 +346,7 @@ void DeDriver::writeExtMps(const char *name)
 	}
 
 	/** write mps */
-	// osi->writeMps(name);
+	osi->writeMps(name);
 
 	/** save memory */
 	FREE_MEMORY
