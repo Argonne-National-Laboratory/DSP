@@ -52,8 +52,7 @@ DSP_RTN_CODE DeDriver::run()
 	FREE_PTR(qobj)              \
 	FREE_ARRAY_PTR(rlbd)        \
 	FREE_ARRAY_PTR(rubd)        \
-	FREE_PTR(qc_row_core)       \
-	FREE_2D_PTR(nscen, qc_row_scen) \
+	FREE_ARRAY_PTR(qc_row_scen) \
 	FREE_ARRAY_PTR(linind)      \
 	FREE_ARRAY_PTR(quadrow)     \
 	FREE_ARRAY_PTR(quadcol)
