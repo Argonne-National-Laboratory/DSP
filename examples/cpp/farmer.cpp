@@ -168,6 +168,8 @@ int main(int argc, char **argv)
 
     // Solve the deterministic equivalent problem
     ((void (*)(void*))dlsym(handle, "solveDe"))(env);
+
+    // FIXME: This causes segfault, probably due to incorrectly addressing unbounded subproblem solution.
     // ((void (*)(void*))dlsym(handle, "solveDw"))(env);
 
     double primal_bound = ((double (*)(void*))dlsym(handle, "getPrimalBound"))(env);
