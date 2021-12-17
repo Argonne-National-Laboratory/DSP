@@ -31,7 +31,9 @@ DSP_RTN_CODE DeDriver::init()
 
 	show_copyright();
 
-	primsol_.resize(model_->getFullModelNumCols());
+	if (model_->getFullModelNumCols() > 0) {
+		primsol_.resize(model_->getFullModelNumCols());
+	}
 
 	END_TRY_CATCH(;)
 
