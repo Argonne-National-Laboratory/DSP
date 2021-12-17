@@ -184,6 +184,7 @@ DSP_RTN_CODE DeDriver::run()
 
 	/** set display */
 	osi_->setLogLevel(par_->getIntParam("DE/SOLVER/LOG_LEVEL"));
+	DSPdebug(osi_->setLogLevel(5));
 
 	/** set number of cores */
 	osi_->setNumCores(par_->getIntParam("NUM_CORES"));
