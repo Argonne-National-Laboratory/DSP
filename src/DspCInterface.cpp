@@ -255,6 +255,12 @@ void solveDe(DspApiEnv * env)
 	BGN_TRY_CATCH
 
 	DSP_API_CHECK_MODEL();
+	if (env->model_->isStochastic() == false) {
+		BlkModel* blk = dynamic_cast<DecBlkModel*>(env->model_)->blkPtr();
+		if (blk->areBlocksUpdated() == false) {
+			blk->updateBlocks();
+		}
+	}
 	freeSolver(env);
 
 	env->solver_ = new DeDriver(env->model_, env->par_, env->message_);
@@ -271,6 +277,10 @@ void solveDd(DspApiEnv * env)
 	BGN_TRY_CATCH
 
 	DSP_API_CHECK_MODEL();
+	if (env->model_->isStochastic() == false) {
+		printf("Dual decomposition is not available for non-stochastic problems.\n");
+		return;
+	}
 	freeSolver(env);
 
 	env->solver_ = new DdDriverSerial(env->model_, env->par_, env->message_);
@@ -287,6 +297,12 @@ void solveDw(DspApiEnv * env)
 	BGN_TRY_CATCH
 
 	DSP_API_CHECK_MODEL();
+	if (env->model_->isStochastic() == false) {
+		BlkModel* blk = dynamic_cast<DecBlkModel*>(env->model_)->blkPtr();
+		if (blk->areBlocksUpdated() == false) {
+			blk->updateBlocks();
+		}
+	}
 	freeSolver(env);
 
 	env->solver_ = new DwSolverSerial(env->model_, env->par_, env->message_);
@@ -303,6 +319,10 @@ void solveBd(DspApiEnv * env)
 	BGN_TRY_CATCH
 #ifdef DSP_HAS_SCIP
 	DSP_API_CHECK_MODEL();
+	if (env->model_->isStochastic() == false) {
+		printf("Benders decomposition is not available for non-stochastic problems.\n");
+		return;
+	}
 	freeSolver(env);
 
 	if (!env->model_->isStochastic())
