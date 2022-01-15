@@ -449,13 +449,25 @@ void OsiScipSolverInterface::addQuadraticRows(int nqrows, int * linnzcnt, int * 
 		(void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "quadrow_%d", i);
 
 		SCIP_CONS * cons = NULL;
-		SCIP_CALL_ABORT(SCIPcreateConsBasicQuadratic(scip_, &cons, name, 0, NULL, NULL, 0, NULL, NULL, NULL, rowlb, rowub));
+		SCIP_CALL_ABORT(SCIPcreateConsBasicQuadraticNonlinear(scip_, &cons, name, 0, NULL, NULL, 0, NULL, NULL, NULL, rowlb, rowub));
 
 		/** add coefficients */
 		for (int j = 0; j < linnzcnt[i]; j++)
-			SCIP_CALL_ABORT(SCIPaddLinearVarQuadratic(scip_, cons, vars_[linind[i][j]], linval[i][j]));
-		for (int j = 0; j < quadnzcnt[i]; j++)
-			SCIP_CALL_ABORT(SCIPaddBilinTermQuadratic(scip_, cons, vars_[quadrow[i][j]], vars_[quadcol[i][j]], quadval[i][j]));
+			SCIP_CALL_ABORT(SCIPaddLinearVarNonlinear(scip_, cons, vars_[linind[i][j]], linval[i][j]));
+		for (int j = 0; j < quadnzcnt[i]; j++) {
+			
+			// Deprecated:
+			// SCIP_CALL_ABORT(SCIPaddBilinTermQuadratic(scip_, cons, vars_[quadrow[i][j]], vars_[quadcol[i][j]], quadval[i][j]));
+
+			SCIP_EXPR * expr;
+			SCIP_EXPR * exprs[2];
+			/* create variable expressions */
+  			SCIP_CALL_ABORT( SCIPcreateExprVar(scip_, &exprs[0], vars_[quadrow[i][j]], NULL, NULL) );
+  			SCIP_CALL_ABORT( SCIPcreateExprVar(scip_, &exprs[1], vars_[quadcol[i][j]], NULL, NULL) );
+			SCIP_CALL_ABORT( SCIPcreateExprProduct(scip_, &expr, 2, exprs, 1.0, NULL, NULL));
+			SCIP_CALL_ABORT( SCIPaddExprNonlinear(scip_, cons, expr, quadval[i][j]));
+		}
+
 		/** add constraint */
 		SCIP_CALL_ABORT(SCIPaddCons(scip_, cons));
 
