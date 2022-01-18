@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 
 	show_copyright();
 
-	show_copyright();
+	// show_copyright();
 
 	bool isroot = true;
 #ifdef DSP_HAS_MPI

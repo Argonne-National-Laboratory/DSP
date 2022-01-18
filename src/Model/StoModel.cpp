@@ -730,7 +730,7 @@ DSP_RTN_CODE StoModel::chgToSocp(vector<int> &qc_rstart)
 	double *** L_scen = new double ** [nscen_];
 	int ** n_scen = new int * [nscen_];
 	vector<vector<vector<int>>> indices_scen(nscen_, vector<vector<int>>(nqrows_stg[1]));
-cout << "reach 735" << endl;
+
 	for (s = 0; s < nscen_; s++) 
 	{
 		L_scen[s] = new double * [nqrows_stg[1]];
