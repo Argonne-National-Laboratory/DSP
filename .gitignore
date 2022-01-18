@@ -6,8 +6,7 @@ install_manifest.txt
 CMakeFiles
 Build
 .idea
-ma27-1.0.0.tar.gz
-scipoptsuite-3.1.1.tgz
+UserConfig.cmake
 build_master
 build/*
 build_merge/*
