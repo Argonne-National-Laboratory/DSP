@@ -136,7 +136,8 @@ public:
     }
 
     /** set node limit */
-    virtual void setNodeLimit(double num) {
+    virtual void setNodeLimit(int num)
+    {
         SCIPsetLongintParam(scip_->getScip(), "limits/nodes", num);
     }
 

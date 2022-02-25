@@ -91,6 +91,9 @@ DSP_RTN_CODE DdSub::solve()
 	/** check dual infeasibility */
 	bool dualinfeas = false;
 
+	DSPdebugMessage("s = %d, objective cofficient:\n", sind_);
+	DSPdebug(DspMessage::printArray(osi_->si_->getNumCols(), osi_->si_->getObjCoefficients()));
+
 	while (1) {
 
 		/** solve */
@@ -113,9 +116,9 @@ DSP_RTN_CODE DdSub::solve()
 			DSPdebugMessage("fraction gap %e\n", fabs(primobj_-dualobj_) / fabs(dualobj_));
 			dualinfeas = false;
 #ifdef DSP_DEBUG
-			char submps[64];
-			sprintf(submps, "sub%d", sind_);
-			getSiPtr()->writeMps(submps);
+			char sublp[64];
+			sprintf(sublp, "sub%d.lp", sind_);
+			osi_->writeProb(sublp, NULL);
 #endif
 			break;
 		case DSP_STAT_LIM_INFEAS:
@@ -197,11 +200,11 @@ DSP_RTN_CODE DdSub::createProblem() {
     obj_aux[0] = 0.0;
 
     /** decompose model */
-    DSP_RTN_CHECK_THROW(
-            model_->decompose(1, augs, 1, clbd_aux, cubd_aux, obj_aux,
-                              mat, clbd, cubd, ctype, obj, rlbd, rubd));
+	DSP_RTN_CHECK_THROW(
+		model_->decompose(1, augs, 1, clbd_aux, cubd_aux, obj_aux,
+						  mat, clbd, cubd, ctype, obj, rlbd, rubd, false));
 
-    DSP_RTN_CHECK_THROW(
+	DSP_RTN_CHECK_THROW(
             model_->decomposeCoupling(1, augs, cpl_mat_, cpl_cols_, cpl_ncols));
 
 	/** keep the original objective coefficient */
@@ -236,29 +239,29 @@ DSP_RTN_CODE DdSub::createProblem() {
         }
 
 		double probability = tssModel->getProbability()[sind_];
-		for (int j = 0; j < tssModel->getNumCols(0); ++j)
-			obj[j] *= probability;
-		if (model_->isDro()) {
-			if (sind_ < tssModel->getNumReferences()) {
-				for (int j = tssModel->getNumCols(0); j < tssModel->getNumCols(0) + tssModel->getNumCols(1); ++j) {
-					obj[j] *= tssModel->getReferenceProbability(sind_) / probability;
-				}
-			} else {
-				CoinZeroN(obj + tssModel->getNumCols(0), tssModel->getNumCols(1));
-			}
-		}
-		if (probability > 1e-6)
+		if (model_->isDro())
 		{
-			for (int j = 0; j < tssModel->getNumCols(1); ++j)
-				obj_[tssModel->getNumCols(0)+j] /= probability;
+			for (int j = 0; j < tssModel->getNumCols(0); ++j)
+				obj[j] *= probability;
+			if (sind_ < tssModel->getNumReferences())
+				for (int j = 0; j < tssModel->getNumCols(1); ++j)
+					obj[tssModel->getNumCols(0) + j] *= tssModel->getReferenceProbability(sind_);
+			else
+				for (int j = 0; j < tssModel->getNumCols(1); ++j)
+					obj[tssModel->getNumCols(0) + j] *= probability;
+		}
+		else
+		{
+			for (int j = 0; j < mat->getNumCols(); ++j)
+				obj[j] *= probability;
 		}
 
 #ifdef DSP_DEBUG
-		DSPdebugMessage("sind_ = %d, probability = %e, lambdas = \n", sind_, model_->isDro() ? tssModel->getReferenceProbability(sind_) : probability);
+		printf("sind_ = %d, probability = %e, lambdas = \n", sind_, model_->isDro() ? tssModel->getReferenceProbability(sind_) : probability);
 		DspMessage::printArray(tssModel->getNumCols(0), obj);
 #endif
 
-        /** convert column types */
+		/** convert column types */
         if (parRelaxIntegrality_[0]) {
             for (int j = 0; j < tssModel->getNumCols(0); ++j) {
                 if (ctype[j] != 'C')
@@ -402,9 +405,9 @@ DSP_RTN_CODE DdSub::addCutGenerator() {
 
 /** update problem */
 DSP_RTN_CODE DdSub::updateProblem(
-		double * lambda,
-		double probability,
-		double primal_bound)
+	const double *lambda,
+	double probability,
+	double primal_bound)
 {
 #define FREE_MEMORY       \
 	FREE_ARRAY_PTR(newobj);

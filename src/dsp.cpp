@@ -45,9 +45,6 @@ const double test_tolerance = 1.0e-2;
 */
 int main(int argc, char *argv[])
 {
-
-	show_copyright();
-
 	show_copyright();
 
 	bool isroot = true;
@@ -170,7 +167,7 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 			cout << "Second stage: " << getNumRows(env, 1) << " rows, " << getNumCols(env, 1) << " cols, " << getNumIntegers(env, 1) << " integers" << endl;
 			cout << "Number of scenarios: " << getNumSubproblems(env) << endl;
 		}
-		setBlockIds(env, getNumSubproblems(env), true);
+		setBlockIds(env, getNumSubproblems(env), false);
 	}
 	else if (mpsfile != NULL && decfile != NULL)
 	{
@@ -196,7 +193,7 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 	{
 		if (string(algotype) != "de" && string(algotype) != "dd" && string(algotype) != "drdd")
 		{
-			cout << "Current version only support deterministic or dual decomposition solvers for quadratic constrained problem" << endl;
+			cout << "Quadratic constrained problem is not supported for " << string(algotype) << "." << endl;
 			return 1;
 		}
 		if (isroot)
@@ -595,6 +592,8 @@ int parseDecFile(char *decfile, vector<vector<string>> &rows_in_blocks)
 		size_t found;
 		while (getline(myfile, line))
 		{
+			if (!line.empty() && line[line.size() - 1] == '\r')
+    			line.pop_back();
 			found = line.find_first_of(" ");
 			card_prefix = line.substr(0, found);
 			if (card_prefix.compare("PRESOLVED") == 0)
@@ -646,6 +645,8 @@ void createBlockModel(DspApiEnv *env, CoinMpsIO &p, const CoinPackedMatrix *mat,
 	vector<double> rlbd(rows_in_block.size(), 0.0);
 	vector<double> rubd(rows_in_block.size(), 0.0);
 	CoinPackedMatrix submat(false, 0, 0);
+	submat.setDimensions(0, p.getNumCols());
+	submat.reserve(rows_in_block.size(), rows_in_block.size());
 
 	//cout << "Creating block " << blockid << " ... ";
 	for (unsigned j = 0; j < rows_in_block.size(); ++j)
@@ -654,10 +655,8 @@ void createBlockModel(DspApiEnv *env, CoinMpsIO &p, const CoinPackedMatrix *mat,
 		rowids[j] = k;
 		rlbd[j] = p.getRowLower()[k];
 		rubd[j] = p.getRowUpper()[k];
+		submat.appendRow(mat->getVector(k));
 	}
-	//cout << " with " << rowids.size() << " rows ... ";
-	submat.submatrixOf(*mat, rowids.size(), &rowids[0]);
-	//cout << "done!" << endl;
 #if 0
 	CoinMpsIO pout;
 	vector<string> cnames;

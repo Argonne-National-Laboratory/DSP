@@ -494,7 +494,9 @@ void solveDwMpi(DspApiEnv * env, MPI_Comm comm)
 	BGN_TRY_CATCH
 
 	int comm_size;
+	int comm_rank;
 	MPI_Comm_size(comm, &comm_size);
+	MPI_Comm_rank(comm, &comm_rank);
 
 	if (comm_size == 1) {
 		solveDw(env);
@@ -505,6 +507,32 @@ void solveDwMpi(DspApiEnv * env, MPI_Comm comm)
 	freeSolver(env);
 
 	env->solver_ = new DwSolverMpi(env->model_, env->par_, env->message_, comm);
+
+	/** Check whether or not the subproblems are distributed. */
+	int is_distributed;
+	if (env->model_->isStochastic())
+	{
+		is_distributed = env->model_->isDistributed() ? 1 : 0;
+	}
+	else
+	{
+		/**
+		 * NOTE: This is really a temporary fix.
+		 * We assume that the master process has no subproblem when the subproblems are distributed.
+		 */
+		if (comm_rank == 0)
+			is_distributed = env->model_->getNumSubproblems() == 0 ? 1 : 0;
+		MPI_Bcast(&is_distributed, 1, MPI_INT, 0, comm);
+	}
+	if (is_distributed == 1)
+	{
+		if (comm_rank == 0)
+			cout << "The distributed computing is not supported for Dantzig-Wolfe decomposition.\n"
+					"Please create all the scenario subproblems at each process.\n"
+				 << endl;
+		return;
+	}
+
 	DSP_RTN_CHECK_THROW(env->solver_->init());
 	DSP_RTN_CHECK_THROW(dynamic_cast<DwSolverMpi*>(env->solver_)->run());
 	DSP_RTN_CHECK_THROW(env->solver_->finalize());
@@ -586,6 +614,14 @@ void setWassersteinAmbiguitySet(DspApiEnv *env, double lp_norm, double eps)
 	DSP_API_CHECK_ENV();
 	BGN_TRY_CATCH
 	DSP_API_CHECK_MODEL();
+	if (env->model_->isStochastic() == false)
+		throw "Distributionally robust is available for stochastic programs only.\n";
+	if (env->model_->isDistributed())
+	{
+		char msg[] = "The distributed computing of Wasserstein ambiguity set is not supported.\n"
+					 "Please create all the scenario subproblems at each process.\n";
+		throw msg;
+	}
 	DSP_RTN_CHECK_THROW(getTssModel(env)->setWassersteinAmbiguitySet(lp_norm, eps));
 	END_TRY_CATCH(;)
 }

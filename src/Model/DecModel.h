@@ -158,19 +158,6 @@ public:
 	virtual double getRhsCouplingRow(int row) = 0;
 
 	/**
-	 * Indicates whether the coupling constraints are nonanticipativity constraints
-	 * (i.e. x_1 = ... = x_s), which may receive special treatment due to their structure.
-	 * If nonanticipativity is true, implementation must ensure all these are equal:
-	 *   the dimension of x_s for any s,
-	 *   getNumCouplingRows() / getNumSubproblems(),
-	 *   getNumCouplingCols() / getNumSubproblems(),
-	 *   getNumSubproblemCouplingRows(s) for any s, and
-	 *   getNumSubproblemCouplingCols(s) for any s.
-	 * See class DecTssModel for more details on the special treatment for nonanticipativity.
-	 */
-	virtual bool nonanticipativity() = 0;
-
-	/**
 	 * If true, this is a stochastic model that can be downcasted to StoModel.
 	 * Used to handle specific stochastic cases.
 	 */
@@ -185,6 +172,11 @@ public:
 	 * If true, this is a distributionally robust variant.
 	 */
 	virtual bool isDro() = 0;
+
+	/**
+	 * If true, the subproblem data is distributed.
+	 */
+	virtual bool isDistributed() = 0;
 
 	/**
 	 * Returns the number of reference scenarios (for DRO).
@@ -212,19 +204,20 @@ public:
 	 * this results in a dual decomposition subproblem.
 	 */
 	virtual DSP_RTN_CODE decompose(
-		int size,                    /**< [in] size of subproblem subset */
-		int * subprobs,              /**< [in] subset of subproblems */
-		int naux,                    /**< [in] number of auxiliary columns */
-		double * clbd_aux,           /**< [in] lower bounds for auxiliary columns */
-		double * cubd_aux,           /**< [in] upper bounds for auxiliary columns */
-		double * obj_aux,            /**< [in] objective coefficients for auxiliary columns */
-		CoinPackedMatrix *& mat,     /**< [out] constraint matrix */
-		double *& clbd,              /**< [out] column lower bounds */
-		double *& cubd,              /**< [out] column upper bounds */
-		char   *& ctype,             /**< [out] column types */
-		double *& obj,               /**< [out] objective coefficients */
-		double *& rlbd,              /**< [out] row lower bounds */
-		double *& rubd               /**< [out] row upper bounds */) = 0;
+		int size,				/**< [in] size of subproblem subset */
+		int *subprobs,			/**< [in] subset of subproblems */
+		int naux,				/**< [in] number of auxiliary columns */
+		double *clbd_aux,		/**< [in] lower bounds for auxiliary columns */
+		double *cubd_aux,		/**< [in] upper bounds for auxiliary columns */
+		double *obj_aux,		/**< [in] objective coefficients for auxiliary columns */
+		CoinPackedMatrix *&mat, /**< [out] constraint matrix */
+		double *&clbd,			/**< [out] column lower bounds */
+		double *&cubd,			/**< [out] column upper bounds */
+		char *&ctype,			/**< [out] column types */
+		double *&obj,			/**< [out] objective coefficients */
+		double *&rlbd,			/**< [out] row lower bounds */
+		double *&rubd,			/**< [out] row upper bounds */
+		bool adjust_probability = true /**< [in] adjust probability (only for stochastic)*/) = 0;
 
 	virtual DSP_RTN_CODE decompose(
 		int size,                    /**< [in] size of subproblem subset */

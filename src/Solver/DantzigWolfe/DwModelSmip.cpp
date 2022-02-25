@@ -22,7 +22,7 @@ DwModel() {
 DwModelSmip::DwModelSmip(DecSolver* solver):
 DwModel(solver) {
     tss_ = dynamic_cast<TssModel*>(solver_->getModelPtr());
-	printf("DwModelSmip constructor.\n");
+	// printf("DwModelSmip constructor.\n");
 }
 
 DwModelSmip::~DwModelSmip() {
@@ -37,8 +37,8 @@ DSP_RTN_CODE DwModelSmip::initBranch() {
             branch_ = new DwBranchNonant(this);
             break;
         case BRANCH_NONANT2:
-			printf("Created BRANCH_NONANT2 rule.\n");
-            branch_ = new DwBranchNonant2(this);
+			// printf("Created BRANCH_NONANT2 rule.\n");
+			branch_ = new DwBranchNonant2(this);
             break;
         case BRANCH_DISJUNCTION_TEST:
             printf("\n*** WARNING: This is a testing code for branching on general disjunctions. ***\n\n");
