@@ -17,3 +17,5 @@ experiments/dro/*.out
 examples/dro/experiments/outputs/*
 examples/dro/experiments/*.csv
 .DS_Store
+examples/cpp/farmer
+examples/cpp/farmer_dec
