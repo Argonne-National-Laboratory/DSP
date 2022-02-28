@@ -13,3 +13,5 @@ build/*
 build_merge/*
 extra/glpk*
 cplex.log
+examples/cpp/farmer
+examples/cpp/farmer_dec
