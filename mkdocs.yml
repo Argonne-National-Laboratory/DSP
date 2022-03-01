@@ -19,8 +19,7 @@ nav:
   - Home: index.md
   - Getting Started: 
     - Installation: install.md
-    - How to Use: howto.md
-    - More Examples: examples.md
+    - Run DSP binary: run_binary.md
   - Algorithms: algorithms.md
   - Parameters: parameters.md
   - API: api.md
