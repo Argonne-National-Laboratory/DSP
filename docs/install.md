@@ -51,6 +51,8 @@ Assuming that you are at the root directory of DSP, type
 mkdir build
 cd build
 cmake ..
+make
+make install
 ```
 
 If everything goes well, you should be able to find these two files: `./bin/runDsp` and `./lib/libDsp.*`.

@@ -68,30 +68,30 @@ public:
 
 	double getRhsCouplingRow(int row);
 
-	bool nonanticipativity() {return false;}
-
 	bool isStochastic() {return false;}
 	virtual void setDro(bool yes) { ; }
-	bool isDro() {return false;}
+	virtual bool isDro() { return false; }
+	virtual bool isDistributed();
 	int getNumReferences() {return 0;}
 	double getWassersteinSize() {return 0.0;}
 	double getWassersteinDist(int i, int j) {return 0.0;}
 	double getReferenceProbability(int i) {return 0.0;}
 
 	DSP_RTN_CODE decompose(
-		int size,                /**< [in] size of subproblem subset */
-		int * subprobs,          /**< [in] subset of subproblems */
-		int naux,                /**< [in] number of auxiliary columns */
-		double * clbd_aux,       /**< [in] lower bounds for auxiliary columns */
-		double * cubd_aux,       /**< [in] upper bounds for auxiliary columns */
-		double * obj_aux,        /**< [in] objective coefficients for auxiliary columns */
-		CoinPackedMatrix *& mat, /**< [out] constraint matrix */
-		double *& clbd,          /**< [out] column lower bounds */
-		double *& cubd,          /**< [out] column upper bounds */
-		char   *& ctype,         /**< [out] column types */
-		double *& obj,           /**< [out] objective coefficients */
-		double *& rlbd,          /**< [out] row lower bounds */
-		double *& rubd           /**< [out] row upper bounds */);
+		int size,				/**< [in] size of subproblem subset */
+		int *subprobs,			/**< [in] subset of subproblems */
+		int naux,				/**< [in] number of auxiliary columns */
+		double *clbd_aux,		/**< [in] lower bounds for auxiliary columns */
+		double *cubd_aux,		/**< [in] upper bounds for auxiliary columns */
+		double *obj_aux,		/**< [in] objective coefficients for auxiliary columns */
+		CoinPackedMatrix *&mat, /**< [out] constraint matrix */
+		double *&clbd,			/**< [out] column lower bounds */
+		double *&cubd,			/**< [out] column upper bounds */
+		char *&ctype,			/**< [out] column types */
+		double *&obj,			/**< [out] objective coefficients */
+		double *&rlbd,			/**< [out] row lower bounds */
+		double *&rubd,			/**< [out] row upper bounds */
+		bool adjust_probability = true /**< not used */);
 
 	DSP_RTN_CODE decompose(
 		int size,                /**< [in] size of subproblem subset */

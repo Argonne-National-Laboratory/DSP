@@ -143,33 +143,35 @@ public:
 	 */
 	double evalLhsCouplingRowSubprob(int row, int subprob, double * subprobSolution);
 
-	bool nonanticipativity() {return true;}
-
 	bool isStochastic() {return true;}
 
 	// The following functions are for distributionally robust variant.
 	// TODO: Better to create a new inhereted class?
 	virtual void setDro(bool yes) { TssModel::setDro(yes); }
 	virtual bool isDro() {return TssModel::isDro();}
+
+	virtual bool isDistributed();
+
 	virtual int getNumReferences() {return TssModel::getNumReferences();}
 	virtual double getWassersteinSize() {return TssModel::getWassersteinSize();}
 	virtual double getWassersteinDist(int i, int j) {return TssModel::getWassersteinDist(i,j);}
 	virtual double getReferenceProbability(int i) {return TssModel::getReferenceProbability(i);}
 
 	DSP_RTN_CODE decompose(
-		int size,                    /**< [in] size of subproblem subset */
-		int * scen,                  /**< [in] subset of scenarios */
-		int naux,                    /**< [in] number of auxiliary columns */
-		double * clbd_aux,           /**< [in] lower bounds for auxiliary columns */
-		double * cubd_aux,           /**< [in] upper bounds for auxiliary columns */
-		double * obj_aux,            /**< [in] objective coefficients for auxiliary columns */
-		CoinPackedMatrix *& mat,     /**< [out] constraint matrix */
-		double *& clbd,              /**< [out] column lower bounds */
-		double *& cubd,              /**< [out] column upper bounds */
-		char   *& ctype,             /**< [out] column types */
-		double *& obj,               /**< [out] objective coefficients */
-		double *& rlbd,              /**< [out] row lower bounds */
-		double *& rubd               /**< [out] row upper bounds */);
+		int size,				/**< [in] size of subproblem subset */
+		int *scen,				/**< [in] subset of scenarios */
+		int naux,				/**< [in] number of auxiliary columns */
+		double *clbd_aux,		/**< [in] lower bounds for auxiliary columns */
+		double *cubd_aux,		/**< [in] upper bounds for auxiliary columns */
+		double *obj_aux,		/**< [in] objective coefficients for auxiliary columns */
+		CoinPackedMatrix *&mat, /**< [out] constraint matrix */
+		double *&clbd,			/**< [out] column lower bounds */
+		double *&cubd,			/**< [out] column upper bounds */
+		char *&ctype,			/**< [out] column types */
+		double *&obj,			/**< [out] objective coefficients */
+		double *&rlbd,			/**< [out] row lower bounds */
+		double *&rubd,			/**< [out] row upper bounds */
+		bool adjust_probability = true /**< [in] adjust probability */);
 
 	DSP_RTN_CODE decompose(
 		int size,                    /**< [in] size of subproblem subset */

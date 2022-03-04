@@ -33,7 +33,9 @@ DSP_RTN_CODE DeDriver::init()
 
 	show_copyright();
 
-	primsol_.resize(model_->getFullModelNumCols());
+	if (model_->getFullModelNumCols() > 0) {
+		primsol_.resize(model_->getFullModelNumCols());
+	}
 
 	END_TRY_CATCH(;)
 
@@ -182,6 +184,7 @@ DSP_RTN_CODE DeDriver::run()
 
 	/** set display */
 	osi_->setLogLevel(par_->getIntParam("DE/SOLVER/LOG_LEVEL"));
+	DSPdebug(osi_->setLogLevel(5));
 
 	/** set number of cores */
 	osi_->setNumCores(par_->getIntParam("NUM_CORES"));
@@ -263,8 +266,11 @@ DSP_RTN_CODE DeDriver::run()
 		if (osi_->si_->getColSolution())
 		{
 			DSPdebugMessage("bestprimsol_=\n");
-			// DspMessage::printArray(osi_->si_->getNumCols(), osi_->si_->getColSolution());
+			DSPdebug(DspMessage::printArray(osi_->si_->getNumCols(), osi_->si_->getColSolution()));
 			
+			// make sure that the solution vector has enough space.
+			if (primsol_.size() < osi_->si_->getNumCols())
+				primsol_.resize(osi_->si_->getNumCols());
 			CoinCopyN(osi_->si_->getColSolution(), osi_->si_->getNumCols(), &primsol_[0]);
 			bestprimsol_ = primsol_;
 		}
@@ -272,9 +278,10 @@ DSP_RTN_CODE DeDriver::run()
 		/** statistics */
 		numIterations_ = osi_->si_->getIterationCount();
 		DSPdebugMessage("numIterations_=%d\n", numIterations_);
-		if (osi_->isMip())
+		if (osi_->isMip()) {
 			numNodes_ = osi_->getNumNodes();
-		DSPdebugMessage("numNodes_=%d\n", numNodes_);
+			DSPdebugMessage("numNodes_=%d\n", numNodes_);
+		}
 	}
 	// osi_->si_->writeMps("dsp");
 

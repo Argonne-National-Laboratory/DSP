@@ -13,3 +13,5 @@ build_merge/*
 extra/glpk*
 cplex.log
 .DS_Store
+examples/cpp/farmer
+examples/cpp/farmer_dec

@@ -118,7 +118,8 @@ public:
 	{
 		if (err != 0) {
 			char s[100];
-			sprintf(s, "%s returned error %d", cpxfuncname.c_str(), err);
+			int substat = CPXgetsubstat(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
+			sprintf(s, "%s returned error %d, substat %d", cpxfuncname.c_str(), err, substat);
 			throw CoinError(s, dsposimethod.c_str(), "DspOsiCpx");
 		}
 	}
@@ -521,22 +522,23 @@ public:
 
 	/** set number of cores */
 	virtual void setNumCores(int num) {
-		CPXsetintparam(cpx_->getEnvironmentPtr(), CPX_PARAM_THREADS, num);
+		CPXsetintparam(cpx_->getEnvironmentPtr(), CPX_PARAM_THREADS, CoinMax(0, num));
 	}
 
 	/** set time limit */
 	virtual void setTimeLimit(double time) {
-		CPXsetdblparam(cpx_->getEnvironmentPtr(), CPX_PARAM_TILIM, time);
+		CPXsetdblparam(cpx_->getEnvironmentPtr(), CPX_PARAM_TILIM, CoinMax(CoinMin(1.0e+75, time), 1.0e-4));
 	}
 
 	/** set node limit */
-	virtual void setNodeLimit(double num) {
-		CPXsetintparam(cpx_->getEnvironmentPtr(), CPX_PARAM_NODELIM, num);
+	virtual void setNodeLimit(int num)
+	{
+		CPXsetintparam(cpx_->getEnvironmentPtr(), CPX_PARAM_NODELIM, CoinMax(1, CoinMin(2100000000, num)));
 	}
 
 	/** set relative MIP gap */
 	virtual void setRelMipGap(double tol) {
-		CPXsetdblparam(cpx_->getEnvironmentPtr(), CPX_PARAM_EPGAP, tol);
+		CPXsetdblparam(cpx_->getEnvironmentPtr(), CPX_PARAM_EPGAP, CoinMax(0.0, CoinMin(1.0, tol)));
 	}
 
     OsiCpxSolverInterface* cpx_;   

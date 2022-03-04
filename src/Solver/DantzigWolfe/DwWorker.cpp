@@ -26,13 +26,15 @@ DwWorker::DwWorker(DecModel * model, DspParams * par, DspMessage * message) :
 	parProcIdx_     = par_->getIntPtrParam("ARR_PROC_IDX");
 	DSPdebugMessage("Created parameters, DwWorker.\n");
 
-	if (parProcIdxSize_ <= 0) {
-		throw CoinError("Parameter ARR_PROC_IDX should be assigned.", "DwWorker", "DwWorker.cpp");
-	}
-
 	/** number of total subproblems */
 	nsubprobs_ = parProcIdxSize_;
 	DSPdebugMessage("nsubprobs_ %d\n", nsubprobs_);
+
+	if (parProcIdxSize_ <= 0)
+	{
+		// throw CoinError("Parameter ARR_PROC_IDX should be assigned.", "DwWorker", "DwWorker.cpp");
+		return;
+	}
 
 	/** create subproblem solver */
 	//sub_ = new DwSub();
@@ -102,12 +104,15 @@ DwWorker::DwWorker(DecModel * model, DspParams * par, DspMessage * message) :
 }
 
 DwWorker::~DwWorker() {
-	FREE_2D_PTR(parProcIdxSize_, osi_);
-	//FREE_PTR(sub_);
-	FREE_2D_ARRAY_PTR(parProcIdxSize_, sub_objs_);
-	FREE_2D_ARRAY_PTR(parProcIdxSize_, sub_clbd_);
-	FREE_2D_ARRAY_PTR(parProcIdxSize_, sub_cubd_);
-	FREE_2D_ARRAY_PTR(parProcIdxSize_, coupled_);
+	if (parProcIdxSize_ > 0)
+	{
+		FREE_2D_PTR(parProcIdxSize_, osi_);
+		//FREE_PTR(sub_);
+		FREE_2D_ARRAY_PTR(parProcIdxSize_, sub_objs_);
+		FREE_2D_ARRAY_PTR(parProcIdxSize_, sub_clbd_);
+		FREE_2D_ARRAY_PTR(parProcIdxSize_, sub_cubd_);
+		FREE_2D_ARRAY_PTR(parProcIdxSize_, coupled_);
+	}
 }
 
 DSP_RTN_CODE DwWorker::createSubproblems() {
