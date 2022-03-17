@@ -150,13 +150,23 @@ DSP_RTN_CODE DeDriver::run()
 
 					for (int j = 0; j < linnzcnt; j++)
 					{
-						linind[s][i][j] = tssModel->getNumCols(1) * s + qc_row_scen[s]->linind[i][j];
+						if (qc_row_scen[s]->linind[i][j] > tssModel->getNumCols(0))
+							linind[s][i][j] = tssModel->getNumCols(1) * s + qc_row_scen[s]->linind[i][j];
+						else
+							linind[s][i][j] = qc_row_scen[s]->linind[i][j];
 					}
 
 					for (int j = 0; j < quadnzcnt; j++)
 					{
-						quadrow[s][i][j] = tssModel->getNumCols(1) * s + qc_row_scen[s]->quadrow[i][j];
-						quadcol[s][i][j] = tssModel->getNumCols(1) * s + qc_row_scen[s]->quadcol[i][j];
+						if (qc_row_scen[s]->quadrow[i][j] > tssModel->getNumCols(0))
+							quadrow[s][i][j] = tssModel->getNumCols(1) * s + qc_row_scen[s]->quadrow[i][j];
+						else 
+							quadrow[s][i][j] = qc_row_scen[s]->quadrow[i][j];
+
+						if (qc_row_scen[s]->quadcol[i][j] > tssModel->getNumCols(0))
+							quadcol[s][i][j] = tssModel->getNumCols(1) * s + qc_row_scen[s]->quadcol[i][j];
+						else
+							quadcol[s][i][j] = qc_row_scen[s]->quadcol[i][j];
 					}
 				}
 			}

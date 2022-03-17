@@ -162,6 +162,8 @@ DSP_RTN_CODE BdSub::loadProblem(DecModel* model)
 
 		/** creating solver interface */
 		cglp_[i] = createDspOsi(par_->getIntParam("BD/SUB/SOLVER"));
+		// cglp_[i] = createDspOsi(OsiCpx);
+		// cglp_[i] = createDspOsi(OsiScip);
 		if (!cglp_[i]) throw CoinError("Failed to create DspOsi", "loadProblem", "BdSub");
 		
 		/** load problem */
@@ -240,7 +242,7 @@ DSP_RTN_CODE BdSub::loadProblem(DecModel* model)
 	/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
 	char filename[128];
 	sprintf(filename, "BdWorker_scen%d", i); 
-			cglp_[i]->writeProb(filename, "lp");
+	cglp_[i]->writeProb(filename, "lp");
 	#endif
 		}
 		for (int j = 0; j < cglp_[i]->si_->getNumCols(); ++j)
@@ -372,6 +374,13 @@ void BdSub::solveOneSubproblem(
 	osi->setNumCores(cgl->par_->getIntParam("BD/SUB/THREADS"));
 	si = osi->si_;
 	si->setWarmStart(cgl->warm_start_[s]);
+
+#ifdef DSP_DEBUG_PRINT
+	/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
+		char filename[128];
+		sprintf(filename, "BdSub-%d", s); 
+		osi->writeProb(filename, "lp");
+#endif
 
 	int nrows = si->getNumRows();
 
