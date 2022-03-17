@@ -201,7 +201,7 @@ public:
 	QuadRowData * getQuaraticsRowScenario(int s) const {return qc_row_scen_[s];}
 
 	DSP_RTN_CODE chgToSocp(vector<int> &qc_rstart);
-	void getL(double * &Q, int quadnzcnt, int *quadcol, int *quadrow, double *quadval, vector<int> &indices, int &n);
+	DSP_RTN_CODE getL(double * &Q, int quadnzcnt, int *quadcol, int *quadrow, double *quadval, vector<int> &indices, int &n);
 
 	bool hasQuadraticRowCore() const {return qc_row_core_ != NULL ? true : false;};
 	bool hasQuadraticRowScenario() const {return qc_row_scen_ != NULL ? true : false;};

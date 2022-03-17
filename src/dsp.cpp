@@ -192,11 +192,11 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 
 	if (quadfile != NULL)
 	{
-		if (string(algotype) != "de" && string(algotype) != "dd" && string(algotype) != "drdd")
-		{
-			cout << "Quadratic constrained problem is not supported for " << string(algotype) << "." << endl;
-			return 1;
-		}
+		// if (string(algotype) != "de" && string(algotype) != "dd" && string(algotype) != "drdd")
+		// {
+		// 	cout << "Quadratic constrained problem is not supported for " << string(algotype) << "." << endl;
+		// 	return 1;
+		// }
 		if (isroot)
 			cout << "Reading Quad files: " << quadfile << endl;
 		

@@ -6,3 +6,5 @@ int DD/SUB/SOLVER 1
 
 int DW/MASTER/SOLVER 3
 int DW/SUB/SOLVER 1
+
+bool QC/CHG_TO_SOCP true
