@@ -375,7 +375,7 @@ void BdSub::solveOneSubproblem(
 	si = osi->si_;
 	si->setWarmStart(cgl->warm_start_[s]);
 
-#ifdef DSP_DEBUG_PRINT
+#ifdef DSP_DEBUG
 	/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
 		char filename[128];
 		sprintf(filename, "BdSub-%d", s); 
