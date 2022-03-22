@@ -6,7 +6,7 @@
  */
 
 // #define DSP_DEBUG
-
+// #define DSP_DEBUG_WRITE
 #include "CoinWarmStartBasis.hpp"
 #include "SolverInterface/DspOsiClp.h"
 #include "SolverInterface/DspOsiCpx.h"
@@ -483,15 +483,19 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 		}
 	}
 
-	for (int j = nthetas_; j < ncols; ++j) {
-		DSPdebugMessage("j = %d, clbd = %e, stability_center_ = %e, cubd = %e\n", j, clbd[j], stability_center_[j-nthetas_], cubd[j]);
-		assert(clbd[j] <= stability_center_[j-nthetas_]);
-		assert(cubd[j] >= stability_center_[j-nthetas_]);
+	if (parTr_)
+	{
+		for (int j = nthetas_; j < ncols; ++j) {
+			DSPdebugMessage("j = %d, clbd = %e, stability_center_ = %e, cubd = %e\n", j, clbd[j], stability_center_[j-nthetas_], cubd[j]);
+			assert(clbd[j] <= stability_center_[j-nthetas_]);
+			assert(cubd[j] >= stability_center_[j-nthetas_]);
+		}
+
+		#ifdef DSP_DEBUG
+			DSPdebugMessage("stability_center_:\n");
+			DspMessage::printArray(ncols-nthetas_, stability_center_);
+		#endif
 	}
-#ifdef DSP_DEBUG
-	DSPdebugMessage("stability_center_:\n");
-	DspMessage::printArray(ncols-nthetas_, stability_center_);
-#endif
 
 	/** constraint matrix */
 	mat = new CoinPackedMatrix(false, ncols, nrows, nzcnt, elem, ind, bgn, len);
@@ -535,12 +539,16 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 	/** copy problem data */
 	getSiPtr()->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
 	DSPdebugMessage("Loaded problem data\n");
-
+	#ifdef DSP_DEBUG_WRITE
+		/* write in lp file */
+		DSPdebugMessage("writing initial master problem in Master0.lp\n");
+		DSPdebug(osi_->writeProb("Master0.lp", NULL));
+	#endif
 	/** allocate memory for solution */
 	primsol_.resize(ncols);
 	lambda_.resize(nlambdas_);
 	CoinFillN(&primsol_[0], nthetas_, COIN_DBL_MAX);
-	if (model_->isStochastic())
+	if (model_->isStochastic() && parTr_)
 		CoinCopyN(stability_center_, ncols-nthetas_, &primsol_[nthetas_]);
 	else
 		CoinZeroN(&primsol_[nthetas_], nlambdas_);

@@ -78,6 +78,8 @@ public:
 	double getWassersteinDist(int i, int j) {return 0.0;}
 	double getReferenceProbability(int i) {return 0.0;}
 
+	virtual bool isQcp() { return false; }
+
 	DSP_RTN_CODE decompose(
 		int size,				/**< [in] size of subproblem subset */
 		int *subprobs,			/**< [in] subset of subproblems */

@@ -5,6 +5,6 @@ SC SCEN02    ROOT            0.33333333   PERIOD2
    x1   x1 QC1   0      
    x1   x5 QC1   0  
 SC SCEN03    ROOT            0.33333333   PERIOD2  
-   x1   x1 QC1   9
+   x1   x1 QC1   0.5
    RHS   QC1   1600         
 ENDATA

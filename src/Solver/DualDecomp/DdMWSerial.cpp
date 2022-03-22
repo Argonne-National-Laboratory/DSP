@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-// #define DSP_DEBUG
+#define DSP_DEBUG
 
 #include "Model/TssModel.h"
 #include "Solver/DualDecomp/DdMWSerial.h"
@@ -76,6 +76,8 @@ DSP_RTN_CODE DdMWSerial::init() {
 	{
 		if (model_->isDro())
 			worker_.push_back(new DdDroWorkerUB(model_, par_, message_));
+		else if (model_->isQcp())
+			worker_.push_back(new DdWorkerUB2(model_, par_, message_));
 		else
 			worker_.push_back(new DdWorkerUB(model_, par_, message_));
 	}
@@ -186,7 +188,10 @@ DSP_RTN_CODE DdMWSerial::run()
 #endif
 			break;
 		case DdWorker::UB:
-			workerub = dynamic_cast<DdWorkerUB*>(worker_[i]);
+			if (model_->isQcp())
+				workerub = dynamic_cast<DdWorkerUB2 *>(worker_[i]);
+			else
+				workerub = dynamic_cast<DdWorkerUB *>(worker_[i]);
 			break;
 		default:
 			message_->print(0, "Unknown worker type (%d).\n", worker_[i]->getType());
@@ -196,8 +201,10 @@ DSP_RTN_CODE DdMWSerial::run()
 	assert(workerlb != NULL);
 
 	nsubsolution = new int[model_->getNumSubproblems()];
+	DSPdebugMessage("nsubproblems: %d\n", model_->getNumSubproblems());
 	for (int s = 0; s < model_->getNumSubproblems(); ++s)
 	{
+		DSPdebugMessage("%d\n", workerlb->subprobs_[s]->getNumCols());
 		nsubsolution[s] = workerlb->subprobs_[s]->getNumCols();
 		DSPdebugMessage("nsubsolution[%d] = %d\n", s, nsubsolution[s]);
 	}
@@ -287,9 +294,13 @@ DSP_RTN_CODE DdMWSerial::run()
 				DSPdebugMessage("evaluate coupling solutions\n");
 				int bestprimsol = -1;
 				double oldub = master_->bestprimobj_;
+				DSPdebugMessage("number of coupling solutions:%lu\n", coupling_solutions.size());
 				for (unsigned i = 0; i < coupling_solutions.size(); ++i)
 				{
-					if (remainingTime() < 0) break;
+					DSPdebugMessage("coupling solution %d:\n", i);
+					DspMessage::printArray(coupling_solutions[i]);
+					if (remainingTime() < 0)
+						break;
 					/** set time limit */
 					workerub->setTimeLimit(remainingTime());
 					/** evaluate upper bounds */
@@ -331,7 +342,7 @@ DSP_RTN_CODE DdMWSerial::run()
 		DSPdebugMessage("Check iteration limit\n");
 		if (itercnt_ >= master_->getParPtr()->getIntParam("DD/ITER_LIM"))
 		{
-			message_->print(1, "The iteration limit is reached.\n");
+			message_->print(1, "The iteration limit %d is reached.\n", itercnt_);
 			master_->status_ = DSP_STAT_LIM_ITERorTIME;
 			break;
 		}
@@ -400,23 +411,30 @@ DSP_RTN_CODE DdMWSerial::run()
 		}
 	}
 
-	if (parEvalUb_ >= 0 && model_->isStochastic()) {
-		DdWorkerUB * workerub = NULL;
+	if (parEvalUb_ >= 0 && model_->isStochastic())
+	{
+		// DdWorkerUB2 *workerub = NULL;
+		DdWorkerUB *workerub = NULL;
 		for (unsigned i = 0; i < worker_.size(); ++i)
-			if (worker_[i]->getType() == DdWorker::UB) {
-				workerub = dynamic_cast<DdWorkerUB*>(worker_[i]);
+			if (worker_[i]->getType() == DdWorker::UB)
+			{
+				if (model_->isQcp())
+					workerub = dynamic_cast<DdWorkerUB2 *>(worker_[i]);
+				else
+					workerub = dynamic_cast<DdWorkerUB *>(worker_[i]);
 				break;
 			}
 		
 		/** evaluate UB to get primal solution for each scenario */
 		workerub->evaluate(model_->getNumCouplingCols(), &master_->bestprimsol_[0]);
-		for (int s = 0; s < tss->getNumScenarios(); ++s) {
-			CoinCopyN(workerub->primsols_[s].data(), tss->getNumCols(1), 
-				&master_->bestprimsol_[tss->getNumCols(0) + s * tss->getNumCols(1)]);
-			//DspMessage::printArray(tss->getNumCols(1), workerub->primsols_[s]);
+		for (int s = 0; s < tss->getNumScenarios(); ++s)
+		{
+			CoinCopyN(workerub->primsols_[s].data(), tss->getNumCols(1),
+					  &master_->bestprimsol_[tss->getNumCols(0) + s * tss->getNumCols(1)]);
+			DspMessage::printArray(tss->getNumCols(1), workerub->primsols_[s].data());
 		}
-		DSPdebugMessage2("primsol_:\n");
-		DSPdebug2(DspMessage::printArray(model_->getFullModelNumCols(), master_->bestprimsol_.data()));
+		// DSPdebugMessage2("primsol_:\n");
+		// DSPdebug2(DspMessage::printArray(model_->getFullModelNumCols(), master_->bestprimsol_.data()));
 	}
 
 	END_TRY_CATCH_RTN(FREE_MEMORY, DSP_RTN_ERR)
