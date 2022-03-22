@@ -199,6 +199,11 @@ public:
 	virtual double getReferenceProbability(int i) = 0;
 
 	/**
+	 * If true, model has at leat one quadratic constriant in the second stage.
+	 */
+	virtual bool isQcp() = 0;
+
+	/**
 	 * This routine decomposes the model based on inputs. If size = 0, then
 	 * this results in a standard Benders decomposition master problem. If size = 1, then
 	 * this results in a dual decomposition subproblem.

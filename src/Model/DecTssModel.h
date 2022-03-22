@@ -157,6 +157,8 @@ public:
 	virtual double getWassersteinDist(int i, int j) {return TssModel::getWassersteinDist(i,j);}
 	virtual double getReferenceProbability(int i) {return TssModel::getReferenceProbability(i);}
 
+	virtual bool isQcp() {return TssModel::isQcp();}
+
 	DSP_RTN_CODE decompose(
 		int size,				/**< [in] size of subproblem subset */
 		int *scen,				/**< [in] subset of scenarios */
