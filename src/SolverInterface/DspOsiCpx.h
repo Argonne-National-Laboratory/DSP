@@ -8,7 +8,7 @@
 #ifndef SRC_SOLVERINTERFACE_DSPOSICPX_H_
 #define SRC_SOLVERINTERFACE_DSPOSICPX_H_
 
-// #define DSP_DEBUG
+#define DSP_DEBUG
 
 #ifdef DSP_HAS_CPX
 
@@ -109,10 +109,30 @@ public:
 			checkDspOsiError(err, "CPXaddqconstr", "addQuadraticRows");	
 		}
 		/* if QCP, then put more emphasis on numerical issues  */
-		if (isqcp_) {
+		if (isqcp_)
+		{
 			CPXsetintparam(cpx_->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, CPX_ON);
 			CPXsetintparam(cpx_->getEnvironmentPtr(), CPX_PARAM_MIQCPSTRAT, 1);
 		}
+			
+	}
+
+	/** load affine constrs */
+	virtual void addRows(int ccnt, int nrows, int nznt, double * rhs, char * sense, int * rmatbeg, int * rmatind, double * rmatval)
+	{		
+		
+		int err = CPXaddrows(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), ccnt, nrows, nznt, rhs, sense, rmatbeg, rmatind, rmatval, NULL, NULL);
+		checkDspOsiError(err, "CPXaddconstr", "addRows");	
+			
+	}
+
+	/** load affine constrs */
+	virtual void chgRhs(int cnt, int * indices, double * values)
+	{		
+		
+		int err = CPXchgrhs(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), cnt, indices, values);
+		checkDspOsiError(err, "CPXaddconstr", "chgRhs");	
+			
 	}
 
 	/** throw error */

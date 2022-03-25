@@ -320,6 +320,8 @@ public:
 	virtual double getWassersteinDist(int i, int j);
 	virtual double getReferenceProbability(int i);
 
+	virtual bool isQcp() {return qc_row_scen_ == NULL ? false : true;}
+
 protected:
 
 	/*

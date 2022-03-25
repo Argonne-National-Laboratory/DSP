@@ -13,6 +13,7 @@
 #include "Solver/DualDecomp/DdWorker.h"
 #include "Solver/DualDecomp/DdWorkerLB.h"
 #include "Solver/DualDecomp/DdWorkerUB.h"
+#include "Solver/DualDecomp/DdWorkerUB2.h"
 #include "Solver/DualDecomp/DdDroWorkerUB.h"
 
 #ifdef DSP_HAS_SCIP

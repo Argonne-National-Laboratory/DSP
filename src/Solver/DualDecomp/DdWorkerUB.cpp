@@ -284,8 +284,8 @@ double DdWorkerUB::evaluate(CoinPackedVector *solution)
 
 	/** allocate memory */
 	x = solution->denseVector(tss->getNumCols(0));
-  // DSPdebugMessage("x to evaluate:\n");
-	// DspMessage::printArray(tss->getNumCols(0), x);
+  	DSPdebugMessage("x to evaluate:\n");
+	DSPdebug(DspMessage::printArray(tss->getNumCols(0), x));
 	
 	for (int s = nsubprobs - 1; s >= 0; --s) {
 		/** calculate Tx */
