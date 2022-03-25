@@ -109,8 +109,10 @@ public:
 			checkDspOsiError(err, "CPXaddqconstr", "addQuadraticRows");	
 		}
 		/* if QCP, then put more emphasis on numerical issues  */
-		if (isqcp_)
+		if (isqcp_) {
 			CPXsetintparam(cpx_->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, CPX_ON);
+			CPXsetintparam(cpx_->getEnvironmentPtr(), CPX_PARAM_MIQCPSTRAT, 1);
+		}
 	}
 
 	/** throw error */
