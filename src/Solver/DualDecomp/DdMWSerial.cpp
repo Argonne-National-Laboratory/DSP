@@ -298,7 +298,7 @@ DSP_RTN_CODE DdMWSerial::run()
 				for (unsigned i = 0; i < coupling_solutions.size(); ++i)
 				{
 					DSPdebugMessage("coupling solution %d:\n", i);
-					DspMessage::printArray(coupling_solutions[i]);
+					DSPdebug(DspMessage::printArray(coupling_solutions[i]);)
 					if (remainingTime() < 0)
 						break;
 					/** set time limit */
@@ -431,7 +431,7 @@ DSP_RTN_CODE DdMWSerial::run()
 		{
 			CoinCopyN(workerub->primsols_[s].data(), tss->getNumCols(1),
 					  &master_->bestprimsol_[tss->getNumCols(0) + s * tss->getNumCols(1)]);
-			DspMessage::printArray(tss->getNumCols(1), workerub->primsols_[s].data());
+			DSPdebug(DspMessage::printArray(tss->getNumCols(1), workerub->primsols_[s].data());)
 		}
 		// DSPdebugMessage2("primsol_:\n");
 		// DSPdebug2(DspMessage::printArray(model_->getFullModelNumCols(), master_->bestprimsol_.data()));
