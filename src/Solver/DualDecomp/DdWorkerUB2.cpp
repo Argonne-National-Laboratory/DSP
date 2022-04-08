@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-#define DSP_DEBUG
+// #define DSP_DEBUG
 // #define DSP_DEBUG_WRITE
 #include "Model/DecTssModel.h"
 #include "Solver/DualDecomp/DdWorkerUB2.h"
@@ -61,7 +61,7 @@ DSP_RTN_CODE DdWorkerUB2::init()
 		/** allocate array size for each scenario primal solution */
 		primsols_[s].resize(subprobs_[s]->getDspOsiPtr()->si_->getNumCols());
 
-		cout << "num rows: " << subprobs_[s]->getDspOsiPtr()->si_->getNumRows() << endl;
+		// cout << "num rows: " << subprobs_[s]->getDspOsiPtr()->si_->getNumRows() << endl;
 
 		/** add auxiliary constraints for coupling
 		 * the following auxiliary constraints are added at the end of the upper bound problem:
@@ -70,7 +70,7 @@ DSP_RTN_CODE DdWorkerUB2::init()
 		 * 	x_n = 0
 		 */
 		int n = model_->getNumSubproblemCouplingCols(s);
-		cout << "num added rows: " << n << endl;
+		// cout << "num added rows: " << n << endl;
 		int ccnt = 0; /* An integer that specifies the number of new columns in the constraints being added to the constraint matrix */
 		int nrows = n;
 		int nznt = n; /* An integer that specifies the number of nonzero constraint coefficients to be added to the constraint matrix. This specifies the length of the arrays rmatind and rmatval. */
@@ -88,8 +88,7 @@ DSP_RTN_CODE DdWorkerUB2::init()
 			rhs[i] = 0; 
 		}
 		subprobs_[s]->getDspOsiPtr()->addRows(ccnt, nrows, nznt, rhs, sense, rmatbeg, rmatind, rmatval);
-
-		cout << "num updated rows: " << subprobs_[s]->getDspOsiPtr()->si_->getNumRows() << endl;
+		// cout << "num updated rows: " << subprobs_[s]->getDspOsiPtr()->si_->getNumRows() << endl;
 
 		// delete arrays
 	}
