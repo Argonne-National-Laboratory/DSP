@@ -20,7 +20,7 @@ COLUMNS
     x7        OBJROW    -36             cons3      1          
     x8        OBJROW    -10             cons3      1          
 RHS
-    RHS1      cons0      500          cons1      200       
+    RHS1      cons0      500.5          cons1      200       
     RHS1      cons2      240       
 BOUNDS
  UI BOUND     x0         1e+30
