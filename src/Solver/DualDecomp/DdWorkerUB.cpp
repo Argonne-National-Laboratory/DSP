@@ -418,7 +418,8 @@ DspOsi * DdWorkerUB::createDspOsi() {
 	DspOsi * osi = NULL;
 	BGN_TRY_CATCH
 
-	switch (par_->getIntParam("DW/SUB/SOLVER")) {
+	switch (par_->getIntParam("DD/SUB/SOLVER"))
+	{
 	case OsiCpx:
 #ifdef DSP_HAS_CPX
 		osi = new DspOsiCpx();
