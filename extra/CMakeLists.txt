@@ -143,7 +143,7 @@ ExternalProject_Add(Smi
 		--with-coinutils-incdir=${COIN_INC_DIR}
 		--with-osi-lib=${OSI_LIB}
 		--with-osi-incdir=${COIN_INC_DIR}
-		ADD_CXXFLAGS=${EXTRA_CXX_FLAGS}
+		CXXFLAGS=${EXTRA_CXX_FLAGS}
 	BUILD_COMMAND make -j1
 	INSTALL_COMMAND make -j1 install)
 
@@ -162,6 +162,6 @@ ExternalProject_Add(Alps
 		--with-coinutils-incdir=${COIN_INC_DIR}
 		--with-osi-lib=${OSI_LIB}
 		--with-osi-incdir=${COIN_INC_DIR}
-		ADD_CXXFLAGS=${EXTRA_CXX_FLAGS}
+		CXXFLAGS=${EXTRA_CXX_FLAGS}
 	BUILD_COMMAND make -j1
 	INSTALL_COMMAND make -j1 install)
