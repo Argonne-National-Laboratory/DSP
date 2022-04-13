@@ -109,6 +109,13 @@ DSP_RTN_CODE DdMW::init()
 
 	if (model_->isDro())
 	{
+		printf("Benders-type cuts will be disabled for DRO.\n");
+		parFeasCuts_ = -1;
+		parOptCuts_ = -1;
+	}
+	if (model_->hasQuadraticRow())
+	{
+		printf("Benders-type cuts will be disabled for quadratic problems.\n");
 		parFeasCuts_ = -1;
 		parOptCuts_ = -1;
 	}
