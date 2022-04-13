@@ -68,7 +68,6 @@ DSP_RTN_CODE DdMWSerial::init()
 		worker_.push_back(new DdWorkerCGBd(model_, par_, message_));
 	else
 	{
-		message_->print(0, "No Benders cut is generated.\n");
 		parFeasCuts_ = -1;
 		parOptCuts_ = -1;
 	}
