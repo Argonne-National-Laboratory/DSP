@@ -72,6 +72,7 @@ public:
 	bool isQuadratic() {return false;}
 	virtual void setDro(bool yes) { ; }
 	virtual bool isDro() { return false; }
+	virtual bool hasQuadraticRow() { return false; }
 	virtual bool isDistributed();
 	int getNumReferences() {return 0;}
 	double getWassersteinSize() {return 0.0;}

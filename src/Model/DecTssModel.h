@@ -149,6 +149,7 @@ public:
 	// TODO: Better to create a new inhereted class?
 	virtual void setDro(bool yes) { TssModel::setDro(yes); }
 	virtual bool isDro() {return TssModel::isDro();}
+	virtual bool hasQuadraticRow() {return TssModel::hasQuadraticRow();}
 
 	virtual bool isDistributed();
 

@@ -174,6 +174,11 @@ public:
 	virtual bool isDro() = 0;
 
 	/**
+	 * If true, this has quadratic rows.
+	 */
+	virtual bool hasQuadraticRow() = 0;
+
+	/**
 	 * If true, the subproblem data is distributed.
 	 */
 	virtual bool isDistributed() = 0;
