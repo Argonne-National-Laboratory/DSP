@@ -499,6 +499,8 @@ DSP_RTN_CODE BdSub::solveOneIntegerSubproblem(
 	if (cgl->status_[s] == DSP_STAT_OPTIMAL) {
 		/** get objective value */
 		objval[s] = si->getObjValue();
+	} else if (cgl->status_[s] == DSP_STAT_PRIM_INFEASIBLE) {
+		objval[s] = 1.0e+20;
 	} else {
 		printf("Unexpected solution status: s %d status %d\n", s, cgl->status_[s]);
 		objval[s] = 1.0e+20;
