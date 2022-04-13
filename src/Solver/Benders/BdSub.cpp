@@ -445,7 +445,6 @@ DSP_RTN_CODE BdSub::solveOneIntegerSubproblem(
 	/** local variables */
 	const double * rlbd = cgl->cglp_[s]->si_->getRowLower();
 	const double * rubd = cgl->cglp_[s]->si_->getRowUpper();
-	const char * ctype = cgl->cglp_[s]->si_->getColType();
 
 	double stime = CoinGetTimeOfDay(); // tic
 
@@ -462,7 +461,7 @@ DSP_RTN_CODE BdSub::solveOneIntegerSubproblem(
 	/** mark integer variables */
 	for (int j = 0; j < si->getNumCols(); ++j)
 	{
-		if (ctype[j] != 'C')
+		if (si->isContinuous(j) == false)
 			si->setInteger(j);
 	}
 
