@@ -27,6 +27,15 @@ DSP_RTN_CODE BdDriverSerial::init()
 {
 	BGN_TRY_CATCH
 
+	// The model should be a stochastic model.
+	if (model_->isStochastic() == false) {
+		printf("The model should be stochastic.\n");
+		return DSP_RTN_ERR;
+	} else if (model_->hasQuadraticRow()) {
+		printf("Quadratic constrations are not currently supported in Benders.\n");
+		return DSP_RTN_ERR;
+	}
+
 	show_copyright();
 
 	/** primal soltuion */
