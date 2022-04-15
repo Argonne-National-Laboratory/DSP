@@ -276,8 +276,6 @@ DSP_RTN_CODE DeDriver::run()
 		}
 		
 		/** statistics */
-		numIterations_ = osi_->si_->getIterationCount();
-		DSPdebugMessage("numIterations_=%d\n", numIterations_);
 		if (osi_->isMip()) {
 			numNodes_ = osi_->getNumNodes();
 			DSPdebugMessage("numNodes_=%d\n", numNodes_);

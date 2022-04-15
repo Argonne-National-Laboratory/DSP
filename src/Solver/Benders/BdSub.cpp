@@ -524,7 +524,6 @@ DSP_RTN_CODE BdSub::solveOneIntegerSubproblem(
 	/** local variables */
 	const double * rlbd = cgl->cglp_[s]->si_->getRowLower();
 	const double * rubd = cgl->cglp_[s]->si_->getRowUpper();
-	const char * ctype = cgl->cglp_[s]->si_->getColType();
 
 	double stime = CoinGetTimeOfDay(); // tic
 
@@ -541,7 +540,7 @@ DSP_RTN_CODE BdSub::solveOneIntegerSubproblem(
 	/** mark integer variables */
 	for (int j = 0; j < si->getNumCols(); ++j)
 	{
-		if (ctype[j] != 'C')
+		if (si->isContinuous(j) == false)
 			si->setInteger(j);
 	}
 
@@ -579,6 +578,8 @@ DSP_RTN_CODE BdSub::solveOneIntegerSubproblem(
 	if (cgl->status_[s] == DSP_STAT_OPTIMAL) {
 		/** get objective value */
 		objval[s] = si->getObjValue();
+	} else if (cgl->status_[s] == DSP_STAT_PRIM_INFEASIBLE) {
+		objval[s] = 1.0e+20;
 	} else {
 		printf("Unexpected solution status: s %d status %d\n", s, cgl->status_[s]);
 		objval[s] = 1.0e+20;

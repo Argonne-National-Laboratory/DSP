@@ -121,7 +121,7 @@ DSP_RTN_CODE DdDriverMpi::run()
 		dualsol_.resize(ndualsol);
 		CoinCopyN(mw_->master_->getBestDualSolution(), ndualsol, &dualsol_[0]);
 
-		numNodes_ = mw_->master_->getDspOsiPtr()->getNumNodes();
+		numNodes_ = 0;
 		numIterations_ = mw_->master_->getSiPtr()->getIterationCount();
 
 		/** communicate */
