@@ -48,6 +48,15 @@ public:
 		scip_->addQuadraticRows(nqrows, linnzcnt, quadnzcnt, rhs, sense, linind, linval, quadrow, quadcol, quadval);
     }
 
+    virtual void addRows(int ccnt, int nrows, int nznt, double * rhs, char * sense, int * rmatbeg, int * rmatind, double * rmatval)
+    {
+        scip_->addRows(ccnt, nrows, nznt, rhs, sense, rmatbeg, rmatind, rmatval);
+    }
+
+    virtual void chgRhs(int cnt, int * indices, double * values)
+    {
+        scip_->chgRhs(cnt, indices, values);
+    }
 	/** write problem file */
 	virtual void writeProb(char const * filename_str, char const * filetype_str)
 	{

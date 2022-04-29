@@ -116,9 +116,26 @@ public:
 			isqcp_ = true;
 		for (int i = 0; i < nqrows; i++) 
 		{
-			GUROBI_CALL("loadQuadraticObjective", GRBaddqconstr(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), linnzcnt[i], linind[i], linval[i], quadnzcnt[i], quadrow[i], quadcol[i], quadval[i], sense[i], rhs[i], NULL));
+			GUROBI_CALL("addQuadraticRows", GRBaddqconstr(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), linnzcnt[i], linind[i], linval[i], quadnzcnt[i], quadrow[i], quadcol[i], quadval[i], sense[i], rhs[i], NULL));
 		}
-		GUROBI_CALL("loadProblem", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
+		GUROBI_CALL("addQuadraticRows", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
+	}
+	
+	/** load affine constrs */
+	virtual void addRows(int ccnt, int nrows, int nznt, double * rhs, char * sense, int * rmatbeg, int * rmatind, double * rmatval)
+	{		
+		
+		GUROBI_CALL("addRows", GRBaddconstrs(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), nrows, nznt, rmatbeg, rmatind, rmatval, sense, rhs, NULL));
+			
+	}
+
+	/** change right-hand sides of affine constrs */
+	virtual void chgRhs(int cnt, int * indices, double * values)
+	{		
+		for (int i = 0; i < cnt; i++)
+		{
+			GUROBI_CALL("chgRhs", GRBsetdblattrelement(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), GRB_DBL_ATTR_RHS, indices[i], values[i]));
+		}
 	}
 
 	/** write problem file */
