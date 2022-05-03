@@ -245,6 +245,8 @@ DSP_RTN_CODE DeDriver::run()
 	/** set node limit */
 	osi_->setNodeLimit(par_->getIntParam("NODE_LIM"));
 
+	osi_->setMiqcpMethod(par_->getIntParam("DE/SOLVER/MIQCP_METHOD"));
+
 	/** tic */
 	cputime_ = CoinCpuTime();
 	walltime_ = CoinGetTimeOfDay();

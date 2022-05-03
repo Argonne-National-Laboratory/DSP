@@ -221,12 +221,14 @@ void DspParams::initIntParams()
 	IntParams_.createParam("DD/MASTER/SOLVER", OsiCpx);
 	IntParams_.createParam("DD/SUB/SOLVER", OsiCpx);
 	IntParams_.createParam("DE/SOLVER", OsiCpx);
+	IntParams_.createParam("DE/SOLVER/MIQCP_METHOD", 0);
 	IntParams_.createParam("DW/MASTER/SOLVER", OsiCpx);
 	IntParams_.createParam("DW/SUB/SOLVER", OsiCpx);
 #else
 #ifdef DSP_HAS_GRB
 	IntParams_.createParam("BD/SUB/SOLVER", OsiGrb);
 	IntParams_.createParam("DE/SOLVER", OsiGrb);
+	IntParams_.createParam("DE/SOLVER/MIQCP_METHOD", -1);
 	IntParams_.createParam("DD/MASTER/SOLVER", OsiGrb);
 	IntParams_.createParam("DD/SUB/SOLVER", OsiGrb);
 	IntParams_.createParam("DW/MASTER/SOLVER", OsiGrb);
