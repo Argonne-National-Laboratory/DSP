@@ -125,7 +125,7 @@ public:
 			
 	}
 
-	/** load affine constrs */
+	/** change right-hand sides of affine constrs */
 	virtual void chgRhs(int cnt, int * indices, double * values)
 	{		
 		
