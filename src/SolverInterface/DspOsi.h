@@ -133,6 +133,9 @@ public:
 	/** set relative MIP gap */
 	virtual void setRelMipGap(double tol) {}
 
+	/** set MIQCP method */
+	virtual void setMiqcpMethod(int val) {}
+
 	OsiSolverInterface *si_;
 	
 	/** Stores whether CPLEX' prob type is currently set to mixed-integer program */
