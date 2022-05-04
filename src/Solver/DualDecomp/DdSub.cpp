@@ -365,8 +365,10 @@ DSP_RTN_CODE DdSub::createProblem() {
     DSPdebug(mat->verifyMtx(4));
 
 	/** set solution gap tolerance */
-	if (nIntegers > 0)
+	if (nIntegers > 0) {
 	    osi_->setRelMipGap(gapTol_);
+		osi_->setMiqcpMethod(par_->getIntParam("DD/SOLVER/MIQCP_METHOD"));
+	}
 
     END_TRY_CATCH_RTN(FREE_MEMORY, DSP_RTN_ERR)
 
