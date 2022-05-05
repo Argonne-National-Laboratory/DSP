@@ -91,6 +91,15 @@ DSP_RTN_CODE DdMWSync::init()
 		/** initialize workers */
 		for (unsigned i = 0; i < worker_.size(); ++i)
 			DSP_RTN_CHECK_THROW(worker_[i]->init());
+
+		for (int i = 0; i < lb_comm_size_; ++i) {
+			if (i == lb_comm_rank_) {
+				message_->print(1, "Worker ID [%2d]: %4d scenarios\n", i, par_->getIntPtrParamSize("ARR_PROC_IDX"));
+				for (int s = 0; s < par_->getIntPtrParamSize("ARR_PROC_IDX"); s++)
+					message_->print(2, "  scenario %d\n", par_->getIntPtrParam("ARR_PROC_IDX")[s]);
+			}
+			MPI_Barrier(lb_comm_);
+		}
 	}
 
         /** reset iteration info */
