@@ -22,7 +22,7 @@ set(OOQP_HSL_LIB   "MA27LIB=${MA27LIB}")
 set(OOQP_BLAS      "BLAS=${BLAS_LIBRARIES}")
 string(REPLACE ";" "\ " OOQP_BLAS "${OOQP_BLAS}")
 
-set(EXTRA_CXX_FLAGS "-fPIC -Wno-sign-conversion -Wno-float-conversion -Wno-shorten-64-to-32 -Wno-unused-variable -Wno-constant-logical-operand -Wno-dynamic-class-memaccess -Wno-unused-private-field")
+set(EXTRA_CXX_FLAGS "-fPIC -Wno-sign-conversion -Wno-float-conversion -Wno-unused-variable")
 
 ##################################################
 # Compile OOQP with ma27
@@ -143,7 +143,7 @@ ExternalProject_Add(Smi
 		--with-coinutils-incdir=${COIN_INC_DIR}
 		--with-osi-lib=${OSI_LIB}
 		--with-osi-incdir=${COIN_INC_DIR}
-		ADD_CXXFLAGS=${EXTRA_CXX_FLAGS}
+		CXXFLAGS=${EXTRA_CXX_FLAGS}
 	BUILD_COMMAND make -j1
 	INSTALL_COMMAND make -j1 install)
 
@@ -162,6 +162,6 @@ ExternalProject_Add(Alps
 		--with-coinutils-incdir=${COIN_INC_DIR}
 		--with-osi-lib=${OSI_LIB}
 		--with-osi-incdir=${COIN_INC_DIR}
-		ADD_CXXFLAGS=${EXTRA_CXX_FLAGS}
+		CXXFLAGS=${EXTRA_CXX_FLAGS}
 	BUILD_COMMAND make -j1
 	INSTALL_COMMAND make -j1 install)

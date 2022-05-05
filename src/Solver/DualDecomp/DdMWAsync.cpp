@@ -325,23 +325,24 @@ DSP_RTN_CODE DdMWAsync::runWorker()
 
 DSP_RTN_CODE DdMWAsync::runMasterInit()
 {
-#define FREE_MEMORY \
-	FREE_ARRAY_PTR(sendbuf) \
-	FREE_ARRAY_PTR(scounts) \
-	FREE_ARRAY_PTR(sdispls) \
-	FREE_ARRAY_PTR(recvbuf) \
-	FREE_ARRAY_PTR(rcounts) \
-	FREE_ARRAY_PTR(rdispls) \
-	FREE_ARRAY_PTR(lambdas) \
-	FREE_2D_ARRAY_PTR(subcomm_size_-1,subindex)   \
-	FREE_2D_ARRAY_PTR(subcomm_size_-1,subprimobj) \
-	FREE_2D_ARRAY_PTR(subcomm_size_-1,subdualobj) \
-	if (subsolution) {                                         \
-		for (int i = 0; i < subcomm_size_ - 1; ++i) {          \
-			FREE_2D_ARRAY_PTR(nsubprobs_[i+1], subsolution[i]) \
-		}                                                      \
-		delete [] subsolution;                                 \
-		subsolution = NULL;                                    \
+#define FREE_MEMORY                                              \
+	FREE_ARRAY_PTR(sendbuf)                                      \
+	FREE_ARRAY_PTR(scounts)                                      \
+	FREE_ARRAY_PTR(sdispls)                                      \
+	FREE_ARRAY_PTR(recvbuf)                                      \
+	FREE_ARRAY_PTR(rcounts)                                      \
+	FREE_ARRAY_PTR(rdispls)                                      \
+	FREE_2D_ARRAY_PTR(subcomm_size_ - 1, subindex)               \
+	FREE_2D_ARRAY_PTR(subcomm_size_ - 1, subprimobj)             \
+	FREE_2D_ARRAY_PTR(subcomm_size_ - 1, subdualobj)             \
+	if (subsolution)                                             \
+	{                                                            \
+		for (int i = 0; i < subcomm_size_ - 1; ++i)              \
+		{                                                        \
+			FREE_2D_ARRAY_PTR(nsubprobs_[i + 1], subsolution[i]) \
+		}                                                        \
+		delete[] subsolution;                                    \
+		subsolution = NULL;                                      \
 	}
 
 	/** MPI_Scatterv message:
@@ -366,8 +367,7 @@ DSP_RTN_CODE DdMWAsync::runMasterInit()
 	int *    rcounts = NULL; /**< MPI_Gatherv: receive buffer size for each process */
 	int *    rdispls = NULL; /**< MPI_Gatherv: receive buffer displacement for each process*/
 
-	const double * thetas  = NULL; /**< of master problem */
-	double **      lambdas = NULL; /**< of master problem */
+	const double *thetas = NULL; /**< of master problem */
 
 	/** to store messages received from workers */
 	int ** subindex = NULL;
@@ -419,9 +419,6 @@ DSP_RTN_CODE DdMWAsync::runMasterInit()
 	/** allocate memory for message buffers */
 	sendbuf = new double [size_of_sendbuf];
 	recvbuf = new double [size_of_recvbuf];
-
-	/** allocate memory for lambdas */
-	lambdas = new double * [model_->getNumSubproblems()];
 
 	/** allocate memory for subproblem results */
 	subindex    = new int * [subcomm_size_ - 1];
@@ -507,13 +504,7 @@ DSP_RTN_CODE DdMWAsync::runMasterInit()
 
 	/** retrieve master solution by part */
 	double * master_primsol = const_cast<double*>(master->getPrimalSolution());
-	thetas  = master_primsol;
-	for (int i = 0, j = model_->getNumSubproblems(); i < model_->getNumSubproblems(); ++i)
-	{
-		/** shallow copy */
-		lambdas[i] = master_primsol + j;
-		j += model_->getNumSubproblemCouplingRows(i);
-	}
+	thetas = master_primsol;
 	/** push lambda to queue */
 	if (max_queue_size_ > 0)
 		DSP_RTN_CHECK_RTN_CODE(pushSolutionToQueue(master_primsol));
@@ -528,7 +519,7 @@ DSP_RTN_CODE DdMWAsync::runMasterInit()
 		{
 			int subprob_index = subprob_indices_[subprob_displs_[i]+j];
 			sendbuf[pos++] = thetas[subprob_index];
-			CoinCopyN(lambdas[subprob_index], model_->getNumSubproblemCouplingRows(subprob_index), sendbuf + pos);
+			CoinCopyN(master_->getLambda(subprob_index), model_->getNumSubproblemCouplingRows(subprob_index), sendbuf + pos);
 			pos += model_->getNumSubproblemCouplingRows(subprob_index);
 		}
 	}
@@ -544,10 +535,6 @@ DSP_RTN_CODE DdMWAsync::runMasterInit()
 
 	/** send message */
 	MPI_Scatterv(sendbuf, scounts, sdispls, MPI_DOUBLE, NULL, 0, MPI_DOUBLE, 0, subcomm_);
-
-	/** release shallow-copy of pointers */
-	for (int i = 0; i < model_->getNumSubproblems(); ++i)
-		lambdas[i] = NULL;
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 

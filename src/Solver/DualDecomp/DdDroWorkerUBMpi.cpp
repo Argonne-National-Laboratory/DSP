@@ -29,30 +29,9 @@ DSP_RTN_CODE DdDroWorkerUBMpi::init()
 	 * This problem is solved by the root process only.
 	*/
 	if (comm_rank_ == 0)
-	{
 		DSP_RTN_CHECK_THROW(createProblem());
-	}
-	else
-	{
-		TssModel *tss = NULL;
-		try
-		{
-			tss = dynamic_cast<TssModel *>(model_);
-		}
-		catch (const std::bad_cast &e)
-		{
-			printf("This is not a stochastic programming problem.\n");
-			return DSP_RTN_ERR;
-		}
-		for (int s = 0; s < par_->getIntPtrParamSize("ARR_PROC_IDX"); ++s)
-		{
-			const double *obj_reco = osi_[s]->si_->getObjCoefficients();
-			for (int j = 0; j < tss->getNumCols(1); ++j)
-			{
-				osi_[s]->si_->setObjCoeff(j, obj_reco[j] / tss->getProbability()[par_->getIntPtrParam("ARR_PROC_IDX")[s]]);
-			}
-		}
-	}
+
+	DSP_RTN_CHECK_THROW(setObjective());
 
 	END_TRY_CATCH_RTN(;, DSP_RTN_ERR)
 	return DSP_RTN_OK;
@@ -60,18 +39,21 @@ DSP_RTN_CODE DdDroWorkerUBMpi::init()
 
 DSP_RTN_CODE DdDroWorkerUBMpi::solve()
 {
-#define FREE_MEMORY            \
-	FREE_ARRAY_PTR(sendbuf)    \
-	FREE_ARRAY_PTR(recvbuf)    \
-	FREE_ARRAY_PTR(recvcounts) \
-	FREE_ARRAY_PTR(displs)     \
-	FREE_ARRAY_PTR(subprob_ids)
+#define FREE_MEMORY             \
+	FREE_ARRAY_PTR(sendbuf)     \
+	FREE_ARRAY_PTR(recvbuf)     \
+	FREE_ARRAY_PTR(recvcounts)  \
+	FREE_ARRAY_PTR(displs)      \
+	FREE_ARRAY_PTR(subprob_ids) \
+	FREE_ARRAY_PTR(statuses)
 
 	double *sendbuf = NULL;
 	double *recvbuf = NULL;
 	int *recvcounts = NULL;
 	int *displs = NULL;
 	int *subprob_ids = NULL;
+	int *statuses = NULL;
+	char lpfilename[128];
 
 	double cputime;
 	double walltime;
@@ -83,6 +65,7 @@ DSP_RTN_CODE DdDroWorkerUBMpi::solve()
 	double total_cputime = 0.0;
 	double total_walltime = 0.0;
 	int nsubprobs = par_->getIntPtrParamSize("ARR_PROC_IDX");
+	statuses = new int[comm_size_];
 
 	for (unsigned s = 0; s < nsubprobs; ++s)
 	{
@@ -94,12 +77,18 @@ DSP_RTN_CODE DdDroWorkerUBMpi::solve()
 			CoinMin(CoinMax(0.01, time_remains_),
 					par_->getDblParam("DD/SUB/TIME_LIM")));
 
+#ifdef DSP_DEBUG
+		/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
+		sprintf(lpfilename, "DdDroWorkerUBMpi_scen%d.lp", par_->getIntPtrParam("ARR_PROC_IDX")[s]);
+		osi_[s]->writeProb(lpfilename, NULL);
+#endif
+
 		/** solve */
 		osi_[s]->solve();
 
 		/** check status. there might be unexpected results. */
 		int status = osi_[s]->status();
-		DSPdebugMessage("status = %d\n", status);
+		DSPdebugMessage("Rank %d: sind %d, status %d\n", comm_rank_, par_->getIntPtrParam("ARR_PROC_IDX")[s], status);
 		switch (status)
 		{
 		case DSP_STAT_OPTIMAL:
@@ -115,6 +104,12 @@ DSP_RTN_CODE DdDroWorkerUBMpi::solve()
 							status);
 			break;
 		}
+
+		/** consume time */
+		total_cputime += CoinCpuTime() - cputime;
+		total_walltime += CoinGetTimeOfDay() - walltime;
+		time_remains_ -= CoinGetTimeOfDay() - walltime;
+
 		if (status_ == DSP_STAT_MW_STOP)
 		{
 			primobj = COIN_DBL_MAX;
@@ -123,12 +118,17 @@ DSP_RTN_CODE DdDroWorkerUBMpi::solve()
 		}
 
 		CoinCopyN(osi_[s]->si_->getColSolution(), osi_[s]->si_->getNumCols(), &primsols_[s][0]);
-		total_cputime += CoinCpuTime() - cputime;
-		total_walltime += CoinGetTimeOfDay() - walltime;
-
-		/** consume time */
-		time_remains_ -= CoinGetTimeOfDay() - walltime;
 	}
+
+	// gather status_ to all processes
+	MPI_Allgather(&status_, 1, MPI_INT, statuses, 1, MPI_INT, comm_);
+	for (int s = 0; s < comm_size_; ++s)
+		if (statuses[s] == DSP_STAT_MW_STOP)
+		{
+			status_ = DSP_STAT_MW_STOP;
+			break;
+		}
+	DSPdebugMessage("Rank %d: status_ %d\n", comm_rank_, status_);
 
 	cputime = CoinCpuTime();
 	walltime = CoinGetTimeOfDay();
@@ -147,7 +147,7 @@ DSP_RTN_CODE DdDroWorkerUBMpi::solve()
 		}
 
 		/** recvcounts stores the number of subproblems for each process. */
-		// DSPdebugMessage("Rank %d: nsubprobs %d\n", comm_rank_, nsubprobs);
+		DSPdebugMessage("Rank %d: nsubprobs %d\n", comm_rank_, nsubprobs);
 		MPI_Gather(&nsubprobs, 1, MPI_INT, recvcounts, 1, MPI_INT, 0, comm_);
 		if (comm_rank_ == 0)
 		{
@@ -194,6 +194,10 @@ DSP_RTN_CODE DdDroWorkerUBMpi::solve()
 						recvbuf[k]);
 				}
 			}
+#ifdef DSP_DEBUG
+			sprintf(lpfilename, "DdDroWorkerUBMpi.lp");
+			osi_dro_->writeProb(lpfilename, NULL);
+#endif
 			osi_dro_->solve();
 
 			if (osi_dro_->si_->isProvenOptimal())
@@ -219,8 +223,6 @@ DSP_RTN_CODE DdDroWorkerUBMpi::solve()
 	ub_ = primobj;
 	DSPdebugMessage("ub_ = %e\n", ub_);
 	DSPdebugMessage("status_ %d\n", status_);
-
-	MPI_Barrier(comm_);
 
 	total_cputime += CoinCpuTime() - cputime;
 	total_walltime += CoinGetTimeOfDay() - walltime;

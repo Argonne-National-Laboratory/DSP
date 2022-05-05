@@ -14,10 +14,10 @@
 #include "SolverInterface/DspOsiScip.h"
 #include "SolverInterface/DspOsiOoqp.h"
 
-DdMaster::DdMaster(DecModel* model, DspParams* par, DspMessage* message) :
-		DecSolver(model, par, message),
-lambda_(NULL),
-subsolution_(NULL) {
+DdMaster::DdMaster(DecModel *model, DspParams *par, DspMessage *message)
+	: DecSolver(model, par, message),
+	  subsolution_(NULL)
+{
 	/**< nothing to do */
 }
 
@@ -40,8 +40,8 @@ lambda_(rhs.lambda_) {
 	}
 }
 
-DdMaster::~DdMaster() {
-	lambda_ = NULL;
+DdMaster::~DdMaster()
+{
 	FREE_2D_ARRAY_PTR(model_->getNumSubproblems(),subsolution_);
 }
 
@@ -135,4 +135,12 @@ DspOsi * DdMaster::createDspOsi() {
 	END_TRY_CATCH(;)
 	
 	return osi;
+}
+
+const double *DdMaster::getLambda(int s)
+{
+	int j = 0;
+	for (int i = 0; i < s; ++i)
+		j += model_->getNumSubproblemCouplingRows(i);
+	return lambda_.data() + j;
 }
