@@ -21,27 +21,15 @@ DdWorkerUB2::DdWorkerUB2(
 	DecModel *model, /**< model pointer */
 	DspParams *par,	 /**< parameter pointer */
 	DspMessage *message /**< message pointer */) : DdWorkerUB(model, par, message)
-	// ,
-												//    bestub_(COIN_DBL_MAX),
-												//    ub_(0.0)
 {
 }
 
 DdWorkerUB2::DdWorkerUB2(const DdWorkerUB2 &rhs) : DdWorkerUB(rhs)
-// ,
-												// bestub_(rhs.bestub_),
-												// primsols_(rhs.primsols_),
-												// ub_(rhs.ub_)
 {}
 
 DdWorkerUB2::~DdWorkerUB2()
 {
 	// check whether subprobs_[s] is being deleted
-	// FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), mat_mp_);
-	// FREE_2D_ARRAY_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), obj_org_);
-	// FREE_2D_ARRAY_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), rlbd_org_);
-	// FREE_2D_ARRAY_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), rubd_org_);
-	// FREE_2D_PTR(par_->getIntPtrParamSize("ARR_PROC_IDX"), osi_);
 }
 
 DSP_RTN_CODE DdWorkerUB2::init()
