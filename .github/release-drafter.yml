@@ -17,4 +17,4 @@ template: |
   ## Changes
 
   $CHANGES
-commitish: release-draft
+commitish: 'release-draft'
