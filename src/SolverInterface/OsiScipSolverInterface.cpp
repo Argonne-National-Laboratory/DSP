@@ -401,6 +401,78 @@ void OsiScipSolverInterface::deleteCols(const int num, const int* colIndices) {
 	}
 }
 
+void OsiScipSolverInterface::addRows(int ccnt, int nrows, int nznt, double * rhs, char * sense, int * rmatbeg, int * rmatind, double * rmatval) {
+	assert(scip_);
+
+	for (int i = 0; i < nrows; i++)
+	{
+		double rowlb;
+		double rowub;
+
+		if (sense[i] == 'E')
+		{
+			rowlb = rhs[i];
+			rowub = rhs[i];
+		} 
+		else if (sense[i] == 'G')
+		{
+			rowlb = rhs[i];
+			rowub = INFINITY;
+		} 
+		else if (sense[i] == 'L')
+		{
+			rowlb = -INFINITY;
+			rowub = rhs[i];
+		}
+
+		SCIP_CONS * cons = NULL;
+		SCIP_CALL_ABORT(SCIPcreateConsBasicLinear(scip_, &cons, "cons", 0, NULL, NULL, rowlb, rowub));
+
+		/** add coefficients */
+		for (int j = rmatbeg[i]; j < (i == nrows - 1 ? nznt : rmatbeg[i+1]); ++j)
+			SCIP_CALL_ABORT(SCIPaddCoefLinear(scip_, cons, vars_[rmatind[j]], rmatval[j]));
+
+		/** add constraint */
+		SCIP_CALL_ABORT(SCIPaddCons(scip_, cons));
+		conss_.push_back(cons);
+		rlbd_.push_back(rowlb);
+		rubd_.push_back(rowub);
+
+		char sense; double right, range;
+		convertBoundToSense(rowlb, rowub, sense, right, range);
+		sense_.push_back(sense);
+		rhs_.push_back(right);
+		range_.push_back(range);
+		nconss_++;
+	}
+}
+
+void OsiScipSolverInterface::chgRhs(int cnt, int * indices, double * values) {
+	
+	for (int i = 0; i < cnt; i++)
+	{
+		freeTransform();
+		assert(conss_[indices[i]]);
+		// <li>'L': <= constraint
+		//   <li>'E': =  constraint
+		//   <li>'G': >= constraint
+		if (sense_[indices[i]] == 'L')
+			SCIP_CALL_ABORT(SCIPchgRhsLinear(scip_, conss_[indices[i]], values[i]));
+		else if (sense_[indices[i]] == 'G')
+			SCIP_CALL_ABORT(SCIPchgLhsLinear(scip_, conss_[indices[i]], values[i]));
+		else if (sense_[indices[i] == 'E'])
+		{
+			SCIP_CALL_ABORT(SCIPchgRhsLinear(scip_, conss_[indices[i]], values[i]));
+			SCIP_CALL_ABORT(SCIPchgLhsLinear(scip_, conss_[indices[i]], values[i]));
+		} 
+		else 
+		{
+			DSPdebugMessage("OsiScipSolverInterface::chgRhs is defined for 'L', 'E', and 'G' type constraints");
+		}
+
+	}
+}
+
 void OsiScipSolverInterface::addRow(
 		const CoinPackedVectorBase& vec,
 		const double rowlb,
@@ -449,13 +521,25 @@ void OsiScipSolverInterface::addQuadraticRows(int nqrows, int * linnzcnt, int * 
 		(void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "quadrow_%d", i);
 
 		SCIP_CONS * cons = NULL;
-		SCIP_CALL_ABORT(SCIPcreateConsBasicQuadratic(scip_, &cons, name, 0, NULL, NULL, 0, NULL, NULL, NULL, rowlb, rowub));
+		SCIP_CALL_ABORT(SCIPcreateConsBasicQuadraticNonlinear(scip_, &cons, name, 0, NULL, NULL, 0, NULL, NULL, NULL, rowlb, rowub));
 
 		/** add coefficients */
 		for (int j = 0; j < linnzcnt[i]; j++)
-			SCIP_CALL_ABORT(SCIPaddLinearVarQuadratic(scip_, cons, vars_[linind[i][j]], linval[i][j]));
-		for (int j = 0; j < quadnzcnt[i]; j++)
-			SCIP_CALL_ABORT(SCIPaddBilinTermQuadratic(scip_, cons, vars_[quadrow[i][j]], vars_[quadcol[i][j]], quadval[i][j]));
+			SCIP_CALL_ABORT(SCIPaddLinearVarNonlinear(scip_, cons, vars_[linind[i][j]], linval[i][j]));
+		for (int j = 0; j < quadnzcnt[i]; j++) {
+			
+			// Deprecated:
+			// SCIP_CALL_ABORT(SCIPaddBilinTermQuadratic(scip_, cons, vars_[quadrow[i][j]], vars_[quadcol[i][j]], quadval[i][j]));
+
+			SCIP_EXPR * expr;
+			SCIP_EXPR * exprs[2];
+			/* create variable expressions */
+  			SCIP_CALL_ABORT( SCIPcreateExprVar(scip_, &exprs[0], vars_[quadrow[i][j]], NULL, NULL) );
+  			SCIP_CALL_ABORT( SCIPcreateExprVar(scip_, &exprs[1], vars_[quadcol[i][j]], NULL, NULL) );
+			SCIP_CALL_ABORT( SCIPcreateExprProduct(scip_, &expr, 2, exprs, 1.0, NULL, NULL));
+			SCIP_CALL_ABORT( SCIPaddExprNonlinear(scip_, cons, expr, quadval[i][j]));
+		}
+
 		/** add constraint */
 		SCIP_CALL_ABORT(SCIPaddCons(scip_, cons));
 

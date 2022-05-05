@@ -110,7 +110,28 @@ public:
 		}
 		/* if QCP, then put more emphasis on numerical issues  */
 		if (isqcp_)
+		{
 			CPXsetintparam(cpx_->getEnvironmentPtr(), CPX_PARAM_NUMERICALEMPHASIS, CPX_ON);
+		}
+			
+	}
+
+	/** load affine constrs */
+	virtual void addRows(int ccnt, int nrows, int nznt, double * rhs, char * sense, int * rmatbeg, int * rmatind, double * rmatval)
+	{		
+		
+		int err = CPXaddrows(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), ccnt, nrows, nznt, rhs, sense, rmatbeg, rmatind, rmatval, NULL, NULL);
+		checkDspOsiError(err, "CPXaddconstr", "addRows");	
+			
+	}
+
+	/** change right-hand sides of affine constrs */
+	virtual void chgRhs(int cnt, int * indices, double * values)
+	{		
+		
+		int err = CPXchgrhs(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL), cnt, indices, values);
+		checkDspOsiError(err, "CPXaddconstr", "chgRhs");	
+			
 	}
 
 	/** throw error */
@@ -533,12 +554,19 @@ public:
 	/** set node limit */
 	virtual void setNodeLimit(int num)
 	{
-		CPXsetintparam(cpx_->getEnvironmentPtr(), CPX_PARAM_NODELIM, CoinMax(1, CoinMin(2100000000, num)));
+		if (si_->getNumIntegers() > 0)
+			CPXsetintparam(cpx_->getEnvironmentPtr(), CPX_PARAM_NODELIM, CoinMax(1, CoinMin(2100000000, num)));
 	}
 
 	/** set relative MIP gap */
 	virtual void setRelMipGap(double tol) {
 		CPXsetdblparam(cpx_->getEnvironmentPtr(), CPX_PARAM_EPGAP, CoinMax(0.0, CoinMin(1.0, tol)));
+	}
+
+	/** set MIQCP strategy */
+	virtual void setMiqcpMethod(int val) {
+		if (si_->getNumIntegers() > 0 && isqcp_)
+			CPXsetintparam(cpx_->getEnvironmentPtr(), CPXPARAM_MIP_Strategy_MIQCPStrat, val);
 	}
 
     OsiCpxSolverInterface* cpx_;   

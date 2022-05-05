@@ -42,6 +42,8 @@ public:
 
 	/** load quadratic constrs */
 	virtual void addQuadraticRows(int nqrows, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int ** linind, double ** linval, int ** quadrow, int ** quadcol, double ** quadval){};
+	virtual void addRows(int ccnt, int nrows, int nznt, double * rhs, char * sense, int * rmatbeg, int * rmatind, double * rmatval){};
+	virtual void chgRhs(int cnt, int * indices, double * values){};
 	
 	/** throw error */
 	virtual inline void checkDspOsiError(int err, std::string solverfuncname, std::string dsposimethod){};
@@ -130,6 +132,9 @@ public:
 
 	/** set relative MIP gap */
 	virtual void setRelMipGap(double tol) {}
+
+	/** set MIQCP method */
+	virtual void setMiqcpMethod(int val) {}
 
 	OsiSolverInterface *si_;
 	

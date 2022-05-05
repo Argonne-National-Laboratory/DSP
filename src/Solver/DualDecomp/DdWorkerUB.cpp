@@ -284,8 +284,8 @@ double DdWorkerUB::evaluate(CoinPackedVector *solution)
 
 	/** allocate memory */
 	x = solution->denseVector(tss->getNumCols(0));
-  // DSPdebugMessage("x to evaluate:\n");
-	// DspMessage::printArray(tss->getNumCols(0), x);
+  	DSPdebugMessage("x to evaluate:\n");
+	DSPdebug(DspMessage::printArray(tss->getNumCols(0), x));
 	
 	for (int s = nsubprobs - 1; s >= 0; --s) {
 		/** calculate Tx */
@@ -431,7 +431,7 @@ DspOsi *DdWorkerUB::createDspOsi()
 	DspOsi *osi = NULL;
 	BGN_TRY_CATCH
 
-	switch (par_->getIntParam("DW/SUB/SOLVER"))
+	switch (par_->getIntParam("DD/SUB/SOLVER"))
 	{
 	case OsiCpx:
 #ifdef DSP_HAS_CPX

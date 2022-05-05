@@ -365,8 +365,10 @@ DSP_RTN_CODE DdSub::createProblem() {
     DSPdebug(mat->verifyMtx(4));
 
 	/** set solution gap tolerance */
-	if (nIntegers > 0)
+	if (nIntegers > 0) {
 	    osi_->setRelMipGap(gapTol_);
+		osi_->setMiqcpMethod(par_->getIntParam("DD/SOLVER/MIQCP_METHOD"));
+	}
 
     END_TRY_CATCH_RTN(FREE_MEMORY, DSP_RTN_ERR)
 
@@ -432,11 +434,11 @@ DSP_RTN_CODE DdSub::updateProblem(
 
 			// coefficients for the second-stage variables
 			CoinCopyN(lambda, nrows_coupling_, newobj);
-			// printf("DdSub::updateProblem lambda:\n");
-			// DspMessage::printArray(nrows_coupling_, lambda);
+			DSPdebugMessage("DdSub::updateProblem lambda:\n");
+			DSPdebug(DspMessage::printArray(nrows_coupling_, lambda));
 			for (int j = nrows_coupling_; j < ncols-1; ++j) {
 				newobj[j] = obj_[j] * probability;
-				// printf("update subproblem %d: obj_[%d] = %e, probability = %e, newobj -> %e\n", sind_, j, obj_[j], probability, newobj[j]);
+				DSPdebugMessage("update subproblem %d: obj_[%d] = %e, probability = %e, newobj -> %e\n", sind_, j, obj_[j], probability, newobj[j]);
 			}
 			newobj[ncols-1] = obj_[ncols-1];
 		} else {

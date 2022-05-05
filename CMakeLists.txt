@@ -30,11 +30,11 @@ if (MPI_CXX_FOUND)
 endif()
 
 if (NOT ${SCIPOPT_LIB_DIR} STREQUAL "")
-	find_library(SCIPLIB scip PATHS ${SCIPOPT_LIB_DIR})
+	find_library(SCIPLIB scip.8.0 PATHS ${SCIPOPT_LIB_DIR})
 	if(SCIPLIB)
 		message(STATUS "Found ${SCIPLIB}")
 	else()
-		message(FATAL_ERROR "Could NOT find scip library.")
+		message(FATAL_ERROR "Could NOT find scip version 8.0.x library.")
 	endif()
 endif()
 
