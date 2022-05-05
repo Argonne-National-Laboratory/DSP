@@ -54,9 +54,9 @@ public:
 
 	/** update problem */
 	DSP_RTN_CODE updateProblem(
-			double * lambda,
-			double probability,
-			double primal_bound = COIN_DBL_MAX);
+		const double *lambda,
+		double probability,
+		double primal_bound = COIN_DBL_MAX);
 
 	/** push cuts */
 	DSP_RTN_CODE pushCuts(OsiCuts * cuts);

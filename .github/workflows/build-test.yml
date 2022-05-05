@@ -2,10 +2,17 @@ name: Build test
 
 on:
   push:
+    branches:
+      - master
+    paths-ignore:
+      - 'README.md'
+      - '**.yml'
+      - 'docs/**'
+      - 'src/DspConfig.h'
   pull_request:
     branches:
       - master
-      - release
+      - release-draft
 
 jobs:
   test-github-cpuonly:

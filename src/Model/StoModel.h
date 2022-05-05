@@ -83,6 +83,12 @@ public:
 	/** get initial solutions */
 	const Solutions getInitialSolutions() {return init_solutions_;}
 
+	/** get core coefficeints for a given stage */
+	const CoinPackedVector * getRowCore(int i) {return rows_core_[i];}
+
+	/** set probability */
+	void setProbability(double *probability);
+
 	/** set initial solutions */
 	void setSolution(
 			int      size,    /**< size of array */
@@ -98,6 +104,11 @@ public:
 	 * @return DSP_RTN_OK if no error
 	 */
 	DSP_RTN_CODE setWassersteinAmbiguitySet(double lp_norm, double eps);
+
+	/** 
+	 * Nomalize probability vector
+	 */
+	void normalizeProbability();
 
 #if 0
 	/** add branching object */

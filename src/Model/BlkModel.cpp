@@ -18,7 +18,8 @@ BlkModel::BlkModel() :
 		ncols_full_(0),
 		nints_full_(0),
 		primal_block_angular_(false),
-		dual_block_angular_(false) {
+		dual_block_angular_(false),
+		is_updated_(false) {
 	/** nothing to do */
 }
 
@@ -185,6 +186,8 @@ DSP_RTN_CODE BlkModel::updateBlocks() {
 #endif
 	}
 	DSPdebugMessage("Update block time: %.4f\n", CoinGetTimeOfDay() - stime);
+
+	is_updated_ = true;
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 
