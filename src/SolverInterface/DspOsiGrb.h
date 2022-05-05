@@ -237,7 +237,7 @@ public:
 	}
 
 	/** set node limit */
-	virtual void setNodeLimit(double num) {
+	virtual void setNodeLimit(int num) {
 		try{
         	GUROBI_CALL("setNodeLimit", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
 			GUROBI_CALL("setNodeLimit", GRBsetdblparam(grb_->getEnvironmentPtr(), GRB_DBL_PAR_NODELIMIT, num));

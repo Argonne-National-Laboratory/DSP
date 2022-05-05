@@ -137,11 +137,12 @@ public:
     }
 
 	/** set node limit */
-	virtual void setNodeLimit(double num) {
+    virtual void setNodeLimit(int num)
+    {
         cbc_->getModelPtr()->setMaximumNodes(num);
     }
 
-	/** set relative MIP gap */
+    /** set relative MIP gap */
 	virtual void setRelMipGap(double tol) {
         cbc_->getModelPtr()->setAllowableFractionGap(tol);
     }

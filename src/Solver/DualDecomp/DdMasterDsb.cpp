@@ -101,7 +101,7 @@ DSP_RTN_CODE DdMasterDsb::solve()
 			 *      \lambda = prox_k + tau_k * (b u + \sum_j \sum_s B_s x_s^j y_s^j)
 			 *    Stochastic:
 			 *      \lambda = prox_k + tau_k * (w + \sum_j x_s^j y_s^j) */
-			if (model_->nonanticipativity())
+			if (model_->isStochastic())
 			{
 				for (int i = 0; i < model_->getNumCouplingRows(); ++i)
 					lambda_[i] = prox_[i] + tau_ * primsol_[2 + (i % model_->getNumSubproblemCouplingCols(0))];
@@ -241,7 +241,7 @@ DSP_RTN_CODE DdMasterDsb::createProblem()
 	nrows_ = model_->getNumSubproblems() + 1;
 	ncols_ = 2;
 	nzcnt_  = model_->getNumSubproblems() + 2;
-	if (model_->nonanticipativity())
+	if (model_->isStochastic())
 		ncols_ += model_->getNumSubproblemCouplingCols(0);
 	else
 	{
@@ -265,7 +265,7 @@ DSP_RTN_CODE DdMasterDsb::createProblem()
 	ind  = new int[nzcnt_];
 	elem = new double[nzcnt_];
 
-	if (model_->nonanticipativity())
+	if (model_->isStochastic())
 	{
 		irowQ = new int [model_->getNumSubproblemCouplingCols(0)];
 		jcolQ = new int [model_->getNumSubproblemCouplingCols(0)];
@@ -292,7 +292,7 @@ DSP_RTN_CODE DdMasterDsb::createProblem()
 	/** linear objective coefficient */
 	obj[0] = 0.0;
 	obj[1] = -level_;
-	if (model_->nonanticipativity())
+	if (model_->isStochastic())
 	{
 		CoinZeroN(obj + 2, model_->getNumSubproblemCouplingCols(0));
 		for (int s = 0; s < model_->getNumSubproblems(); ++s)
@@ -303,7 +303,7 @@ DSP_RTN_CODE DdMasterDsb::createProblem()
 	}
 
 	/** bounds */
-	if (model_->nonanticipativity())
+	if (model_->isStochastic())
 	{
 		CoinFillN(clbd, 2, 0.0);
 		CoinFillN(clbd + 2, ncols_ - 2, -COIN_DBL_MAX);
@@ -317,7 +317,7 @@ DSP_RTN_CODE DdMasterDsb::createProblem()
 	CoinFillN(rubd, model_->getNumSubproblems(), 0.0);
 	CoinFillN(rlbd + model_->getNumSubproblems(), 1, 1.0);
 	CoinFillN(rubd + model_->getNumSubproblems(), 1, 1.0);
-	if (model_->nonanticipativity() == false)
+	if (model_->isStochastic() == false)
 	{
 		for (int i = 0, ii = 0; i < model_->getNumCouplingRows(); ++i)
 		{
@@ -353,7 +353,7 @@ DSP_RTN_CODE DdMasterDsb::createProblem()
 	ind[model_->getNumSubproblems()+1] = 1;
 	elem[model_->getNumSubproblems()+1] = -1.0;
 	len[model_->getNumSubproblems()] = 2;
-	if (model_->nonanticipativity() == false)
+	if (model_->isStochastic() == false)
 	{
 		for (int i = 0, ii = 0; i < model_->getNumCouplingRows(); ++i)
 		{
@@ -386,7 +386,7 @@ DSP_RTN_CODE DdMasterDsb::createProblem()
 	/** copy problem data */
 	si_->loadProblem(*mat, clbd, cubd, obj, ctype, rlbd, rubd);
 
-	if (model_->nonanticipativity())
+	if (model_->isStochastic())
 	{
 		for (int j = 0; j < model_->getNumSubproblemCouplingCols(0); ++j)
 		{
@@ -536,7 +536,7 @@ DSP_RTN_CODE DdMasterDsb::manageBundle(double* objvals)
 		indices.push_back(sid);
 		vals.push_back(-1.0);
 
-		if (model_->nonanticipativity() == false)
+		if (model_->isStochastic() == false)
 		{
 			for (int i = 0; i < model_->getNumCouplingRows(); ++i)
 			{
@@ -557,7 +557,7 @@ DSP_RTN_CODE DdMasterDsb::manageBundle(double* objvals)
 	}
 
 	/** re-create Hessian */
-	if (model_->nonanticipativity())
+	if (model_->isStochastic())
 	{
 		for (int j = 0; j < model_->getNumSubproblemCouplingCols(0); ++j)
 		{
@@ -581,7 +581,7 @@ DSP_RTN_CODE DdMasterDsb::manageBundle(double* objvals)
 
 		int sid = dynids_[j];
 
-		if (model_->nonanticipativity())
+		if (model_->isStochastic())
 		{
 			/** This sets x_s^j in the Hessian matrix. */
 			for (int i = 0; i < model_->getNumSubproblemCouplingCols(0); ++i)
@@ -621,7 +621,7 @@ DSP_RTN_CODE DdMasterDsb::manageBundle(double* objvals)
 			}
 
 			double val = 0.0;
-			if (model_->nonanticipativity())
+			if (model_->isStochastic())
 			{
 				int sid2 = dynids_[k];
 				for (int i = 0; i < model_->getNumSubproblemCouplingCols(0); ++i)

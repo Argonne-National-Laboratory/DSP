@@ -102,6 +102,8 @@ public:
 
     vector<int> getCoupledSubproblemIndices(int j) {return coupled_subproblems_indices_[j];}
 
+    bool areBlocksUpdated() {return is_updated_;}
+
 protected:
 
     Blocks blocks_; /**< model blocks */
@@ -114,6 +116,8 @@ protected:
     bool dual_block_angular_;   /**< Is the full matrix a dual block angular matrix? */
 
     vector<vector<int>> coupled_subproblems_indices_;
+
+    bool is_updated_; /**< indicate whether function updateBlocks is called or not */
 
 };
 

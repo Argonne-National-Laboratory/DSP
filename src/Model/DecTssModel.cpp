@@ -31,20 +31,33 @@ DecTssModel::~DecTssModel() {
 	FREE_ARRAY_PTR(master_col_indices_);
 }
 
+bool DecTssModel::isDistributed()
+{
+	bool is_distributed = false;
+	for (int s = 0; s < nscen_; ++s)
+		if (mat_scen_[s] == NULL)
+		{
+			is_distributed = true;
+			break;
+		}
+	return is_distributed;
+}
+
 DSP_RTN_CODE DecTssModel::decompose(
-	int size,                    /**< [in] size of subproblem subset */
-	int * scen,                  /**< [in] subset of scenarios */
-	int naux,                    /**< [in] number of auxiliary columns */
-	double * clbd_aux,           /**< [in] lower bounds for auxiliary columns */
-	double * cubd_aux,           /**< [in] upper bounds for auxiliary columns */
-	double * obj_aux,            /**< [in] objective coefficients for auxiliary columns */
-	CoinPackedMatrix *& mat,     /**< [out] constraint matrix */
-	double *& clbd,              /**< [out] column lower bounds */
-	double *& cubd,              /**< [out] column upper bounds */
-	char   *& ctype,             /**< [out] column types */
-	double *& obj,               /**< [out] objective coefficients */
-	double *& rlbd,              /**< [out] row lower bounds */
-	double *& rubd               /**< [out] row upper bounds */)
+	int size,				/**< [in] size of subproblem subset */
+	int *scen,				/**< [in] subset of scenarios */
+	int naux,				/**< [in] number of auxiliary columns */
+	double *clbd_aux,		/**< [in] lower bounds for auxiliary columns */
+	double *cubd_aux,		/**< [in] upper bounds for auxiliary columns */
+	double *obj_aux,		/**< [in] objective coefficients for auxiliary columns */
+	CoinPackedMatrix *&mat, /**< [out] constraint matrix */
+	double *&clbd,			/**< [out] column lower bounds */
+	double *&cubd,			/**< [out] column upper bounds */
+	char *&ctype,			/**< [out] column types */
+	double *&obj,			/**< [out] objective coefficients */
+	double *&rlbd,			/**< [out] row lower bounds */
+	double *&rubd,			/**< [out] row upper bounds */
+	bool adjust_probability)
 {
 	assert(size >= 0);
 	assert(nrows_);
@@ -173,7 +186,7 @@ DSP_RTN_CODE DecTssModel::decompose(
 			{
 				if (fabs(elements[pos+l]) < 1.0e-10) continue;
 				if (k > 0 && k % 4 == 0) printf("\n");
-				printf("  [%5d,%4d,%4d] %+e", i, rowIndices[pos+l], mat_scen_[scen[s]]->getIndices()[start+l], mat_scen_[scen[s]]->getElements()[start+l]);
+				//printf("  [%5d,%4d,%4d] %+e", i, rowIndices[pos+l], mat_scen_[scen[s]]->getIndices()[start+l], mat_scen_[scen[s]]->getElements()[start+l]);
 				//printf("  [%5d,%4d,%4d] %+e", i, rowIndices[pos+l], colIndices[pos+l], elements[pos+l]);
 				k++;
 			}
@@ -183,7 +196,7 @@ DSP_RTN_CODE DecTssModel::decompose(
 		}
 	}
 	nzcnt = rowIndices.size();
-	DSPdebugMessage("rownum %d nzcnt %d pos %d\n", rownum, nzcnt, pos);
+	DSPdebugMessage("rownum %d nzcnt %d pos %d\n", rownum, nzcnt, pos);  
 	assert(nzcnt == pos);
 
 	mat = new CoinPackedMatrix(false, &rowIndices[0], &colIndices[0], &elements[0], nzcnt);
@@ -228,7 +241,7 @@ DSP_RTN_CODE DecTssModel::decompose(
 		/** objective coefficients */
 		DSPdebugMessage("combining objective coefficients\n");
 		copyCoreObjective(obj + ncols_[0] + s * ncols_[1], 1);
-		combineRandObjective(obj + ncols_[0] + s * ncols_[1], 1, sind);
+		combineRandObjective(obj + ncols_[0] + s * ncols_[1], 1, sind, adjust_probability);
 
 		/** row lower bounds */
 		DSPdebugMessage("combining row lower bounds\n");
@@ -240,7 +253,7 @@ DSP_RTN_CODE DecTssModel::decompose(
 		copyCoreRowUpper(rubd + nrows_[0] + s * nrows_[1], 1);
 		combineRandRowUpper(rubd + nrows_[0] + s * nrows_[1], 1, sind);
 	}
-
+	//printf("nrows_core_ = %d, ncols_core_ = %d \n", nrows_core_, ncols_core_);
 	/** auxiliary columns */
 	CoinCopyN(clbd_aux, naux, clbd + ncols - naux);
 	CoinCopyN(cubd_aux, naux, cubd + ncols - naux);
