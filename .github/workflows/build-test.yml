@@ -12,7 +12,7 @@ on:
   pull_request:
     branches:
       - master
-      - release
+      - release-draft
 
 jobs:
   test-github-cpuonly:
