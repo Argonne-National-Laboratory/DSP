@@ -207,10 +207,9 @@ DSP_RTN_CODE DdMWSerial::run() {
 	}
 
 #ifdef DSP_HAS_SCIP
-	if (model_->isDro())
+	if ((parFeasCuts_ >= 0 || parOptCuts_ >= 0) && model_->isDro())
 		message_->print(0, "Cut procedures are not implemented for DRO.\n");
 #endif
-
 	printHeaderInfo();
 
 	/** reset iteration info */
