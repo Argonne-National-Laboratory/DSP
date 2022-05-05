@@ -55,25 +55,11 @@ public:
 
 protected:
 
-	// /** create DspOsi */
-	// virtual DspOsi * createDspOsi();
-
 	/** create problem */
 	virtual DSP_RTN_CODE createProblem(int nsubprobs, int* subindex);
 
-public:
-	// double bestub_; /**< best upper bound */
-	// std::vector<std::vector<double> > primsols_; /**< primal solution for each subproblem */
-
 protected:
-	// CoinPackedMatrix ** mat_mp_;
-	// double **obj_org_;	/**< original objective coefficients for each subproblem */
-	// double** rlbd_org_; /**< original row lower bounds for each subproblem */
-	// double** rubd_org_; /**< original row upper bounds for each subproblem */
-
-	// DspOsi **osi_; /**< solver interface for each subproblem */
 	vector<DdSub*> subprobs_; /**< set of subproblems */
-	// double ub_; /**< upper bound */
 };
 
 #endif /* SRC_SOLVER_DUALDECOMP_DDWORKERUB2_H_ */

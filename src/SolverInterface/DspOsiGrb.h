@@ -337,7 +337,7 @@ public:
 	virtual void setMiqcpMethod(int val) {
 		try{
         	GUROBI_CALL("setMiqcpMethod", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
-			GUROBI_CALL("setMiqcpMethod", GRBsetdblparam(grb_->getEnvironmentPtr(), MIQCPMethod, val));
+			GUROBI_CALL("setMiqcpMethod", GRBsetintparam(grb_->getEnvironmentPtr(), GRB_INT_PAR_MIQCPMETHOD, val));
 		}
 		catch(const CoinError& e){
         	e.print();

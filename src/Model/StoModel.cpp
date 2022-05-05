@@ -1789,30 +1789,6 @@ DSP_RTN_CODE StoModel::readQuad(const char * smps, const char * filename, bool c
 	for (int s = 0; s < nscen_; s++) 
 	{	
 		qc_row_scen_[s] = new QuadRowData(nqrows_scen, rstart[1], sense, rhs, linind, linval, quadrow, quadcol, quadval);
-		if (!chg_to_socp)
-		{
-			/* check whether there is a coupling quadratic row */
-			for (i = 0; i < qc_row_scen_[s]->nqrows; i++) {
-				cout << i << endl;
-				// for (j = 0; j < qc_row_scen_[s]->linnzcnt[i]; j++) {
-				// 	if (qc_row_scen_[s]->linind[i][j] < ncols_[0]) {
-				// 		char msg[256];
-				// 		sprintf(msg, "There is a first stage var in a linear term of a second stage quadratic row and chg_to_scop is turned off. If there is a coupling quadratic constraint, please turn on chg_to_scop.\n");
-				// 		throw msg; 
-				// 	}
-				// }
-				
-				for (j = 0; j < qc_row_scen_[s]->quadnzcnt[i]; j++) {
-					cout << "col: " << qc_row_scen_[s]->quadcol[i][j] << endl;
-					cout << "row: " << qc_row_scen_[s]->quadrow[i][j] << endl;
-					// if (qc_row_scen_[s]->quadcol[i][j] < ncols_[0] || qc_row_scen_[s]->quadrow[i][j] < ncols_[0]) {
-					// 	char msg[256];
-					// 	sprintf(msg, "There is a first stage var in a quadratic term of a second stage quadratic row and chg_to_scop is turned off. If there is a coupling quadratic constraint, please turn on chg_to_scop.\n");
-					// 	throw msg; 
-					// }
-				}
-			}
-		}
 	}	
 
 	if (stofile.is_open()) {
