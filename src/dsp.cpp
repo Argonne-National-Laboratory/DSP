@@ -48,9 +48,10 @@ int main(int argc, char* argv[]) {
 
 	bool isroot = true;
 #ifdef DSP_HAS_MPI
-	int comm_rank;
+	int comm_rank, comm_size;
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
+	MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
 	isroot = comm_rank == 0 ? true : false;
 #define EXIT_WITH_MSG \
 	if(isroot) cout << gDspUsage; \
@@ -316,7 +317,7 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 					if ((val - primobj) / (fabs(val) + 1.e-10) > test_tolerance || (dualobj - val) / (fabs(val) + 1.e-10) > test_tolerance)
 						ret = 1;
 				} else {
-					if ((primobj - val) / (fabs(val) + 1.e-10) > test_tolerance || (val - dualobj) / (fabs(val) + 1.e-10) + test_tolerance)
+					if ((primobj - val) / (fabs(val) + 1.e-10) > test_tolerance || (val - dualobj) / (fabs(val) + 1.e-10) > test_tolerance)
 						ret = 1;
 				}
 			}
