@@ -279,7 +279,7 @@ DSP_RTN_CODE DdDroWorkerUB::solve()
 		assert(nsubprobs == model_->getNumSubproblems());
 		for (int k = 0; k < nsubprobs; ++k)
 		{
-			printf("rlbd[%d] = %e\n", k * model_->getNumReferences(), osi_[k]->si_->getObjValue());
+			// printf("rlbd[%d] = %e\n", k * model_->getNumReferences(), osi_[k]->si_->getObjValue());
 			for (int s = 0; s < model_->getNumReferences(); ++s)
 			{
 				osi_dro_->si_->setRowLower(k * model_->getNumReferences() + s, osi_[k]->si_->getObjValue());
