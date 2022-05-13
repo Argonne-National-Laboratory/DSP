@@ -1,19 +1,19 @@
 /*
- * DdWorkerUB2.h
+ * DdWorkerUBQcp.h
  *
  *  Created on: Mar 18, 2022
  *      Author: geunyeongbyeon
  */
 
-#ifndef SRC_SOLVER_DUALDECOMP_DDWORKERUB2_H_
-#define SRC_SOLVER_DUALDECOMP_DDWORKERUB2_H_
+#ifndef SRC_SOLVER_DUALDECOMP_DDWORKERUBQCP_H_
+#define SRC_SOLVER_DUALDECOMP_DDWORKERUBQCP_H_
 
 // #include "Solver/DualDecomp/DdWorker.h"
 #include "Solver/DualDecomp/DdWorkerUB.h"
 #include "Solver/DualDecomp/DdSub.h"
 
 /** A worker class for solving upper bounding subproblems. */
-class DdWorkerUB2: public DdWorkerUB {
+class DdWorkerUBQcp: public DdWorkerUB {
 
 	friend class DdMWSerial;
 	friend class DdMWSync;
@@ -22,20 +22,20 @@ class DdWorkerUB2: public DdWorkerUB {
 public:
 
 	/** A default constructor. */
-	DdWorkerUB2(
+	DdWorkerUBQcp(
 			DecModel *   model,  /**< model pointer */
 			DspParams *  par,    /**< parameter pointer */
 			DspMessage * message /**< message pointer */);
 
 	/** A copy constructor. */
-	DdWorkerUB2(const DdWorkerUB2& rhs);
+	DdWorkerUBQcp(const DdWorkerUBQcp& rhs);
 
 	/** A default destructor. */
-	virtual ~DdWorkerUB2();
+	virtual ~DdWorkerUBQcp();
 
 	/** A clone function */
-	virtual DdWorkerUB2* clone() const {
-		return new DdWorkerUB2(*this);
+	virtual DdWorkerUBQcp* clone() const {
+		return new DdWorkerUBQcp(*this);
 	}
 
 	/** A virtual member for initializing solver. */
@@ -62,4 +62,4 @@ protected:
 	vector<DdSub*> subprobs_; /**< set of subproblems */
 };
 
-#endif /* SRC_SOLVER_DUALDECOMP_DDWORKERUB2_H_ */
+#endif /* SRC_SOLVER_DUALDECOMP_DDWORKERUBQCP_H_ */

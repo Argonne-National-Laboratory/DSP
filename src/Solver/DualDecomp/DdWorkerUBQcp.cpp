@@ -1,14 +1,14 @@
 /*
- * DdWorkerUB.cpp
+ * DdWorkerUBQcp.cpp
  *
- *  Created on: Mar 28, 2016
- *      Author: kibaekkim
+ *  Created on: Mar 18, 2022
+ *      Author: geunyeongbyeon
  */
 
 // #define DSP_DEBUG
 // #define DSP_DEBUG_WRITE
 #include "Model/DecTssModel.h"
-#include "Solver/DualDecomp/DdWorkerUB2.h"
+#include "Solver/DualDecomp/DdWorkerUBQcp.h"
 #include "SolverInterface/DspOsiCpx.h"
 #include "SolverInterface/DspOsiGrb.h"
 #include "SolverInterface/DspOsiScip.h"
@@ -17,24 +17,24 @@
 #include "Solver/DualDecomp/SCIPconshdlrBendersDd.h"
 #endif
 
-DdWorkerUB2::DdWorkerUB2(
+DdWorkerUBQcp::DdWorkerUBQcp(
 	DecModel *model, /**< model pointer */
 	DspParams *par,	 /**< parameter pointer */
 	DspMessage *message /**< message pointer */) : DdWorkerUB(model, par, message)
 {
 }
 
-DdWorkerUB2::DdWorkerUB2(const DdWorkerUB2 &rhs) : DdWorkerUB(rhs)
+DdWorkerUBQcp::DdWorkerUBQcp(const DdWorkerUBQcp &rhs) : DdWorkerUB(rhs)
 {}
 
-DdWorkerUB2::~DdWorkerUB2()
+DdWorkerUBQcp::~DdWorkerUBQcp()
 {
 	// check whether subprobs_[s] is being deleted
 }
 
-DSP_RTN_CODE DdWorkerUB2::init()
+DSP_RTN_CODE DdWorkerUBQcp::init()
 {
-	DSPdebugMessage("initiating DdWorkerUB2\n");
+	DSPdebugMessage("initiating DdWorkerUBQcp\n");
 	BGN_TRY_CATCH
 	/** status */
 	status_ = DSP_STAT_MW_CONTINUE;
@@ -85,7 +85,7 @@ DSP_RTN_CODE DdWorkerUB2::init()
 		{
 			/* write in lp file */
 			char filename[128];
-			sprintf(filename, "DdWorkerUB2_scen%d", s); 
+			sprintf(filename, "DdWorkerUBQcp_scen%d", s); 
 			DSPdebugMessage("writing initial upper bound subproblem for scenario %d in %s.lp\n", s, filename);
 			subprobs_[s]->getDspOsiPtr()->writeProb(filename, "lp");
 		}
@@ -94,7 +94,7 @@ DSP_RTN_CODE DdWorkerUB2::init()
 	return DSP_RTN_OK;
 }
 
-DSP_RTN_CODE DdWorkerUB2::createProblem(int nsubprobs, int* subindex)
+DSP_RTN_CODE DdWorkerUBQcp::createProblem(int nsubprobs, int* subindex)
 {
 BGN_TRY_CATCH
 
@@ -121,7 +121,7 @@ BGN_TRY_CATCH
 }
 
 
-double DdWorkerUB2::evaluate(int n, double *solution)
+double DdWorkerUBQcp::evaluate(int n, double *solution)
 {
 	std::vector<int> indices;
 	std::vector<double> elements;
@@ -140,7 +140,7 @@ double DdWorkerUB2::evaluate(int n, double *solution)
 	return ub;
 }
 
-double DdWorkerUB2::evaluate(CoinPackedVector *solution)
+double DdWorkerUBQcp::evaluate(CoinPackedVector *solution)
 {
 #define FREE_MEMORY    \
 	FREE_ARRAY_PTR(indices) \
@@ -213,7 +213,7 @@ double DdWorkerUB2::evaluate(CoinPackedVector *solution)
 }
 
 
-DSP_RTN_CODE DdWorkerUB2::solve()
+DSP_RTN_CODE DdWorkerUBQcp::solve()
 {
 	double cputime;
 	double walltime;
