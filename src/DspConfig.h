@@ -6,7 +6,7 @@
  */
 #define DSP_VERSION_MAJOR 1
 #define DSP_VERSION_MINOR 5
-#define DSP_VERSION_PATCH 0
+#define DSP_VERSION_PATCH 1
 
 #include <stdio.h>
 
