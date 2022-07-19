@@ -307,6 +307,8 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 			cout << "Primal Bound: " << primobj << endl;
 			cout << "Dual Bound  : " << dualobj << endl;
 			cout << "Gap (%)     : " << fabs(primobj-dualobj)/(fabs(primobj)+1.e-10)*100 << endl;
+			cout << "Iterations  : " << getNumIterations(env) << endl;
+			cout << "Time (s)    : " << getWallTime(env) << endl;
 
 			if (testvalue != NULL) {
 				double val = atof(testvalue);
