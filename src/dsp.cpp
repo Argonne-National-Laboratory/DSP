@@ -44,8 +44,6 @@ const double test_tolerance = 1.0e-2;
 */
 int main(int argc, char* argv[]) {
 
-	show_copyright();
-
 	bool isroot = true;
 #ifdef DSP_HAS_MPI
 	int comm_rank, comm_size;
@@ -63,6 +61,7 @@ int main(int argc, char* argv[]) {
 	exit(0); 
 #endif
 
+	if(isroot) show_copyright();
 
 	if (argc < 5) {
 		EXIT_WITH_MSG
