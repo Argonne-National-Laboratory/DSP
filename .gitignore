@@ -13,3 +13,11 @@ build/*
 build_merge/*
 extra/glpk*
 cplex.log
+experiments/dro/outputs
+experiments/dro/*.out
+examples/dro/experiments/outputs/*
+examples/dro/experiments/*.cor
+examples/dro/experiments/*.dro
+examples/dro/experiments/*.sto
+examples/dro/experiments/*.tim
+examples/dro/experiments/*.csv

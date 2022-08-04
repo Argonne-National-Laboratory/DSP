@@ -52,6 +52,9 @@ public:
 	/** A virtual memeber for finalizing the framework. */
 	virtual DSP_RTN_CODE finalize();
 
+	/** get number of iterations */
+	virtual int getIterationCount() {return itercnt_;}
+
 	/** get remaining time */
 	virtual double remainingTime() {return parTimeLimit_ - (CoinGetTimeOfDay() - iterstime_);}
 

@@ -71,7 +71,7 @@ DSP_RTN_CODE DdDriverSerial::run()
 		bestprimsol_ = primsol_;
 		bestdualsol_ = dualsol_;
 		numNodes_ = master->getDspOsiPtr()->getNumNodes();
-		numIterations_ = master->getSiPtr()->getIterationCount();
+		numIterations_ = mw_->getIterationCount();
 	}
 	/** nullify master pointer */
 	master = NULL;

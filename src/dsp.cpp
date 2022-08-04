@@ -44,8 +44,6 @@ const double test_tolerance = 1.0e-2;
 */
 int main(int argc, char* argv[]) {
 
-	show_copyright();
-
 	bool isroot = true;
 #ifdef DSP_HAS_MPI
 	int comm_rank, comm_size;
@@ -63,6 +61,7 @@ int main(int argc, char* argv[]) {
 	exit(0); 
 #endif
 
+	if(isroot) show_copyright();
 
 	if (argc < 5) {
 		EXIT_WITH_MSG
@@ -307,6 +306,8 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 			cout << "Primal Bound: " << primobj << endl;
 			cout << "Dual Bound  : " << dualobj << endl;
 			cout << "Gap (%)     : " << fabs(primobj-dualobj)/(fabs(primobj)+1.e-10)*100 << endl;
+			cout << "Iterations  : " << getNumIterations(env) << endl;
+			cout << "Time (s)    : " << getWallTime(env) << endl;
 
 			if (testvalue != NULL) {
 				double val = atof(testvalue);
