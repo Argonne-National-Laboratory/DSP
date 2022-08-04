@@ -8,7 +8,7 @@ instance_numbers = [233, 243, 332, 342]
 scenarios = [20, 50, 100, 200, 300]
 epsilons = [1, 100, 500, 1000]
 
-mycsv = open("outputs.csv", "w")
+mycsv = open("tmp.csv", "w")
 println(mycsv, "instance,K,eps,Iterations,UB,LB,Time")
 
 for i in instance_numbers, s in scenarios
