@@ -393,8 +393,12 @@ void solveDd(DspApiEnv * env)
 
 	DSP_API_CHECK_MODEL();
 	if (env->model_->isStochastic() == false) {
-		printf("Dual decomposition is not available for non-stochastic problems.\n");
-		return;
+		//printf("Dual decomposition is not available for non-stochastic problems.\n");
+		//return;
+		BlkModel* blk = dynamic_cast<DecBlkModel*>(env->model_)->blkPtr();
+		if (blk->areBlocksUpdated() == false) {
+			blk->updateBlocks();
+		}
 	}
 	freeSolver(env);
 

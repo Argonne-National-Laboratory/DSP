@@ -62,6 +62,7 @@ if(GUROBILIB)
     add_test(NAME grb_qc_dd_farmer3 COMMAND $ENV{PWD}/src/runDsp --algo dd --smps ${CMAKE_SOURCE_DIR}/examples/smps/farmer --quad ${CMAKE_SOURCE_DIR}/examples/quad/farmer3 --param ${CMAKE_SOURCE_DIR}/test/params_grb.txt --test 28546.7)
     # add_test(NAME grb_noswot_de COMMAND $ENV{PWD}/src/runDsp --algo de --mps ${CMAKE_SOURCE_DIR}/examples/mps-dec/noswot.mps --dec ${CMAKE_SOURCE_DIR}/examples/mps-dec/noswot.dec --param ${CMAKE_SOURCE_DIR}/test/params_grb.txt --test -42)
     # add_test(NAME grb_noswot_dw COMMAND $ENV{PWD}/src/runDsp --algo dw --mps ${CMAKE_SOURCE_DIR}/examples/mps-dec/noswot.mps --dec ${CMAKE_SOURCE_DIR}/examples/mps-dec/noswot.dec --param ${CMAKE_SOURCE_DIR}/test/params_grb.txt --test -42)
+    add_test(NAME grb_noswot_dd COMMAND $ENV{PWD}/src/runDsp --algo dd --mps ${CMAKE_SOURCE_DIR}/examples/mps-dec/noswot.mps --dec ${CMAKE_SOURCE_DIR}/examples/mps-dec/noswot.dec --param ${CMAKE_SOURCE_DIR}/test/params_grb.txt --test -42)
 endif(GUROBILIB)
 
 if (MPI_CXX_FOUND)

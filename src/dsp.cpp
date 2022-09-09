@@ -228,7 +228,8 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 	}
 	else if (string(algotype) == "dd")
 	{
-		if (isstochastic)
+		//if (isstochastic)
+		if (true)
 		{
 #ifdef DSP_HAS_MPI
 			solveDdMpi(env, MPI_COMM_WORLD);
