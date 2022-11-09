@@ -53,6 +53,23 @@
 	std::cout << "Print <" << MSG << ">:" << std::endl; \
 	PRINT_COIN_PACKED_VECTOR(VEC)
 
+#define PRINT_ARRAY_OBJECT(NUM,ARR,NAME)								\
+	if (NUM > 0) {														\
+	std::cout << std::scientific;                               		\
+	for (int __i = 0, __ii = 0; __i < NUM; ++__i) {             		\
+		if (fabs((ARR)[__i].NAME) > 1.0e-10) {                		\
+		std::cout << "  " << __i << " [" << (ARR)[__i].NAME << "]";  	\
+			__ii++;                                             		\
+			if (__ii % 5 == 0) std::cout << std::endl;          		\
+		}                                                       		\
+	}                                                           		\
+	std::cout << std::fixed << std::endl;                          		\
+	}
+
+#define PRINT_ARRAY_OBJECT_MSG(NUM,ARR,NAME,MSG)                    \
+	std::cout << "Print <" << MSG << ">:" << std::endl; 			\
+	PRINT_ARRAY_OBJECT(NUM,ARR,NAME)
+
 /*
  * try-catch macros
  */
