@@ -20,19 +20,19 @@
 #include <vector>
 
 struct StageData {
-	int nrows_;   /**< array of the number of rows for each stage */
-	int ncols_;   /**< array of the number of columns for each stage */
-	int nints_;   /**< number of integer variables for each stage */
-	int rstart_;  /**< array of row start indices with respect to core model */
-	int cstart_;  /**< array of column start indices with respect to core model */
-	double * clbd_core_;           /**< column lower bounds for each stage */
-	double * cubd_core_;           /**< column upper bounds for each stage */
-	double * obj_core_;            /**< objective coefficients for each stage */
-	// CoinPackedMatrix * qobj_core_; /**< quadratic objecitve coefficients for each stage */
-	double * rlbd_core_;           /**< row lower bounds for each stage */
-	double * rubd_core_;           /**< row upper bounds for each stage */
-	char *   ctype_core_;          /**< column types for each stage */
-	CoinPackedVector ** rows_core_; /**< rows in core matrix */
+	int nrows_;   /**< number of rows for stage */
+	int ncols_;   /**< number of columns for stage */
+	int nints_;   /**< number of integer variables for stage */
+	int rstart_;  /**< row start index with respect to core model */
+	int cstart_;  /**< column start index with respect to core model */
+	double * clbd_core_;           /**< column lower bounds for stage */
+	double * cubd_core_;           /**< column upper bounds for stage */
+	double * obj_core_;            /**< objective coefficients for stage */
+	// CoinPackedMatrix * qobj_core_; /**< quadratic objecitve coefficients for stage */
+	double * rlbd_core_;           /**< row lower bounds for stage */
+	double * rubd_core_;           /**< row upper bounds for stage */
+	char *   ctype_core_;          /**< column types for stage */
+	CoinPackedVector ** rows_core_; /**< rows in core matrix for stage*/
 	// QuadRowData * qc_row_core_;		/**< parameters for quadratic rows in core: current version only accept noncoupling quadratic rows */
 	
 	/** default constructor */
@@ -69,12 +69,12 @@ public:
 	DspScnNode * parent_;
 	std::vector<DspScnNode* > children_;
 	CoinPackedMatrix * mat_scen_;  	/**< scenario matrix */
-	double * clbd_scen_; 	/**< column lower bounds for each scenario */
-	double * cubd_scen_; 	/**< column upper bounds for each scenario */
-	double * obj_scen_;  	/**< objective coefficients for each scenario */
-	// CoinPackedMatrix * qobj_scen_; /**< quadratic objective coefficients for each scenario */
-	double * rlbd_scen_; 	/**< row lower bounds for each scenario */
-	double * rubd_scen_; 	/**< row upper bounds for each scenario */
+	double * clbd_scen_; 	/**< column lower bounds for node */
+	double * cubd_scen_; 	/**< column upper bounds for node */
+	double * obj_scen_;  	/**< objective coefficients for  node */
+	// CoinPackedMatrix * qobj_scen_; /**< quadratic objective coefficients for node */
+	double * rlbd_scen_; 	/**< row lower bounds for node */
+	double * rubd_scen_; 	/**< row upper bounds for node */
 	// QuadRowData * qc_row_scen_;		/**< parameters for quadratic rows in scenarios: current version only accept noncoupling quadratic rows */
 };
 
@@ -274,14 +274,14 @@ public:
 	void combineRandRowVec(
 			CoinPackedVector * row, /**< core row vector */
 			int i,                  /**< row index */
-			DspScnNode* node        /**< node index */);
+			DspScnNode* node        /**< node */);
 
 	/** combine random matrix row for a given stage and scenario */
 	void combineRandRowVec(
 			CoinPackedVector * row, /**< core row vector */
 			int i,                  /**< row index */
 			int stg,                /**< stage index */
-			DspScnNode* node        /**< node index */);
+			DspScnNode* node        /**< node */);
 
 	/** combine random column lower bounds */
 	void combineRandColLower(double * clbd, DspScnNode* node);

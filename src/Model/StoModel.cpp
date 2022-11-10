@@ -414,7 +414,7 @@ const double * StoModel::getObjNode(DspScnNode* node)
 }
 
 /** construct a map that maps variable names to their indices */
-//fixme
+//fixme - instead of index, map to pair of stage and index?
 bool StoModel::mapVarnameIndex(map<string, int> &map_varName_index, const char * smps) 
 {
 	char core[128];
@@ -804,7 +804,7 @@ void StoModel::copyCoreRowUpper(double * rubd, int stg)
 void StoModel::combineRandRowVec(
 		CoinPackedVector * row, /**< core row vector */
 		int i,                  /**< row index */
-		DspScnNode* node        /**< node index */)
+		DspScnNode* node        /**< node */)
 {
 	int j;
 	int pos = 0; /** position to sparse row vector elements */
@@ -833,7 +833,7 @@ void StoModel::combineRandRowVec(
 		CoinPackedVector * row, /**< core row vector */
 		int i,                  /**< row index */
 		int stg,                /**< stage index */
-		DspScnNode* node        /**< node index */)
+		DspScnNode* node        /**< node */)
 {
 	int j, col;
 	int pos = 0; /** position to sparse row vector elements */
