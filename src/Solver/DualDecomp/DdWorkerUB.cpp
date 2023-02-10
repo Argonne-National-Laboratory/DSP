@@ -138,7 +138,6 @@ DSP_RTN_CODE DdWorkerUB::createProblem()
 			if (ctype_reco[j] != 'C')
 			{
 				has_integer = true;
-				break;
 			}
 		}
 
