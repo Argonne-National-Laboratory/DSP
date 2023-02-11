@@ -190,9 +190,6 @@ public:
 
 	/** get core coefficeints for a given stage */
 	const CoinPackedVector * getRowCore(int i) {return rows_core_[i];}
-
-	/** set probability */
-	void setProbability(double *probability);
 	
 	/** get parameters for quadratic constraints in core*/
 	QuadRowData * getQuaraticsRowCore() const {return qc_row_core_;}

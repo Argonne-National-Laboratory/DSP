@@ -2027,11 +2027,6 @@ bool StoModel::mapVarnameIndex(map<string, int> &map_varName_index, const char *
 	return true;
 }
 
-void StoModel::setProbability(double *probability)
-{
-	CoinCopyN(probability, nscen_, prob_);
-}
-
 void StoModel::setSolution(int size, double * solution)
 {
 	if (size > 0)
