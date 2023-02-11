@@ -335,6 +335,7 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 			solveDdMpi(env, MPI_COMM_WORLD);
 #else
 			solveDd(env);
+#endif
 		}
 		else
 		{
