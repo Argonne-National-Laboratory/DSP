@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(color_scheme.cmake)
 include(UserConfig.cmake)
-set(DEPEND_DIR $ENV{PWD})
+set(DEPEND_DIR ${CMAKE_BINARY_DIR})
 
 message(STATUS "The system information: ${CMAKE_SYSTEM}.${CMAKE_SYSTEM_PROCESSOR}")
 
