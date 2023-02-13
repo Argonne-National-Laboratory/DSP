@@ -42,7 +42,7 @@ set(DSP_SRC
     Solver/DualDecomp/DdWorkerCG.cpp
     Solver/DualDecomp/DdWorkerLB.cpp
     Solver/DualDecomp/DdWorkerUB.cpp
-    Solver/DualDecomp/DdWorkerUB2.cpp
+    Solver/DualDecomp/DdWorkerUBQcp.cpp
     Solver/DualDecomp/DdDroWorkerUB.cpp
     Solver/DantzigWolfe/DwBranchInt.cpp
     Solver/DantzigWolfe/DwBranchNonant.cpp

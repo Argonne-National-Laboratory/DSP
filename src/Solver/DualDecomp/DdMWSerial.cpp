@@ -78,7 +78,7 @@ DSP_RTN_CODE DdMWSerial::init()
 		if (model_->isDro())
 			worker_.push_back(new DdDroWorkerUB(model_, par_, message_));
 		else if (model_->isQcp())
-			worker_.push_back(new DdWorkerUB2(model_, par_, message_));
+			worker_.push_back(new DdWorkerUBQcp(model_, par_, message_));
 		else
 			worker_.push_back(new DdWorkerUB(model_, par_, message_));
 	}
@@ -196,7 +196,7 @@ DSP_RTN_CODE DdMWSerial::run()
 			break;
 		case DdWorker::UB:
 			if (model_->isQcp())
-				workerub = dynamic_cast<DdWorkerUB2 *>(worker_[i]);
+				workerub = dynamic_cast<DdWorkerUBQcp *>(worker_[i]);
 			else
 				workerub = dynamic_cast<DdWorkerUB *>(worker_[i]);
 			break;
@@ -422,13 +422,13 @@ DSP_RTN_CODE DdMWSerial::run()
 
 	if (parEvalUb_ >= 0 && model_->isStochastic())
 	{
-		// DdWorkerUB2 *workerub = NULL;
+		// DdWorkerUBQcp *workerub = NULL;
 		DdWorkerUB *workerub = NULL;
 		for (unsigned i = 0; i < worker_.size(); ++i)
 			if (worker_[i]->getType() == DdWorker::UB)
 			{
 				if (model_->isQcp())
-					workerub = dynamic_cast<DdWorkerUB2 *>(worker_[i]);
+					workerub = dynamic_cast<DdWorkerUBQcp *>(worker_[i]);
 				else
 					workerub = dynamic_cast<DdWorkerUB *>(worker_[i]);
 				break;
