@@ -143,6 +143,8 @@ DSP_RTN_CODE BdSub::loadProblem(DecModel* model)
 	solutions_  = new double * [nsubprobs_];
 	status_     = new int [nsubprobs_];
 
+	TssModel *tss = NULL;
+
 	for (int i = 0; i < nsubprobs_; ++i)
 	{
 		/** initialize memory */
@@ -160,10 +162,89 @@ DSP_RTN_CODE BdSub::loadProblem(DecModel* model)
 
 		/** creating solver interface */
 		cglp_[i] = createDspOsi(par_->getIntParam("BD/SUB/SOLVER"));
+		// cglp_[i] = createDspOsi(OsiCpx);
+		// cglp_[i] = createDspOsi(OsiScip);
 		if (!cglp_[i]) throw CoinError("Failed to create DspOsi", "loadProblem", "BdSub");
 		
 		/** load problem */
 		cglp_[i]->si_->loadProblem(*mat_reco, clbd_reco, cubd_reco, obj_reco, rlbd_reco, rubd_reco);
+		/** add quadratic constraints */
+		if (model->isStochastic())
+		{
+			try
+			{
+				tss = dynamic_cast<TssModel *>(model);
+			}
+			catch (const std::bad_cast &e)
+			{
+				printf("This is not a stochastic programming problem.\n");
+				return DSP_RTN_ERR;
+			}
+			if (tss->hasQuadraticRowCore()) 
+			{
+				/* nothing to do since current version only accepts noncoupling quadratic rows
+				* any coupling solution obtained from each subproblem will satisfy the first stage quadratic rows 
+				*/
+			}
+			if (tss->hasQuadraticRowScenario()) 
+			{
+				QuadRowData * qc_row_data = tss->getQuaraticsRowScenario(i);
+
+	#ifdef DSP_DEBUG
+				/* print qc_row_data to test whether it is successfully received or not */
+				tss->printQuadRows(i);
+				tss->printQuadRows(qc_row_data);
+	#endif
+				/* Note that current version supports quadratic constraints with only second stage variables */
+				int nqrow = qc_row_data->nqrows;
+				int ** linind = new int * [nqrow];
+				int ** quadrow = new int * [nqrow];
+				int ** quadcol = new int * [nqrow];
+				
+				for (int j = 0; j < nqrow; j++)
+				{	
+					int linnzcnt = qc_row_data->linnzcnt[j];
+					int quadnzcnt = qc_row_data->quadnzcnt[j];
+					
+					linind[j] = new int [linnzcnt];
+					quadrow[j] = new int [quadnzcnt];
+					quadcol[j] = new int [quadnzcnt];
+
+					for (int k = 0; k < linnzcnt; k++) 
+					{
+						linind[j][k] = qc_row_data->linind[j][k] - tss->getNumCols(0);
+
+						if (linind[j][k] < 0)
+						{
+							throw "Current version supports quadratic constraints in non-coupling rows only./n";
+						}
+					}
+			
+					for (int k = 0; k < quadnzcnt; k++) 
+					{
+						quadrow[j][k] = qc_row_data->quadrow[j][k] - tss->getNumCols(0);
+						quadcol[j][k] = qc_row_data->quadcol[j][k] - tss->getNumCols(0);
+
+						if (quadrow[j][k] < 0 || quadcol[j][k] < 0)
+						{
+							throw "current version support quadratic constraints in non-coupling rows only./n";
+						}
+					}
+				}
+				cglp_[i]->addQuadraticRows(qc_row_data->nqrows, qc_row_data->linnzcnt, qc_row_data->quadnzcnt, qc_row_data->rhs, qc_row_data->sense, linind, qc_row_data->linval, quadrow, quadcol, qc_row_data->quadval);
+				
+				FREE_2D_ARRAY_PTR(nqrow, linind);
+				FREE_2D_ARRAY_PTR(nqrow, quadrow);
+				FREE_2D_ARRAY_PTR(nqrow, quadcol);
+			}
+
+	#ifdef DSP_DEBUG
+	/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
+	char filename[128];
+	sprintf(filename, "BdWorker_scen%d", i); 
+	cglp_[i]->writeProb(filename, "lp");
+	#endif
+		}
 		for (int j = 0; j < cglp_[i]->si_->getNumCols(); ++j)
 		{
 			if (ctype_reco[j] != 'C') {
@@ -293,6 +374,13 @@ void BdSub::solveOneSubproblem(
 	osi->setNumCores(cgl->par_->getIntParam("BD/SUB/THREADS"));
 	si = osi->si_;
 	si->setWarmStart(cgl->warm_start_[s]);
+
+#ifdef DSP_DEBUG
+	/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
+		char filename[128];
+		sprintf(filename, "BdSub-%d", s); 
+		osi->writeProb(filename, "lp");
+#endif
 
 	int nrows = si->getNumRows();
 

@@ -13,6 +13,7 @@
 #include "Solver/DualDecomp/DdWorker.h"
 #include "Solver/DualDecomp/DdWorkerLB.h"
 #include "Solver/DualDecomp/DdWorkerUB.h"
+#include "Solver/DualDecomp/DdWorkerUBQcp.h"
 #include "Solver/DualDecomp/DdDroWorkerUB.h"
 
 #ifdef DSP_HAS_SCIP
@@ -51,6 +52,9 @@ public:
 
 	/** A virtual memeber for finalizing the framework. */
 	virtual DSP_RTN_CODE finalize();
+
+	/** get number of iterations */
+	virtual int getIterationCount() {return itercnt_;}
 
 	/** get remaining time */
 	virtual double remainingTime() {return parTimeLimit_ - (CoinGetTimeOfDay() - iterstime_);}

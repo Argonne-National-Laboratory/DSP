@@ -27,7 +27,7 @@ public:
 	/** generate variables */
 	virtual DSP_RTN_CODE generateCols(
 			int phase,                           /**< [in] phase of the master */
-			const double* piA,                   /**< [in] piA */
+			const double* piA,                   /**< [in] dual variable times the constraint matrix (see DwWorker.h) */
 			std::vector<int>& indices,           /**< [out] subproblem indices */
 			std::vector<int>& statuses,          /**< [out] solution status */
 			std::vector<double>& cxs,            /**< [out] solution times original objective coefficients */

@@ -6,7 +6,7 @@
  */
 
 // #define DSP_DEBUG
-
+// #define DSP_DEBUG_WRITE
 #include "CoinWarmStartBasis.hpp"
 #include "SolverInterface/DspOsiClp.h"
 #include "SolverInterface/DspOsiCpx.h"
@@ -146,6 +146,12 @@ DSP_RTN_CODE DdMasterTr::solve()
 		status_ = osi_->status();
 		switch(status_)
 		{
+		case DSP_STAT_FEASIBLE:
+			if (parMasterAlgo_ == IPM) {
+				message_->print(1, "Warning: master solution status is %d, temporarily switching the algorithm to simplex\n", status_);
+				osi_->use_simplex();
+				break;
+			}
 		case DSP_STAT_PRIM_INFEASIBLE:
 			DSPdebugMessage("The master is infeasible and increases the trust region.\n");
 			// increase the trust-region size
@@ -193,6 +199,9 @@ DSP_RTN_CODE DdMasterTr::solve()
 			break;
 		}
 	}
+
+	if (parMasterAlgo_ == IPM)
+		osi_->use_barrier();
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -474,15 +483,19 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 		}
 	}
 
-	for (int j = nthetas_; j < ncols; ++j) {
-		DSPdebugMessage("j = %d, clbd = %e, stability_center_ = %e, cubd = %e\n", j, clbd[j], stability_center_[j-nthetas_], cubd[j]);
-		assert(clbd[j] <= stability_center_[j-nthetas_]);
-		assert(cubd[j] >= stability_center_[j-nthetas_]);
+	if (parTr_)
+	{
+		for (int j = nthetas_; j < ncols; ++j) {
+			DSPdebugMessage("j = %d, clbd = %e, stability_center_ = %e, cubd = %e\n", j, clbd[j], stability_center_[j-nthetas_], cubd[j]);
+			assert(clbd[j] <= stability_center_[j-nthetas_]);
+			assert(cubd[j] >= stability_center_[j-nthetas_]);
+		}
+
+		#ifdef DSP_DEBUG
+			DSPdebugMessage("stability_center_:\n");
+			DspMessage::printArray(ncols-nthetas_, stability_center_);
+		#endif
 	}
-#ifdef DSP_DEBUG
-	DSPdebugMessage("stability_center_:\n");
-	DspMessage::printArray(ncols-nthetas_, stability_center_);
-#endif
 
 	/** constraint matrix */
 	mat = new CoinPackedMatrix(false, ncols, nrows, nzcnt, elem, ind, bgn, len);
@@ -526,12 +539,16 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 	/** copy problem data */
 	getSiPtr()->loadProblem(*mat, clbd, cubd, obj, rlbd, rubd);
 	DSPdebugMessage("Loaded problem data\n");
-
+	#ifdef DSP_DEBUG_WRITE
+		/* write in lp file */
+		DSPdebugMessage("writing initial master problem in Master0.lp\n");
+		DSPdebug(osi_->writeProb("Master0.lp", NULL));
+	#endif
 	/** allocate memory for solution */
 	primsol_.resize(ncols);
 	lambda_.resize(nlambdas_);
 	CoinFillN(&primsol_[0], nthetas_, COIN_DBL_MAX);
-	if (model_->isStochastic())
+	if (model_->isStochastic() && parTr_)
 		CoinCopyN(stability_center_, ncols-nthetas_, &primsol_[nthetas_]);
 	else
 		CoinZeroN(&primsol_[nthetas_], nlambdas_);
@@ -545,7 +562,7 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 	cuts_ = new OsiCuts;
 
 	/** set print level */
-	osi_->setLogLevel(CoinMax(0,par_->getIntParam("LOG_LEVEL")-1));
+	osi_->setLogLevel(CoinMax(0,par_->getIntParam("LOG_LEVEL")-2));
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 

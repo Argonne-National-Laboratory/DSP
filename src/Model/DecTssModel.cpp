@@ -590,7 +590,7 @@ DSP_RTN_CODE DecTssModel::decompose(
 		copyCoreRowUpper(rubd + nrows_[0] + s * nrows_[1], 1);
 		combineRandRowUpper(rubd + nrows_[0] + s * nrows_[1], 1, sind);
 	}
-
+	//printf("nrows_core_ = %d, ncols_core_ = %d \n", nrows_core_, ncols_core_);
 	/** auxiliary columns */
 	CoinCopyN(clbd_aux, naux, clbd + ncols - naux);
 	CoinCopyN(cubd_aux, naux, cubd + ncols - naux);

@@ -417,7 +417,7 @@ DSP_RTN_CODE DdMWSync::runMaster()
 		}
 
 		/** STOP with time limit */
-		if (remainingTime() < 1.0)
+		if (signal != DSP_STAT_MW_STOP && remainingTime() < 1.0)
 		{
 			signal = DSP_STAT_MW_STOP;
 			message_->print(1, "The time limit (%.2f) is reached.\n", parTimeLimit_);
@@ -485,15 +485,18 @@ DSP_RTN_CODE DdMWSync::runMaster()
 			MPI_Bcast(&(master_->bestprimobj_), 1, MPI_DOUBLE, 0, subcomm_);
 		MPI_Scatterv(sendbuf, scounts, sdispls, MPI_DOUBLE, NULL, 0, MPI_DOUBLE, 0, subcomm_);
 	}
+	message_->print(1, "Terminating...\n");
 
 	if (parEvalUb_ >= 0 && model_->isStochastic()) {
 		TssModel* tss = dynamic_cast<TssModel*>(model_);
 		double *bestcouplingsol = NULL;
 
 		/** broadcast best primal coupling solution */
+		message_->print(1, "Broadcasting the best primal first-stage solution...\n");
 		MPI_Bcast(&master_->bestprimsol_[0], model_->getNumCouplingCols(), MPI_DOUBLE, 0, comm_);
 
 		/** gather primal solution for each scenario */
+		message_->print(1, "Collecting the second-stage solution for each scenario...\n");
 		bestcouplingsol = new double [tss->getNumCols(1) * tss->getNumScenarios()];
 		for (int i = 0; i < subcomm_size_; ++i) {
 			rcounts[i] = tss->getNumCols(1) * nsubprobs_[i];
@@ -505,6 +508,7 @@ DSP_RTN_CODE DdMWSync::runMaster()
 		MPI_Gatherv(NULL, 0, MPI_DOUBLE, bestcouplingsol, rcounts, rdispls, MPI_DOUBLE, 0, comm_);
 
 		/** rearrange primal solution */
+		message_->print(1, "Combining the first- and second-stage solutions...\n");
 		for (int i = 0, j = 0; i < subcomm_size_; ++i)
 			for (int s = 0; s < nsubprobs_[i]; ++s) {
 				CoinCopyN(bestcouplingsol + j * tss->getNumCols(1), tss->getNumCols(1), 

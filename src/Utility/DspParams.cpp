@@ -148,6 +148,9 @@ void DspParams::initBoolParams()
 	BoolParams_.createParam("DW/HEURISTICS/SMIP", true);
 	BoolParams_.createParam("DW/STRONG_BRANCH", false);
 	BoolParams_.createParam("DW/BRANCH/INTEGER_FIRST", false);
+
+	/** change QC to SOCP */
+	BoolParams_.createParam("QC/CHG_TO_SOCP", true);
 }
 
 void DspParams::initIntParams()
@@ -218,12 +221,16 @@ void DspParams::initIntParams()
 	IntParams_.createParam("DD/MASTER/SOLVER", OsiCpx);
 	IntParams_.createParam("DD/SUB/SOLVER", OsiCpx);
 	IntParams_.createParam("DE/SOLVER", OsiCpx);
+	IntParams_.createParam("DE/SOLVER/MIQCP_METHOD", 0);
+	IntParams_.createParam("DD/SOLVER/MIQCP_METHOD", 0);
 	IntParams_.createParam("DW/MASTER/SOLVER", OsiCpx);
 	IntParams_.createParam("DW/SUB/SOLVER", OsiCpx);
 #else
 #ifdef DSP_HAS_GRB
 	IntParams_.createParam("BD/SUB/SOLVER", OsiGrb);
 	IntParams_.createParam("DE/SOLVER", OsiGrb);
+	IntParams_.createParam("DE/SOLVER/MIQCP_METHOD", -1);
+	IntParams_.createParam("DD/SOLVER/MIQCP_METHOD", -1);
 	IntParams_.createParam("DD/MASTER/SOLVER", OsiGrb);
 	IntParams_.createParam("DD/SUB/SOLVER", OsiGrb);
 	IntParams_.createParam("DW/MASTER/SOLVER", OsiGrb);
@@ -294,7 +301,7 @@ void DspParams::initDblParams()
 
 	/** branch-and-bound gap tolerance */
 	DblParams_.createParam("DE/GAPTOL", 1.0e-4);
-	DblParams_.createParam("DD/SUB/GAPTOL", 1.0e-5);
+	DblParams_.createParam("DD/SUB/GAPTOL", 1.0e-4);
 	DblParams_.createParam("DW/GAPTOL", 1.0e-4);
 	DblParams_.createParam("DW/SUB/GAPTOL", 1.0e-4);
 

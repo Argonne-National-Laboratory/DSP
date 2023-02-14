@@ -4,16 +4,18 @@ ROWS
  L QC1
  L QC2
 COLUMNS
+   x5 QC1   -5
 RHS
    RHS      QC0      1600
-   RHS      QC1      3600
+   RHS      QC1      6400
    RHS      QC2      1600
 QCMATRIX   QC0
-   x1 x1 1
-   x5 x5 2
-QCMATRIX   QC1
    x1 x1 2
    x2 x2 1
+QCMATRIX   QC1
+   x1 x1 1
+   x1 x5 1
+   x5 x5 2
 QCMATRIX   QC2
    x5 x5 1
 ENDATA

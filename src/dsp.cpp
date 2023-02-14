@@ -25,7 +25,7 @@ const char *gDspUsage =
 	"       --smps\t\tSMPS file name without extensions. For example, if your SMPS files are ../test/farmer.cor, ../test/farmer.sto, and ../test/farmer.tim, this value should be ../test/farmer\n"
 	"       --mps\t\tMPS file name\n"
 	"       --dec\t\tDEC file name\n"
-	"       --quad\t\tQuadratic file name without extension. The Quadratic file should extend the parsed SMPS file and its suffix needs to be .txt in the current version. For example, if your Quadratic file is ../test/farmer.txt, this value should be ../test/farmer\n"
+	"       --quad\t\tQuadratic file name without extension. The Quadratic file should extend the parsed SMPS file and it needs to be provided as a separate set of SMPS files in the current version. For example, if your Quadratic file is ../quad/farmer.cor, ../quad/farmer.tim, ..quad/farmer.sto then this value should be ../farmer/farmer\n"
 	"       --soln\t\toptional argument for solution file prefix. For example, if the prefix is given as MySol, then two files MySol.primal.txt and MySol.dual.txt will be written for primal and dual solutions, respectively.\n"
 	"       --param\t\toptional paramater for parameter file name\n"
 	"       --test\t\toptional parameter for testing objective value\n";
@@ -43,13 +43,14 @@ const double test_tolerance = 1.0e-2;
 /*
  This will compile a stand-alone binary file that reads problem instances.
 */
-int main(int argc, char *argv[])
-{
+int main(int argc, char* argv[]) {
+
 	bool isroot = true;
 #ifdef DSP_HAS_MPI
-	int comm_rank;
+	int comm_rank, comm_size;
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
+	MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
 	isroot = comm_rank == 0 ? true : false;
 #define EXIT_WITH_MSG      \
 	if (isroot)            \
@@ -63,8 +64,9 @@ int main(int argc, char *argv[])
 	exit(0);
 #endif
 
-	if (argc < 5)
-	{
+	if(isroot) show_copyright();
+
+	if (argc < 5) {
 		EXIT_WITH_MSG
 	}
 	else
@@ -189,14 +191,20 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 
 	if (quadfile != NULL)
 	{
-		if (string(algotype) != "de" && string(algotype) != "dd" && string(algotype) != "drdd")
+		if (string(algotype) != "de" && string(algotype) != "dd" && string(algotype) != "drdd" && string(algotype) != "dw")
 		{
 			cout << "Quadratic constrained problem is not supported for " << string(algotype) << "." << endl;
 			return 1;
 		}
 		if (isroot)
 			cout << "Reading Quad files: " << quadfile << endl;
-		ret = readQuad(env, smpsfile, quadfile);
+		
+		bool chg_to_socp = env->par_->getBoolParam("QC/CHG_TO_SOCP");
+		if (chg_to_socp)
+			cout << "QC is transformed into SOCP" << endl;
+		else 
+			cout << "QC is not transformed into SOCP" << endl;
+		ret = readQuad(env, smpsfile, quadfile, chg_to_socp);	
 		if (ret != 0)
 			return ret;
 		if (isroot)
@@ -368,7 +376,9 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 
 			cout << "Primal Bound: " << primobj << endl;
 			cout << "Dual Bound  : " << dualobj << endl;
-			cout << "Gap (%)     : " << fabs(primobj - dualobj) / (fabs(primobj) + 1.e-10) * 100 << endl;
+			cout << "Gap (%)     : " << fabs(primobj-dualobj)/(fabs(primobj)+1.e-10)*100 << endl;
+			cout << "Iterations  : " << getNumIterations(env) << endl;
+			cout << "Time (s)    : " << getWallTime(env) << endl;
 
 			if (testvalue != NULL)
 			{
@@ -380,9 +390,7 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 				{
 					if ((val - primobj) / (fabs(val) + 1.e-10) > test_tolerance || (dualobj - val) / (fabs(val) + 1.e-10) > test_tolerance)
 						ret = 1;
-				}
-				else
-				{
+				} else {
 					if ((primobj - val) / (fabs(val) + 1.e-10) > test_tolerance || (val - dualobj) / (fabs(val) + 1.e-10) > test_tolerance)
 						ret = 1;
 				}

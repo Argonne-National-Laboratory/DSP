@@ -150,13 +150,23 @@ DSP_RTN_CODE DeDriver::run()
 
 					for (int j = 0; j < linnzcnt; j++)
 					{
-						linind[s][i][j] = tssModel->getNumCols(1) * s + qc_row_scen[s]->linind[i][j];
+						if (qc_row_scen[s]->linind[i][j] > tssModel->getNumCols(0))
+							linind[s][i][j] = tssModel->getNumCols(1) * s + qc_row_scen[s]->linind[i][j];
+						else
+							linind[s][i][j] = qc_row_scen[s]->linind[i][j];
 					}
 
 					for (int j = 0; j < quadnzcnt; j++)
 					{
-						quadrow[s][i][j] = tssModel->getNumCols(1) * s + qc_row_scen[s]->quadrow[i][j];
-						quadcol[s][i][j] = tssModel->getNumCols(1) * s + qc_row_scen[s]->quadcol[i][j];
+						if (qc_row_scen[s]->quadrow[i][j] > tssModel->getNumCols(0))
+							quadrow[s][i][j] = tssModel->getNumCols(1) * s + qc_row_scen[s]->quadrow[i][j];
+						else 
+							quadrow[s][i][j] = qc_row_scen[s]->quadrow[i][j];
+
+						if (qc_row_scen[s]->quadcol[i][j] > tssModel->getNumCols(0))
+							quadcol[s][i][j] = tssModel->getNumCols(1) * s + qc_row_scen[s]->quadcol[i][j];
+						else
+							quadcol[s][i][j] = qc_row_scen[s]->quadcol[i][j];
 					}
 				}
 			}
@@ -218,6 +228,13 @@ DSP_RTN_CODE DeDriver::run()
 			osi_->si_->setInteger(j);
 	}
 
+#ifdef DSP_DEBUG
+	/* write in lp file to see whether the quadratic rows are successfully added to the model or not */
+		char filename[128];
+		sprintf(filename, "DeModel"); 
+		osi_->writeProb(filename, "lp");
+#endif
+
 	/** set optimality gap tolerance */
 	osi_->setRelMipGap(par_->getDblParam("DE/GAPTOL"));
 
@@ -227,6 +244,8 @@ DSP_RTN_CODE DeDriver::run()
 
 	/** set node limit */
 	osi_->setNodeLimit(par_->getIntParam("NODE_LIM"));
+
+	osi_->setMiqcpMethod(par_->getIntParam("DE/SOLVER/MIQCP_METHOD"));
 
 	/** tic */
 	cputime_ = CoinCpuTime();
@@ -346,7 +365,7 @@ void DeDriver::writeExtMps(const char *name)
 	}
 
 	/** write mps */
-	osi->writeMps(name);
+	// osi->writeMps(name);
 
 	/** save memory */
 	FREE_MEMORY

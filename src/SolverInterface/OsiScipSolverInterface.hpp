@@ -289,6 +289,8 @@ public:
 			const double rowrhs, const double rowrng);
 	/** Add quadratic rows (constraint) to the problem. */
 	virtual void addQuadraticRows(int nqrows, int * linnzcnt, int * quadnzcnt, double * rhs, int * sense, int ** linind, double ** linval, int ** quadrow, int ** quadcol, double ** quadval);
+	virtual void addRows(int ccnt, int nrows, int nznt, double * rhs, char * sense, int * rmatbeg, int * rmatind, double * rmatval);
+	virtual void chgRhs(int cnt, int * indices, double * values);
 	/** \brief Delete a set of rows (constraints) from the problem.
 
 	 The solver interface for a basis-oriented solver will maintain valid

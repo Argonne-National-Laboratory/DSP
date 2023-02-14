@@ -116,9 +116,33 @@ public:
 			isqcp_ = true;
 		for (int i = 0; i < nqrows; i++) 
 		{
-			GUROBI_CALL("loadQuadraticObjective", GRBaddqconstr(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), linnzcnt[i], linind[i], linval[i], quadnzcnt[i], quadrow[i], quadcol[i], quadval[i], sense[i], rhs[i], NULL));
+			GUROBI_CALL("addQuadraticRows", GRBaddqconstr(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), linnzcnt[i], linind[i], linval[i], quadnzcnt[i], quadrow[i], quadcol[i], quadval[i], sense[i], rhs[i], NULL));
 		}
-		GUROBI_CALL("loadProblem", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
+		GUROBI_CALL("addQuadraticRows", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
+	}
+	
+	/** load affine constrs */
+	virtual void addRows(int ccnt, int nrows, int nznt, double * rhs, char * sense, int * rmatbeg, int * rmatind, double * rmatval)
+	{		
+		
+		GUROBI_CALL("addRows", GRBaddconstrs(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), nrows, nznt, rmatbeg, rmatind, rmatval, sense, rhs, NULL));
+			
+	}
+
+	/** change right-hand sides of affine constrs */
+	virtual void chgRhs(int cnt, int * indices, double * values)
+	{		
+		for (int i = 0; i < cnt; i++)
+		{
+			GUROBI_CALL("chgRhs", GRBsetdblattrelement(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), GRB_DBL_ATTR_RHS, indices[i], values[i]));
+		}
+	}
+
+	/** write problem file */
+	virtual void writeProb(char const * filename_str, char const * filetype_str)
+	{
+		std::string filename = std::string(filename_str) + "." + std::string(filetype_str);
+		GUROBI_CALL("writeProb", GRBwrite(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL), filename.c_str()));
 	}
 
 	/** solve problem */
@@ -303,6 +327,17 @@ public:
 		try{
         	GUROBI_CALL("setRelMipGap", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
 			GUROBI_CALL("setRelMipGap", GRBsetdblparam(grb_->getEnvironmentPtr(), GRB_DBL_PAR_MIPGAP, tol));
+		}
+		catch(const CoinError& e){
+        	e.print();
+    	}
+	}
+
+	/** set MIQCP method */
+	virtual void setMiqcpMethod(int val) {
+		try{
+        	GUROBI_CALL("setMiqcpMethod", GRBupdatemodel(grb_->getLpPtr(OsiGrbSolverInterface::KEEPCACHED_ALL)));
+			GUROBI_CALL("setMiqcpMethod", GRBsetintparam(grb_->getEnvironmentPtr(), GRB_INT_PAR_MIQCPMETHOD, val));
 		}
 		catch(const CoinError& e){
         	e.print();

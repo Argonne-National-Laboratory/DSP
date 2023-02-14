@@ -1,0 +1,5 @@
+TIME          drdcap_233_10_200
+PERIODS       IMPLICIT
+    x[1,1]    CON1      PERIOD1
+    y[0,1,1]  CON7      PERIOD2
+ENDATA

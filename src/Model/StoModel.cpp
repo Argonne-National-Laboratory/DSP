@@ -6,8 +6,28 @@
  */
 // #define DSP_DEBUG
 #include "CoinHelperFunctions.hpp"
+#include "Utility/DspMessage.h"
 #include "StoModel.h"
 #include <sstream>
+
+extern "C" void dpotrf_(char *uplo,int *jb, double *A, int *lda, int *info); 
+
+extern "C" void dtrmm_(char *side,char *uplo,
+char *transa,char *diag, int *m, int *n, double *alpha, double *A, int *lda, double *B, int *ldb); 
+
+/* Prints matrix in column-major format. */
+static void show_matrix(const double* A, const int n)
+{
+    int i = 0, j = 0;
+    for (i = 0; i < n; i++)
+    {
+        for (j = 0; j < n; j++)
+        {
+            printf("%2.5f ", A[j * n + i]);
+        }
+        printf("\n");
+    }
+}
 
 StoModel::StoModel() :
 		nscen_(0),
@@ -306,9 +326,12 @@ DSP_RTN_CODE StoModel::readSmps(const char * filename)
 			if (core->getBinaryIndices()[j] < cstart_[i] ||
 				core->getBinaryIndices()[j] >= cstart_[i] + ncols_[i])
 				continue;
-			ctype_core_[i][core->getBinaryIndices()[j] - cstart_[i]] = 'B';
-			clbd_core_[i][core->getBinaryIndices()[j] - cstart_[i]] = 0.0;
-			cubd_core_[i][core->getBinaryIndices()[j] - cstart_[i]] = 1.0;
+			int idx = core->getBinaryIndices()[j] - cstart_[i];
+			ctype_core_[i][idx] = 'B';
+			if (clbd_core_[i][idx] < 0.0)
+				clbd_core_[i][idx] = 0.0;
+			if (clbd_core_[i][idx] > 1.0)
+				cubd_core_[i][idx] = 1.0;
 			nints_core_++;
 		}
 		for (j = 0; j < core->getIntegerLength(); ++j)
@@ -374,7 +397,7 @@ DSP_RTN_CODE StoModel::readSmps(const char * filename)
 		lens.resize(nrows_[stg]);
 		for (j = rstart_[stg]; j < rstart_[stg] + nrows_[stg]; ++j)
 			lens[j-rstart_[stg]] = node->getRowLength(j);
-		mat_scen_[i]  = new CoinPackedMatrix(false, ncols_[stg], nrows_[stg], node->getNumMatrixElements(), 
+		mat_scen_[i]  = new CoinPackedMatrix(false, ncols_core_, nrows_[stg], node->getNumMatrixElements(), 
 				node->getRowElements(rstart_[stg]), node->getRowIndices(rstart_[stg]), node->getRowStarts(rstart_[stg]), &lens[0]);
 	}
 
@@ -492,8 +515,985 @@ void split(const std::string& str, Container& cont)
          back_inserter(cont));
 }
 
+void addAffineRowOfL(double * L, int n, vector<int> indices, CoinPackedVector ** &rows_core_temp, int cstart_of_col_to_add, int rstart_of_row_to_add, int linnzcnt, int *linind, double *linval)
+{
+	int nzcnt;
+	int i, j, k;
+
+	/* constraint for ith row of L' (i.e., ith col of L) */
+	for (i = 0; i < n; i++) 
+	{
+		nzcnt = 0;
+		for (j = 0; j < n; j++) 
+		{
+			if (fabs(L[n * i + j]) > 1e-8) {
+				nzcnt++;
+			}
+		}
+
+		/* term for additional variable v */
+		nzcnt += 1;
+		int * idx = new int [nzcnt];
+		double * val = new double [nzcnt];
+		int pos = 0;
+		for (j = 0; j < n; j++) 
+		{
+			if (fabs(L[n * i + j]) > 1e-8) {
+				idx[pos] = indices[j];
+				val[pos] = L[n * i + j];
+				pos++;
+			}
+		}
+
+		assert(pos == nzcnt - 1);
+		idx[nzcnt-1] = cstart_of_col_to_add + i;
+		val[nzcnt-1] = -1;
+		rows_core_temp[rstart_of_row_to_add + i] = new CoinPackedVector(nzcnt, idx, val);	
+
+		FREE_ARRAY_PTR(idx);
+		FREE_ARRAY_PTR(val);
+	}
+
+	/* last two additional rows */
+	int * ind = new int [linnzcnt+1];
+	double * val = new double [linnzcnt+1];
+	double * val_n = new double [linnzcnt+1];
+	for (j = 0; j < linnzcnt; j++) 
+	{
+		ind[j] = linind[j];
+		val[j] = linval[j];
+		val_n[j] = -linval[j];
+	}
+	ind[linnzcnt] = cstart_of_col_to_add + n;
+	val[linnzcnt] = -2;
+	val_n[linnzcnt] = -2;
+
+	int row_idx = rstart_of_row_to_add + n;
+	
+	rows_core_temp[row_idx] = new CoinPackedVector(linnzcnt+1, ind, val);
+
+	row_idx = rstart_of_row_to_add + n + 1;
+	ind[linnzcnt] = cstart_of_col_to_add + n + 1;
+	rows_core_temp[row_idx] = new CoinPackedVector(linnzcnt+1, ind, val_n);
+
+	FREE_ARRAY_PTR(ind);
+	FREE_ARRAY_PTR(val);
+	FREE_ARRAY_PTR(val_n);
+}
+
+DSP_RTN_CODE StoModel::getL(double * &Q, int quadnzcnt, int *quadcol, int *quadrow, double *quadval, vector<int> &indices, int &n)
+{
+	BGN_TRY_CATCH
+
+	int idx;
+	int i, j, k; /* i: index for row, j: index for column */
+
+	vector<int>::iterator itr;
+
+	for (k = 0; k < quadnzcnt; k++) 
+	{	
+		idx = quadcol[k];
+		itr = find (indices.begin(), indices.end(), idx);
+		if (itr == indices.end())
+			indices.push_back(idx);
+
+		idx = quadrow[k];
+		itr = find (indices.begin(), indices.end(), idx);
+		if (itr == indices.end())
+			indices.push_back(idx);
+	}
+	sort(indices.begin(), indices.end()); 
+
+	n = indices.size();
+
+	/* make symmetric QCMATIX */
+	int col, row;
+	Q = new double [n * n] {0};
+	for (k = 0; k < quadnzcnt; k++) 
+	{
+		itr = find (indices.begin(), indices.end(), quadcol[k]);
+		j = itr - indices.begin();
+		itr = find (indices.begin(), indices.end(), quadrow[k]);
+		i = itr - indices.begin();
+		/* make it symmetric */
+		Q[n * i + j] += 0.5 * quadval[k];
+		Q[n * j + i] += 0.5 * quadval[k];
+	}
+
+	double * Q0 = new double [n * n] {0};
+	for (i = 0; i < n * n; i++)
+    {
+		Q0[i] = Q[i];
+	}
+
+	#ifdef DSP_DEBUG
+	cout << "original QMatrix: " << endl;
+	show_matrix(Q0, n);
+	cout << "variable indices: " << endl;
+	for (int i = 0; i < n; i++)
+		if (i < n-1)
+			cout << indices[i] << ", ";
+		else
+			cout << indices[i] << endl; 
+	#endif
+
+	/* remove zero columns or rows */
+	vector<int> indices_nz_col;
+	int n_nz_col;
+
+	for (j = 0; j < n; j++)
+	{
+		bool is_null_col = true;
+		for (i = 0; i < n; i++) 
+		{
+			if (fabs(Q[n * j + i]) > 1e-6)
+			{
+				is_null_col = false;
+				break;
+			}
+		}
+		if (!is_null_col) indices_nz_col.push_back(j);
+	}
+	if (indices_nz_col.size() < n) 
+	{
+		n_nz_col = indices_nz_col.size();
+		double * Q_temp = NULL;
+		
+		if (n_nz_col > 0)
+		{
+			Q_temp = new double [n_nz_col * n_nz_col] {0};
+
+			for (i = 0; i < n_nz_col; i++)
+			{
+				for (j = 0; j < n_nz_col; j++)
+				{
+					Q_temp[i * n_nz_col + j] = Q[indices_nz_col[i] * n + indices_nz_col[j]];
+					Q_temp[j * n_nz_col + i] = Q[indices_nz_col[j] * n + indices_nz_col[i]];
+				}
+			}
+
+			#ifdef DSP_DEBUG
+			cout << "reduced QMatrix: " << endl;
+			show_matrix(Q_temp, n_nz_col);
+			cout << "reduced variable indices: " << endl;
+			for (int i = 0; i < n_nz_col; i++)
+				if (i < n_nz_col-1)
+					cout << indices[indices_nz_col[i]] << ", ";
+				else
+					cout << indices[indices_nz_col[i]] << endl; 
+			#endif
+
+			/* Cholesky Decomposition */
+			int lda = n_nz_col;     /* leading dimension of array */
+			char uplo = 'L'; /* the lower diagonal matrix L */
+			int info = 0;    /* returns non-zero value for error */
+			dpotrf_(&uplo, &n_nz_col, Q_temp, &lda, &info);
+			if (info != 0)
+			{	
+				cerr << "SOCP reformulation is only allowed for PSD QcMatrix." << endl;
+				return DSP_RTN_ERR;
+			}
+			// int * piv = new int [n_nz_col];
+			// int rank;
+			// double tol = 1e-8;
+			// double * work = new double [2*n_nz_col];
+			// dpstrf_(&uplo, &n_nz_col, Q_temp, &lda, &info, piv, &tol, work, &info);
+			// assert(info == 0);
+		}
+		#ifdef DSP_DEBUG
+		cout << "reduced L" << endl;
+		show_matrix(Q_temp, n_nz_col);
+		#endif
+	
+		delete Q;
+		Q = new double [n * n] {0};
+		
+		
+		for (j = 0; j < n_nz_col; j++)
+		{
+			for (i = j; i < n_nz_col; i++)
+			{
+				Q[indices_nz_col[j] * n + indices_nz_col[i]] = Q_temp[j * n_nz_col + i];
+			}
+		}
+	} 
+	else 
+	{
+		/* Cholesky Decomposition */
+		int lda = n;     /* leading dimension of array */
+		char uplo = 'L'; /* the lower diagonal matrix L */
+		int info = 0;    /* returns non-zero value for error */
+		dpotrf_(&uplo, &n, Q, &lda, &info);
+		// int * piv = new int [n];
+		// int rank;
+		// double tol = 1e-8;
+		// double * work = new double [2*n];
+		// dpstrf_(&uplo, &n, Q, &lda, &info, piv, &tol, work, &info);
+		// assert(info == 0);
+		if (info != 0)
+		{
+			cerr << "SOCP reformulation is only allowed for PSD QcMatrix." << endl;
+			return DSP_RTN_ERR;
+		}
+
+	}
+	/* Note that because m1 is over-written by LAPACK, you need to 0 out the 
+	lower diagonal entries yourself, since LAPACK will not do it for you. */
+	for (i = 0; i < n; i++)
+    	for (j = 0; j < n; j++)
+        	if (i < j)
+				Q[j * n + i] = 0.0;
+
+	#ifdef DSP_DEBUG
+	cout << "L" << endl;
+	show_matrix(Q, n);
+	#endif
+	/* For sanity check, the following code block computes LL'
+	 * for reference about dtrmm, see: https://www.ibm.com/docs/en/essl/6.3?topic=mos-strmm-dtrmm-ctrmm-ztrmm-triangular-matrix-matrix-product */
+	
+	/* indicates whether the triangular matrix A is located to the left or right of rectangular matrix B in the equation used for this computation */
+	char side = 'R';
+	/* indicates whether matrix A is an upper or lower triangular matrix */
+	char uplo = 'L';
+	/* indicates the characteristics of the diagonal of matrix A. If diag = 'N', A is not a unit triangular matrix. */
+	char diag = 'N';
+	/* indicates the form of matrix A to use in the computation. If transa = 'T', A' is used in the computation */
+	char transa = 'T';
+	double alpha = 1.0;
+	double * Q1 = new double [n * n] {0};
+	for (i = 0; i < n * n; i++)
+    {
+		Q1[i] = Q[i];
+	}
+
+	dtrmm_(&side, &uplo, &transa, &diag, &n, &n, &alpha, Q1, &n, Q1, &n);
+
+	#ifdef DSP_DEBUG
+	cout << "LL'" << endl;
+	show_matrix(Q1, n);
+	#endif
+
+	bool is_the_same = true;
+	for (i = 0; i < n * n; i++)
+    {
+		if (fabs(Q0[i] - Q1[i]) > 1e-6)
+		{
+			is_the_same = false;
+			cerr << "Cholesky decomposition is incorrect." << endl;
+			return DSP_RTN_ERR;
+		}
+	}
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
+
+}
+
+DSP_RTN_CODE StoModel::chgToSocp(vector<int> &qc_rstart)
+{
+	BGN_TRY_CATCH
+
+	int i, j, k, s;
+
+	/* nqrows: total qc core rows 
+	 * qcrows_stg: number of qc rows in each stages */
+	int nqrows = qc_row_core_->nqrows;
+	int * nqrows_stg = new int [nstgs_];
+	for (i = 0; i < nstgs_; i++)
+	{
+		if (i < nstgs_ - 1)
+			nqrows_stg[i] = qc_rstart[i+1] - qc_rstart[i];
+		else 
+			nqrows_stg[i] = nqrows - qc_rstart[i];
+	}
+
+	#ifdef DSP_DEBUG
+		cout << "nqrows: " << nqrows << endl; 
+		for (i = 0; i < nstgs_; i++)
+			cout << "nqrows_stg[" << i << "]: " << nqrows_stg[i] << endl;
+	#endif
+
+	/* allocate memory for the lower-diagonal matrices of QcMatrix 
+	 * L is a n by n matrix for some n, indices: n number of indices for L */ 
+	double ** L_core = new double * [nqrows];
+	int * n_core = new int [nqrows] {0};
+	vector<vector<int>> indices_core(nqrows);
+	
+	double *** L_scen = new double ** [nscen_];
+	int ** n_scen = new int * [nscen_];
+	vector<vector<vector<int>>> indices_scen(nscen_, vector<vector<int>>(nqrows_stg[1]));
+
+	for (s = 0; s < nscen_; s++) 
+	{
+		L_scen[s] = new double * [nqrows_stg[1]];
+		n_scen[s] = new int [nqrows_stg[1]] {0};
+	}
+
+	/* for each QcMatrix, construct the lower diagonal matrix L */
+	int naddrows = 0;
+	int naddcols = 0;
+	for (i = 0; i < nqrows; i++) 
+	{
+		/* for core qc rows */
+		int linnzcnt = qc_row_core_->linnzcnt[i];
+		int quadnzcnt = qc_row_core_->quadnzcnt[i];
+		
+		int * quadcol = qc_row_core_->quadcol[i];
+		int * quadrow = qc_row_core_->quadrow[i];
+		double * quadval = qc_row_core_->quadval[i];
+
+		#ifdef DSP_DEBUG
+		cout << "==L_core[" << i << "]: " << endl; 
+		#endif
+
+		if (getL(L_core[i], quadnzcnt, quadcol, quadrow, quadval, indices_core[i], n_core[i]) != 0)
+			return DSP_RTN_ERR;
+			
+		/* for scenario qc rows */
+		if (i >= qc_rstart[1]) 
+		{
+			int row_idx = i - qc_rstart[1];
+			
+			for (int s = 0; s < nscen_; s++)
+			{
+				#ifdef DSP_DEBUG
+				cout << "==L_scen[" << s << "][" << row_idx << "]: " << endl; 
+				#endif
+
+				linnzcnt = qc_row_scen_[s]->linnzcnt[row_idx];
+				quadnzcnt = qc_row_scen_[s]->quadnzcnt[row_idx];
+				
+				quadcol = qc_row_scen_[s]->quadcol[row_idx];
+				quadrow = qc_row_scen_[s]->quadrow[row_idx];
+				quadval = qc_row_scen_[s]->quadval[row_idx];
+
+				if (getL(L_scen[s][row_idx], quadnzcnt, quadcol, quadrow, quadval, indices_scen[s][row_idx], n_scen[s][row_idx]) != 0)
+					return DSP_RTN_ERR;
+
+				if (n_core[i] != n_scen[s][row_idx])
+				{
+					cerr << "All terms for quadratic constraints should be declared in the core file." << endl;
+					return DSP_RTN_ERR;
+				}
+			}
+		}
+
+		/* number of added linear constraints and variables to the core */
+		naddrows += n_core[i] + 2;
+		naddcols += n_core[i] + 2;
+	}
+
+	/* resize and modify smps data */
+	int nrows_core_temp = nrows_core_ + naddrows;
+	int ncols_core_temp = ncols_core_ + naddcols;
+
+	int * nrows_temp = new int [nstgs_];
+	int * ncols_temp  = new int [nstgs_];
+	int * rstart_temp  = new int [nstgs_];
+	int * cstart_temp  = new int [nstgs_];
+
+	/* copy original smps data */
+	CoinCopyN(nrows_, nstgs_, nrows_temp);
+	CoinCopyN(ncols_, nstgs_, ncols_temp);
+	CoinCopyN(rstart_, nstgs_, rstart_temp);
+	CoinCopyN(cstart_, nstgs_, cstart_temp);
+	
+	/* reflect the added linear rows and cols */
+	for (i = 0; i < qc_rstart[1]; i++)
+	{
+		nrows_temp[0] += n_core[i] + 2;
+		ncols_temp[0] += n_core[i] + 2;
+
+		rstart_temp[1] += n_core[i] + 2;
+		cstart_temp[1] += n_core[i] + 2;
+	}
+	for (i = qc_rstart[1]; i < nqrows; i++)
+	{
+		nrows_temp[1] += n_core[i] + 2;
+		ncols_temp[1] += n_core[i] + 2;
+	}
+
+	assert(nrows_core_temp == nrows_temp[0] + nrows_temp[1]);
+	assert(ncols_core_temp == ncols_temp[0] + ncols_temp[1]);
+
+#ifdef DSP_DEBUG
+for (j = 0; j < nstgs_; j++)
+{
+	cout << "nrows_[" << j << "]: " << nrows_[j] << endl;
+	cout << "nrows_temp[" << j << "]: " << nrows_temp[j] << endl;
+}
+for (j = 0; j < nstgs_; j++)
+{
+	cout << "ncols_[" << j << "]: " << ncols_[j] << endl;
+	cout << "ncols_temp[" << j << "]: " << ncols_temp[j] << endl;
+}
+for (j = 0; j < nstgs_; j++)
+{
+	cout << "rstart_[" << j << "]: " << rstart_[j] << endl;
+	cout << "rstart_temp[" << j << "]: " << rstart_temp[j] << endl;
+}
+for (j = 0; j < nstgs_; j++)
+{
+	cout << "cstart_[" << j << "]: " << cstart_[j] << endl;
+	cout << "cstart_temp[" << j << "]: " << cstart_temp[j] << endl;
+}
+#endif
+	
+	double ** obj_core_temp = new double * [nstgs_];
+	double ** clbd_core_temp = new double * [nstgs_];
+	double ** cubd_core_temp = new double * [nstgs_];
+	char ** ctype_core_temp = new char * [nstgs_];
+	double ** rlbd_core_temp = new double * [nstgs_];
+	double ** rubd_core_temp = new double * [nstgs_];
+
+	for (j = 0; j < nstgs_; j++)
+	{
+		obj_core_temp[j] = new double [ncols_temp[j]] {0};
+		CoinCopyN(obj_core_[j], ncols_[j], obj_core_temp[j]);
+
+		clbd_core_temp[j] = new double [ncols_temp[j]] {0};
+		CoinCopyN(clbd_core_[j], ncols_[j], clbd_core_temp[j]);
+		if (ncols_temp[j] > ncols_[j])
+			CoinFill(clbd_core_temp[j] + ncols_[j], clbd_core_temp[j] + ncols_temp[j], -COIN_DBL_MAX);
+
+		cubd_core_temp[j] = new double [ncols_temp[j]] {0};
+		CoinCopyN(cubd_core_[j], ncols_[j], cubd_core_temp[j]);
+		if (ncols_temp[j] > ncols_[j])
+			CoinFill(cubd_core_temp[j] + ncols_[j], cubd_core_temp[j] + ncols_temp[j], COIN_DBL_MAX);
+		
+		ctype_core_temp[j] = new char [ncols_temp[j]] {0};
+		CoinCopyN(ctype_core_[j], ncols_[j], ctype_core_temp[j]);
+		if (ncols_temp[j] > ncols_[j])
+			CoinFill(ctype_core_temp[j] + ncols_[j], ctype_core_temp[j] + ncols_temp[j], 'C');
+
+		rlbd_core_temp[j] = new double [nrows_temp[j]] {0};
+		CoinCopyN(rlbd_core_[j], nrows_[j], rlbd_core_temp[j]);
+		rubd_core_temp[j] = new double [nrows_temp[j]] {0};
+		CoinCopyN(rubd_core_[j], nrows_[j], rubd_core_temp[j]);
+		if (nrows_temp[j] > nrows_[j]) 
+		{
+			double * startl = rlbd_core_temp[j] + nrows_[j];
+			double * startu = rubd_core_temp[j] + nrows_[j];
+			int length;
+			
+			for (i = qc_rstart[j]; i < qc_rstart[j] + nqrows_stg[j]; i++)
+			{
+				length = n_core[i];
+				CoinFill(startl, startl + length, 0.0);
+				CoinFill(startu, startu + length, 0.0);
+
+				// startl[length] = 0.5 * (-qc_row_core_->rhs[i] + 1);
+				// startl[length + 1] = 0.5 * (qc_row_core_->rhs[i] + 1);
+
+				// startu[length] = 0.5 * (-qc_row_core_->rhs[i] + 1);
+				// startu[length + 1] = 0.5 * (qc_row_core_->rhs[i] + 1);
+
+				startl[length] = qc_row_core_->rhs[i] - 1;
+				startl[length + 1] = -qc_row_core_->rhs[i] - 1;
+
+				startu[length] = qc_row_core_->rhs[i] - 1;
+				startu[length + 1] = -qc_row_core_->rhs[i] - 1;
+
+				startl += length + 2;
+				startu += length + 2;
+			}
+		}
+	}
+// #ifdef DSP_DEBUG
+// for (j = 0; j < nstgs_; j++)
+// {
+// 	cout << "obj_core_temp[" << j << "]:" << endl;
+// 	DSPdebug(DspMessage::printArray(ncols_temp[j], obj_core_temp[j]));
+// }
+// for (j = 0; j < nstgs_; j++)
+// {
+// 	cout << "clbd_core_temp[" << j << "]:" << endl;
+// 	DSPdebug(DspMessage::printArray(ncols_temp[j], clbd_core_temp[j]));
+// }
+// for (j = 0; j < nstgs_; j++)
+// {
+// 	cout << "cubd_core_temp[" << j << "]:" << endl;
+// 	DSPdebug(DspMessage::printArray(ncols_temp[j], cubd_core_temp[j]));
+// }
+// for (j = 0; j < nstgs_; j++)
+// {
+// 	cout << "rlbd_core_temp[" << j << "]:" << endl;
+// 	DSPdebug(DspMessage::printArray(nrows_temp[j], rlbd_core_temp[j]));
+// }
+// for (j = 0; j < nstgs_; j++)
+// {
+// 	cout << "rubd_core_temp[" << j << "]:" << endl;
+// 	DSPdebug(DspMessage::printArray(nrows_temp[j], rubd_core_temp[j]));
+// }
+// #endif
+	/* update clbd_core_temp and rlbd_scen_, rubd_scen_ of added variables and constraints */
+	for (i = 0; i < nstgs_; i++)
+	{
+		int cpos = ncols_[i];
+		int rpos = nrows_[i] + rstart_temp[1];
+		
+		for (j = 0; j < nqrows_stg[i]; j++)
+		{
+			int row_idx = qc_rstart[i] + j;
+			clbd_core_temp[i][cpos + n_core[row_idx] + 1] = 0;
+			
+			if (i == 1)
+			{
+				for (s = 0; s < nscen_; s++)
+				{
+					if (fabs(qc_row_scen_[s]->rhs[j] - qc_row_core_->rhs[row_idx]) > 1e-8)
+					{
+						rlbd_scen_[s]->insert(rpos + n_core[row_idx] + 0, qc_row_scen_[s]->rhs[j] - 1);
+						rlbd_scen_[s]->insert(rpos + n_core[row_idx] + 1, -qc_row_scen_[s]->rhs[j] - 1);
+
+						rubd_scen_[s]->insert(rpos + n_core[row_idx] + 0, qc_row_scen_[s]->rhs[j] - 1);
+						rubd_scen_[s]->insert(rpos + n_core[row_idx] + 1, -qc_row_scen_[s]->rhs[j] - 1);
+						DSPdebug(DspMessage::printArray(rlbd_scen_[s]));
+						// rlbd_scen_[s]->insert(rpos + n_core[row_idx] + 0 + rstart_temp[1], 0.5 * (-qc_row_scen_[s]->rhs[j] + 1));
+						// rlbd_scen_[s]->insert(rpos + n_core[row_idx] + 1 + rstart_temp[1], 0.5 * (qc_row_scen_[s]->rhs[j] + 1));
+
+						// rubd_scen_[s]->insert(rpos + n_core[row_idx] + 0 + rstart_temp[1], 0.5 * (-qc_row_scen_[s]->rhs[j] + 1));
+						// rubd_scen_[s]->insert(rpos + n_core[row_idx] + 1 + rstart_temp[1], 0.5 * (qc_row_scen_[s]->rhs[j] + 1));
+					}
+				}
+			}
+			cpos += n_core[row_idx] + 2;
+			rpos += n_core[row_idx] + 2;
+		}
+	}
+
+	/* if additional 1st stg vars are appended, we need to adjust indices for 2nd stg vars in rows_core_, mat_scen_, qc_row_core_, qc_row_scen_, indices_core, and indices_scen */
+	if (ncols_temp[0] > ncols_[0])
+	{
+		int diff = ncols_temp[0] - ncols_[0];
+
+		/* for 2nd stg linear constraints */
+		for (i = 0; i < nrows_[1]; i++)
+		{	
+			for (j = 0; j < rows_core_[rstart_[1] + i]->getNumElements(); j++)
+			{
+				if (rows_core_[rstart_[1] + i]->getIndices()[j] >= cstart_[1])
+					rows_core_[rstart_[1] + i]->getIndices()[j] += diff;
+			}
+			for (s = 0; s < nscen_; s++)
+			{	
+				for (j = mat_scen_[s]->getNumRows()-1; j >= 0; --j)
+				{
+					for (k = mat_scen_[s]->getNumCols()-1; k >= 0; --k)
+					{
+						double element = mat_scen_[s]->getCoefficient(j,k);
+						if (fabs(element) > 1e-8)
+						{
+							if (k >= cstart_[1])
+							{
+								cout << "modify ind " << k  << " to " << k + diff << endl;
+								mat_scen_[s]->modifyCoefficient(j, k + diff, element);
+								mat_scen_[s]->modifyCoefficient(j, k, 0.0);			
+							}
+						}
+					}
+				}
+			}
+		}
+		/* for 2nd stg quadratic constraints */
+		for (i = qc_rstart[1]; i < nqrows; i++)
+		{
+			for (j = 0; j < qc_row_core_->linnzcnt[i]; j++)
+			{
+				if (qc_row_core_->linind[i][j] >= cstart_[1])
+					qc_row_core_->linind[i][j] += diff;
+			}
+			for (j = 0; j < qc_row_core_->quadnzcnt[i]; j++)
+			{
+				if (qc_row_core_->quadrow[i][j] >= cstart_[1])
+					qc_row_core_->quadrow[i][j] += diff;
+					qc_row_core_->quadcol[i][j] += diff;
+			}
+			for (j = 0; j < indices_core[i].size(); j++)
+			{
+				if (indices_core[i][j] >= cstart_[1])
+					indices_core[i][j] += diff;
+			}
+
+			for (s = 0; s < nscen_; s++)
+			{
+				int row_idx = i - qc_rstart[1];
+				for (j = 0; j < qc_row_scen_[s]->linnzcnt[row_idx]; j++)
+				{
+					if (qc_row_scen_[s]->linind[row_idx][j] >= cstart_[1])
+						qc_row_scen_[s]->linind[row_idx][j] += diff;
+				}
+				for (j = 0; j < qc_row_scen_[s]->quadnzcnt[row_idx]; j++)
+				{
+					if (qc_row_scen_[s]->quadrow[row_idx][j] >= cstart_[1])
+						qc_row_scen_[s]->quadrow[row_idx][j] += diff;
+						qc_row_scen_[s]->quadcol[row_idx][j] += diff;
+				}
+				for (j = 0; j < indices_scen[s][row_idx].size(); j++)
+				{
+					if (indices_scen[s][row_idx][j] >= cstart_[1])
+						indices_scen[s][row_idx][j] += diff;
+				}
+			}
+		}
+	}
+
+	/* copy rows_core to rows_core_temp */
+	CoinPackedVector ** rows_core_temp  = new CoinPackedVector * [nrows_core_temp];
+	/* copy 1st stage rows */
+	for (i = 0; i < rstart_[1]; i++)
+		rows_core_temp[i] = new CoinPackedVector(*(rows_core_[i]));
+	/* copy 2nd stage rows */
+	for (i = 0; i < nrows_[1]; i++)
+		rows_core_temp[rstart_temp[1] + i] = new CoinPackedVector(*(rows_core_[rstart_[1] + i]));
+
+	/* add affine core rows of each quadratic rows to rows_core_temp*/
+	int *cstart_of_col_to_add = new int [nstgs_];
+	int *rstart_of_row_to_add = new int [nstgs_];
+	for (i = 0; i < nstgs_; i++)
+	{
+		cstart_of_col_to_add[i] = cstart_temp[i] + ncols_[i];
+		rstart_of_row_to_add[i] = rstart_temp[i] + nrows_[i];
+	}
+
+	for (i = 0; i < nqrows; i++)
+	{
+		if (i >= qc_rstart[1])
+		{
+			/* if it is a 2nd stg quadratic row, then append from the current end of the 2nd stg linear constraints */
+			addAffineRowOfL(L_core[i], n_core[i], indices_core[i], rows_core_temp, cstart_of_col_to_add[1], rstart_of_row_to_add[1], qc_row_core_->linnzcnt[i], qc_row_core_->linind[i], qc_row_core_->linval[i]);
+
+			cstart_of_col_to_add[1] += n_core[i] + 2;
+			rstart_of_row_to_add[1] += n_core[i] + 2;
+		}
+		else 
+		{
+			/* if it is a 1st stg quadratic row, then append from the current end of the 1st stg linear constraints */
+			addAffineRowOfL(L_core[i], n_core[i], indices_core[i], rows_core_temp, cstart_of_col_to_add[0], rstart_of_row_to_add[0], qc_row_core_->linnzcnt[i], qc_row_core_->linind[i], qc_row_core_->linval[i]);
+
+			cstart_of_col_to_add[0] += n_core[i] + 2;
+			rstart_of_row_to_add[0] += n_core[i] + 2;
+		}
+	}
+	for (i = 0; i < nstgs_; i++)
+	{
+		assert(cstart_of_col_to_add[i] - cstart_temp[i] == ncols_temp[i]);
+		assert(rstart_of_row_to_add[i] - rstart_temp[i] == nrows_temp[i]);
+	}
+	FREE_ARRAY_PTR(cstart_of_col_to_add);
+	FREE_ARRAY_PTR(rstart_of_row_to_add);
+	
+	/* This is for updating mat_scen_: 
+	 * (1) add affine rows of each scenario quadratic rows to rows_scen_temp
+	 * (2) compare the affine rows to construct mat_scen_ */
+	for (s = 0; s < nscen_; s++)
+	{	
+		int cstart_of_col_to_add = cstart_temp[1] + ncols_[1];
+		int rstart_of_row_to_add = 0;
+
+		CoinPackedVector ** rows_scen_temp = new CoinPackedVector * [nrows_temp[1]];
+		
+		for (i = qc_rstart[1]; i < qc_rstart[1] + nqrows_stg[1]; i++)
+		{
+			int row_idx = i - qc_rstart[1];
+			
+			addAffineRowOfL(L_scen[s][row_idx], n_scen[s][row_idx], indices_scen[s][row_idx], rows_scen_temp, cstart_of_col_to_add, rstart_of_row_to_add, qc_row_scen_[s]->linnzcnt[row_idx], qc_row_scen_[s]->linind[row_idx], qc_row_scen_[s]->linval[row_idx]);
+
+			cstart_of_col_to_add += n_scen[s][row_idx] + 2;
+			rstart_of_row_to_add += n_scen[s][row_idx] + 2;
+		}
+		
+		assert(cstart_of_col_to_add - cstart_temp[1] == ncols_temp[1]);
+		assert(rstart_of_row_to_add + nrows_[1] == nrows_temp[1]);
+
+#ifdef DSP_DEBUG
+/* Compare rows_core_temp[rstart_temp[1] + nrows_[1] + j] vs rows_scen_temp[j] */
+for (j = 0; j < rstart_of_row_to_add; j++)
+{
+	cout << j << "th add. core row: " << endl;
+	int core_ridx = rstart_temp[1] + nrows_[1] + j;
+	for (k = 0; k < rows_core_temp[core_ridx]->getNumElements(); k++)
+	{
+		if (k == 0) {
+			cout << rlbd_core_temp[1][nrows_[1] + j] << " <= ";
+		}
+			
+		cout << rows_core_temp[core_ridx]->getElements()[k] << " " << rows_core_temp[core_ridx]->getIndices()[k] << " + ";
+
+		if (k == rows_core_temp[core_ridx]->getNumElements() - 1) {
+			cout << " <= " << rubd_core_temp[1][nrows_[1] + j] << endl;
+		}
+	}
+
+	cout << j << "th add. scen " << s << " row: " << endl;
+	int scen_ridx = j;
+	for (k = 0; k < rows_scen_temp[scen_ridx]->getNumElements(); k++)
+	{
+		if (k == 0) {
+			// int row_idx = qc_rstart[1] + j;
+			// if (fabs(qc_row_scen_[s]->rhs[j] - qc_row_core_->rhs[row_idx]) > 1e-8)
+			// DSPdebug(DspMessage::printArray(rlbd_scen_[s]));
+			// cout << rstart_temp[1] + nrows_[1] + j << endl;
+			bool is_existing_indice = false;
+			for (int i = 0; i < rlbd_scen_[s]->getNumElements(); ++i)
+			{
+				if (rlbd_scen_[s]->getIndices()[i] == rstart_temp[1] + nrows_[1] + j)
+				{
+					cout << "*" << rlbd_scen_[s]->getElements()[i] << " <= ";
+					is_existing_indice = true;
+					break;
+				}
+			}
+			if (!is_existing_indice)
+				cout << rlbd_core_temp[1][nrows_[1] + j] << " <= ";
+		}
+		
+		cout << rows_scen_temp[scen_ridx]->getElements()[k] << " " << rows_scen_temp[scen_ridx]->getIndices()[k] << " + ";
+
+		if (k == rows_scen_temp[scen_ridx]->getNumElements() - 1) {
+			// int row_idx = qc_rstart[1] + j;
+			// if (fabs(qc_row_scen_[s]->rhs[j] - qc_row_core_->rhs[row_idx]) > 1e-8)
+			// DSPdebug(DspMessage::printArray(rlbd_scen_[s]));
+			// cout << rstart_temp[1] + nrows_[1] + j << endl;
+			bool is_existing_indice = false;
+			for (int i = 0; i < rubd_scen_[s]->getNumElements(); ++i)
+			{
+				if (rubd_scen_[s]->getIndices()[i] == rstart_temp[1] + nrows_[1] + j)
+				{
+					cout << " <= " << "*" << rubd_scen_[s]->getElements()[i] << endl;
+					is_existing_indice = true;
+					break;
+				}
+			}
+			if (!is_existing_indice)
+				cout << " <= " << rubd_core_temp[1][nrows_[1] + j] << endl;
+		}
+	}
+}
+#endif
+		
+		int naddterms = 0;
+		vector<int> nchgterms(nrows_temp[1] - nrows_[1], 0); /* number of changed terms in each added linear rows */
+		vector<int> inds;									 /* the set of indices for changed terms */
+		vector<double> vals;									 /* the set of values for changed terms */
+		
+		int *row_starts = new int [nrows_temp[1]];
+		assert(nrows_[1] == mat_scen_[s]->getMajorDim());
+		/* copy original row_starts */
+		CoinCopyN(mat_scen_[s]->getVectorStarts(), mat_scen_[s]->getMajorDim(), row_starts);
+		/* calculate the last element of the original row_starts */
+		row_starts[nrows_[1]] = mat_scen_[s]->getVectorStarts()[nrows_[1]-1] + mat_scen_[s]->getVectorLengths()[nrows_[1]-1];
+		
+		for (j = 0; j < nrows_temp[1] - nrows_[1]; j++)
+		{
+			int core_ridx = rstart_temp[1] + nrows_[1] + j;
+			
+			int * idx_core = rows_core_temp[core_ridx]->getIndices();
+			double * val_core = rows_core_temp[core_ridx]->getElements();
+			int nzcnt_core = rows_core_temp[core_ridx]->getNumElements();
+			// double rlbd_core = rlbd_core_temp[1][nrows_[1] + j];
+			// double rubd_core = rubd_core_temp[1][nrows_[1] + j];
+
+			int scen_ridx = j;
+			
+			int * idx_scen = rows_scen_temp[scen_ridx]->getIndices();
+			double * val_scen = rows_scen_temp[scen_ridx]->getElements();
+			int nzcnt_scen = rows_scen_temp[scen_ridx]->getNumElements();
+			// double rlbd_core = qc_row_scen_[s]->rhs[1];
+			// double rubd_core = rubd_core_temp[1][nrows_[1] + j];
+
+			for (k = 0; k < nzcnt_core; k++)
+			{
+				int idx;
+				int found = false;
+				for (int l = 0; l < nzcnt_scen; l++)
+				{
+					if (idx_scen[l] == idx_core[k])
+					{
+						idx = l;
+						found = true;
+						break;
+					}
+				}
+				if (found)
+				{
+					if (fabs(val_core[k] - val_scen[idx]) > 1e-8) 
+					{
+#ifdef DSP_DEBUG
+cout << "idx_scen: " << idx_scen[idx] << ", idx_core[k]: " << idx_core[k] << endl; 
+cout << "core: " << val_core[k]  << " vs scen: " << val_scen[idx] << endl;
+#endif
+						nchgterms[j]++;
+						inds.push_back(idx_scen[idx]);
+						vals.push_back(val_scen[idx]);
+					}
+				}
+				else 
+				{
+#ifdef DSP_DEBUG					
+cout << "not found: idx_core[k]: " << idx_core[k] << endl; 
+#endif
+					nchgterms[j]++;
+					inds.push_back(idx_core[k]);
+					vals.push_back(0);
+				}
+			}
+			
+			/* update row_starts */
+			if (j < nrows_temp[1] - nrows_[1] - 1)
+				row_starts[nrows_[1] + j + 1] = row_starts[nrows_[1] + j] + nchgterms[j];
+
+			naddterms += nchgterms[j];
+		}
+		
+		assert(inds.size() == naddterms);
+		assert(vals.size() == naddterms);
+
+		int num_matrix_elements = mat_scen_[s]->getNumElements() + naddterms;
+		double *row_elements = new double [num_matrix_elements];
+		/* copy original matrix elements to row_elements */
+		CoinCopyN(mat_scen_[s]->getElements(), mat_scen_[s]->getNumElements(), row_elements);
+		int *row_indices = new int [num_matrix_elements];
+		/* copy original matrix indices to row_indices */
+		CoinCopyN(mat_scen_[s]->getIndices(), mat_scen_[s]->getNumElements(), row_indices);
+		/* append new matrix indices and elements */
+		int pos = mat_scen_[s]->getNumElements();
+		for (int l = 0; l < naddterms; l++)
+		{
+			row_elements[pos] = vals[l];
+			row_indices[pos] = inds[l];
+			pos++;
+		}
+		assert(pos == num_matrix_elements);
+		/* construct lens */
+		vector<int> lens(nrows_temp[1]);
+		for (k = 0; k < nrows_[1]; k++)
+		{
+			lens[k] = mat_scen_[s]->getVectorLengths()[k];
+		}
+		for (k = nrows_[1]; k < nrows_temp[1]; ++k)
+			lens[k] = nchgterms[k - nrows_[1]];
+
+		CoinPackedMatrix * mat_scen_temp = new CoinPackedMatrix(false, ncols_core_temp, nrows_temp[1], num_matrix_elements, 
+																	row_elements, row_indices, row_starts, &lens[0]);
+
+#ifdef DSP_DEBUG
+cout << "mat_scen_temp[" << s << "]:" << endl;
+for (int l = 0; l < mat_scen_temp->getNumRows(); l++){
+	cout << l << "th row: " << endl;
+	if (l != mat_scen_temp->getNumRows() - 1){
+		for (int k = mat_scen_temp->getVectorStarts()[l]; k < mat_scen_temp->getVectorStarts()[l+1]; k++)
+			cout << mat_scen_temp->getElements()[k] << " " << mat_scen_temp->getIndices()[k] << " + ";
+		cout << endl;
+	} else {
+		for (int k = mat_scen_temp->getVectorStarts()[l]; k < mat_scen_temp->getNumElements(); k++)
+			cout << mat_scen_temp->getElements()[k] << " " << mat_scen_temp->getIndices()[k] << " + ";	
+		cout << endl;
+	}
+	cout << endl;
+}
+#endif
+		delete mat_scen_[s];
+		mat_scen_[s] = mat_scen_temp;
+
+		FREE_ARRAY_PTR(row_starts);
+		FREE_ARRAY_PTR(row_indices);
+		FREE_ARRAY_PTR(row_elements);
+		FREE_ARRAY_PTR(rows_scen_temp);
+	}
+
+	/* add corresponding socp */
+	for (i = 0; i < nstgs_; i++)
+	{	
+		/* first stage */
+		vector<char> sense(nqrows_stg[i], 'L');
+		vector<double> rhs(nqrows_stg[i], 0.0);
+		vector<vector<int>> linind(nqrows_stg[i]);
+		vector<vector<double>> linval(nqrows_stg[i]);
+		vector<vector<int>> quadrow(nqrows_stg[i]);
+		vector<vector<int>> quadcol(nqrows_stg[i]);
+		vector<vector<double>> quadval(nqrows_stg[i]);
+
+		int pos = cstart_temp[i] + ncols_[i];
+		for (j = 0; j < nqrows_stg[i]; j++)
+		{
+			/* j the row */
+			quadrow[j].push_back(pos + n_core[j + qc_rstart[i]] + 1);
+			quadcol[j].push_back(pos + n_core[j + qc_rstart[i]] + 1);
+			quadval[j].push_back(-1);
+
+			for (k = 0; k < n_core[j + qc_rstart[i]] + 1; k++)
+			{
+				quadrow[j].push_back(pos + k);
+				quadcol[j].push_back(pos + k);
+				quadval[j].push_back(1);
+			}
+
+			pos += n_core[j + qc_rstart[i]] + 2;
+		}
+		
+		if (i == 0)
+		{
+			delete qc_row_core_;
+			qc_row_core_ = new QuadRowData(nqrows_stg[i], qc_rstart[i], sense, rhs, linind, linval, quadrow, quadcol, quadval);
+		}
+		else
+		{
+			for (s = 0; s < nscen_; s++)
+			{ 
+				delete qc_row_scen_[s];
+				qc_row_scen_[s] = new QuadRowData(nqrows_stg[i], 0, sense, rhs, linind, linval, quadrow, quadcol, quadval);
+			}
+		}
+	}
+#ifdef DSP_DEBUG
+printQuadRows(-1);
+for (i = 0; i < nscen_; i++)
+	printQuadRows(i);	
+#endif
+	FREE_ARRAY_PTR(nrows_);
+	FREE_ARRAY_PTR(ncols_);
+	FREE_ARRAY_PTR(rstart_);
+	FREE_ARRAY_PTR(cstart_);
+	FREE_2D_ARRAY_PTR(nstgs_, obj_core_);
+	FREE_2D_ARRAY_PTR(nstgs_, clbd_core_);
+	FREE_2D_ARRAY_PTR(nstgs_, cubd_core_);
+	FREE_2D_ARRAY_PTR(nstgs_, ctype_core_);
+	FREE_2D_ARRAY_PTR(nstgs_, rlbd_core_);
+	FREE_2D_ARRAY_PTR(nstgs_, rubd_core_);
+	FREE_ARRAY_PTR(rows_core_);
+
+	nrows_ = nrows_temp;
+	ncols_ = ncols_temp;
+	rstart_ = rstart_temp;
+	cstart_ = cstart_temp;
+	obj_core_ = obj_core_temp;
+	clbd_core_ = clbd_core_temp;
+	cubd_core_ = cubd_core_temp;
+	ctype_core_ = ctype_core_temp;
+	rlbd_core_ = rlbd_core_temp;
+	rubd_core_ = rubd_core_temp;
+	rows_core_ = rows_core_temp;
+
+	nrows_core_ = nrows_core_temp;
+	ncols_core_ = ncols_core_temp;
+
+	FREE_ARRAY_PTR(n_core);
+	FREE_2D_ARRAY_PTR(nscen_, n_scen);
+	FREE_ARRAY_PTR(nqrows_stg);
+	FREE_2D_ARRAY_PTR(nqrows, L_core);
+	for (s = 0; s < nscen_; s++) 
+		FREE_2D_ARRAY_PTR(qc_row_scen_[s]->nqrows, L_scen[s]);
+	FREE_ARRAY_PTR(L_scen);
+
+	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
+
+	return DSP_RTN_OK;
+}
+
 /** read quadratic data file */
-DSP_RTN_CODE StoModel::readQuad(const char * smps, const char * filename)
+DSP_RTN_CODE StoModel::readQuad(const char * smps, const char * filename, bool chg_to_socp)
 {
 	BGN_TRY_CATCH
 
@@ -525,14 +1525,15 @@ DSP_RTN_CODE StoModel::readQuad(const char * smps, const char * filename)
 	vector<vector<double>> linval;
 	vector<vector<int>> quadrow;
 	vector<vector<int>> quadcol;
-	vector<vector<double>> quadval;	
+	vector<vector<double>> quadval; 
 
 	string line;
 	vector<string> items;
 	map<string, int>::iterator it;
 
-	int i,j;
+	int i, j, k;
 
+	/* convert to 'L' sense constraint */
 	if (corfile.is_open()) {
 
 		while (getline(corfile, line, '\n')) {
@@ -591,7 +1592,7 @@ DSP_RTN_CODE StoModel::readQuad(const char * smps, const char * filename)
 
 					int nterms = items.size() - 1;
 					if (nterms <= 0 && nterms % 2 != 0) {
-						char msg[128];
+						char msg[256];
 						sprintf(msg, "Each row in the COLUMNS section needs to start with a variable name and is followed by a series of pairs of a row name and its associated coefficient\n");
 						throw msg;
 					}
@@ -609,7 +1610,10 @@ DSP_RTN_CODE StoModel::readQuad(const char * smps, const char * filename)
 						else 
 						{
 							linind[it->second].push_back(map_varName_index[items[0]]);
-							linval[it->second].push_back(stod(items[i++]));
+							if (sense[it->second] == 'G')
+								linval[it->second].push_back(-stod(items[i++]));
+							else 
+								linval[it->second].push_back(stod(items[i++]));
 						}
 					}
 				}
@@ -641,7 +1645,11 @@ DSP_RTN_CODE StoModel::readQuad(const char * smps, const char * filename)
 					} 
 					else 
 					{
-						rhs[it->second] = stod(items[2]);
+						// rhs[it->second] = stod(items[2]);
+						if (sense[it->second] == 'G')
+							rhs[it->second] = -stod(items[2]);
+						else 
+							rhs[it->second] = stod(items[2]);
 					}
 				}
 			}
@@ -674,7 +1682,11 @@ DSP_RTN_CODE StoModel::readQuad(const char * smps, const char * filename)
 
 						quadrow[it->second].push_back(map_varName_index[items[0]]);
 						quadcol[it->second].push_back(map_varName_index[items[1]]);
-						quadval[it->second].push_back(stod(items[2]));
+						// quadval[it->second].push_back(stod(items[2]));
+						if (sense[it->second] == 'G')
+							quadval[it->second].push_back(-stod(items[2]));
+						else 
+							quadval[it->second].push_back(stod(items[2]));
 					}
 				}
 			}
@@ -683,7 +1695,7 @@ DSP_RTN_CODE StoModel::readQuad(const char * smps, const char * filename)
 				break;
 			}
 			else {
-				char msg[128];
+				char msg[256];
 				sprintf(msg, "Quadratic data file encountered unexpected input: %s\n", line.c_str());
 				throw msg;
 			}
@@ -693,6 +1705,9 @@ DSP_RTN_CODE StoModel::readQuad(const char * smps, const char * filename)
         cout << "Unable to open quad core file";
         return 1;
     }
+
+	for (i = 0; i < nqrows; i++)
+		sense[i] = 'L';
 
 	/* read time file */
 	map<string, int> map_stgName_index;
@@ -730,7 +1745,7 @@ DSP_RTN_CODE StoModel::readQuad(const char * smps, const char * filename)
 			nstg++;
 		}
 		if (nstg != nstgs_){
-			char msg[128];
+			char msg[256];
 			sprintf(msg, "number of stages of smps data and that of quad data do not match in time file.\n");
 			throw msg; 
 		}
@@ -744,22 +1759,26 @@ DSP_RTN_CODE StoModel::readQuad(const char * smps, const char * filename)
 	/* store data in StoModel */
 	int nqrows_core = rstart[1] - rstart[0];
 	int nqrows_scen = nqrows - rstart[1];
-	qc_row_core_ = new QuadRowData(nqrows_core, rstart[0], sense, rhs, linind, linval, quadrow, quadcol, quadval);
-	/* check whether there is a coupling quadratic row */
-	
-	for (i = 0; i < qc_row_core_->nqrows; i++) {
-		for (j = 0; j < qc_row_core_->linnzcnt[i]; j++) {
-			if (qc_row_core_->linind[i][j] >= ncols_[0]) {
-				char msg[128];
-				sprintf(msg, "There is a second stage var in a linear term of a first stage quadratic row. Coupling quadratic rows are not allowed in the current version.\n");
-				throw msg; 
+	if (chg_to_socp)
+		qc_row_core_ = new QuadRowData(nqrows, rstart[0], sense, rhs, linind, linval, quadrow, quadcol, quadval);
+	else
+	{
+		qc_row_core_ = new QuadRowData(nqrows_core, rstart[0], sense, rhs, linind, linval, quadrow, quadcol, quadval);
+		/* check whether there is a coupling quadratic row */
+		for (i = 0; i < qc_row_core_->nqrows; i++) {
+			for (j = 0; j < qc_row_core_->linnzcnt[i]; j++) {
+				if (qc_row_core_->linind[i][j] >= ncols_[0]) {
+					// char msg[256];
+					// sprintf(msg, "There is a second stage var in a linear term of a first stage quadratic row and chg_to_scop is turned off. If there is a coupling quadratic constraint, please turn on chg_to_scop.\n");
+					// throw msg; 
+				}
 			}
-		}
-		for (j = 0; j < qc_row_core_->quadnzcnt[i]; j++) {
-			if (qc_row_core_->quadcol[i][j] >= ncols_[0] || qc_row_core_->quadrow[i][j] >= ncols_[0]) {
-				char msg[128];
-				sprintf(msg, "There is a second stage var in a quadratic term of a first stage quadratic row. Coupling quadratic rows are not allowed in the current version.\n");
-				throw msg; 
+			for (j = 0; j < qc_row_core_->quadnzcnt[i]; j++) {
+				// if (qc_row_core_->quadcol[i][j] >= ncols_[0] || qc_row_core_->quadrow[i][j] >= ncols_[0]) {
+				// 	char msg[256];
+				// 	sprintf(msg, "There is a second stage var in a quadratic term of a first stage quadratic row and chg_to_scop is turned off. If there is a coupling quadratic constraint, please turn on chg_to_scop.\n");
+				// 	throw msg; 
+				// }
 			}
 		}
 	}
@@ -767,24 +1786,6 @@ DSP_RTN_CODE StoModel::readQuad(const char * smps, const char * filename)
 	for (int s = 0; s < nscen_; s++) 
 	{	
 		qc_row_scen_[s] = new QuadRowData(nqrows_scen, rstart[1], sense, rhs, linind, linval, quadrow, quadcol, quadval);
-
-		/* check whether there is a coupling quadratic row */
-		for (i = 0; i < qc_row_scen_[s]->nqrows; i++) {
-			for (j = 0; j < qc_row_scen_[s]->linnzcnt[i]; j++) {
-				if (qc_row_scen_[s]->linind[i][j] < ncols_[0]) {
-					char msg[128];
-					sprintf(msg, "There is a first stage var in a linear term of a second stage quadratic row. Coupling quadratic rows are not allowed in the current version.\n");
-					throw msg; 
-				}
-			}
-			for (j = 0; j < qc_row_scen_[s]->quadnzcnt[i]; j++) {
-				if (qc_row_scen_[s]->quadcol[i][j] < ncols_[0] || qc_row_scen_[s]->quadrow[i][j] < ncols_[0]) {
-					char msg[128];
-					sprintf(msg, "There is a first stage var in a quadratic term of a second stage quadratic row. Coupling quadratic rows are not allowed in the current version.\n");
-					throw msg; 
-				}
-			}
-		}
 	}	
 
 	if (stofile.is_open()) {
@@ -816,7 +1817,13 @@ DSP_RTN_CODE StoModel::readQuad(const char * smps, const char * filename)
 				int stg = it->second;
 				QuadRowData *qc = qc_row_scen_[nscen];
 				nscen++;
-				
+
+				if (nscen > nscen_){
+					char msg[256];
+					sprintf(msg, "number of scenarios of smps data and that of quad data do not match in stofile.\n");
+					throw msg; 
+				}
+
 				while(getline(stofile, line)) {
 					split(line, items);
 					
@@ -827,7 +1834,6 @@ DSP_RTN_CODE StoModel::readQuad(const char * smps, const char * filename)
 						break;
 					}
 
-					string rname;
 					if (items.size() == 3) {
 						/* linterm or rhs */
 						it = map_qrowName_index.find(items[1]);
@@ -842,10 +1848,11 @@ DSP_RTN_CODE StoModel::readQuad(const char * smps, const char * filename)
 					
 					if (it == map_stgName_index.end()) 
 					{
-						char msg[128];
+						char msg[256];
 						sprintf(msg, "There is an undeclared stage name in stofile.\n");
 						throw msg; 
 					}
+					
 					int row_index = it->second - rstart[stg];
 					bool found = false;
 					if (items.size() == 3) 
@@ -854,7 +1861,7 @@ DSP_RTN_CODE StoModel::readQuad(const char * smps, const char * filename)
 							it = map_varName_index.find(items[0]);
 							if (it == map_varName_index.end()) 
 							{
-								char msg[128];
+								char msg[256];
 								sprintf(msg, "There is an undeclared variable name in stofile.\n");
 								throw msg; 
 							}
@@ -878,14 +1885,14 @@ DSP_RTN_CODE StoModel::readQuad(const char * smps, const char * filename)
 							it = map_varName_index.find(items[j]);
 							if (it == map_varName_index.end()) 
 							{
-								char msg[128];
+								char msg[256];
 								sprintf(msg, "There is an undeclared variable name in stofile.\n");
 								throw msg; 
 							}
 							else var_index[j] = it->second;
 						}
 						for (i = 0; i < qc->quadnzcnt[row_index]; i++) 
-						{	
+						{
 							if (qc->quadrow[row_index][i] == var_index[0] && qc->quadcol[row_index][i] == var_index[1]) 
 							{
 								qc->quadval[row_index][i] = stod(items[3]);
@@ -895,28 +1902,28 @@ DSP_RTN_CODE StoModel::readQuad(const char * smps, const char * filename)
 						}
 					}
 					if (!found) {
-						char msg[128];
+						char msg[256];
 						sprintf(msg, "constraint structure in stofile must agree with corfile.\n");
 						throw msg; 
 					}
 				}
 			}
 		}
-		if (nscen != nscen_){
-			char msg[128];
-			sprintf(msg, "number of scenarios of smps data and that of quad data do not match in stofile.\n");
-			throw msg; 
-		}
+		
 		stofile.close();
     } else {
         cout << "Unable to open quad stochastic file";
         return 1;
 	}
-	#ifdef DSP_DEBUG
-		printQuadRows(-1);
-		for (i = 0; i < nscen_; i++)
-			printQuadRows(i);	
-	#endif
+
+#ifdef DSP_DEBUG
+printQuadRows(-1);
+for (i = 0; i < nscen_; i++)
+	printQuadRows(i);	
+#endif
+
+	if (chg_to_socp)
+		if (chgToSocp(rstart) != 0) return DSP_RTN_ERR;
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -1387,7 +2394,7 @@ void StoModel::combineRandObjective(double * obj, int stg, int scen, bool adjust
 		}
 	}
 
-	if (adjustProbability)
+	if (adjustProbability && prob_[scen] > 1e-8)
 	{ 
 		for (j = ncols_[stg] - 1; j >= 0; --j)
 		{

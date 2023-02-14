@@ -127,6 +127,8 @@ DSP_RTN_CODE DwWorker::createSubproblems() {
 	char* ctype = NULL;
 	double* rlbd = NULL;
 	double* rubd = NULL;
+	QuadRowData *qc_row_core = NULL; 
+	QuadRowData *qc_row_scen = NULL;
 
 	BGN_TRY_CATCH
 
@@ -142,6 +144,29 @@ DSP_RTN_CODE DwWorker::createSubproblems() {
 							mat, sub_clbd_[s], sub_cubd_[s], ctype, sub_objs_[s], rlbd, rubd));
 			for (int j = 0; j < tss->getNumCols(0); ++j)
 				sub_objs_[s][j] *= tss->getProbability()[parProcIdx_[s]];
+
+			/** get quadratic rows data */
+		if (tss->hasQuadraticRowCore()) 
+		{
+			qc_row_core = tss->getQuaraticsRowCore();
+
+		#ifdef DSP_DEBUG
+			/* print qcrowdata to test whether it is successfully received or not */
+			cout << "DwSub's quadratic constraints in core: " << endl;
+			tss->printQuadRows(-1);
+			tss->printQuadRows(qc_row_core);
+		#endif
+		}
+		if (tss->hasQuadraticRowScenario()) {
+			qc_row_scen = tss->getQuaraticsRowScenario(s);
+
+		#ifdef DSP_DEBUG
+			/* print qcrowdata to test whether it is successfully received or not */
+			cout << "DwSub's quadratic constraints in scen: " << endl;
+			tss->printQuadRows(s);
+			tss->printQuadRows(qc_row_scen);
+		#endif
+		}
 		} else {
 			DSP_RTN_CHECK_RTN_CODE(
 					model_->copySubprob(parProcIdx_[s], mat, sub_clbd_[s], sub_cubd_[s], ctype, sub_objs_[s], rlbd, rubd));
@@ -161,6 +186,10 @@ DSP_RTN_CODE DwWorker::createSubproblems() {
 
 		/** load problem to si */
 		osi_[s]->si_->loadProblem(*mat, sub_clbd_[s], sub_cubd_[s], sub_objs_[s], rlbd, rubd);
+
+		/* add quadratic rows */
+		if (qc_row_core) osi_[s]->addQuadraticRows(qc_row_core->nqrows, qc_row_core->linnzcnt, qc_row_core->quadnzcnt, qc_row_core->rhs, qc_row_core->sense, qc_row_core->linind, qc_row_core->linval, qc_row_core->quadrow, qc_row_core->quadcol, qc_row_core->quadval);
+		if (qc_row_scen) osi_[s]->addQuadraticRows(qc_row_scen->nqrows, qc_row_scen->linnzcnt, qc_row_scen->quadnzcnt, qc_row_scen->rhs, qc_row_scen->sense, qc_row_scen->linind, qc_row_scen->linval, qc_row_scen->quadrow, qc_row_scen->quadcol, qc_row_scen->quadval);
 
 		/** set integers */
 		int nintegers = 0;
@@ -191,6 +220,12 @@ DSP_RTN_CODE DwWorker::createSubproblems() {
 			sprintf(ofname, "sub%d.mps", parProcIdx_[s]);
 			DSPdebugMessage("Writing MPS file: %s\n", ofname);
 			osi_[s]->si_->writeMps(ofname);
+
+			/** write lp */
+			char filename[128];
+			sprintf(filename, "sub%d.lp", parProcIdx_[s]);
+			DSPdebugMessage("Writing lp file: %s\n", filename);
+			osi_[s]->writeProb(filename, "lp");
 		}
 #endif
 
