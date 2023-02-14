@@ -43,13 +43,14 @@ const double test_tolerance = 1.0e-2;
 /*
  This will compile a stand-alone binary file that reads problem instances.
 */
-int main(int argc, char *argv[])
-{
+int main(int argc, char* argv[]) {
+
 	bool isroot = true;
 #ifdef DSP_HAS_MPI
-	int comm_rank;
+	int comm_rank, comm_size;
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &comm_rank);
+	MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
 	isroot = comm_rank == 0 ? true : false;
 #define EXIT_WITH_MSG      \
 	if (isroot)            \
@@ -63,8 +64,9 @@ int main(int argc, char *argv[])
 	exit(0);
 #endif
 
-	if (argc < 5)
-	{
+	if(isroot) show_copyright();
+
+	if (argc < 5) {
 		EXIT_WITH_MSG
 	}
 	else
@@ -374,7 +376,9 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 
 			cout << "Primal Bound: " << primobj << endl;
 			cout << "Dual Bound  : " << dualobj << endl;
-			cout << "Gap (%)     : " << fabs(primobj - dualobj) / (fabs(primobj) + 1.e-10) * 100 << endl;
+			cout << "Gap (%)     : " << fabs(primobj-dualobj)/(fabs(primobj)+1.e-10)*100 << endl;
+			cout << "Iterations  : " << getNumIterations(env) << endl;
+			cout << "Time (s)    : " << getWallTime(env) << endl;
 
 			if (testvalue != NULL)
 			{
@@ -386,9 +390,7 @@ int runDsp(char *algotype, char *smpsfile, char *mpsfile, char *decfile, char *s
 				{
 					if ((val - primobj) / (fabs(val) + 1.e-10) > test_tolerance || (dualobj - val) / (fabs(val) + 1.e-10) > test_tolerance)
 						ret = 1;
-				}
-				else
-				{
+				} else {
 					if ((primobj - val) / (fabs(val) + 1.e-10) > test_tolerance || (val - dualobj) / (fabs(val) + 1.e-10) > test_tolerance)
 						ret = 1;
 				}

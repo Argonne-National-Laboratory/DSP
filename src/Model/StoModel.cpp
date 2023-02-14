@@ -580,6 +580,7 @@ void addAffineRowOfL(double * L, int n, vector<int> indices, CoinPackedVector **
 	FREE_ARRAY_PTR(val);
 	FREE_ARRAY_PTR(val_n);
 }
+
 DSP_RTN_CODE StoModel::getL(double * &Q, int quadnzcnt, int *quadcol, int *quadrow, double *quadval, vector<int> &indices, int &n)
 {
 	BGN_TRY_CATCH
@@ -788,6 +789,7 @@ DSP_RTN_CODE StoModel::getL(double * &Q, int quadnzcnt, int *quadcol, int *quadr
 	return DSP_RTN_OK;
 
 }
+
 DSP_RTN_CODE StoModel::chgToSocp(vector<int> &qc_rstart)
 {
 	BGN_TRY_CATCH

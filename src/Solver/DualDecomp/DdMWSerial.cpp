@@ -208,10 +208,8 @@ DSP_RTN_CODE DdMWSerial::run()
 	assert(workerlb != NULL);
 
 	nsubsolution = new int[model_->getNumSubproblems()];
-	DSPdebugMessage("nsubproblems: %d\n", model_->getNumSubproblems());
 	for (int s = 0; s < model_->getNumSubproblems(); ++s)
 	{
-		DSPdebugMessage("%d\n", workerlb->subprobs_[s]->getNumCols());
 		nsubsolution[s] = workerlb->subprobs_[s]->getNumCols();
 		DSPdebugMessage("nsubsolution[%d] = %d\n", s, nsubsolution[s]);
 	}

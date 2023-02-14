@@ -420,8 +420,12 @@ public:
 
 	virtual void use_barrier() {
 		CPXsetintparam(cpx_->getEnvironmentPtr(), CPX_PARAM_LPMETHOD, CPX_ALG_BARRIER);
+		// CPXsetintparam(cpx_->getEnvironmentPtr(), CPX_PARAM_BARCROSSALG, -1); // This has been deprecated.
 		CPXsetintparam(cpx_->getEnvironmentPtr(), CPXPARAM_SolutionType, CPX_NONBASIC_SOLN);
-		CPXsetdblparam(cpx_->getEnvironmentPtr(), CPX_PARAM_BAREPCOMP, 1e-5);
+		// CPXsetdblparam(cpx_->getEnvironmentPtr(), CPXPARAM_Barrier_ConvergeTol, 1e-5);
+		// CPXsetintparam(cpx_->getEnvironmentPtr(), CPXPARAM_Emphasis_Numerical, CPX_ON);
+		// CPXsetintparam(cpx_->getEnvironmentPtr(), CPXPARAM_Preprocessing_Reduce, 1);
+		// CPXsetintparam(cpx_->getEnvironmentPtr(), CPXPARAM_Preprocessing_Presolve, 1);
 	}
 
 	/** solution statue */
@@ -538,7 +542,10 @@ public:
 
 	/** get number of branch-and-bound nodes explored */
 	virtual int getNumNodes() {
-		return CPXgetnodecnt(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
+		if (si_->getNumIntegers() > 0)
+			return CPXgetnodecnt(cpx_->getEnvironmentPtr(), cpx_->getLpPtr(OsiCpxSolverInterface::KEEPCACHED_ALL));
+		else
+			return 0;
 	}
 
 	/** set number of cores */

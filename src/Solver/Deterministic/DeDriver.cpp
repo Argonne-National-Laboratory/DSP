@@ -365,7 +365,7 @@ void DeDriver::writeExtMps(const char *name)
 	}
 
 	/** write mps */
-	osi->writeMps(name);
+	// osi->writeMps(name);
 
 	/** save memory */
 	FREE_MEMORY

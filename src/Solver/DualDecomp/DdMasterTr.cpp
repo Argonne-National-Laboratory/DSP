@@ -146,6 +146,12 @@ DSP_RTN_CODE DdMasterTr::solve()
 		status_ = osi_->status();
 		switch(status_)
 		{
+		case DSP_STAT_FEASIBLE:
+			if (parMasterAlgo_ == IPM) {
+				message_->print(1, "Warning: master solution status is %d, temporarily switching the algorithm to simplex\n", status_);
+				osi_->use_simplex();
+				break;
+			}
 		case DSP_STAT_PRIM_INFEASIBLE:
 			DSPdebugMessage("The master is infeasible and increases the trust region.\n");
 			// increase the trust-region size
@@ -193,6 +199,9 @@ DSP_RTN_CODE DdMasterTr::solve()
 			break;
 		}
 	}
+
+	if (parMasterAlgo_ == IPM)
+		osi_->use_barrier();
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -553,7 +562,7 @@ DSP_RTN_CODE DdMasterTr::createProblem()
 	cuts_ = new OsiCuts;
 
 	/** set print level */
-	osi_->setLogLevel(CoinMax(0,par_->getIntParam("LOG_LEVEL")-1));
+	osi_->setLogLevel(CoinMax(0,par_->getIntParam("LOG_LEVEL")-2));
 
 	END_TRY_CATCH_RTN(FREE_MEMORY,DSP_RTN_ERR)
 

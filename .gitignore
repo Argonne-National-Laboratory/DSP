@@ -15,3 +15,7 @@ cplex.log
 .DS_Store
 examples/cpp/farmer
 examples/cpp/farmer_dec
+experiments/dro/outputs
+experiments/dro/*.out
+examples/dro/experiments/outputs/*
+examples/dro/experiments/*.csv
