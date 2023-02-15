@@ -14,6 +14,7 @@
 // #include "Solver/DualDecomp/DdMasterDsb.h"
 // #endif
 #include "Solver/DualDecomp/DdMasterSubgrad.h"
+#include "Solver/DualDecomp/DdMasterAdmmLinear.h"
 
 DdMWSerial::DdMWSerial(
 	DecModel *model, /**< model pointer */
@@ -53,6 +54,9 @@ DSP_RTN_CODE DdMWSerial::init()
 		break;
 	case Subgradient:
 		master_ = new DdMasterSubgrad(model_, par_, message_);
+		break;
+	case AdmmLinear:
+		master_ = new DdMasterAdmmLinear(model_, par_, message_);
 		break;
 	}
 	DSPdebugMessage("Created master\n");
