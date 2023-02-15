@@ -13,6 +13,7 @@
 // #include "Solver/DualDecomp/DdMasterDsb.h"
 // #endif
 #include "Solver/DualDecomp/DdMasterSubgrad.h"
+#include "Solver/DualDecomp/DdMasterAdmmLinear.h"
 
 DdMWSync::DdMWSync(
 		MPI_Comm     comm,   /**< MPI communicator */
@@ -54,6 +55,9 @@ DSP_RTN_CODE DdMWSync::init()
 			break;
 		case Subgradient:
 			master_ = new DdMasterSubgrad(model_, par_, message_);
+			break;
+		case AdmmLinear:
+			master_ = new DdMasterAdmmLinear(model_, par_, message_);
 			break;
 		}
 		/** initialize master */

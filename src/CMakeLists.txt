@@ -33,6 +33,7 @@ set(DSP_SRC
     Solver/DualDecomp/DdDriver.cpp
     Solver/DualDecomp/DdDriverSerial.cpp
     Solver/DualDecomp/DdMaster.cpp
+    Solver/DualDecomp/DdMasterAdmmLinear.cpp
     Solver/DualDecomp/DdMasterAtr.cpp
     Solver/DualDecomp/DdMasterSubgrad.cpp
     Solver/DualDecomp/DdMasterTr.cpp
