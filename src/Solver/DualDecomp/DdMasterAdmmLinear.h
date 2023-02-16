@@ -54,6 +54,7 @@ private:
 	double stepscal_;      /**< another scalar between 0 and 2 */
 	double stepsize_;      /**< stepsize */
 	double * gradient_;    /**< subgradient */
+    double * prev_gradient_; /** subgradient at previous iteration */
 	double * multipliers_; /**< Lagrangian multipliers */
 };
 

@@ -8,6 +8,8 @@
 #include "Model/DecTssModel.h"
 #include "Solver/DualDecomp/DdMasterAdmmLinear.h"
 
+// #define DSP_DEBUG
+
 DdMasterAdmmLinear::DdMasterAdmmLinear(
 		DecModel *   model,  /**< model pointer */
 		DspParams *  par,    /**< parameter pointer */
@@ -17,6 +19,7 @@ nstalls_(0),
 stepscal_(2.0),
 stepsize_(0.0),
 gradient_(NULL),
+prev_gradient_(NULL),
 multipliers_(NULL) {}
 
 DdMasterAdmmLinear::DdMasterAdmmLinear(const DdMasterAdmmLinear& rhs) :
@@ -25,14 +28,17 @@ nstalls_(rhs.nstalls_),
 stepscal_(rhs.stepscal_),
 stepsize_(rhs.stepsize_) {
 	gradient_    = new double [model_->getNumCouplingRows()];
+    prev_gradient_=new double [model_->getNumCouplingRows()];
 	multipliers_ = new double [model_->getNumCouplingRows()];
 	CoinCopyN(rhs.gradient_, model_->getNumCouplingRows(), gradient_);
+	CoinCopyN(rhs.prev_gradient_, model_->getNumCouplingRows(), prev_gradient_);
 	CoinCopyN(rhs.multipliers_, model_->getNumCouplingRows(), multipliers_);
 }
 
 DdMasterAdmmLinear::~DdMasterAdmmLinear()
 {
 	FREE_ARRAY_PTR(gradient_);
+	FREE_ARRAY_PTR(prev_gradient_);
 	FREE_ARRAY_PTR(multipliers_);
 }
 
@@ -71,16 +77,25 @@ DSP_RTN_CODE DdMasterAdmmLinear::solve()
 
 	/** store final multipliers */
 	DecTssModel * decTssModel = dynamic_cast<DecTssModel*>(model_);
+    //
+    assert(model_->isStochastic());
+    //
 	if (model_->isStochastic() && decTssModel != NULL)
-	{
-		/** nonanticipativity constraints must be converted back from a different representation */
-		double* primsol = primsol_.data();
-		decTssModel->convertLagrangianFromAlternative(multipliers_, primsol);
-	}
-	else
 	{
 		/** copy Lagrangian multipliers */
 		CoinCopyN(multipliers_, model_->getNumCouplingRows(), &primsol_[0]);
+	}
+	else
+	{
+        /* TODO: handle non-stochastic cases */
+		/** copy Lagrangian multipliers */
+		CoinCopyN(multipliers_, model_->getNumCouplingRows(), &primsol_[0]);
+	}
+
+    for (int j = 0; j < model_->getNumCouplingRows(); ++j)
+	{
+		primsol_[j] -= stepsize_ * prev_gradient_[j];
+        prev_gradient_[j] = gradient_[j];
 	}
 
 	/** retrieve lambda */
@@ -105,11 +120,13 @@ DSP_RTN_CODE DdMasterAdmmLinear::createProblem()
 
 	/** allocate memory */
 	gradient_    = new double [model_->getNumCouplingRows()];
+	prev_gradient_= new double [model_->getNumCouplingRows()];
 	multipliers_ = new double [model_->getNumCouplingRows()];
 
 	/** initialize values */
 	primsol_.resize(model_->getNumCouplingRows());
 	CoinZeroN(gradient_, model_->getNumCouplingRows());
+	CoinZeroN(prev_gradient_, model_->getNumCouplingRows());
 	CoinZeroN(multipliers_, model_->getNumCouplingRows());
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
@@ -123,14 +140,17 @@ DSP_RTN_CODE DdMasterAdmmLinear::updateProblem()
 
 	/** compute gradient */
 	DecTssModel * decTssModel = dynamic_cast<DecTssModel*>(model_);
+    //
+    assert(model_->isStochastic());
+    //
 	if (model_->isStochastic() && decTssModel != NULL)
 	{
-		/** nonanticipativity constraints must be converted to a different representation */
 		for (int i = 0; i < model_->getNumCouplingRows(); i++)
-			gradient_[i] = decTssModel->evalLhsCouplingRowAlternative(i, subsolution_);
+			gradient_[i] = decTssModel->evalLhsCouplingRow(i, subsolution_);
 	}
 	else
 	{
+        /* TODO: handle non-stochastic cases */
 		for (int i = 0; i < model_->getNumCouplingRows(); i++)
 			gradient_[i] = model_->evalLhsCouplingRow(i, subsolution_) - model_->getRhsCouplingRow(i);
 	}
