@@ -208,8 +208,10 @@ void DwBundleDual::initDualSolver(
 	/** load problem data */
 	if (rlbd.size() == 0)
 		getSiPtr()->loadProblem(m, &clbd[0], &cubd[0], &obj[0], NULL, NULL);
-	else
+	else {
+		// TODO: When do we need rlbd and rubd?
 		getSiPtr()->loadProblem(m, &clbd[0], &cubd[0], &obj[0], &rlbd[0], &rubd[0]);
+	}
 
 	END_TRY_CATCH(;)
 }
