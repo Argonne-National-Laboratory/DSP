@@ -335,11 +335,7 @@ DSP_RTN_CODE DdMWSerial::run()
 		if (itercnt_ >= master_->getParPtr()->getIntParam("DD/ITER_LIM"))
 		{
 			message_->print(1, "The iteration limit is reached.\n");
-			DSPdebugMessage("Hmmm..\n");
-			master_->status_ = DSP_STAT_OPTIMAL;
-			DSPdebugMessage("Oops!\n");
 			master_->status_ = DSP_STAT_LIM_ITERorTIME;
-			DSPdebugMessage("Ready to break\n");
 			break;
 		}
 
@@ -406,7 +402,6 @@ DSP_RTN_CODE DdMWSerial::run()
 			}
 		}
 	}
-	DSPdebugMessage("Finished computing.\n");
 
 	if (parEvalUb_ >= 0 && model_->isStochastic()) {
 		DdWorkerUB * workerub = NULL;
