@@ -102,7 +102,6 @@ DSP_RTN_CODE DdMasterAdmmLinear::solve()
 	lambda_ = primsol_;
 
 	/** update statistics */
-    s_statuses_.push_back(DSP_STAT_OPTIMAL);
 	double * s_primsol = new double [model_->getNumCouplingRows()];
 	CoinCopyN(&primsol_[0], model_->getNumCouplingRows(), s_primsol);
 	s_primsols_.push_back(s_primsol);
@@ -190,6 +189,11 @@ DSP_RTN_CODE DdMasterAdmmLinear::updateProblem()
 	else
 		stepsize_ = stepscal_;
 	DSPdebugMessage("-> step size %e\n", stepsize_);
+
+    /** update statistics */
+    s_statuses_.push_back(DSP_STAT_OPTIMAL);
+	s_primobjs_.push_back(bestprimobj_);
+	s_dualobjs_.push_back(newobj);
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
