@@ -32,6 +32,10 @@ jobs:
             sudo apt-get update -y
             sudo apt-get install -y lcov
           fi
+          if [ ${{ matrix.os }} == macos-latest ]
+          then
+            brew gcc
+          fi
       - name: Set my secrets
         uses: webfactory/ssh-agent@v0.4.1
         with:
