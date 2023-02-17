@@ -43,8 +43,8 @@ jobs:
       - name: Checkout DSPThirdPartyLibs
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan xgitlab.cels.anl.gov >> ~/.ssh/known_hosts
-          git clone git@xgitlab.cels.anl.gov:kimk/DSPThirdPartyLibs.git
+          ssh-keyscan git.cels.anl.gov >> ~/.ssh/known_hosts
+          git clone git@git.cels.anl.gov:kimk/DSPThirdPartyLibs.git
       - name: Run cmake, build, and test
         env:
           MYOS: ${{ matrix.os }}
