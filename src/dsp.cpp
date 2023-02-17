@@ -522,6 +522,8 @@ int parseDecFile(char* decfile, vector<vector<string> >& rows_in_blocks) {
 					rows_in_blocks[0].push_back(line);
 			}
 		}
+
+		// TODO: #256 Check whether the decomposition results in coupling variables or not
 	} else {
 		printf("Cannot open file: %s\n", decfile);
 		return 1;
