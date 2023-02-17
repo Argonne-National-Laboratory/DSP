@@ -5,10 +5,10 @@
  *      Author: hideakiv
  */
 
+#define DSP_DEBUG
+
 #include "Model/DecTssModel.h"
 #include "Solver/DualDecomp/DdMasterAdmmLinear.h"
-
-// #define DSP_DEBUG
 
 DdMasterAdmmLinear::DdMasterAdmmLinear(
 		DecModel *   model,  /**< model pointer */
@@ -102,6 +102,7 @@ DSP_RTN_CODE DdMasterAdmmLinear::solve()
 	lambda_ = primsol_;
 
 	/** update statistics */
+    s_statuses_.push_back(DSP_STAT_OPTIMAL);
 	double * s_primsol = new double [model_->getNumCouplingRows()];
 	CoinCopyN(&primsol_[0], model_->getNumCouplingRows(), s_primsol);
 	s_primsols_.push_back(s_primsol);

@@ -320,6 +320,7 @@ void DspParams::initStrParams()
 	StrParams_.createParam("OUTPUT/PREFIX", "dsp");
 	StrParams_.createParam("DW/LOGFILE/OBJS", "");
 	StrParams_.createParam("VBC/FILE", "");
+	StrParams_.createParam("DD/MASTER_OUTPUT", "");
 }
 
 void DspParams::initBoolPtrParams()

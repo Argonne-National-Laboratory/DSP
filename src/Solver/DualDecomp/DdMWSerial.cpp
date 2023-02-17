@@ -335,7 +335,11 @@ DSP_RTN_CODE DdMWSerial::run()
 		if (itercnt_ >= master_->getParPtr()->getIntParam("DD/ITER_LIM"))
 		{
 			message_->print(1, "The iteration limit is reached.\n");
+			DSPdebugMessage("Hmmm..\n");
+			master_->status_ = DSP_STAT_OPTIMAL;
+			DSPdebugMessage("Oops!\n");
 			master_->status_ = DSP_STAT_LIM_ITERorTIME;
+			DSPdebugMessage("Ready to break\n");
 			break;
 		}
 
@@ -402,6 +406,7 @@ DSP_RTN_CODE DdMWSerial::run()
 			}
 		}
 	}
+	DSPdebugMessage("Finished computing.\n");
 
 	if (parEvalUb_ >= 0 && model_->isStochastic()) {
 		DdWorkerUB * workerub = NULL;
@@ -421,6 +426,12 @@ DSP_RTN_CODE DdMWSerial::run()
 		DSPdebugMessage2("primsol_:\n");
 		DSPdebug2(DspMessage::printArray(model_->getFullModelNumCols(), master_->bestprimsol_.data()));
 	}
+
+	DSPdebugMessage("Saving to file...\n");
+	if (par_->getStrParam("DD/MASTER_OUTPUT").size() > 0) {
+		master_->write(par_->getStrParam("DD/MASTER_OUTPUT").data());
+	}
+	DSPdebugMessage("Finished saving to file\n");
 
 	END_TRY_CATCH_RTN(FREE_MEMORY, DSP_RTN_ERR)
 
