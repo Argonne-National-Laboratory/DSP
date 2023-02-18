@@ -53,6 +53,13 @@ jobs:
         run: |
           cd DSPThirdPartyLibs
           ./github.sh
+
+          export MA27LIB_DIR=$PWD/ma27/build/lib
+          export SCIPOPT_INC_DIR=$PWD/include
+          export SCIPOPT_LIB_DIR=$PWD/lib
+          export CPLEX_INC_DIR=$PWD/cplex/ilcplex
+          export CPLEX_LIB_DIR=$PWD/cplex/lib
+
           if [ ${{ matrix.os }} == ubuntu-latest ]
           then
             export LD_LIBRARY_PATH=$PWD/lib:$(dirname `$FC --print-file-name libgfortran.so`):$LD_LIBRARY_PATH
@@ -68,6 +75,14 @@ jobs:
           cd build
           if [ ${{ matrix.compiler }} == gcc ]; then export CXX=g++; fi
           if [ ${{ matrix.compiler }} == clang ]; then export CXX=clang++; fi
+
+          echo "Checking the environment variables:"
+          echo $MA27LIB_DIR
+          echo $SCIPOPT_INC_DIR
+          echo $SCIPOPT_LIB_DIR
+          echo $CPLEX_INC_DIR
+          echo $CPLEX_LIB_DIR
+
           cmake .. -DUNIT_TESTING=OFF -DCODE_COVERAGE=ON -DCMAKE_BUILD_TYPE=DEBUG
           make -j
           make install
