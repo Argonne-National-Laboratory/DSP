@@ -71,6 +71,11 @@ jobs:
           cmake .. -DUNIT_TESTING=OFF -DCODE_COVERAGE=ON -DCMAKE_BUILD_TYPE=DEBUG
           make -j
           make install
+      - name: Run test
+        run: |
+          if [ ${{ matrix.os }} == ubuntu-latest ]; then export LD_LIBRARY_PATH=${{ env.LD_LIBRARY_PATH }}; fi
+          if [ ${{ matrix.os }} == macos-latest ]; then export DYLD_LIBRARY_PATH=${{ env.DYLD_LIBRARY_PATH }}; fi
+          cd build
           ctest
           if [ ${{ matrix.os }} == ubuntu-latest ] && [ ${{ matrix.compiler }} == gcc ]
           then
