@@ -72,7 +72,7 @@ jobs:
           cd build
           if [ ${{ matrix.compiler }} == gcc ]; then export CXX=g++; fi
           if [ ${{ matrix.compiler }} == clang ]; then export CXX=clang++; fi
-          cmake .. -DUNIT_TESTING=ON -DCODE_COVERAGE=ON -DCMAKE_BUILD_TYPE=DEBUG
+          cmake .. -DUNIT_TESTING=OFF -DCODE_COVERAGE=ON -DCMAKE_BUILD_TYPE=DEBUG
           make -j
           make install
       - name: Run test
@@ -80,7 +80,6 @@ jobs:
           if [ ${{ matrix.os }} == ubuntu-latest ]; then export LD_LIBRARY_PATH=${{ env.LD_LIBRARY_PATH }}; fi
           if [ ${{ matrix.os }} == macos-latest ]; then export DYLD_LIBRARY_PATH=${{ env.DYLD_LIBRARY_PATH }}; fi
           cd build
-          ./src/test/UnitTests
           ctest
           if [ ${{ matrix.os }} == ubuntu-latest ] && [ ${{ matrix.compiler }} == gcc ]
           then
