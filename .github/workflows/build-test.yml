@@ -49,7 +49,7 @@ jobs:
         env:
           MYOS: ${{ matrix.os }}
           CC: ${{ matrix.compiler }}
-          FC: gfortran
+          FC: gfortran-12
         run: |
           cd DSPThirdPartyLibs
           ./github.sh
