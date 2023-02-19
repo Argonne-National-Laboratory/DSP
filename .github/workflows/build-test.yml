@@ -37,32 +37,28 @@ jobs:
         uses: webfactory/ssh-agent@v0.4.1
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Checkout DSP
+        uses: actions/checkout@v2
+        with:
+          submodules: true
       - name: Checkout DSPThirdPartyLibs
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan git.cels.anl.gov >> ~/.ssh/known_hosts
           git clone git@git.cels.anl.gov:kimk/DSPThirdPartyLibs.git
-      - name: Install DSPThirdPartyLibs
+      - name: Run cmake and build
         env:
           CC: ${{ matrix.compiler }}
           FC: gfortran-12
         run: |
           cd DSPThirdPartyLibs
           ./github.sh
-      - name: Checkout DSP
-        uses: actions/checkout@v2
-        with:
-          submodules: true
-      - name: Run cmake, build, and test
-        env:
-          CC: ${{ matrix.compiler }}
-          FC: gfortran-12
-        run: |
-          export MA27LIB_DIR=$PWD/DSPThirdPartyLibs/ma27/build/lib
-          export SCIPOPT_INC_DIR=$PWD/DSPThirdPartyLibs/include
-          export SCIPOPT_LIB_DIR=$PWD/DSPThirdPartyLibs/lib
-          export CPLEX_INC_DIR=$PWD/DSPThirdPartyLibs/cplex/ilcplex
-          export CPLEX_LIB_DIR=$PWD/DSPThirdPartyLibs/cplex/lib
+
+          export MA27LIB_DIR=$PWD/ma27/build/lib
+          export SCIPOPT_INC_DIR=$PWD/include
+          export SCIPOPT_LIB_DIR=$PWD/lib
+          export CPLEX_INC_DIR=$PWD/cplex/ilcplex
+          export CPLEX_LIB_DIR=$PWD/cplex/lib
 
           echo "Checking the environment variables:"
           echo $MA27LIB_DIR
@@ -71,9 +67,10 @@ jobs:
           echo $CPLEX_INC_DIR
           echo $CPLEX_LIB_DIR
 
-          export LD_LIBRARY_PATH=$PWD/DSPThirdPartyLibs/lib:$(dirname `$FC --print-file-name libgfortran.so`):$LD_LIBRARY_PATH
+          export LD_LIBRARY_PATH=$SCIPOPT_LIB_DIR:$(dirname `$FC --print-file-name libgfortran.so`):$LD_LIBRARY_PATH
           echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
+          cd ..
           mkdir build
           cd build
           if [ ${{ matrix.compiler }} == gcc ]; then export CXX=g++; fi
