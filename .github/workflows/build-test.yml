@@ -27,10 +27,14 @@ jobs:
     steps:
       - name: Install extra libraries
         run: |
-          if [ ${{ matrix.os }} == ubuntu-latest ] && [ ${{ matrix.compiler }} == gcc ]
+          if [ ${{ matrix.os }} == ubuntu-latest ]
           then
             sudo apt-get update -y
-            sudo apt-get install -y lcov libtbb-dev
+            sudo apt-get install -y libtbb-dev libtbb2
+            if [ ${{ matrix.compiler }} == gcc ]
+            then
+              sudo apt-get install -y lcov
+            fi
           fi
       - name: Set my secrets
         uses: webfactory/ssh-agent@v0.4.1
@@ -62,12 +66,12 @@ jobs:
 
           if [ ${{ matrix.os }} == ubuntu-latest ]
           then
-            export LD_LIBRARY_PATH=$PWD/lib:$(dirname `$FC --print-file-name libgfortran.so`):$LD_LIBRARY_PATH
+            export LD_LIBRARY_PATH=$PWD/lib:$(dirname `$FC --print-file-name libgfortran.so`):$MA27LIB_DIR:$SCIPOPT_LIB_DIR:$CPLEX_LIB_DIR:$LD_LIBRARY_PATH
             echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $GITHUB_ENV
           fi
           if [ ${{ matrix.os }} == macos-latest ]
           then
-            export DYLD_LIBRARY_PATH=$PWD/lib:$(dirname `$FC --print-file-name libgfortran.dylib`):$DYLD_LIBRARY_PATH
+            export DYLD_LIBRARY_PATH=$PWD/lib:$(dirname `$FC --print-file-name libgfortran.dylib`):$MA27LIB_DIR:$SCIPOPT_LIB_DIR:$CPLEX_LIB_DIR:$DYLD_LIBRARY_PATH
             echo "DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
           fi
           cd ..
@@ -91,7 +95,7 @@ jobs:
           if [ ${{ matrix.os }} == ubuntu-latest ]; then export LD_LIBRARY_PATH=${{ env.LD_LIBRARY_PATH }}; fi
           if [ ${{ matrix.os }} == macos-latest ]; then export DYLD_LIBRARY_PATH=${{ env.DYLD_LIBRARY_PATH }}; fi
           cd build
-          ctest
+          ctest --verbose
           if [ ${{ matrix.os }} == ubuntu-latest ] && [ ${{ matrix.compiler }} == gcc ]
           then
             lcov --capture --directory . --output-file coverage.info
