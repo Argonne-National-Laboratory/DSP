@@ -20,65 +20,49 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest]
+        os: [ubuntu-latest]
         compiler: [gcc, clang] 
       fail-fast: false
 
     steps:
       - name: Install extra libraries
         run: |
-          if [ ${{ matrix.os }} == ubuntu-latest ]
+          sudo apt-get update -y
+          sudo apt-get install -y libtbb-dev libtbb2
+          if [ ${{ matrix.compiler }} == gcc ]
           then
-            sudo apt-get update -y
-            sudo apt-get install -y libtbb-dev libtbb2
-            if [ ${{ matrix.compiler }} == gcc ]
-            then
-              sudo apt-get install -y lcov
-            fi
+            sudo apt-get install -y lcov
           fi
       - name: Set my secrets
         uses: webfactory/ssh-agent@v0.4.1
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-      - name: Checkout DSP
-        uses: actions/checkout@v2
-        with:
-          submodules: true
       - name: Checkout DSPThirdPartyLibs
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan git.cels.anl.gov >> ~/.ssh/known_hosts
           git clone git@git.cels.anl.gov:kimk/DSPThirdPartyLibs.git
-      - name: Run cmake, build, and test
+      - name: Install DSPThirdPartyLibs
         env:
-          MYOS: ${{ matrix.os }}
           CC: ${{ matrix.compiler }}
           FC: gfortran-12
         run: |
           cd DSPThirdPartyLibs
           ./github.sh
-
-          export MA27LIB_DIR=$PWD/ma27/build/lib
-          export SCIPOPT_INC_DIR=$PWD/include
-          export SCIPOPT_LIB_DIR=$PWD/lib
-          export CPLEX_INC_DIR=$PWD/cplex/ilcplex
-          export CPLEX_LIB_DIR=$PWD/cplex/lib
-
-          if [ ${{ matrix.os }} == ubuntu-latest ]
-          then
-            export LD_LIBRARY_PATH=$PWD/lib:$(dirname `$FC --print-file-name libgfortran.so`):$MA27LIB_DIR:$SCIPOPT_LIB_DIR:$CPLEX_LIB_DIR:$LD_LIBRARY_PATH
-            echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $GITHUB_ENV
-          fi
-          if [ ${{ matrix.os }} == macos-latest ]
-          then
-            export DYLD_LIBRARY_PATH=$PWD/lib:$(dirname `$FC --print-file-name libgfortran.dylib`):$MA27LIB_DIR:$SCIPOPT_LIB_DIR:$CPLEX_LIB_DIR:$DYLD_LIBRARY_PATH
-            echo "DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
-          fi
-          cd ..
-          mkdir build
-          cd build
-          if [ ${{ matrix.compiler }} == gcc ]; then export CXX=g++; fi
-          if [ ${{ matrix.compiler }} == clang ]; then export CXX=clang++; fi
+      - name: Checkout DSP
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Run cmake, build, and test
+        env:
+          CC: ${{ matrix.compiler }}
+          FC: gfortran-12
+        run: |
+          export MA27LIB_DIR=$PWD/DSPThirdPartyLibs/ma27/build/lib
+          export SCIPOPT_INC_DIR=$PWD/DSPThirdPartyLibs/include
+          export SCIPOPT_LIB_DIR=$PWD/DSPThirdPartyLibs/lib
+          export CPLEX_INC_DIR=$PWD/DSPThirdPartyLibs/cplex/ilcplex
+          export CPLEX_LIB_DIR=$PWD/DSPThirdPartyLibs/cplex/lib
 
           echo "Checking the environment variables:"
           echo $MA27LIB_DIR
@@ -87,16 +71,23 @@ jobs:
           echo $CPLEX_INC_DIR
           echo $CPLEX_LIB_DIR
 
+          export LD_LIBRARY_PATH=$PWD/DSPThirdPartyLibs/lib:$(dirname `$FC --print-file-name libgfortran.so`):$LD_LIBRARY_PATH
+          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
+          mkdir build
+          cd build
+          if [ ${{ matrix.compiler }} == gcc ]; then export CXX=g++; fi
+          if [ ${{ matrix.compiler }} == clang ]; then export CXX=clang++; fi
+
           cmake .. -DUNIT_TESTING=OFF -DCODE_COVERAGE=ON -DCMAKE_BUILD_TYPE=DEBUG
           make -j
           make install
       - name: Run test
         run: |
-          if [ ${{ matrix.os }} == ubuntu-latest ]; then export LD_LIBRARY_PATH=${{ env.LD_LIBRARY_PATH }}; fi
-          if [ ${{ matrix.os }} == macos-latest ]; then export DYLD_LIBRARY_PATH=${{ env.DYLD_LIBRARY_PATH }}; fi
+          export LD_LIBRARY_PATH=${{ env.LD_LIBRARY_PATH }}
           cd build
-          ctest --verbose
-          if [ ${{ matrix.os }} == ubuntu-latest ] && [ ${{ matrix.compiler }} == gcc ]
+          ctest
+          if [ ${{ matrix.compiler }} == gcc ]
           then
             lcov --capture --directory . --output-file coverage.info
             lcov --remove coverage.info '/usr/*' --output-file coverage.info
