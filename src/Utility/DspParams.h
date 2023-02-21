@@ -26,6 +26,12 @@ enum DSP_DD_MASTER_ALGO
 	AdmmLinear
 };
 
+enum DSP_DD_MASTER_STEP_RULE
+{
+	Polyak = 0,
+	SSNS /**< square summable but not summable */
+};
+
 enum DSP_BD_INIT_LB_ALGO
 {
 	SEPARATE_LP = 0,

@@ -15,6 +15,7 @@ DdMasterSubgrad::DdMasterSubgrad(
 		DspParams *  par,    /**< parameter pointer */
 		DspMessage * message /**< message pointer */):
 DdMaster(model, par, message),
+itercount_(0),
 nstalls_(0),
 stepscal_(2.0),
 stepsize_(0.0),
@@ -23,6 +24,7 @@ multipliers_(NULL) {}
 
 DdMasterSubgrad::DdMasterSubgrad(const DdMasterSubgrad& rhs) :
 DdMaster(rhs),
+itercount_(rhs.itercount_),
 nstalls_(rhs.nstalls_),
 stepscal_(rhs.stepscal_),
 stepsize_(rhs.stepsize_) {
@@ -181,15 +183,26 @@ DSP_RTN_CODE DdMasterSubgrad::updateProblem()
 			nstalls_ = 0;
 		}
 	}
+	itercount_++;
 
 	/** calculate step size */
-	double denom = 0.0;
-	for (int j = 0; j < model_->getNumCouplingRows(); ++j)
-		denom += gradient_[j] * gradient_[j];
-	if (bestprimobj_ < 1.0e+20)
-		stepsize_ = stepscal_ * (bestprimobj_ - newobj) / denom;
-	else
-		stepsize_ = stepscal_;
+	switch (par_->getIntParam("DD/MASTER_STEP_RULE"))
+	{
+	case Polyak:
+		double denom;
+		denom = 0.0;
+		for (int j = 0; j < model_->getNumCouplingRows(); ++j)
+			denom += gradient_[j] * gradient_[j];
+		if (bestprimobj_ < 1.0e+20)
+			stepsize_ = stepscal_ * (bestprimobj_ - newobj) / denom;
+		else
+			stepsize_ = stepscal_;
+		break;
+	case SSNS:
+		stepsize_ = 1.0 / ( 0.0 + itercount_);
+		break;
+	}
+	
 	DSPdebugMessage("-> step size %e\n", stepsize_);
 
     /** update statistics */

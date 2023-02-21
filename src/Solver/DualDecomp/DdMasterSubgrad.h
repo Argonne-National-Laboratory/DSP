@@ -50,6 +50,7 @@ protected:
 
 private:
 
+	int itercount_;		   /**< number of iterations */
 	int nstalls_;          /**< number of iterations UB were not improved */
 	double stepscal_;      /**< another scalar between 0 and 2 */
 	double stepsize_;      /**< stepsize */

@@ -15,6 +15,7 @@ DdMasterAdmmLinear::DdMasterAdmmLinear(
 		DspParams *  par,    /**< parameter pointer */
 		DspMessage * message /**< message pointer */):
 DdMaster(model, par, message),
+itercount_(0),
 nstalls_(0),
 stepscal_(2.0),
 stepsize_(0.0),
@@ -24,6 +25,7 @@ multipliers_(NULL) {}
 
 DdMasterAdmmLinear::DdMasterAdmmLinear(const DdMasterAdmmLinear& rhs) :
 DdMaster(rhs),
+itercount_(rhs.itercount_),
 nstalls_(rhs.nstalls_),
 stepscal_(rhs.stepscal_),
 stepsize_(rhs.stepsize_) {
@@ -145,8 +147,11 @@ DSP_RTN_CODE DdMasterAdmmLinear::updateProblem()
     //
 	if (model_->isStochastic() && decTssModel != NULL)
 	{
-		for (int i = 0; i < model_->getNumCouplingRows(); i++)
-			gradient_[i] = decTssModel->evalLhsCouplingRow(i, subsolution_);
+		for (int i = 0; i < model_->getNumCouplingRows(); i++) {
+            int s = i / model_->getNumSubproblems();
+	        int j = i % model_->getNumSubproblems();
+	        gradient_[i] = subsolution_[s][j];
+        }
 	}
 	else
 	{
@@ -179,15 +184,26 @@ DSP_RTN_CODE DdMasterAdmmLinear::updateProblem()
 			nstalls_ = 0;
 		}
 	}
+    itercount_++;
 
 	/** calculate step size */
-	double denom = 0.0;
-	for (int j = 0; j < model_->getNumCouplingRows(); ++j)
-		denom += gradient_[j] * gradient_[j];
-	if (bestprimobj_ < 1.0e+20)
-		stepsize_ = stepscal_ * (bestprimobj_ - newobj) / denom;
-	else
-		stepsize_ = stepscal_;
+	switch (par_->getIntParam("DD/MASTER_STEP_RULE"))
+    {
+	case Polyak:
+		double denom;
+        denom = 0.0;
+		for (int j = 0; j < model_->getNumCouplingRows(); ++j)
+			denom += gradient_[j] * gradient_[j];
+		if (bestprimobj_ < 1.0e+20)
+			stepsize_ = stepscal_ * (bestprimobj_ - newobj) / denom;
+		else
+			stepsize_ = stepscal_;
+		break;
+	case SSNS:
+		stepsize_ = 1.0 / ( 0.0 + itercount_);
+        break;
+	}
+	
 	DSPdebugMessage("-> step size %e\n", stepsize_);
 
     /** update statistics */

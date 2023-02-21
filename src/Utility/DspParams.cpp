@@ -185,6 +185,9 @@ void DspParams::initIntParams()
 	IntParams_.createParam("DD/MASTER_ALGO", IPM);
 #endif
 
+	/** step size rule for master subgrad */
+	IntParams_.createParam("DD/MASTER_STEP_RULE", Polyak);
+
 	/** number of cuts to the master per iteration */
 	IntParams_.createParam("DD/NUM_CUTS_PER_ITER", 1);
 
