@@ -50,13 +50,15 @@ protected:
 
 private:
 
-	int itercount_;		   /**< number of iterations */
-	int nstalls_;          /**< number of iterations UB were not improved */
-	double stepscal_;      /**< another scalar between 0 and 2 */
-	double stepsize_;      /**< stepsize */
-	double * gradient_;    /**< subgradient */
-    double * prev_gradient_; /** subgradient at previous iteration */
-	double * multipliers_; /**< Lagrangian multipliers */
+	int itercount_;		   		/**< number of iterations */
+	int nstalls_;          		/**< number of iterations UB were not improved */
+	double stepscal_;      		/**< another scalar between 0 and 2 */
+	double stepsize_;      		/**< stepsize */
+	double * gradient_;    		/**< subgradient */
+	double * multipliers_; 		/**< Lagrangian multipliers */
+	bool isPrimFeas;			/**< Feasibility of lagrangian multipliers */
+    double * prev_gradient_; 	/**< mean subgradient at previous iteration */
+	double * mean_multipliers_; /**< mean lagrangian multipliers */
 };
 
 #endif /* SRC_SOLVER_DUALDECOMP_DDMASTERADMMLINEAR_H_ */
