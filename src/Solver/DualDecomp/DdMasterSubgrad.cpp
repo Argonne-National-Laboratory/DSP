@@ -178,7 +178,13 @@ DSP_RTN_CODE DdMasterSubgrad::updateProblem()
 			nstalls_++;
 		else
 		{
-			stepscal_ *= 0.5;
+			switch (par_->getIntParam("DD/MASTER_STEP_RULE"))
+			{
+			case Polyak:
+				stepscal_ *= 0.5;
+			case SSNS:
+				stepscal_ *= 1.0;
+			}
 			DSPdebugMessage("Updated constant parameter %e\n", stepscal_);
 			nstalls_ = 0;
 		}

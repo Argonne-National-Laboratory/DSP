@@ -124,7 +124,7 @@ DSP_RTN_CODE DdMasterAdmmLinear::solve()
     for (int i = 0; i < model_->getNumCouplingRows(); ++i)
 	{
         int j = i % decTssModel->getNumCols(0);
-		primsol_[i] += mean_multipliers_[j] - stepsize_ * prev_gradient_[j];
+		primsol_[i] -= mean_multipliers_[j] + stepsize_ * prev_gradient_[j];
 	}
 
     /** store average gradients */
@@ -225,7 +225,13 @@ DSP_RTN_CODE DdMasterAdmmLinear::updateProblem()
 			nstalls_++;
 		else
 		{
-			stepscal_ *= 0.5;
+            switch (par_->getIntParam("DD/MASTER_STEP_RULE"))
+			{
+			case Polyak:
+				stepscal_ *= 0.5;
+			case SSNS:
+				stepscal_ *= 1.0;
+			}
 			DSPdebugMessage("Updated constant parameter %e\n", stepscal_);
 			nstalls_ = 0;
 		}
