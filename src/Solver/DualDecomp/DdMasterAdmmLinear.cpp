@@ -23,7 +23,9 @@ gradient_(NULL),
 multipliers_(NULL),
 isPrimFeas(true),
 prev_gradient_(NULL),
-mean_multipliers_(NULL) {}
+mean_multipliers_(NULL),
+auglagrange(0.0),
+primres(0.0) {}
 
 DdMasterAdmmLinear::DdMasterAdmmLinear(const DdMasterAdmmLinear& rhs) :
 DdMaster(rhs),
@@ -31,7 +33,9 @@ itercount_(rhs.itercount_),
 nstalls_(rhs.nstalls_),
 stepscal_(rhs.stepscal_),
 stepsize_(rhs.stepsize_),
-isPrimFeas(rhs.isPrimFeas) {
+isPrimFeas(rhs.isPrimFeas),
+auglagrange(rhs.auglagrange),
+primres(rhs.primres) {
 	gradient_         = new double [model_->getNumCouplingRows()];
 	multipliers_      = new double [model_->getNumCouplingRows()];
     DecTssModel * decTssModel = dynamic_cast<DecTssModel*>(model_);
@@ -86,6 +90,13 @@ DSP_RTN_CODE DdMasterAdmmLinear::solve()
         }
         mean_multipliers_[j] = mean_multiplier / model_->getNumSubproblems();
     }
+    /** update augmented lagrangian */
+    auglagrange = 0.0;
+    for (int i = 0; i < model_->getNumCouplingRows(); ++i)
+	{
+        int j = i % decTssModel->getNumCols(0);
+		auglagrange += 0.5 * stepsize_ * (gradient_[i] * gradient_[i] - prev_gradient_[j] * prev_gradient_[j]);
+	} // continue to updateProblem()
 
     /**     update lagrange multipliers */
 	for (int i = 0; i < model_->getNumCouplingRows(); ++i)
@@ -113,7 +124,7 @@ DSP_RTN_CODE DdMasterAdmmLinear::solve()
 	}
 
     /** store average gradients */
-    double primres = 0.0;
+    primres = 0.0;
     for (int j = 0; j < decTssModel->getNumCols(0); j++) {
         double mean_grad = 0.0;
         for (int s = 0; s < model_->getNumSubproblems(); s++) {
@@ -143,7 +154,6 @@ DSP_RTN_CODE DdMasterAdmmLinear::solve()
 	s_primsol = NULL;
 	s_cputimes_.push_back(CoinCpuTime() - cputime);
 	s_walltimes_.push_back(CoinGetTimeOfDay() - walltime);
-    s_primres_.push_back(primres);
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -201,10 +211,14 @@ DSP_RTN_CODE DdMasterAdmmLinear::updateProblem()
 	/** Augmented Lagrangian value */
 
 	double newobj = 0.0;
-    if (isPrimFeas) {
-        for (int s = 0; s < model_->getNumSubproblems(); ++s)
-		    newobj += subdualobj_[s];
-    } else {
+    for (int s = 0; s < model_->getNumSubproblems(); ++s)
+		newobj += subdualobj_[s];
+
+    /** update augmented lagrangian */
+    auglagrange += newobj;
+
+
+    if (!isPrimFeas) {
         newobj = -COIN_DBL_MAX;
     }
 
@@ -263,6 +277,8 @@ DSP_RTN_CODE DdMasterAdmmLinear::updateProblem()
     }
 	s_primobjs_.push_back(bestprimobj_);
 	s_dualobjs_.push_back(newobj);
+    s_auglagrange_.push_back(auglagrange);
+    s_primres_.push_back(primres);
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -282,6 +298,7 @@ void DdMasterAdmmLinear::write(const char * filename)
 	myfile << ",Dual";
 	myfile << ",Cpu";
 	myfile << ",Wall";
+    myfile << ",AugLag";
     myfile << ",PrimRes";
 	myfile << "\n";
 	for (unsigned i = 0; i < s_statuses_.size(); ++i)
@@ -292,6 +309,7 @@ void DdMasterAdmmLinear::write(const char * filename)
 		myfile << "," << scientific << setprecision(5) << s_dualobjs_[i];
 		myfile << "," << fixed << setprecision(2) << s_cputimes_[i];
 		myfile << "," << fixed << setprecision(2) << s_walltimes_[i];
+        myfile << "," << fixed << setprecision(2) << s_auglagrange_[i];
         myfile << "," << fixed << setprecision(2) << s_primres_[i];
 		myfile << "\n";
 	}

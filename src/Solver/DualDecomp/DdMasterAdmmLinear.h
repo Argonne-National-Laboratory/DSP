@@ -62,10 +62,13 @@ private:
 	bool isPrimFeas;			/**< Feasibility of lagrangian multipliers */
     double * prev_gradient_; 	/**< mean subgradient at previous iteration */
 	double * mean_multipliers_; /**< mean lagrangian multipliers */
+	double auglagrange;			/**< augmented lagrangian function value */
+	double primres;				/**< primal residual */
 
 public:
 	/** solver statistics */
-	vector<double>       s_primres_;  /**< history of primal residual values */
+	vector<double>		 s_auglagrange_;	/**< history of augmented lagrange function */
+	vector<double>       s_primres_;  		/**< history of primal residual values */
 
 };
 
