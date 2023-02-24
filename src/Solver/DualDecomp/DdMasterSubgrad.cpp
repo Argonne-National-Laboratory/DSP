@@ -5,11 +5,8 @@
  *      Author: kibaekkim
  */
 
-<<<<<<< Updated upstream
-=======
-#define DSP_DEBUG
+// #define DSP_DEBUG
 
->>>>>>> Stashed changes
 #include "Model/DecTssModel.h"
 #include "Solver/DualDecomp/DdMasterSubgrad.h"
 
@@ -89,9 +86,27 @@ DSP_RTN_CODE DdMasterSubgrad::solve()
 	}
 
 	/** retrieve lambda */
+
+	lambda_.resize(model_->getNumCouplingRows());
+	
+	if (model_->isStochastic() && decTssModel != NULL)
+	{
+		for (int i = 0; i < model_->getNumCouplingCols(); ++i) {
+			for (int j = 0; j < model_->getNumSubproblems(); ++j) {
+				int k = model_->getNumCouplingCols()*j+i;
+				lambda_[k] = primsol_[k] + model_->getCouplingColsObjs()[i] * decTssModel->getProbability()[j];
+			}
+		}
+	} else {
+		CoinCopyN(&primsol_[0], model_->getNumCouplingRows(), &lambda_[0]);
+	}
+
+
 	lambda_ = primsol_;
+#ifdef DSP_DEBUG
 	DSPdebugMessage("lambda_:\n");
 	DspMessage::printArray(model_->getNumCouplingRows(), &(lambda_[0]));
+#endif
 
 	/** update statistics */
 	double * s_primsol = new double [model_->getNumCouplingRows()];
