@@ -5,7 +5,7 @@
  *      Author: hideakiv
  */
 
-#define DSP_DEBUG
+// #define DSP_DEBUG
 
 #include "Model/DecTssModel.h"
 #include "Solver/DualDecomp/DdMasterAdmmLinear.h"
@@ -75,20 +75,30 @@ DSP_RTN_CODE DdMasterAdmmLinear::solve()
 	double walltime = CoinGetTimeOfDay();
 
 	/** get new Lagrangian multipliers */
-	for (int j = 0; j < model_->getNumCouplingRows(); ++j)
+	DecTssModel * decTssModel = dynamic_cast<DecTssModel*>(model_);
+    assert(decTssModel != NULL);
+    /**     take average of current lagrange multipliers */
+    for (int j = 0; j < decTssModel->getNumCols(0); j++) {
+        double mean_multiplier = 0.0;
+        for (int s = 0; s < model_->getNumSubproblems(); s++) {
+            int i = s * decTssModel->getNumCols(0) + j;
+            mean_multiplier += multipliers_[i];
+        }
+        mean_multipliers_[j] = mean_multiplier / model_->getNumSubproblems();
+    }
+
+    /**     update lagrange multipliers */
+	for (int i = 0; i < model_->getNumCouplingRows(); ++i)
 	{
-		multipliers_[j] += stepsize_ * gradient_[j];
-		if (model_->getSenseCouplingRow(j) == 'L') /** <= : nonnegative multipliers */
-			multipliers_[j] = CoinMax((double) 0.0, multipliers_[j]);
-		else if (model_->getSenseCouplingRow(j) == 'G') /** >= : nonpositive multipliers */
-			multipliers_[j] = CoinMin((double) 0.0, multipliers_[j]);
+        int j = i % decTssModel->getNumCols(0);
+		multipliers_[i] += stepsize_ * (gradient_[i] - prev_gradient_[j]) - mean_multipliers_[j];
+		if (model_->getSenseCouplingRow(i) == 'L') /** <= : nonnegative multipliers */
+			multipliers_[i] = CoinMax((double) 0.0, multipliers_[i]);
+		else if (model_->getSenseCouplingRow(i) == 'G') /** >= : nonpositive multipliers */
+			multipliers_[i] = CoinMin((double) 0.0, multipliers_[i]);
 	}
 
 	/** store final multipliers */
-	DecTssModel * decTssModel = dynamic_cast<DecTssModel*>(model_);
-    //
-    assert(model_->isStochastic());
-    //
 	if (model_->isStochastic() && decTssModel != NULL)
 	{
 		/** copy Lagrangian multipliers */
@@ -102,40 +112,26 @@ DSP_RTN_CODE DdMasterAdmmLinear::solve()
 		CoinCopyN(multipliers_, model_->getNumCouplingRows(), &primsol_[0]);
 	}
 
-    assert(decTssModel != NULL);
-    /** take average of lagrange multipliers */
-    for (int j = 0; j < decTssModel->getNumCols(0); j++) {
-        mean_multipliers_[j] = 0.0;
-        for (int s = 0; s < model_->getNumSubproblems(); s++) {
-            int i = s * decTssModel->getNumCols(0) + j;
-            mean_multipliers_[j] += primsol_[i];
-        }
-        mean_multipliers_[j] /= model_->getNumSubproblems();
-	    DSPdebugMessage("-> Mean multipliers %e\n", mean_multipliers_[j]);
-    }
-    for (int j = 0; j < decTssModel->getNumCols(0); j++) {
-        if (mean_multipliers_[j] > 1e-10) {
-            isPrimFeas = false;
-            break;
-        }
-    }
-
-    /** update lagrange multipliers */
-    for (int i = 0; i < model_->getNumCouplingRows(); ++i)
-	{
-        int j = i % decTssModel->getNumCols(0);
-		primsol_[i] -= mean_multipliers_[j] + stepsize_ * prev_gradient_[j];
-	}
-
     /** store average gradients */
+    double primres = 0.0;
     for (int j = 0; j < decTssModel->getNumCols(0); j++) {
-        prev_gradient_[j] = 0.0;
+        double mean_grad = 0.0;
         for (int s = 0; s < model_->getNumSubproblems(); s++) {
             int i = s * decTssModel->getNumCols(0) + j;
-            prev_gradient_[j] += gradient_[i];
+            mean_grad += gradient_[i];
         }
-        prev_gradient_[j] /= model_->getNumSubproblems();
+        mean_grad /= model_->getNumSubproblems();
+        
+        double prim_res_val = stepsize_ * (prev_gradient_[j] - mean_grad);
+	    DSPdebugMessage("-> Updated mean multipliers %e\n", prim_res_val);
+
+        primres += prim_res_val * prim_res_val;
+        prev_gradient_[j] = mean_grad;
     }
+    primres /= decTssModel->getNumCols(0);
+	DSPdebugMessage("-> Primal residual %e\n", primres);
+
+    isPrimFeas = primres < 1e-10;
 
 	/** retrieve lambda */
 	lambda_ = primsol_;
@@ -147,6 +143,7 @@ DSP_RTN_CODE DdMasterAdmmLinear::solve()
 	s_primsol = NULL;
 	s_cputimes_.push_back(CoinCpuTime() - cputime);
 	s_walltimes_.push_back(CoinGetTimeOfDay() - walltime);
+    s_primres_.push_back(primres);
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -259,11 +256,46 @@ DSP_RTN_CODE DdMasterAdmmLinear::updateProblem()
 	DSPdebugMessage("-> step size %e\n", stepsize_);
 
     /** update statistics */
-    s_statuses_.push_back(DSP_STAT_OPTIMAL);
+    if (isPrimFeas){
+        s_statuses_.push_back(DSP_STAT_OPTIMAL);
+    } else {
+        s_statuses_.push_back(DSP_STAT_PRIM_INFEASIBLE);
+    }
 	s_primobjs_.push_back(bestprimobj_);
 	s_dualobjs_.push_back(newobj);
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
 	return DSP_RTN_OK;
+}
+
+/** write output to a file */
+void DdMasterAdmmLinear::write(const char * filename)
+{
+	BGN_TRY_CATCH
+
+	ofstream myfile;
+	myfile.open(filename);
+	myfile << "Iter";
+	myfile << ",Status";
+	myfile << ",Prim";
+	myfile << ",Dual";
+	myfile << ",Cpu";
+	myfile << ",Wall";
+    myfile << ",PrimRes";
+	myfile << "\n";
+	for (unsigned i = 0; i < s_statuses_.size(); ++i)
+	{
+		myfile << i;
+		myfile << "," << s_statuses_[i];
+		myfile << "," << scientific << setprecision(5) << s_primobjs_[i];
+		myfile << "," << scientific << setprecision(5) << s_dualobjs_[i];
+		myfile << "," << fixed << setprecision(2) << s_cputimes_[i];
+		myfile << "," << fixed << setprecision(2) << s_walltimes_[i];
+        myfile << "," << fixed << setprecision(2) << s_primres_[i];
+		myfile << "\n";
+	}
+	myfile.close();
+
+	END_TRY_CATCH(;)
 }

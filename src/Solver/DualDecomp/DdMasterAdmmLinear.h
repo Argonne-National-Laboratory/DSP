@@ -43,6 +43,9 @@ public:
 	/** get number of lambdas */
 	virtual int getNumLambdas() {return model_->getNumCouplingRows();}
 
+	/** write output to a file */
+	virtual void write(const char * filename);
+
 protected:
 
 	/** create problem */
@@ -59,6 +62,11 @@ private:
 	bool isPrimFeas;			/**< Feasibility of lagrangian multipliers */
     double * prev_gradient_; 	/**< mean subgradient at previous iteration */
 	double * mean_multipliers_; /**< mean lagrangian multipliers */
+
+public:
+	/** solver statistics */
+	vector<double>       s_primres_;  /**< history of primal residual values */
+
 };
 
 #endif /* SRC_SOLVER_DUALDECOMP_DDMASTERADMMLINEAR_H_ */
