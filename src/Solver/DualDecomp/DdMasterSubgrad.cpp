@@ -101,8 +101,6 @@ DSP_RTN_CODE DdMasterSubgrad::solve()
 		CoinCopyN(&primsol_[0], model_->getNumCouplingRows(), &lambda_[0]);
 	}
 
-
-	lambda_ = primsol_;
 #ifdef DSP_DEBUG
 	DSPdebugMessage("lambda_:\n");
 	DspMessage::printArray(model_->getNumCouplingRows(), &(lambda_[0]));
