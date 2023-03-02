@@ -145,7 +145,21 @@ DSP_RTN_CODE DdMasterAdmmLinear::solve()
     isPrimFeas = primres < 1e-10;
 
 	/** retrieve lambda */
-	lambda_ = primsol_;
+	lambda_.resize(model_->getNumCouplingRows());
+	
+	if (model_->isStochastic() && decTssModel != NULL)
+	{
+		for (int i = 0; i < model_->getNumCouplingCols(); ++i) {
+			for (int j = 0; j < model_->getNumSubproblems(); ++j) {
+				int k = model_->getNumCouplingCols()*j+i;
+				lambda_[k] = primsol_[k] + model_->getCouplingColsObjs()[i] * decTssModel->getProbability()[j];
+			}
+		}
+	} else {
+        /* TODO: handle non-stochastic cases */
+        assert(false);
+		CoinCopyN(&primsol_[0], model_->getNumCouplingRows(), &lambda_[0]);
+	}
 
 	/** update statistics */
 	double * s_primsol = new double [model_->getNumCouplingRows()];
