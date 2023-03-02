@@ -132,6 +132,10 @@ DSP_RTN_CODE DdWorkerUB::createProblem() {
 		for (int j = 0; j < mat_reco->getNumCols(); ++j)
 		{
 			obj_reco[j] *= tss->getProbability()[sind];
+		}
+
+		for (int j = 0; j < mat_reco->getNumCols(); ++j)
+		{
 			if (ctype_reco[j] != 'C')
 			{
 				has_integer = true;
