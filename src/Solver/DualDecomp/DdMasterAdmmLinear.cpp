@@ -25,7 +25,8 @@ isPrimFeas(true),
 prev_gradient_(NULL),
 mean_multipliers_(NULL),
 auglagrange(0.0),
-primres(0.0) {}
+primres(0.0),
+dualres(1.0) {}
 
 DdMasterAdmmLinear::DdMasterAdmmLinear(const DdMasterAdmmLinear& rhs) :
 DdMaster(rhs),
@@ -35,7 +36,8 @@ stepscal_(rhs.stepscal_),
 stepsize_(rhs.stepsize_),
 isPrimFeas(rhs.isPrimFeas),
 auglagrange(rhs.auglagrange),
-primres(rhs.primres) {
+primres(rhs.primres),
+dualres(rhs.dualres) {
 	gradient_         = new double [model_->getNumCouplingRows()];
 	multipliers_      = new double [model_->getNumCouplingRows()];
     DecTssModel * decTssModel = dynamic_cast<DecTssModel*>(model_);
@@ -125,6 +127,7 @@ DSP_RTN_CODE DdMasterAdmmLinear::solve()
 
     /** store average gradients */
     primres = 0.0;
+    dualres = 0.0;
     for (int j = 0; j < decTssModel->getNumCols(0); j++) {
         double mean_grad = 0.0;
         for (int s = 0; s < model_->getNumSubproblems(); s++) {
@@ -136,10 +139,17 @@ DSP_RTN_CODE DdMasterAdmmLinear::solve()
         double prim_res_val = stepsize_ * (prev_gradient_[j] - mean_grad);
 	    DSPdebugMessage("-> Updated mean multipliers %e\n", prim_res_val);
 
+        for (int s = 0; s < model_->getNumSubproblems(); s++) {
+            int i = s * decTssModel->getNumCols(0) + j;
+            double dual_res_val = (gradient_[i] - prev_gradient_[j]);
+            dualres += dual_res_val * dual_res_val;
+        }
+
         primres += prim_res_val * prim_res_val;
         prev_gradient_[j] = mean_grad;
     }
     primres /= decTssModel->getNumCols(0);
+    dualres /= model_->getNumCouplingRows();
 	DSPdebugMessage("-> Primal residual %e\n", primres);
 
     isPrimFeas = primres < 1e-10;
@@ -293,6 +303,7 @@ DSP_RTN_CODE DdMasterAdmmLinear::updateProblem()
 	s_dualobjs_.push_back(newobj);
     s_auglagrange_.push_back(auglagrange);
     s_primres_.push_back(primres);
+    s_dualres_.push_back(dualres);
 
 	END_TRY_CATCH_RTN(;,DSP_RTN_ERR)
 
@@ -314,6 +325,7 @@ void DdMasterAdmmLinear::write(const char * filename)
 	myfile << ",Wall";
     myfile << ",AugLag";
     myfile << ",PrimRes";
+    myfile << ",DualRes";
 	myfile << "\n";
 	for (unsigned i = 0; i < s_statuses_.size(); ++i)
 	{
@@ -324,7 +336,8 @@ void DdMasterAdmmLinear::write(const char * filename)
 		myfile << "," << fixed << setprecision(2) << s_cputimes_[i];
 		myfile << "," << fixed << setprecision(2) << s_walltimes_[i];
         myfile << "," << fixed << setprecision(2) << s_auglagrange_[i];
-        myfile << "," << fixed << setprecision(2) << s_primres_[i];
+        myfile << "," << fixed << setprecision(8) << s_primres_[i];
+        myfile << "," << fixed << setprecision(8) << s_dualres_[i];
 		myfile << "\n";
 	}
 	myfile.close();

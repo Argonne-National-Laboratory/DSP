@@ -64,12 +64,13 @@ private:
 	double * mean_multipliers_; /**< mean lagrangian multipliers */
 	double auglagrange;			/**< augmented lagrangian function value */
 	double primres;				/**< primal residual */
+	double dualres;				/**< dual residual */
 
 public:
 	/** solver statistics */
 	vector<double>		 s_auglagrange_;	/**< history of augmented lagrange function */
 	vector<double>       s_primres_;  		/**< history of primal residual values */
-
+	vector<double>		 s_dualres_;		/**< history of dual residual values*/
 };
 
 #endif /* SRC_SOLVER_DUALDECOMP_DDMASTERADMMLINEAR_H_ */
