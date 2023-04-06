@@ -15,6 +15,7 @@
 // #endif
 #include "Solver/DualDecomp/DdMasterSubgrad.h"
 #include "Solver/DualDecomp/DdMasterAdmmLinear.h"
+#include "Solver/DualDecomp/DdMasterAdmmLinearProximal.h"
 
 DdMWSerial::DdMWSerial(
 		DecModel *   model,  /**< model pointer */
@@ -56,6 +57,9 @@ DSP_RTN_CODE DdMWSerial::init() {
 		break;
 	case AdmmLinear:
 		master_ = new DdMasterAdmmLinear(model_, par_, message_);
+		break;
+	case AdmmLinearProximal:
+		master_ = new DdMasterAdmmLinearProximal(model_, par_, message_);
 		break;
 	}
 	DSPdebugMessage("Created master\n");

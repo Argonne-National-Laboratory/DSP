@@ -23,13 +23,15 @@ enum DSP_DD_MASTER_ALGO
 	IPM_Feasible,
 	DSBM, /**< doubly stabilized bundle method */
 	Subgradient,
-	AdmmLinear
+	AdmmLinear,
+	AdmmLinearProximal
 };
 
 enum DSP_DD_MASTER_STEP_RULE
 {
 	Polyak = 0,
-	SSNS /**< square summable but not summable */
+	SSNS, /**< square summable but not summable */
+	invSqrt /**< inverse sqrt */
 };
 
 enum DSP_BD_INIT_LB_ALGO

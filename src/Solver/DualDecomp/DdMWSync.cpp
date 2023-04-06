@@ -14,6 +14,7 @@
 // #endif
 #include "Solver/DualDecomp/DdMasterSubgrad.h"
 #include "Solver/DualDecomp/DdMasterAdmmLinear.h"
+#include "Solver/DualDecomp/DdMasterAdmmLinearProximal.h"
 
 DdMWSync::DdMWSync(
 		MPI_Comm     comm,   /**< MPI communicator */
@@ -58,6 +59,9 @@ DSP_RTN_CODE DdMWSync::init()
 			break;
 		case AdmmLinear:
 			master_ = new DdMasterAdmmLinear(model_, par_, message_);
+			break;
+		case AdmmLinearProximal:
+			master_ = new DdMasterAdmmLinearProximal(model_, par_, message_);
 			break;
 		}
 		/** initialize master */
