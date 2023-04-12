@@ -132,14 +132,16 @@ DSP_RTN_CODE DdMasterAdmmLinearProximal::solve()
     primres = 0.0;
     dualres = 0.0;
     for (int j = 0; j < decTssModel->getNumCols(0); j++) {
+		double prim_res_val = 0.0;
 
         for (int s = 0; s < model_->getNumSubproblems(); s++) {
             int i = s * decTssModel->getNumCols(0) + j;
             double dual_res_val = rho_ * mean_multipliers_[j] - (gradient_[i] - sum_mean_[j] - rho_ * mean_multipliers_[j]) / (rho_*stepsize_ + 1.0);
             dualres += dual_res_val * dual_res_val;
+			prim_res_val += multipliers_[i];
         }
 
-        primres += mean_multipliers_[j] * mean_multipliers_[j];
+        primres += prim_res_val * prim_res_val;
     }
     primres /= decTssModel->getNumCols(0);
     dualres /= model_->getNumCouplingRows();
