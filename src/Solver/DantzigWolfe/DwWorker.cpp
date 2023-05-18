@@ -273,11 +273,43 @@ DSP_RTN_CODE DwWorker::generateCols(
 
 			if (status == DSP_STAT_DUAL_INFEASIBLE) {
 				/** retrieve ray if unbounded */
-				std::vector<double*> rays = osi_[s]->si_->getPrimalRays(1);
+				std::vector<double*> rays;
+
+				switch(par_->getIntParam("DW/SUB/SOLVER")) {
+				case OsiCpx:
+#ifdef DSP_HAS_CPX
+					rays = osi_[s]->si_->getPrimalRays(1);
+#else
+					throw CoinError("Cplex is not available.", "DwWorker", "DwWorker.cpp");
+#endif
+					break;
+				case OsiGrb:
+#ifdef DSP_HAS_GRB
+					// rays = osi_[s]->si_->getPrimalRays(1);
+					throw CoinError("getPrimalRays not implemented in Gurobi.", "DwWorker", "DwWorker.cpp");
+#else
+					throw CoinError("Gurobi is not available.", "DwWorker", "DwWorker.cpp");
+#endif
+					break;
+				case OsiScip:
+#ifdef DSP_HAS_SCIP
+					// rays = osi_[s]->si_->getPrimalRays(1);
+					throw CoinError("getPrimalRays not implemented in Scip.", "DwWorker", "DwWorker.cpp");
+#else
+					throw CoinError("Scip is not available.", "DwWorker", "DwWorker.cpp");
+#endif
+					break;
+				default:
+					throw CoinError("Invalid paramter value", "DwWorker", "DwWorker.cpp");
+					break;
+				}
+
 				if (rays.size() == 0 || rays[0] == NULL)
 					throw CoinError("No primal ray is available.", "generateCols", "DwWorker");
 				double* ray = rays[0];
 				rays[0] = NULL;
+				DSPdebugMessage("unbounded ray\n");
+				DSPdebug(DspMessage::printArray(osi_[s]->si_->getNumCols(), ray));
 
 				/** subproblem objective value */
 				cx = 0.0;
