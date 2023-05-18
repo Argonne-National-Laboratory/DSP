@@ -54,7 +54,22 @@ public:
     /** default destructor */
     virtual ~DwMaster();
 
-    /** initialize */
+    /**
+     * @brief This creates the master problem for stochastic structure and general structure.
+     * 
+     * This function creates the master problem data structure and calls createProblem() to create and initialize
+     * the master problem object.
+     * 
+     * For stochastic program, the problem data is obtained from the full model (i.e., the deterministic equivalent problem).
+     * The dimension of the constraint matrix is S * (n_1 + n_2), where S is the number of scenarios, n_1
+     * is the number of first-stage variables, and n_2 is the number of second-stage variables.
+     * The constraint matrix consists of the non-anticipativity constraints of the form: 
+     * x_1 - x_2 = 0, x_2 - x_3 = 0, and x_3 - x_1 = 0.
+     * 
+     * For a general structure, this function stores the master block data, which can be obtained as the
+     * master problem ofthe Benders decomposition without the axiliary variable of representing the reoucrse 
+     * function. This calls createProblem() to create and initialize the master problem.
+    */
     virtual DSP_RTN_CODE init();
 
     /** solve */
@@ -95,7 +110,14 @@ protected:
     /** solve phase 2 */
     virtual DSP_RTN_CODE solvePhase2();
 
-    /** guts of solve */
+    /**
+     * @brief This implements the core of the DW method.
+     * 
+     * This repeats a sequence of function calls: solveMaster(), reduceCols(), restoreCols(),
+     * generateCols(), generateColsByFix(), and updateModel().
+     * 
+     * @return DSP_RTN_CODE 
+     */
     virtual DSP_RTN_CODE gutsOfSolve();
 
     /** solver master */

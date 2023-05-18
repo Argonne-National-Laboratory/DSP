@@ -208,8 +208,10 @@ void DwBundleDual::initDualSolver(
 	/** load problem data */
 	if (rlbd.size() == 0)
 		getSiPtr()->loadProblem(m, &clbd[0], &cubd[0], &obj[0], NULL, NULL);
-	else
+	else {
+		// TODO: When do we need rlbd and rubd?
 		getSiPtr()->loadProblem(m, &clbd[0], &cubd[0], &obj[0], &rlbd[0], &rubd[0]);
+	}
 
 	END_TRY_CATCH(;)
 }
@@ -568,11 +570,15 @@ bool DwBundleDual::terminationTest() {
 		return true;
 	}
 
-	if (primobj_ < 1.0e+20 && getRelApproxGap() <= par_->getDblParam("DW/GAPTOL"))
+	if (primobj_ < 1.0e+20 && getRelApproxGap() <= par_->getDblParam("DW/GAPTOL")) {
+		message_->print(3, "Terminated due to primobj (%e) < 1e+20 and relative gap (%e) <= tolerance (%e)\n", primobj_, getRelApproxGap(), par_->getDblParam("DW/GAPTOL"));
 		return true;
+	}
 
-	if (primobj_ < 1.0e+20 && v_ >= -par_->getDblParam("DW/MIN_INCREASE"))
+	if (primobj_ < 1.0e+20 && v_ >= -par_->getDblParam("DW/MIN_INCREASE")) {
+		message_->print(3, "Terminated due to primobj (%e) < 1e+20 and predicted increase (%e) <= minimum increase (%e)\n", primobj_, v_, par_->getDblParam("DW/MIN_INCREASE"));
 		return true;
+	}
 
 	if (iterlim_ <= itercnt_) {
 		message_->print(3, "Warning: Iteration limit reached.\n");
