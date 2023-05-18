@@ -148,16 +148,16 @@ int main(int argc, char **argv)
         ))dlsym(handle, "loadBlockProblem"))(
             env,
             block + 1,
-            0,
+            nvars,
             ncons1,
             start1[ncons1],
             start1,
             index_,
             value_,
-            NULL,
-            NULL,
-            NULL,
-            NULL,
+            clbd0,
+            cubd0,
+            ctype0,
+            obj0,
             rlbd1,
             rubd1
         );
