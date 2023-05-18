@@ -794,7 +794,7 @@ DSP_RTN_CODE DwMaster::generateCols() {
 			break;
 		}
 
-	if (!isInfeasible) {
+	if (true) {
 		/** calculate lower bound */
 		if (phase_ == 2) {
 			DSP_RTN_CHECK_RTN_CODE(getLagrangianBound(subobjs));

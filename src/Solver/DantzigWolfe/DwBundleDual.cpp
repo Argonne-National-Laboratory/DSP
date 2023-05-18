@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+// #define DSP_DEBUG
 
 #include "SolverInterface/DspOsiScip.h"
 #include "SolverInterface/DspOsiCpx.h"
@@ -164,8 +164,8 @@ DSP_RTN_CODE DwBundleDual::createPrimalProblem() {
 	/** row bounds */
 	std::vector<double> rlbd(nrows_);
 	std::vector<double> rubd(nrows_);
-	std::fill(rlbd.begin(), rlbd.begin() + nrows_conv_, 1.0);
-	std::fill(rubd.begin(), rubd.begin() + nrows_conv_, 1.0);
+	std::fill(rlbd.begin(), rlbd.begin() + nrows_conv_, 0.0);
+	std::fill(rubd.begin(), rubd.begin() + nrows_conv_, 0.0);
 	std::copy(rlbd_orig_.begin(), rlbd_orig_.begin() + nrows_orig_, rlbd.begin() + nrows_conv_);
 	std::copy(rubd_orig_.begin(), rubd_orig_.begin() + nrows_orig_, rubd.begin() + nrows_conv_);
 
@@ -237,9 +237,14 @@ DSP_RTN_CODE DwBundleDual::createDualProblem() {
 	mat.reset(new CoinPackedMatrix(false, 0, 0));
 	mat->setDimensions(0, nrows_);
 
-	std::fill(clbd.begin(), clbd.begin() + nrows_conv_, -COIN_DBL_MAX);
-	std::fill(cubd.begin(), cubd.begin() + nrows_conv_, +COIN_DBL_MAX);
+	// std::fill(clbd.begin(), clbd.begin() + nrows_conv_, -COIN_DBL_MAX);
+	// std::fill(cubd.begin(), cubd.begin() + nrows_conv_, +COIN_DBL_MAX);
+	// std::fill(obj.begin(), obj.begin() + nrows_conv_, 0.0);
+
+	std::fill(clbd.begin(), clbd.begin() + nrows_conv_, 0.0);
+	std::fill(cubd.begin(), cubd.begin() + nrows_conv_, 0.0);
 	std::fill(obj.begin(), obj.begin() + nrows_conv_, -1.0);
+
 	for (int i = 0; i < nrows_orig_; ++i) {
 		clbd[nrows_conv_+i] = 0.0;
 		cubd[nrows_conv_+i] = 0.0;
@@ -660,8 +665,26 @@ DSP_RTN_CODE DwBundleDual::addRows(
 		cutvec.clear();
 
 		/** original constraints */
-		if (statuses[s] != DSP_STAT_DUAL_INFEASIBLE)
+		if (statuses[s] != DSP_STAT_DUAL_INFEASIBLE) {
 			cutvec.insert(sind, 1.0);
+			DSPdebugMessage("obj coefficient s: %d, sind: %d, coeff: %f\n", s, sind, osi_->si_->getObjCoefficients()[sind]);
+			// if (osi_->si_->getObjCoefficients()[sind] == 0.0) {
+			// 	osi_->si_->setObjCoeff(sind, -1.0);
+			// 	// sind or s ???
+			// 	DSPdebugMessage("updated obj coefficient s: %d, sind: %d, coeff: %f\n", s, sind, osi_->si_->getObjCoefficients()[sind]);
+			// }
+			if (osi_->si_->getColLower()[sind] == 0.0 && osi_->si_->getColUpper()[sind] == 0.0) {
+				DSPdebugMessage("changing primal row bounds\n");
+				osi_->si_->setColLower(sind, -COIN_DBL_MAX);
+				osi_->si_->setColUpper(sind,  COIN_DBL_MAX);
+			}
+			if (primal_si_->si_->getRowLower()[sind] == 0.0 && primal_si_->si_->getRowUpper()[sind] == 0.0) {
+				DSPdebugMessage("changing primal row bounds\n");
+				primal_si_->si_->setRowLower(sind, 1.0);
+				primal_si_->si_->setRowUpper(sind, 1.0);
+			}
+		}
+
 		for (int i = 0; i < nrows_orig_; ++i) {
 			cutcoef = Ax[i];
 			assert(fabs(cutcoef) < 1e+20);
