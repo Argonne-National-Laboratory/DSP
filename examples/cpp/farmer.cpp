@@ -148,16 +148,16 @@ int main(int argc, char **argv)
         ))dlsym(handle, "loadBlockProblem"))(
             env,
             block + 1,
-            0,
+            nvars,
             ncons1,
             start1[ncons1],
             start1,
             index_,
             value_,
-            NULL,
-            NULL,
-            NULL,
-            NULL,
+            clbd0,
+            cubd0,
+            ctype0,
+            obj0,
             rlbd1,
             rubd1
         );
@@ -167,10 +167,10 @@ int main(int argc, char **argv)
     ((void (*)(void*))dlsym(handle, "updateBlocks"))(env);
 
     // Solve the deterministic equivalent problem
-    ((void (*)(void*))dlsym(handle, "solveDe"))(env);
+    // ((void (*)(void*))dlsym(handle, "solveDe"))(env);
 
     // FIXME: This causes segfault, probably due to incorrectly addressing unbounded subproblem solution.
-    // ((void (*)(void*))dlsym(handle, "solveDw"))(env);
+    ((void (*)(void*))dlsym(handle, "solveDw"))(env);
 
     double primal_bound = ((double (*)(void*))dlsym(handle, "getPrimalBound"))(env);
     printf("Primal bound = %e\n", primal_bound);
