@@ -63,10 +63,10 @@ int main(int argc, char **argv)
     int ncons0 = 7;
     int ncons1 = 4;
     double obj[] = {150/3, 230/3, 260/3, 238/3, 210/3, -170/3, -150/3, -36/3, -10/3};
-    double rlbd0[] = {0, 0, 0, 0, 0, 0, -1e+20};
+    double rlbd0[] = {0, 0, 0, 0, 0, 0, -1e+21};
     double rubd0[] = {0, 0, 0, 0, 0, 0, 500};
-    double rlbd1[] = {200, 240, 0, -1e+20};
-    double rubd1[] = {1e+20, 1e+20, 1e+20, 6000};
+    double rlbd1[] = {200, 240, 0, -1e+21};
+    double rubd1[] = {1e+21, 1e+21, 1e+21, 6000};
     int start0[] = {0, 2, 4, 6, 8, 10, 12, 15};
     int index0[] = {0, 9, 1, 10, 2, 11, 9, 18, 10, 19, 11, 20, 0, 1, 2};
     double value0[] = {1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 1, 1, 1};
@@ -83,7 +83,7 @@ int main(int argc, char **argv)
     for (int j = 0; j < nvars; ++j) {
         obj0[j] = obj[j % 9];
         clbd0[j] = 0.0;
-        cubd0[j] = 1e+20;
+        cubd0[j] = 1e+21;
         ctype0[j] = j % 9 < 3 ? 'I' : 'C';
     }
 

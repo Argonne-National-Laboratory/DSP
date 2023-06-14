@@ -331,7 +331,7 @@ DSP_RTN_CODE DwWorker::generateCols(
 					
 				cx = 0.0;
 				for (int j = 0; j < osi_[s]->si_->getNumCols(); ++j){
-					DSPdebugMessage("x[%d]: %e\n", j, x[j]);
+					// DSPdebugMessage("x[%d]: %e\n", j, x[j]);
 					cx += sub_objs_[s][j] * x[j];
 				}
 				DSPdebugMessage("Subprob %d: objval %e, cx %e\n", sind, objval, cx);

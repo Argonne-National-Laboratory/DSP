@@ -665,7 +665,7 @@ DSP_RTN_CODE DwBundleDual::addRows(
 		cutvec.clear();
 
 		/** original constraints */
-		if (statuses[s] != DSP_STAT_DUAL_INFEASIBLE) {
+		if (statuses[s] != DSP_STAT_DUAL_INFEASIBLE && dualsol_[sind] > objs[s] + 1.0e-8) {
 			cutvec.insert(sind, 1.0);
 			DSPdebugMessage("obj coefficient s: %d, sind: %d, coeff: %f\n", s, sind, osi_->si_->getObjCoefficients()[sind]);
 			// if (osi_->si_->getObjCoefficients()[sind] == 0.0) {
@@ -674,7 +674,7 @@ DSP_RTN_CODE DwBundleDual::addRows(
 			// 	DSPdebugMessage("updated obj coefficient s: %d, sind: %d, coeff: %f\n", s, sind, osi_->si_->getObjCoefficients()[sind]);
 			// }
 			if (osi_->si_->getColLower()[sind] == 0.0 && osi_->si_->getColUpper()[sind] == 0.0) {
-				DSPdebugMessage("changing primal row bounds\n");
+				DSPdebugMessage("changing dual column bounds\n");
 				osi_->si_->setColLower(sind, -COIN_DBL_MAX);
 				osi_->si_->setColUpper(sind,  COIN_DBL_MAX);
 			}
