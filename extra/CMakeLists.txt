@@ -33,6 +33,8 @@ if(MA27LIB)
 		SOURCE_DIR ${OOQP_DIR}
 		CONFIGURE_COMMAND ${OOQP_DIR}/configure
 			--prefix=${DEPEND_DIR}
+			CC=${CMAKE_C_COMPILER}
+			CXX=${CMAKE_CXX_COMPILER}
 			CXXFLAGS=${EXTRA_CXX_FLAGS}
 			FFLAGS=-fPIC
 			${OOQP_HSL_LIB}
@@ -55,6 +57,8 @@ ExternalProject_Add(CoinUtils
 		--prefix=${DEPEND_DIR}
 		--enable-static 
 		--disable-shared
+		CC=${CMAKE_C_COMPILER}
+		CXX=${CMAKE_CXX_COMPILER}
 		ADD_CXXFLAGS=${EXTRA_CXX_FLAGS}
 	BUILD_COMMAND make -j1
 	INSTALL_COMMAND make -j1 install)
@@ -97,6 +101,8 @@ ExternalProject_Add(Osi
 		${WITH_GUROBI_LIB}
 		${WITH_GUROBI_INCDIR}
 		--disable-cplex-libcheck
+		CC=${CMAKE_C_COMPILER}
+		CXX=${CMAKE_CXX_COMPILER}
 		ADD_CXXFLAGS=${EXTRA_CXX_FLAGS}
 	BUILD_COMMAND make -j1
 	INSTALL_COMMAND make -j1 install)
@@ -124,6 +130,8 @@ ExternalProject_Add(Clp
 		--with-coinutils-incdir=${COIN_INC_DIR}
 		--with-osi-lib=${OSI_LIB}
 		--with-osi-incdir=${COIN_INC_DIR}
+		CC=${CMAKE_C_COMPILER}
+		CXX=${CMAKE_CXX_COMPILER}
 		ADD_CXXFLAGS=${EXTRA_CXX_FLAGS}
 	BUILD_COMMAND make -j1
 	INSTALL_COMMAND make -j1 install)
@@ -143,6 +151,8 @@ ExternalProject_Add(Smi
 		--with-coinutils-incdir=${COIN_INC_DIR}
 		--with-osi-lib=${OSI_LIB}
 		--with-osi-incdir=${COIN_INC_DIR}
+		CC=${CMAKE_C_COMPILER}
+		CXX=${CMAKE_CXX_COMPILER}
 		CXXFLAGS=${EXTRA_CXX_FLAGS}
 	BUILD_COMMAND make -j1
 	INSTALL_COMMAND make -j1 install)
@@ -162,6 +172,8 @@ ExternalProject_Add(Alps
 		--with-coinutils-incdir=${COIN_INC_DIR}
 		--with-osi-lib=${OSI_LIB}
 		--with-osi-incdir=${COIN_INC_DIR}
+		CC=${CMAKE_C_COMPILER}
+		CXX=${CMAKE_CXX_COMPILER}
 		CXXFLAGS=${EXTRA_CXX_FLAGS}
 	BUILD_COMMAND make -j1
 	INSTALL_COMMAND make -j1 install)
