@@ -794,7 +794,7 @@ DSP_RTN_CODE DwMaster::generateCols() {
 			break;
 		}
 
-	if (true) {
+	if (!isInfeasible) {
 		/** calculate lower bound */
 		if (phase_ == 2) {
 			DSP_RTN_CHECK_RTN_CODE(getLagrangianBound(subobjs));
@@ -810,41 +810,42 @@ DSP_RTN_CODE DwMaster::generateCols() {
 		recent_subsols_.reserve(subsols.size());
 		for (unsigned i = 0; i < subsols.size(); ++i)
 			recent_subsols_.push_back(subsols[i]);
+	} else {
+		dualobj_ = -COIN_DBL_MAX;
+	}
 
-		/** create and add columns */
-		DSP_RTN_CHECK_RTN_CODE(
-				addCols(subinds, status_subs_, subcxs, subobjs, subsols));
+	/** create and add columns */
+	DSP_RTN_CHECK_RTN_CODE(
+			addCols(subinds, status_subs_, subcxs, subobjs, subsols));
 
-		if (model_->isStochastic() && 
-			par_->getIntParam("DW/MAX_EVAL_UB") > 0 &&
-			par_->getIntParam("DW/EVAL_UB") >= 0) {
-			/** maximum number of solutions to evaluate */
-			int max_stores = par_->getIntParam("DW/MAX_EVAL_UB");
+	if (model_->isStochastic() && 
+		!isInfeasible &&
+		par_->getIntParam("DW/MAX_EVAL_UB") > 0 &&
+		par_->getIntParam("DW/EVAL_UB") >= 0) {
+		/** maximum number of solutions to evaluate */
+		int max_stores = par_->getIntParam("DW/MAX_EVAL_UB");
 
-			/** store solutions to distribute */
-			TssModel* tss = dynamic_cast<TssModel*>(model_);
-			for (unsigned i = 0; i < subsols.size(); ++i) {
-				if (max_stores == 0) break;
-				/** assign first-stage solution value */
-				CoinPackedVector* first_stage_solution = new CoinPackedVector;
-				first_stage_solution->reserve(tss->getNumCols(0));
-				for (int j = 0; j < subsols[i]->getNumElements(); ++j) {
-					if (subsols[i]->getIndices()[j] >= tss->getNumScenarios() * tss->getNumCols(0))
-						break;
-					first_stage_solution->insert(subsols[i]->getIndices()[j] % tss->getNumCols(0), subsols[i]->getElements()[j]);
-					// printf("i %d first_stage_solution[%d] = %e\n", i, subsols[i]->getIndices()[j] % tss->getNumCols(0), subsols[i]->getElements()[j]);
-				}
-				/** store it if not duplicated */
-				if (!duplicateVector(first_stage_solution, stored_solutions_)) {
-					stored_solutions_.push_back(first_stage_solution);
-					/** count */
-					max_stores--;
-				}
+		/** store solutions to distribute */
+		TssModel* tss = dynamic_cast<TssModel*>(model_);
+		for (unsigned i = 0; i < subsols.size(); ++i) {
+			if (max_stores == 0) break;
+			/** assign first-stage solution value */
+			CoinPackedVector* first_stage_solution = new CoinPackedVector;
+			first_stage_solution->reserve(tss->getNumCols(0));
+			for (int j = 0; j < subsols[i]->getNumElements(); ++j) {
+				if (subsols[i]->getIndices()[j] >= tss->getNumScenarios() * tss->getNumCols(0))
+					break;
+				first_stage_solution->insert(subsols[i]->getIndices()[j] % tss->getNumCols(0), subsols[i]->getElements()[j]);
+				// printf("i %d first_stage_solution[%d] = %e\n", i, subsols[i]->getIndices()[j] % tss->getNumCols(0), subsols[i]->getElements()[j]);
+			}
+			/** store it if not duplicated */
+			if (!duplicateVector(first_stage_solution, stored_solutions_)) {
+				stored_solutions_.push_back(first_stage_solution);
+				/** count */
+				max_stores--;
 			}
 		}
-
-	} else
-		ngenerated_ = 0;
+	}
 
 	/** free memory for subproblem solutions */
 	for (unsigned i = 0; i < subsols.size(); ++i)
