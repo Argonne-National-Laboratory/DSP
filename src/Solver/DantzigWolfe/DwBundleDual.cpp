@@ -680,8 +680,7 @@ DSP_RTN_CODE DwBundleDual::addRows(
 			}
 			if (primal_si_->si_->getRowLower()[sind] == 0.0 && primal_si_->si_->getRowUpper()[sind] == 0.0) {
 				DSPdebugMessage("changing primal row bounds\n");
-				primal_si_->si_->setRowLower(sind, 1.0);
-				primal_si_->si_->setRowUpper(sind, 1.0);
+				primal_si_->si_->setRowBounds(sind, 1.0, 1.0);
 			}
 		}
 

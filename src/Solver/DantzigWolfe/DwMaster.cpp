@@ -811,7 +811,7 @@ DSP_RTN_CODE DwMaster::generateCols() {
 		for (unsigned i = 0; i < subsols.size(); ++i)
 			recent_subsols_.push_back(subsols[i]);
 	} else {
-		dualobj_ = -COIN_DBL_MAX;
+		dualobj_ = COIN_DBL_MAX;// positive or negative?
 	}
 
 	/** create and add columns */
