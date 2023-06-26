@@ -31,6 +31,7 @@ if(CPLEXLIB)
     add_test(NAME cpx_dw_farmer COMMAND $ENV{PWD}/src/runDsp --algo dw --smps ${CMAKE_SOURCE_DIR}/examples/smps/farmer --param ${CMAKE_SOURCE_DIR}/test/params_cpx.txt --test -108389.9994043)
     # add_test(NAME cpx_de_noswot COMMAND $ENV{PWD}/src/runDsp --algo de --mps ${CMAKE_SOURCE_DIR}/examples/mps-dec/noswot.mps --dec ${CMAKE_SOURCE_DIR}/examples/mps-dec/noswot.dec --param ${CMAKE_SOURCE_DIR}/test/params_cpx.txt --test -42)
     # add_test(NAME cpx_dw_noswot COMMAND $ENV{PWD}/src/runDsp --algo dw --mps ${CMAKE_SOURCE_DIR}/examples/mps-dec/noswot.mps --dec ${CMAKE_SOURCE_DIR}/examples/mps-dec/noswot.dec --param ${CMAKE_SOURCE_DIR}/test/params_cpx.txt --test -42)
+    add_test(NAME cpx_dw_cpp_farmer COMMAND $ENV{PWD}/src/runDsp --algo de --mps ${CMAKE_SOURCE_DIR}/examples/mps-dec/farmer.mps --dec ${CMAKE_SOURCE_DIR}/examples/mps-dec/farmer.dec --param ${CMAKE_SOURCE_DIR}/test/params_cpx.txt --test -108389.9994043)
 endif(CPLEXLIB)
 
 if(GUROBILIB)
