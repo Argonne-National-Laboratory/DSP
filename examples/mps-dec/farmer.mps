@@ -60,16 +60,16 @@ RHS
     RHS1      cons12     240            cons21     200       
     RHS1      cons22     240  
 BOUNDS
- UP BOUND     x00        1e+30
- UP BOUND     x01        1e+30
- UP BOUND     x02        1e+30
+ UI BOUND     x00        1e+30
+ UI BOUND     x01        1e+30
+ UI BOUND     x02        1e+30
  UP BOUND     x07        6000       
- UP BOUND     x10        1e+30
- UP BOUND     x11        1e+30
- UP BOUND     x12        1e+30
+ UI BOUND     x10        1e+30
+ UI BOUND     x11        1e+30
+ UI BOUND     x12        1e+30
  UP BOUND     x17        6000       
- UP BOUND     x20        1e+30
- UP BOUND     x21        1e+30
- UP BOUND     x22        1e+30
+ UI BOUND     x20        1e+30
+ UI BOUND     x21        1e+30
+ UI BOUND     x22        1e+30
  UP BOUND     x27        6000       
 ENDATA
