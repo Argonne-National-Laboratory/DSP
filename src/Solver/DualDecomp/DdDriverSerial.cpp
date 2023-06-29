@@ -50,7 +50,6 @@ DSP_RTN_CODE DdDriverSerial::run()
 
 	/** run */
 	DSP_RTN_CHECK_THROW(mw_->run());
-
 	/** toc */
 	cputime_  = CoinCpuTime() - cputime_;
 	walltime_ = CoinGetTimeOfDay() - walltime_;
@@ -70,7 +69,11 @@ DSP_RTN_CODE DdDriverSerial::run()
 		CoinCopyN(master->getBestDualSolution(), model_->getNumCouplingRows(), &dualsol_[0]);
 		bestprimsol_ = primsol_;
 		bestdualsol_ = dualsol_;
-		numNodes_ = master->getDspOsiPtr()->getNumNodes();
+		if (master->getDspOsiPtr()) {
+			numNodes_ = master->getDspOsiPtr()->getNumNodes();
+		} else {
+			numNodes_ = 0;
+		}
 		numIterations_ = mw_->getIterationCount();
 	}
 	/** nullify master pointer */
