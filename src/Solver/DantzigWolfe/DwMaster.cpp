@@ -172,10 +172,12 @@ DSP_RTN_CODE DwMaster::init() {
 
 		int nscen = tss->getNumScenarios();
 		int ncols_first_stage = tss->getNumCols(0);
-		int ncols = org_mat->getNumCols() + ncols_first_stage * (nscen - 1);
 		const double* probability = tss->getProbability();
-		DSPdebugMessage("nscen %d ncols_first_stage %d ncols %d\n", nscen, ncols_first_stage, ncols);
 
+		// create a large matrix with S * (n_1 + n_2), where S is the number of scenarios,
+		// and n_1 and n_2 are the number of first- and second-stage variables, resp.
+		int ncols = org_mat->getNumCols() + ncols_first_stage * (nscen - 1);
+		DSPdebugMessage("nscen %d ncols_first_stage %d ncols %d\n", nscen, ncols_first_stage, ncols);
 		mat_orig_ = new CoinPackedMatrix(org_mat->isColOrdered(), 0, 0);
 		mat_orig_->setDimensions(0, ncols);
 
@@ -223,7 +225,11 @@ DSP_RTN_CODE DwMaster::init() {
 		std::fill(rlbd_orig_.begin(), rlbd_orig_.end(), 0.0);
 		std::fill(rubd_orig_.begin(), rubd_orig_.end(), 0.0);
 	} else {
-		/** retrieve the original master problem structure */
+		/** Retrieve the original master problem structure:
+		 * 
+		 * The master problem is same as the master of the Benders decomposition without the auxiliary varialbe 
+		 * of representing the recourse function.
+		*/
 		model_->decompose(0, NULL, 0, NULL, NULL, NULL,
 				mat_orig_, org_clbd, org_cubd, org_ctype, org_obj, org_rlbd, org_rubd);
 		clbd_orig_.assign(org_clbd, org_clbd + mat_orig_->getNumCols());

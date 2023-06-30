@@ -13,6 +13,10 @@
 #include <numeric>
 #include "Solver/DantzigWolfe/DwMaster.h"
 
+/**
+ * @brief This implements a bundle method for solving the master problem.
+ * 
+ */
 class DwBundleDual: public DwMaster {
 public:
 	/** constructor with worker */
@@ -31,7 +35,22 @@ public:
 	/** default destructor */
 	virtual ~DwBundleDual();
 
-	/** solve */
+	/**
+	 * @brief This function solves the master problem by using a bundle method.
+	 * 
+	 * This initializes the best dual solution, the dual solution, and the proximal center in the
+	 * quadratic objective function of the dual problem.
+	 * 
+	 * This calls DwMaster::generateCols() to generate a set of initial columns. These are added as columns
+	 * to the primal problem, but added as rows to the dual problem. DwMaster::generateCols() calls 
+	 * addCols(), the implementation of which (i.e., DwBundleDual::addCols()) in this class calls 
+	 * DwBundleDual::addRows(), where the columns are added to the primal problem object and the rows are
+	 * added to the dual proble object.
+	 * 
+	 * After adding the initial rows/columns, DwMaster::gutsOfSolver() is called.
+	 * 
+	 * @return DSP_RTN_CODE 
+	 */
 	virtual DSP_RTN_CODE solve();
 
 	/** get best dual objective */
@@ -45,13 +64,29 @@ public:
 
 protected:
 
-	/** This creates a master problem. */
+	/**
+	 * @brief This overwrites DwMaster::createProblem() and creates the primal and dual problem objects. 
+	 * 
+	 * This creates the primal and dual problem objects and sets the column bounds for the current node
+	 * subproblem. phase_ is always set to 2, because the Bundle method does not consider two phases.
+	 * The best dual objective value is initialized to COIN_DBL_MAX;
+	 * 
+	 * @return DSP_RTN_CODE 
+	 */
 	virtual DSP_RTN_CODE createProblem();
 
 	/** Update the proximal bundle center */
 	virtual DSP_RTN_CODE updateCenter(double penalty);
 
-	/** solver master */
+	/**
+	 * @brief This solves the master problems in both primal and dual.
+	 * 
+	 * This function is called from DwMaster::gutsOfSolve(). The dual problem is solved first. If the solution 
+	 * status is either optimal or feasible, this function updates the bundle parameters and solves the primal 
+	 * problem.
+	 * 
+	 * @return DSP_RTN_CODE 
+	 */
 	virtual DSP_RTN_CODE solveMaster();
 
 	/** update master */
@@ -85,17 +120,41 @@ protected:
 			std::vector<double>& objs,           /**< [in] subproblem objective values */
 			std::vector<CoinPackedVector*>& sols /**< [in] subproblem solutions */);
 
-	/** Calculate Lagrangian bound */
+	/**
+	 * @brief This computes the Lagrangian dual bound.
+	 * 
+	 * The sign of the Lagrangian dual bound is same as the original objective function.
+	 */
 	virtual DSP_RTN_CODE getLagrangianBound(
 			std::vector<double>& objs /**< [in] subproblem objective values */);
 
 	/** print iteration information */
 	virtual void printIterInfo();
 
-	/** create primal master problem */
+	/**
+	 * @brief This creates a primal (minimization) problem object.
+	 * 
+	 * The primal problem is the restricted master problem of Dantzig-Wolfe decomposition.
+	 * The problem consists of two sets of constraints.
+	 * The first set of constraints are reserved (empty initially) to represents the convex 
+	 * combination of columns generated in this method. The other constraints are reserved to 
+	 * represent the original constraints of the master block. The solver interface is created.
+	 * 
+	 * @return DSP_RTN_CODE 
+	 */
 	virtual DSP_RTN_CODE createPrimalProblem();
 
-	/** create dual master problem */
+	/**
+	 * @brief This creates a dual (maximization) problem object.
+	 * 
+	 * The problem is initialized with (i) the auxiliary variables to represent the upper approximation
+	 * of the blocks and (ii) the variables to represent the Lagrangian multipliers of the master block
+	 * constraints. The quadratic objective function is created for the proximal term with weight u_;
+	 * 
+	 * The problem is minimized with the negated objective function.
+	 * 
+	 * @return DSP_RTN_CODE 
+	 */
 	virtual DSP_RTN_CODE createDualProblem();
 
 	typedef std::pair<int,double> pairIntDbl;
@@ -136,7 +195,14 @@ protected:
 			std::vector<double>& rlbd, 
 			std::vector<double>& rubd);
 
-	/** call external solver for solveMaster() */
+	/**
+	 * @brief This solves the dual problem and returns a status.
+	 * 
+	 * If CPLEX is used as external solver, extra effort is made when the problem suffers from
+	 * issues in numerical stability.
+	 * 
+	 * @return DSP_RTN_CODE 
+	 */
 	virtual DSP_RTN_CODE callMasterSolver();
 
 	/** assign master solution */
