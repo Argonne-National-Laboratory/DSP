@@ -97,6 +97,9 @@ public:
 	/** set relative MIP gap */
 	virtual void setRelMipGap(double tol) {}
 
+	/** return unbounded ray */
+	virtual std::vector< double * > getUnbdRay() { return std::vector< double * >(); }
+
 	OsiSolverInterface *si_;
 };
 

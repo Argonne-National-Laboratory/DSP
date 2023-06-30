@@ -277,14 +277,13 @@ DSP_RTN_CODE DwWorker::generateCols(
 
 				switch(par_->getIntParam("DW/SUB/SOLVER")) {
 				case OsiCpx:
-					rays = osi_[s]->si_->getPrimalRays(1);
+					rays = osi_[s]->getUnbdRay();
 					break;
 				case OsiGrb:
-					//rays = osi_[s]->si_->getPrimalRays(1);
+					// rays = osi_[s]->getUnbdRay();
 					throw CoinError("getPrimalRays not implemented in Gurobi.", "DwWorker", "DwWorker.cpp");
 					break;
 				case OsiScip:
-					// rays = osi_[s]->si_->getPrimalRays(1);
 					throw CoinError("getPrimalRays not implemented in Scip.", "DwWorker", "DwWorker.cpp");
 					break;
 				default:
