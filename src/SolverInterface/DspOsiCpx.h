@@ -209,14 +209,11 @@ public:
 
 	/** return unbounded ray */
 	virtual std::vector< double * > getUnbdRay() {
-		OsiCpxSolverInterface* cpx_copy = new OsiCpxSolverInterface(*cpx_);
-		cpx_copy->switchToLP();
-		cpx_copy->initialSolve();
-
-		std::vector<double*> unbdRay = cpx_copy->getPrimalRays(1);
-		delete cpx_copy;
-		return unbdRay;
-	}
+                cpx_->initialSolve();
+                std::vector<double*> unbdRay = cpx_->getPrimalRays(1);
+                cpx_->switchToMIP();
+                return unbdRay;
+        }
 
     OsiCpxSolverInterface* cpx_;   
 };
