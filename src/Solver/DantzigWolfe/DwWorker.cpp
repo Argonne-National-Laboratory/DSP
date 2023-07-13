@@ -281,10 +281,10 @@ DSP_RTN_CODE DwWorker::generateCols(
 					break;
 				case OsiGrb:
 					// rays = osi_[s]->getUnbdRay();
-					throw CoinError("getPrimalRays not implemented in Gurobi.", "DwWorker", "DwWorker.cpp");
+					throw CoinError("Encountered unbounded subproblem. getPrimalRays not implemented in Gurobi.", "DwWorker", "DwWorker.cpp");
 					break;
 				case OsiScip:
-					throw CoinError("getPrimalRays not implemented in Scip.", "DwWorker", "DwWorker.cpp");
+					throw CoinError("Encountered unbounded subproblem. getPrimalRays not implemented in Scip.", "DwWorker", "DwWorker.cpp");
 					break;
 				default:
 					throw CoinError("Invalid paramter value", "DwWorker", "DwWorker.cpp");
