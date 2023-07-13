@@ -792,36 +792,46 @@ DSP_RTN_CODE DwMaster::generateCols() {
 	par_->setDblParam("DW/SUB/TIME_LIM", sub_timlim);
 
 	/** any subproblem primal/dual infeasible? */
-	bool isInfeasible = false;
+	bool isPrimInfeasible = false;
+	bool isDualInfeasible = false;
 	for (auto status = status_subs_.begin(); status != status_subs_.end(); status++)
-		if (*status == DSP_STAT_PRIM_INFEASIBLE ||
-			*status == DSP_STAT_DUAL_INFEASIBLE) {
-			isInfeasible = true;
+		if (*status == DSP_STAT_PRIM_INFEASIBLE) {
+			isPrimInfeasible = true;
 			break;
 		}
-
-	if (!isInfeasible) {
-		/** calculate lower bound */
-		if (phase_ == 2) {
-			DSP_RTN_CHECK_RTN_CODE(getLagrangianBound(subobjs));
-			DSPdebugMessage("Current lower bound %e, best lower bound %e\n", dualobj_, bestdualobj_);
+	for (auto status = status_subs_.begin(); status != status_subs_.end(); status++)
+		if (*status == DSP_STAT_DUAL_INFEASIBLE) {
+			isDualInfeasible = true;
+			break;
 		}
+	if (!isPrimInfeasible) {
+		if (!isDualInfeasible) {
+			/** calculate lower bound */
+			if (phase_ == 2) {
+				DSP_RTN_CHECK_RTN_CODE(getLagrangianBound(subobjs));
+				DSPdebugMessage("Current lower bound %e, best lower bound %e\n", dualobj_, bestdualobj_);
+			}
 
-		/** clear recent subproblem solutions */
-		for (unsigned i = 0; i < recent_subsols_.size(); ++i)
-			FREE_PTR(recent_subsols_[i]);
-		recent_subsols_.clear();
+			/** clear recent subproblem solutions */
+			for (unsigned i = 0; i < recent_subsols_.size(); ++i)
+				FREE_PTR(recent_subsols_[i]);
+			recent_subsols_.clear();
 
-		/** assign the current subproblem solutions */
-		recent_subsols_.reserve(subsols.size());
-		for (unsigned i = 0; i < subsols.size(); ++i)
-			recent_subsols_.push_back(subsols[i]);
+			/** assign the current subproblem solutions */
+			recent_subsols_.reserve(subsols.size());
+			for (unsigned i = 0; i < subsols.size(); ++i)
+				recent_subsols_.push_back(subsols[i]);
+		} else {
+			/** hideakiv: set dualobj_ to be unbounded due to infeasibility */
+			dualobj_ = COIN_DBL_MAX;
+		}
 
 		/** create and add columns */
 		DSP_RTN_CHECK_RTN_CODE(
 				addCols(subinds, status_subs_, subcxs, subobjs, subsols));
 
 		if (model_->isStochastic() && 
+			!isDualInfeasible &&
 			par_->getIntParam("DW/MAX_EVAL_UB") > 0 &&
 			par_->getIntParam("DW/EVAL_UB") >= 0) {
 			/** maximum number of solutions to evaluate */
@@ -849,8 +859,8 @@ DSP_RTN_CODE DwMaster::generateCols() {
 			}
 		}
 
-	} else
-		ngenerated_ = 0;
+	} else 
+		ngenerated_ = 0; /** do not generate when primal infeasible */
 
 	/** free memory for subproblem solutions */
 	for (unsigned i = 0; i < subsols.size(); ++i)

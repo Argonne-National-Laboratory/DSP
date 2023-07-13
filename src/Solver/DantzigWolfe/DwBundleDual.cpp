@@ -5,7 +5,7 @@
  *      Author: kibaekkim
  */
 
-//#define DSP_DEBUG
+// #define DSP_DEBUG
 
 #include "SolverInterface/DspOsiScip.h"
 #include "SolverInterface/DspOsiCpx.h"
@@ -42,6 +42,7 @@ numFixedRows_(rhs.numFixedRows_) {
 	d_ = rhs.d_;
 	p_ = rhs.p_;
 	primal_si_.reset(rhs.primal_si_->clone());
+	extremePointFound_ = rhs.extremePointFound_;
 }
 
 DwBundleDual& DwBundleDual::operator =(const DwBundleDual& rhs) {
@@ -59,6 +60,7 @@ DwBundleDual& DwBundleDual::operator =(const DwBundleDual& rhs) {
 	d_ = rhs.d_;
 	p_ = rhs.p_;
 	primal_si_.reset(rhs.primal_si_->clone());
+	extremePointFound_ = rhs.extremePointFound_;
 	return *this;
 }
 
@@ -143,6 +145,9 @@ DSP_RTN_CODE DwBundleDual::createProblem() {
 	DSP_RTN_CHECK_THROW(createPrimalProblem());
 	DSP_RTN_CHECK_THROW(createDualProblem());
 
+	extremePointFound_.reserve(nrows_conv_);
+	std::fill(extremePointFound_.begin(), extremePointFound_.end(), false);
+
 	/** always phase2 */
 	phase_ = 2;
 
@@ -162,10 +167,12 @@ DSP_RTN_CODE DwBundleDual::createPrimalProblem() {
 	mat->setDimensions(nrows_, 0);
 
 	/** row bounds */
+	//	The dual variable correspoinding to extreme points must add to 1.
 	std::vector<double> rlbd(nrows_);
 	std::vector<double> rubd(nrows_);
-	std::fill(rlbd.begin(), rlbd.begin() + nrows_conv_, 1.0);
-	std::fill(rubd.begin(), rubd.begin() + nrows_conv_, 1.0);
+	//	hideakiv: When only unbounded rays are discovered, the rhs must be set to 0 otherwise the master problem would be infeasible.
+	std::fill(rlbd.begin(), rlbd.begin() + nrows_conv_, 0.0);
+	std::fill(rubd.begin(), rubd.begin() + nrows_conv_, 0.0);
 	std::copy(rlbd_orig_.begin(), rlbd_orig_.begin() + nrows_orig_, rlbd.begin() + nrows_conv_);
 	std::copy(rubd_orig_.begin(), rubd_orig_.begin() + nrows_orig_, rubd.begin() + nrows_conv_);
 
@@ -239,9 +246,12 @@ DSP_RTN_CODE DwBundleDual::createDualProblem() {
 	mat.reset(new CoinPackedMatrix(false, 0, 0));
 	mat->setDimensions(0, nrows_);
 
-	std::fill(clbd.begin(), clbd.begin() + nrows_conv_, -COIN_DBL_MAX);
-	std::fill(cubd.begin(), cubd.begin() + nrows_conv_, +COIN_DBL_MAX);
+	//	The columns correspond to lower bound estimates for subproblem objective
+	//	hideakiv: When only unbounded rays are discovered, the columns become unbounded and the master problem becomes unbounded.
+	std::fill(clbd.begin(), clbd.begin() + nrows_conv_, 0.0);
+	std::fill(cubd.begin(), cubd.begin() + nrows_conv_, 0.0);
 	std::fill(obj.begin(), obj.begin() + nrows_conv_, -1.0);
+
 	for (int i = 0; i < nrows_orig_; ++i) {
 		clbd[nrows_conv_+i] = 0.0;
 		cubd[nrows_conv_+i] = 0.0;
@@ -666,8 +676,21 @@ DSP_RTN_CODE DwBundleDual::addRows(
 		cutvec.clear();
 
 		/** original constraints */
-		if (statuses[s] != DSP_STAT_DUAL_INFEASIBLE)
+		if (statuses[s] != DSP_STAT_DUAL_INFEASIBLE && dualsol_[sind] > objs[s] + 1.0e-8) {
 			cutvec.insert(sind, 1.0);
+			DSPdebugMessage("obj coefficient s: %d, sind: %d, coeff: %f\n", s, sind, osi_->si_->getObjCoefficients()[sind]);
+			//	hideakiv: relax == 0 condition for dual master variable correspoinding to the subproblem lower bound
+			//	hideakiv: fix the rhs of primal master constraint on the sum of extreme point dual variable to 1
+			if (!extremePointFound_[sind]) {
+				DSPdebugMessage("changing dual column bounds\n");
+				osi_->si_->setColLower(sind, -COIN_DBL_MAX);
+				osi_->si_->setColUpper(sind,  COIN_DBL_MAX);
+				DSPdebugMessage("changing primal row bounds\n");
+				primal_si_->si_->setRowBounds(sind, 1.0, 1.0);
+				extremePointFound_[sind] = true;
+			}
+		}
+
 		for (int i = 0; i < nrows_orig_; ++i) {
 			cutcoef = Ax[i];
 			assert(fabs(cutcoef) < 1e+20);

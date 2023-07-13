@@ -1,0 +1,25 @@
+PRESOLVED
+0
+NBLOCKS
+3
+BLOCK 1
+cons01
+cons02
+cons03
+BLOCK 2
+cons11
+cons12
+cons13
+BLOCK 3
+cons21
+cons22
+cons23
+MASTERCONSS
+link00
+link01
+link02
+link10
+link11
+link12
+cons00
+

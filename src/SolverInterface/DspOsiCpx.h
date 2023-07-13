@@ -207,6 +207,14 @@ public:
 		CPXsetdblparam(cpx_->getEnvironmentPtr(), CPX_PARAM_EPGAP, CoinMax(0.0, CoinMin(1.0, tol)));
 	}
 
+	/** return unbounded ray */
+	virtual std::vector< double * > getUnbdRay() {
+                cpx_->initialSolve();
+                std::vector<double*> unbdRay = cpx_->getPrimalRays(1);
+                cpx_->switchToMIP();
+                return unbdRay;
+        }
+
     OsiCpxSolverInterface* cpx_;   
 };
 

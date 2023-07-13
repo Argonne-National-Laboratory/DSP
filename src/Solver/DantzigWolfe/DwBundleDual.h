@@ -183,6 +183,8 @@ protected:
 
 	std::shared_ptr<DspOsi> primal_si_;
 
+	std::vector<bool> extremePointFound_; /**< indicates whether an extreme point is found for subproblem s*/
+
 	//@{
 	/** functions specific to external solver */
 

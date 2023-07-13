@@ -273,11 +273,30 @@ DSP_RTN_CODE DwWorker::generateCols(
 
 			if (status == DSP_STAT_DUAL_INFEASIBLE) {
 				/** retrieve ray if unbounded */
-				std::vector<double*> rays = osi_[s]->si_->getPrimalRays(1);
+				std::vector<double*> rays;
+
+				switch(par_->getIntParam("DW/SUB/SOLVER")) {
+				case OsiCpx:
+					rays = osi_[s]->getUnbdRay();
+					break;
+				case OsiGrb:
+					// rays = osi_[s]->getUnbdRay();
+					throw CoinError("Encountered unbounded subproblem. getPrimalRays not implemented in Gurobi.", "DwWorker", "DwWorker.cpp");
+					break;
+				case OsiScip:
+					throw CoinError("Encountered unbounded subproblem. getPrimalRays not implemented in Scip.", "DwWorker", "DwWorker.cpp");
+					break;
+				default:
+					throw CoinError("Invalid paramter value", "DwWorker", "DwWorker.cpp");
+					break;
+				}
+
 				if (rays.size() == 0 || rays[0] == NULL)
 					throw CoinError("No primal ray is available.", "generateCols", "DwWorker");
 				double* ray = rays[0];
 				rays[0] = NULL;
+				DSPdebugMessage("unbounded ray\n");
+				DSPdebug(DspMessage::printArray(osi_[s]->si_->getNumCols(), ray));
 
 				/** subproblem objective value */
 				cx = 0.0;
@@ -310,8 +329,10 @@ DSP_RTN_CODE DwWorker::generateCols(
 				objval = osi_[s]->getPrimObjValue();
 					
 				cx = 0.0;
-				for (int j = 0; j < osi_[s]->si_->getNumCols(); ++j)
+				for (int j = 0; j < osi_[s]->si_->getNumCols(); ++j){
+					// DSPdebugMessage("x[%d]: %e\n", j, x[j]);
 					cx += sub_objs_[s][j] * x[j];
+				}
 				DSPdebugMessage("Subprob %d: objval %e, cx %e\n", sind, objval, cx);
 
 				/** subproblem coupling solution */

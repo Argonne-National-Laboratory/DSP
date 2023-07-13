@@ -258,6 +258,23 @@ public:
     	}
 	}
 
+	/** return unbounded ray */
+	virtual std::vector< double * > getUnbdRay() {
+		try{
+			OsiGrbSolverInterface* grb_copy = new OsiGrbSolverInterface(*grb_);
+			grb_copy->switchToLP();
+			GUROBI_CALL("setInfUnbdInfo", GRBsetintparam(grb_copy->getEnvironmentPtr(), "InfUnbdInfo", 1));
+			grb_copy->initialSolve();
+
+			std::vector<double*> unbdRay = grb_copy->getPrimalRays(1);
+			delete grb_copy;
+			return unbdRay;
+		}
+		catch(const CoinError &e){
+			e.print();
+		}
+	}
+
     OsiGrbSolverInterface* grb_;   
 };
 
